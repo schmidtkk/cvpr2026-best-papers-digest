@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D4RT 深读：动态 4D 重建为什么要从“解码整帧”改成“查询任意点”？</title>
+<meta name="description" content="CVPR 2026 Award Candidates Digest · D4RT 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head><body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Best Paper · 3D &amp; Geometry / Dynamic 4D Reconstruction</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; 3D &amp; Geometry &gt; D4RT 深读</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">06</span><span class="month">Jun</span></div>
+<h1 id="paper-title">D4RT 深读：动态 4D 重建为什么要从“解码整帧”改成“查询任意点”？</h1>
+<div class="article-meta"><span>CVPR 2026 Best Paper / Award Candidate</span><span>3D &amp; Geometry</span><span>Google DeepMind · Oxford · UCL</span><span>基于论文 PDF / Supplement / 项目主页</span></div>
+<div class="tags"><span class="tag">Dynamic 4D Reconstruction</span><span class="tag">Point Tracking</span><span class="tag">Feedforward 3D</span><span class="tag">Query Decoder</span><span class="tag">ViT-g</span></div></header>
+<main class="content">
+<p id="abstract" class="lead"><strong>导读。</strong>D4RT 真正要回答的问题不是“能否从视频恢复一个漂亮点云”，而是：<strong>能否用一个统一、前馈、可并行的接口，同时回答动态场景中的深度、点云、点轨迹、相机内外参这些几何问题？</strong>论文的答案是把“逐帧 dense decoding”改写为“给定一个时空 query，直接问这个点在目标时间和目标相机中位于哪里”。这使模型不必一次性解码所有像素，也不必为每个任务维护独立 head。</p>
+<div class="hero-split"><div><p><strong>一句话贡献。</strong>D4RT 先用全局视频 encoder 得到 scene representation，再用轻量 query decoder 独立回答 $q=(u,v,t_{src},t_{tgt},t_{cam})$ 对应的 3D position $P$。这把多种 4D 任务统一为同一种“问点在哪里”的接口。</p><p class="source-note">本文图像从 CVPR PDF、Supplement 和项目页原图提取为 PNG；不使用占位图。点击任意论文图可打开本地原始 PNG。</p></div><figure class=""><a href="../assets/figures/d4rt_pdf_fig1_teaser.png" target="_blank"><img src="../assets/figures/d4rt_pdf_fig1_teaser.png" alt="&lt;strong&gt;图 1 · D4RT teaser。&lt;/strong&gt;注意右侧不同颜色/符号并不是装饰：它们对应 point cloud、point tracks、camera parameters 等输出，说明 D4RT 试图用一个接口覆盖多类 4D 几何输出。" loading="lazy"></a><figcaption><strong>图 1 · D4RT teaser。</strong>注意右侧不同颜色/符号并不是装饰：它们对应 point cloud、point tracks、camera parameters 等输出，说明 D4RT 试图用一个接口覆盖多类 4D 几何输出。</figcaption></figure></div>
+<section id="motivation"><h2>1. 先问核心问题：动态 4D 重建到底卡在哪里？</h2><p>如果场景是静态的，多视角几何和 feedforward 3D 重建已经可以给出相机、深度和点云。但现实视频里有两个运动同时发生：<strong>相机在动，物体也在动</strong>。这会制造一个经典矛盾：纯重建方法容易把动态物体“拖影/复制”到不同位置；纯 tracking 方法能跟踪少量点，却常常只从一个参考帧出发，导致被遮挡区域或首帧不可见区域缺失。</p><div class="socratic"><p class="question">问：为什么不能让模型直接输出每一帧的 dense depth / point map，然后再后处理成 4D？</p><p class="guide">引导：想一想动态物体在不同帧中并不是同一个静态表面；逐帧输出会给每帧一个局部答案，却不自动保证跨时间的一致身份。</p><p class="answer">答：逐帧 dense decoder 会把复杂度绑在所有像素和所有帧上，并且跨帧 correspondence 仍要额外解决。D4RT 反过来问：我是否可以只在需要的位置发 query，并让 query 显式携带 source time、target time 和 camera time？</p><div class="takeaway"><strong>Takeaway：</strong>D4RT 的核心不是“更强的 depth model”，而是把动态 3D 问题重写为可稀疏、可并行、可统一的时空查询问题。</div></div></section>
+<section id="contribution"><h2>2. 核心贡献：作者真正新增了什么？</h2><ul><li><strong>统一 query interface。</strong>同一 decoder 可被用于 point track、point cloud、depth map、camera extrinsics 和 intrinsics。</li><li><strong>轻量独立 decoder。</strong>每个 query 独立通过 cross-attention 读取 global scene representation，避免 heavy dense per-frame decoder 和多个 task-specific decoders。</li><li><strong>all-pixels tracking 推理算法。</strong>不是对所有 $T^2HW$ 点暴力查询，而是用 occupancy grid 只从未访问像素启动新轨迹。</li><li><strong>系统实验。</strong>论文用 TAPVid-3D、Sintel、ScanNet、KITTI、Bonn、Re10K 等覆盖 tracking、depth、point cloud、pose，并给出 local patch、backbone size、auxiliary losses、initialization、public-only training 等消融。</li></ul><figure class=""><a href="../assets/figures/d4rt_pdf_table2_capabilities.png" target="_blank"><img src="../assets/figures/d4rt_pdf_table2_capabilities.png" alt="&lt;strong&gt;图 2 · Model capabilities 表。&lt;/strong&gt;这张表不是单纯列 baseline，而是在说明 D4RT 的新意：动态 correspondence、flexible reference frames、sparse decoding、global context、single decoder 同时成立。读者应看最右侧 D4RT 与 VGGT/π3/STv2 的功能差异。" loading="lazy"></a><figcaption><strong>图 2 · Model capabilities 表。</strong>这张表不是单纯列 baseline，而是在说明 D4RT 的新意：动态 correspondence、flexible reference frames、sparse decoding、global context、single decoder 同时成立。读者应看最右侧 D4RT 与 VGGT/π3/STv2 的功能差异。</figcaption></figure></section>
+<section id="datasets"><h2>3. 数据集与任务：模型到底学了哪些监督信号？</h2><p>D4RT 的训练 mixture 来自 BlendedMVS、Co3Dv2、Dynamic Replica、Kubric、MVS-Synth、PointOdyssey、ScanNet++、ScanNet、Tartanair、VirtualKitti、Waymo Open，以及 internal datasets。主训练使用 48-frame clips、256×256 resolution，每个视频解码 2048 random queries，并对特定区域 oversample。论文说明使用 internal data，但没有公开其规模、清洗标准和采样比例。</p><div class="table-wrap"><table><caption><strong>表 1 · 数据与监督角色。</strong>“论文未说明”不做补猜。</caption><thead><tr><th>来源/任务</th><th>作用</th><th>输入 → 输出</th><th>论文披露程度</th></tr></thead><tbody><tr><td>多源公开/内部视频数据</td><td>训练 unified 4D model</td><td>Video clip + sampled queries → normalized 3D point position / auxiliary targets</td><td>公开源列出；internal data 规模与构成未说明</td></tr><tr><td>TAPVid-3D</td><td>评测 3D tracking</td><td>video + track queries → camera/world coordinate 3D tracks</td><td>论文说明 DriveTrack / ADT / PStudio 子集</td></tr><tr><td>Sintel / ScanNet / KITTI / Bonn / Re10K</td><td>评测 depth、point cloud、pose</td><td>video → point cloud / depth / camera pose</td><td>指标与结果表给出</td></tr><tr><td>public-only training ablation</td><td>隔离 internal data 的影响</td><td>14 public datasets only → 多任务评测</td><td>Supplement Table 12 给出结果</td></tr></tbody></table></div><div class="socratic"><p class="question">问：D4RT 的监督是不是只靠 3D point L1？</p><p class="answer">答：不是。主监督是 normalized 3D point position 的 L1，同时还有 2D position、visibility、displacement、normal、confidence 等辅助预测。辅助损失的意义是让 decoder output 不只记一个点坐标，而是保留与投影、可见性、运动和局部几何有关的信息。</p><div class="takeaway"><strong>Takeaway：</strong>数据在 D4RT 中不是“只用于训练 depth”，而是被组织成 query-level 多任务监督，使一个 decoder 同时服务 4D correspondence、reconstruction 和 pose。</div></div></section>
+<section id="pipeline"><h2>4. Pipeline：从视频到 4D 查询答案</h2><figure class="fig-wide"><a href="../assets/figures/d4rt_pdf_fig2_model_overview.png" target="_blank"><img src="../assets/figures/d4rt_pdf_fig2_model_overview.png" alt="&lt;strong&gt;图 3 · 方法总览。&lt;/strong&gt;左侧视频进入 global self-attention encoder，形成 Global Scene Representation；右侧 query decoder 接收 $(u,v,t_{src},t_{tgt},t_{cam})$ 和 local frame patch，然后输出 3D position $P$。注意图中红色 dotted box：这是 D4RT 把任务统一起来的接口。" loading="lazy"></a><figcaption><strong>图 3 · 方法总览。</strong>左侧视频进入 global self-attention encoder，形成 Global Scene Representation；右侧 query decoder 接收 $(u,v,t_{src},t_{tgt},t_{cam})$ 和 local frame patch，然后输出 3D position $P$。注意图中红色 dotted box：这是 D4RT 把任务统一起来的接口。</figcaption></figure><h3>4.1 数据流、模型流、推理流分别是什么？</h3><ol><li><strong>数据流：</strong>视频 clip 被 resize/tokenize；原始 aspect ratio 作为额外 token 输入；训练时从可监督轨迹中采样 query，且 30% 偏向 depth discontinuity 或 motion boundary。</li><li><strong>模型流：</strong>ViT encoder 交替进行 local frame-wise attention 与 global self-attention，输出全局场景表征 $F$；query token 加入坐标 Fourier feature、三个 timestep embeddings 和 local RGB patch embedding。</li><li><strong>训练流：</strong>少量 query 被解码并计算 3D point / auxiliary losses，避免每个视频全 dense decoding。</li><li><strong>推理流：</strong>根据任务构造不同 query 的 Cartesian product；需要 dense all-pixels tracking 时，Algorithm 1 用 occupancy grid 自适应跳过已经被轨迹覆盖的像素。</li></ol><div class="fig-grid"><figure class=""><a href="../assets/figures/d4rt_project_method_left.png" target="_blank"><img src="../assets/figures/d4rt_project_method_left.png" alt="&lt;strong&gt;图 4a · 项目页方法图：encoder 形成全局场景表示。&lt;/strong&gt;这张图比论文总览更适合建立直觉：模型先压缩整段视频，而不是逐帧做局部 depth。" loading="lazy"></a><figcaption><strong>图 4a · 项目页方法图：encoder 形成全局场景表示。</strong>这张图比论文总览更适合建立直觉：模型先压缩整段视频，而不是逐帧做局部 depth。</figcaption></figure><figure class=""><a href="../assets/figures/d4rt_project_method_right.png" target="_blank"><img src="../assets/figures/d4rt_project_method_right.png" alt="&lt;strong&gt;图 4b · 项目页方法图：query decoder 逐点回答。&lt;/strong&gt;关键在于每个 query 可独立处理，因此点数增加时可以并行扩展。" loading="lazy"></a><figcaption><strong>图 4b · 项目页方法图：query decoder 逐点回答。</strong>关键在于每个 query 可独立处理，因此点数增加时可以并行扩展。</figcaption></figure></div><div class="socratic"><p class="question">问：如果去掉 query interface，回到 dense per-frame decoding，会损失什么？</p><p class="answer">答：会重新把所有任务绑定到固定输出网格上：depth 要 depth head，pose 要 pose head，tracking 要 tracking head；同时 dense all-frame decoding 需要处理大量实际并不需要的点。D4RT 的设计让任务由“构造 query”定义，而不是由“换 decoder head”定义。</p><div class="takeaway"><strong>Takeaway：</strong>D4RT 的 pipeline 把“模型输出什么”推迟到推理时由 query 决定，这正是统一多任务和高吞吐的来源。</div></div></section>
+<section id="method"><h2>5. 模型与方法：query 到底问了什么？</h2><h3>5.1 Unified decoding：同一张表读懂五类任务</h3><figure class=""><a href="../assets/figures/d4rt_pdf_table1_unified_decoding.png" target="_blank"><img src="../assets/figures/d4rt_pdf_table1_unified_decoding.png" alt="&lt;strong&gt;图 5 · Unified decoding。&lt;/strong&gt;表中每一行是一个任务，每一列是 query 的一个维度。Point Track 固定像素与 source time、遍历 target time；Point Cloud/Depth 遍历空间像素；Extrinsics/Intrinsics 则用粗网格估计相机参数。" loading="lazy"></a><figcaption><strong>图 5 · Unified decoding。</strong>表中每一行是一个任务，每一列是 query 的一个维度。Point Track 固定像素与 source time、遍历 target time；Point Cloud/Depth 遍历空间像素；Extrinsics/Intrinsics 则用粗网格估计相机参数。</figcaption></figure><p><strong>先问为什么需要这套接口。</strong>传统 4D/3D-from-video 把每个任务硬编码进网络结构：depth 有 depth head、pose 有 pose head、tracking 有 tracking head，输出形状也被钉死成稠密网格。代价有两笔——任务数等于 head/模型数，且稠密逐帧解码会在每个像素 × 每帧上花算力，all-pairs tracking 更是 $O(T^2HW)$。D4RT 的思路是把“要输出什么”从<strong>架构</strong>挪到<strong>输入</strong>：场景只编码一次，任务由构造哪种 query 决定。</p><p>query 的形式可以写成：</p><div class="equation">$$q=(u,v,t_{src},t_{tgt},t_{cam}) \quad \Longrightarrow \quad P=D(q,F)\in\mathbb{R}^3$$<div class="eq-caption">式 1：D4RT 的基本查询接口。</div></div><p>$(u,v)$ 是 source frame 上的 2D point；$t_{src}$ 指明这个点从哪一帧来；$t_{tgt}$ 指明希望它被追踪到哪个时间；$t_{cam}$ 指明用哪个相机坐标系表达输出 3D position。这个设计允许“时间”和“参考相机”解耦，因此同一物理点可以被问到不同时间、不同 camera coordinate 中的位置。</p><p>关键在于：四类任务只是对同一接口“固定哪几维、扫哪几维”的不同写法——<strong>point track</strong> 固定 $(u,v,t_{src})$、扫 $t_{tgt}$；<strong>depth / pointmap</strong> 令 $t_{src}=t_{tgt}=t_{cam}$、扫 $(u,v)$；<strong>外参</strong>把同一批点放进两个 $t_{cam}$ 再求刚体变换；<strong>内参</strong>由返回的 3D 点反解（式 2）。所以统一不是靠一个多任务 loss 把几个 head 拼起来，而是把“基本单位”从“稠密输出网格”换成“可单独回答的 query”。</p><div class="formula-note"><p class="note-title">这套统一成立的前提</p><p>它假设每个关心的任务都能<strong>分解成“一个点 + 源时间 + 目标时间 + 参考相机”</strong>。对可点定位的几何量（轨迹、深度、点图、位姿）成立；对不可点定位的量（语义标签）或 式 2 之外的相机模型（鱼眼、强畸变）则不成立——这是接口表达力的边界，而不是实现细节。</p></div><h3>5.2 相机外参与内参如何从 query 中出来？</h3><p>对相机外参，论文构造两组 query：$q_i=(u,v,i,i,i)$ 与 $q_j=(u,v,i,i,j)$。它们描述同一批 3D 点在不同参考相机坐标下的位置；两组点之间的刚体变换通过 Umeyama 算法求解。对内参，论文假设 pinhole camera 且 principal point 为 $(0.5,0.5)$，由输出点 $P=(p_x,p_y,p_z)$ 反推出焦距：</p><div class="equation">
+  $$
+  f_x = \frac{p_z\,(u-0.5)}{p_x}, \qquad
+  f_y = \frac{p_z\,(v-0.5)}{p_y}
+  $$
+  <div class="eq-caption">式 2：由 3D point 与 normalized image coordinate 估计 intrinsics。</div>
+</div><div class="socratic"><p class="question">问：为什么要把 local RGB patch 放进 query？全局 encoder 不是已经看过整段视频了吗？</p><p class="answer">答：全局表征负责 scene-level consistency，但具体 query 仍要区分低层局部细节：边界、发丝、薄结构、前景/背景分界。local RGB patch 给 decoder 一个以 $(u,v)$ 为中心的局部 appearance cue，帮助它从全局特征中找到更可靠的对应点。</p><div class="takeaway"><strong>Takeaway：</strong>query 不是一个抽象坐标 token；它携带 source point、目标时间、目标相机以及局部外观，因此既有几何自由度，也有像素级定位能力。</div></div><h3>5.3 All-pixels tracking：避免 $O(T^2HW)$ 的关键算法</h3><figure class=""><a href="../assets/figures/d4rt_pdf_algorithm1_all_pixels.png" target="_blank"><img src="../assets/figures/d4rt_pdf_algorithm1_all_pixels.png" alt="&lt;strong&gt;图 6 · Efficient Dense Tracking of All Pixels。&lt;/strong&gt;算法维护一个 occupancy grid $G$：每次只从未访问点启动 track；一条 track 覆盖到的可见像素会被标记为 visited。这样不是机械枚举所有 source-target 像素对，而是利用轨迹自身覆盖冗余。" loading="lazy"></a><figcaption><strong>图 6 · Efficient Dense Tracking of All Pixels。</strong>算法维护一个 occupancy grid $G$：每次只从未访问点启动 track；一条 track 覆盖到的可见像素会被标记为 visited。这样不是机械枚举所有 source-target 像素对，而是利用轨迹自身覆盖冗余。</figcaption></figure><p>论文给出直觉：暴力为所有像素、所有 source time、所有 target time 查询会产生 $O(T^2HW)$ 级别的 query。Algorithm 1 将新轨迹只从未被覆盖的位置启动，经验上带来 5–15× 自适应加速，运动越简单、冗余越高，节省越明显。</p><div class="formula-note"><p class="note-title">真正承重的假设：query 间条件独立</p><p>无论是并行扩展还是 occupancy-grid 跳过，都建立在“<strong>给定全局表征 $F$，每个 query 可被独立解码</strong>”之上。这把一致性的担子全压到 $F$ 上：$F$ 必须已经编码跨帧、跨视角的场景一致性，decoder 才能不看别的 query。这条假设可以从两个独立角度交叉验证：(i) <strong>效率侧</strong>——若 query 不独立就无法安全跳过，而 §7.1 的 throughput（60 FPS 下 550 vs 29）说明跳过确实成立；(ii) <strong>正确性侧</strong>——§7.4 的初始化消融显示随机初始化崩溃、VideoMAE 初始化大幅领先，正说明“全局视频表征”才是这套接口的承重底座，而不是 query trick 本身。</p></div><h3>5.4 训练目标：主坐标损失 + 多个辅助几何信号</h3><figure class=""><a href="../assets/figures/d4rt_supp_training_loss_formula.png" target="_blank"><img src="../assets/figures/d4rt_supp_training_loss_formula.png" alt="&lt;strong&gt;图 7 · Supplement 中的 composite loss。&lt;/strong&gt;读这张公式图时不要只看符号：3D point 是主任务，2D position / visibility / displacement / confidence / normal 是让 query decoder 保持投影、可见性、运动与局部几何一致的辅助约束。" loading="lazy"></a><figcaption><strong>图 7 · Supplement 中的 composite loss。</strong>读这张公式图时不要只看符号：3D point 是主任务，2D position / visibility / displacement / confidence / normal 是让 query decoder 保持投影、可见性、运动与局部几何一致的辅助约束。</figcaption></figure><p>Supplement 给出的训练细节包括：AdamW、weight decay 0.03，学习率 warmup 2,500 steps 到 $10^{-4}$，再 cosine decay 到 $10^{-6}$，gradient clipping 最大 L2 norm 为 10。训练增强包括时序一致 color jitter、random color drop、Gaussian blur、random crop、random zoom 和 temporal stride subsampling。</p></section>
+<section id="training"><h2>6. 训练细节与算力账本</h2><div class="table-wrap"><table><caption><strong>表 2 · D4RT 主训练账本。</strong></caption><thead><tr><th>项目</th><th>论文披露</th><th>解释</th></tr></thead><tbody><tr><td>Encoder</td><td>ViT-g，40 layers，spatio-temporal patch size 2×16×16</td><td>约 1B 参数；使用 VideoMAEv2 pre-trained weights 初始化</td></tr><tr><td>Decoder</td><td>8-layer cross-attention decoder，约 144M 参数</td><td>轻量点级解码器；任务差异由 query 维度决定</td></tr><tr><td>Clip / Resolution</td><td>48 frames，256×256</td><td>固定方形输入；原 aspect ratio 作为 token 提供</td></tr><tr><td>Queries</td><td>每视频 2048 random queries；30% 偏向 depth/motion boundaries</td><td>把训练预算集中在边界和动态区域</td></tr><tr><td>Optimizer / LR</td><td>AdamW；weight decay 0.03；warmup 2500 steps 到 1e-4，cosine 到 1e-6</td><td>Supplement 披露</td></tr><tr><td>训练步数与硬件</td><td>500K steps；local batch size 1；64 TPU chips；just over 2 days</td><td>论文没有披露 TPU 型号、总 token throughput、precision、activation checkpointing</td></tr></tbody></table></div><div class="note"><p class="note-title">粗略算力说明</p><p>按论文披露数字做算术估算：64 TPU chips × “just over 2 days” ≈ 至少 128 TPU-chip-days。由于论文未说明 TPU 型号、实际训练时长精确小时数、并行策略和利用率，这不等同于实际账单，也不应换算成可复现成本。</p></div><div class="socratic"><p class="question">问：这篇论文的可复现性最缺哪一块？</p><p class="answer">答：模型结构、loss、训练时长、公开数据列表披露较多；但 internal datasets 的具体规模、采样比例、清洗流程、真实训练脚本和权重/代码发布状态没有完整公开。项目页提供 PDF、arXiv 和 blog post，未看到官方 code 链接。</p><div class="takeaway"><strong>Takeaway：</strong>D4RT 的方法思想可读性强，但严格复现仍受 internal data 和未公开工程细节限制。</div></div></section>
+<section id="experiments"><h2>7. 实验结果：每张图表到底证明什么？</h2><h3>7.1 速度/精度：效率主张是否站得住？</h3><div class="fig-grid"><figure class=""><a href="../assets/figures/d4rt_pdf_fig3_speed_accuracy.png" target="_blank"><img src="../assets/figures/d4rt_pdf_fig3_speed_accuracy.png" alt="&lt;strong&gt;图 8a · Pose accuracy vs speed。&lt;/strong&gt;D4RT 在 A100 上 pose estimation 超过 200 FPS，并位于右上区域；这张图证明“快”不是牺牲精度换来的。" loading="lazy"></a><figcaption><strong>图 8a · Pose accuracy vs speed。</strong>D4RT 在 A100 上 pose estimation 超过 200 FPS，并位于右上区域；这张图证明“快”不是牺牲精度换来的。</figcaption></figure><figure class=""><a href="../assets/figures/d4rt_pdf_table3_tracking_throughput.png" target="_blank"><img src="../assets/figures/d4rt_pdf_table3_tracking_throughput.png" alt="&lt;strong&gt;图 8b · 3D tracking throughput。&lt;/strong&gt;D4RT 在 60/24/10/1 FPS 下可处理的 full-video tracks 明显更多；读者应看 60 FPS 下 550 vs SpatialTrackerV2 的 29，以及 1 FPS 下 40,180。" loading="lazy"></a><figcaption><strong>图 8b · 3D tracking throughput。</strong>D4RT 在 60/24/10/1 FPS 下可处理的 full-video tracks 明显更多；读者应看 60 FPS 下 550 vs SpatialTrackerV2 的 29，以及 1 FPS 下 40,180。</figcaption></figure></div><p><strong>判断：</strong>效率主张比较有力，因为表 3 在同一单 A100 目标 FPS 下报告 track count，而不是只报告单次 demo 时长。但读者仍需注意：不同方法的输入预处理、输出定义和实现优化可能不同，论文的公平性主要由作者实验设置保证。</p><h3>7.2 定性重建：动态物体是否真的减少拖影/空洞？</h3><figure class="fig-wide"><a href="../assets/figures/d4rt_pdf_fig4_reconstruction_results.png" target="_blank"><img src="../assets/figures/d4rt_pdf_fig4_reconstruction_results.png" alt="&lt;strong&gt;图 9 · Reconstruction results across methods。&lt;/strong&gt;论文特意选了 swan、train 等动态样例：MegaSaM/π3 等重建方法会产生动态对象重复或失败；SpatialTrackerV2 能抓动态但只跟踪部分区域；D4RT 输出更完整的 4D 表示。" loading="lazy"></a><figcaption><strong>图 9 · Reconstruction results across methods。</strong>论文特意选了 swan、train 等动态样例：MegaSaM/π3 等重建方法会产生动态对象重复或失败；SpatialTrackerV2 能抓动态但只跟踪部分区域；D4RT 输出更完整的 4D 表示。</figcaption></figure><p><strong>判断：</strong>这张图是 D4RT 最有解释力的定性证据，因为它对齐了本文动机：不是“静态点云更漂亮”，而是动态对象和被遮挡区域是否能被统一追踪与补全。</p><h3>7.3 主实验表：D4RT 在哪些任务上最突出？</h3><figure class="fig-wide"><a href="../assets/figures/d4rt_pdf_table4_tracking_results.png" target="_blank"><img src="../assets/figures/d4rt_pdf_table4_tracking_results.png" alt="&lt;strong&gt;图 10 · TAPVid-3D tracking 主结果。&lt;/strong&gt;左半是 camera-coordinate 3D tracking，右半是 world-coordinate 3D tracking。关键是 D4RT 在 world coordinate 任务上仍能保持强表现，说明它不只是局部相机坐标下的 tracker。" loading="lazy"></a><figcaption><strong>图 10 · TAPVid-3D tracking 主结果。</strong>左半是 camera-coordinate 3D tracking，右半是 world-coordinate 3D tracking。关键是 D4RT 在 world coordinate 任务上仍能保持强表现，说明它不只是局部相机坐标下的 tracker。</figcaption></figure><figure class="fig-wide"><a href="../assets/figures/d4rt_pdf_table5_depth_pointmap.png" target="_blank"><img src="../assets/figures/d4rt_pdf_table5_depth_pointmap.png" alt="&lt;strong&gt;图 11 · Video depth / point map estimation。&lt;/strong&gt;Sintel point cloud L1 从 π3 的 1.139 降到 D4RT 的 0.768；ScanNet point cloud L1 也达到 0.028。深度方面，D4RT 在 Sintel/ScanNet/KITTI 上 top-tier，但 Bonn 上不是所有列都最优。" loading="lazy"></a><figcaption><strong>图 11 · Video depth / point map estimation。</strong>Sintel point cloud L1 从 π3 的 1.139 降到 D4RT 的 0.768；ScanNet point cloud L1 也达到 0.028。深度方面，D4RT 在 Sintel/ScanNet/KITTI 上 top-tier，但 Bonn 上不是所有列都最优。</figcaption></figure><figure class=""><a href="../assets/figures/d4rt_pdf_table6_pose_estimation.png" target="_blank"><img src="../assets/figures/d4rt_pdf_table6_pose_estimation.png" alt="&lt;strong&gt;图 12 · Camera pose estimation。&lt;/strong&gt;D4RT 在 Sintel ATE/RPE-T 与 Re10K Pose AUC 上表现突出；ScanNet RPE-R 并非最优，说明“全面 SOTA”要按指标细读。" loading="lazy"></a><figcaption><strong>图 12 · Camera pose estimation。</strong>D4RT 在 Sintel ATE/RPE-T 与 Re10K Pose AUC 上表现突出；ScanNet RPE-R 并非最优，说明“全面 SOTA”要按指标细读。</figcaption></figure><div class="socratic"><p class="question">问：这些实验是否足以支持“统一模型优于专用模型”？</p><p class="answer">答：支持“在作者评测集合上，一个 query-based model 可以同时达到 strong performance 和更高效率”。但它没有证明所有真实部署场景都优于专用模型，尤其是长视频、非 pinhole/fisheye、训练分布外动态、极端遮挡等场景仍需要额外验证。</p><div class="takeaway"><strong>Takeaway：</strong>D4RT 的实验强在“多任务统一 + 高吞吐 + 动态场景定性”，但主张边界应限定在论文测试协议内。</div></div><h3>7.4 消融：哪些设计真的必要？</h3><div class="fig-grid"><figure class=""><a href="../assets/figures/d4rt_pdf_fig6_local_patch_ablation.png" target="_blank"><img src="../assets/figures/d4rt_pdf_fig6_local_patch_ablation.png" alt="&lt;strong&gt;图 13a · local patch 视觉消融。&lt;/strong&gt;没有 local patch 时边界更糊；加入 local patch 后 depth map 的低层细节和 object boundary 更清晰。" loading="lazy"></a><figcaption><strong>图 13a · local patch 视觉消融。</strong>没有 local patch 时边界更糊；加入 local patch 后 depth map 的低层细节和 object boundary 更清晰。</figcaption></figure><figure class=""><a href="../assets/figures/d4rt_pdf_table7_local_rgb_patch.png" target="_blank"><img src="../assets/figures/d4rt_pdf_table7_local_rgb_patch.png" alt="&lt;strong&gt;图 13b · local RGB patch 数值消融。&lt;/strong&gt;ViT-L 上 AbsRel(S) 从 0.366 降到 0.302，ATE 从 0.173 降到 0.091，是一个大幅收益。" loading="lazy"></a><figcaption><strong>图 13b · local RGB patch 数值消融。</strong>ViT-L 上 AbsRel(S) 从 0.366 降到 0.302，ATE 从 0.173 降到 0.091，是一个大幅收益。</figcaption></figure></div><div class="fig-grid"><figure class=""><a href="../assets/figures/d4rt_pdf_table8_backbone_size.png" target="_blank"><img src="../assets/figures/d4rt_pdf_table8_backbone_size.png" alt="&lt;strong&gt;图 14a · backbone size 消融。&lt;/strong&gt;ViT-B→L→H→g 主要改善 depth 与 RPE-R；但 ATE 并非单调最优，说明 scaling 不是所有 pose 指标的万能解。" loading="lazy"></a><figcaption><strong>图 14a · backbone size 消融。</strong>ViT-B→L→H→g 主要改善 depth 与 RPE-R；但 ATE 并非单调最优，说明 scaling 不是所有 pose 指标的万能解。</figcaption></figure><figure class=""><a href="../assets/figures/d4rt_pdf_table9_aux_losses.png" target="_blank"><img src="../assets/figures/d4rt_pdf_table9_aux_losses.png" alt="&lt;strong&gt;图 14b · auxiliary losses 消融。&lt;/strong&gt;2D position / normal 对 depth 更关键，confidence 对 pose 尤其关键；辅助损失的收益不是同质的。" loading="lazy"></a><figcaption><strong>图 14b · auxiliary losses 消融。</strong>2D position / normal 对 depth 更关键，confidence 对 pose 尤其关键；辅助损失的收益不是同质的。</figcaption></figure></div><div class="fig-grid"><figure class=""><a href="../assets/figures/d4rt_supp_table11_initialization.png" target="_blank"><img src="../assets/figures/d4rt_supp_table11_initialization.png" alt="&lt;strong&gt;图 15a · initialization 消融。&lt;/strong&gt;随机初始化 vs VideoMAE 初始化差距巨大，说明 D4RT 不是只靠 query trick；视频表征预训练是关键底座。" loading="lazy"></a><figcaption><strong>图 15a · initialization 消融。</strong>随机初始化 vs VideoMAE 初始化差距巨大，说明 D4RT 不是只靠 query trick；视频表征预训练是关键底座。</figcaption></figure><figure class=""><a href="../assets/figures/d4rt_supp_table12_public_training.png" target="_blank"><img src="../assets/figures/d4rt_supp_table12_public_training.png" alt="&lt;strong&gt;图 15b · public-only training data。&lt;/strong&gt;仅用公开数据训练的 D4RT 仍强于多个对比方法；这缓解了“只是 internal data 堆出来”的质疑，但不等于完全复现。" loading="lazy"></a><figcaption><strong>图 15b · public-only training data。</strong>仅用公开数据训练的 D4RT 仍强于多个对比方法；这缓解了“只是 internal data 堆出来”的质疑，但不等于完全复现。</figcaption></figure></div><div class="fig-grid"><figure class=""><a href="../assets/figures/d4rt_supp_table10_subpixel.png" target="_blank"><img src="../assets/figures/d4rt_supp_table10_subpixel.png" alt="&lt;strong&gt;图 16a · query density / patch fidelity 消融。&lt;/strong&gt;高分辨率视频 patch 输入 decoder 可改善 PDBE 等边界指标，说明子像素细节主要来自 query 层的局部信息。" loading="lazy"></a><figcaption><strong>图 16a · query density / patch fidelity 消融。</strong>高分辨率视频 patch 输入 decoder 可改善 PDBE 等边界指标，说明子像素细节主要来自 query 层的局部信息。</figcaption></figure><figure class=""><a href="../assets/figures/d4rt_supp_fig9_subpixel_detail.png" target="_blank"><img src="../assets/figures/d4rt_supp_fig9_subpixel_detail.png" alt="&lt;strong&gt;图 16b · sub-pixel detail recovery。&lt;/strong&gt;注意底行头发等细结构：Config 4 的边缘更锐，而整体计算/内存没有随全局输入分辨率同步增加。" loading="lazy"></a><figcaption><strong>图 16b · sub-pixel detail recovery。</strong>注意底行头发等细结构：Config 4 的边缘更锐，而整体计算/内存没有随全局输入分辨率同步增加。</figcaption></figure></div><h3>7.5 更多定性：项目页和 Supplement 图该怎么读？</h3><div class="fig-grid"><figure class=""><a href="../assets/figures/d4rt_pdf_fig5_in_the_wild.png" target="_blank"><img src="../assets/figures/d4rt_pdf_fig5_in_the_wild.png" alt="&lt;strong&gt;图 17a · in-the-wild videos。&lt;/strong&gt;静态场景看几何一致性，动态场景看轨迹是否连续。它证明 D4RT 不只是 benchmark 上的点表格。" loading="lazy"></a><figcaption><strong>图 17a · in-the-wild videos。</strong>静态场景看几何一致性，动态场景看轨迹是否连续。它证明 D4RT 不只是 benchmark 上的点表格。</figcaption></figure><figure class=""><a href="../assets/figures/d4rt_project_capabilities_frames.png" target="_blank"><img src="../assets/figures/d4rt_project_capabilities_frames.png" alt="&lt;strong&gt;图 17b · 项目页 capabilities GIF 关键帧。&lt;/strong&gt;这里把动图转成 PNG contact sheet，避免正文依赖低清动图；读者可看同一视频下 tracking 和 point cloud 输出的关系。" loading="lazy"></a><figcaption><strong>图 17b · 项目页 capabilities GIF 关键帧。</strong>这里把动图转成 PNG contact sheet，避免正文依赖低清动图；读者可看同一视频下 tracking 和 point cloud 输出的关系。</figcaption></figure></div><figure class="fig-wide"><a href="../assets/figures/d4rt_supp_fig12_reconstruction_comparison.png" target="_blank"><img src="../assets/figures/d4rt_supp_fig12_reconstruction_comparison.png" alt="&lt;strong&gt;图 18 · Supplement reconstruction comparison。&lt;/strong&gt;补充图继续强调动态对象与完整点云的差异：D4RT 的优势主要来自能从任意 frame 启动/查询轨迹，而非后处理补洞。" loading="lazy"></a><figcaption><strong>图 18 · Supplement reconstruction comparison。</strong>补充图继续强调动态对象与完整点云的差异：D4RT 的优势主要来自能从任意 frame 启动/查询轨迹，而非后处理补洞。</figcaption></figure><figure class="fig-wide"><a href="../assets/figures/d4rt_supp_fig13_depth_comparison.png" target="_blank"><img src="../assets/figures/d4rt_supp_fig13_depth_comparison.png" alt="&lt;strong&gt;图 19 · Supplement depth comparison。&lt;/strong&gt;这张图帮助校验 local patch 与全局 encoder 的组合：D4RT 深度边界更锐，但极端细结构仍可能受输入分辨率和 patch 设计限制。" loading="lazy"></a><figcaption><strong>图 19 · Supplement depth comparison。</strong>这张图帮助校验 local patch 与全局 encoder 的组合：D4RT 深度边界更锐，但极端细结构仍可能受输入分辨率和 patch 设计限制。</figcaption></figure></section>
+<section id="limitations"><h2>8. 局限与复现门槛</h2><ul><li><strong>Internal data 未完全公开。</strong>论文列出公开数据源，也给出 public-only ablation，但主模型仍使用 internal datasets；规模、筛选、比例未说明。</li><li><strong>代码/权重状态。</strong>项目页当前提供 PDF、arXiv 和 blog post；官方代码链接论文/项目页未说明。</li><li><strong>长视频与真实部署。</strong>Supplement 给出 overlapping segments + Sim(3) alignment 的长视频处理，但未等价于完整 SLAM/loop closure 系统。</li><li><strong>相机模型假设。</strong>主文内参推导默认 pinhole 和 principal point；fisheye 可通过非线性 refinement 纳入，但工程细节有限。</li><li><strong>指标仍是代理。</strong>ATE、RPE、AbsRel、AJ、APD3D 不能完全覆盖 AR/robotics 中的延迟、稳定性、闭环鲁棒性和安全边界。</li></ul><div class="socratic"><p class="question">问：如果我要借鉴 D4RT，最应该迁移什么？</p><p class="answer">答：不是盲目复制 ViT-g，而是迁移它的问题重写方式：把多输出 dense prediction 变成一个可稀疏采样、可并行计算、可组合任务的 query interface。对于很多 3D/视频任务，真正的效率来自“只问需要问的问题”。</p><div class="takeaway"><strong>Takeaway：</strong>D4RT 的学术价值在于给动态 4D 感知提供了一个统一解码语言；工程价值能否完全兑现，还取决于代码、数据、长视频处理和部署优化的公开程度。</div></div></section>
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Chuhan Zhang et al. <em>Efficiently Reconstructing Dynamic Scenes One D4RT at a Time</em>. CVPR 2026 paper PDF / arXiv 2512.08924.</li><li>D4RT project page：用于项目方法图、capabilities 动图关键帧和作者/机构信息。</li><li>Google DeepMind blog：用于交叉核验项目背景与效率叙述；正文中的实验判断以论文表格为准。</li><li>图像说明：本文所有论文图表均保存为本地 PNG，来源记录见 <code>assets/figures_manifest.json</code>；缺失信息统一标注“论文未说明”。</li></ol></section>
+</main><footer class="article-footer">本页为 CVPR 2026 Award Candidates Digest 的 D4RT 单篇返工验收版。图文只用于学术交流解读；转载请保留论文来源与图像来源说明。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">核心贡献</a></li><li><a href="#datasets">数据与任务</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">模型与方法</a></li><li><a href="#training">训练与算力</a></li><li><a href="#experiments">实验与消融</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Efficiently Reconstructing Dynamic Scenes One D4RT at a Time</dd><dt>Authors</dt><dd>Chuhan Zhang et al.</dd><dt>Venue</dt><dd>CVPR 2026</dd><dt>Project</dt><dd><a href="https://d4rt-paper.github.io/">d4rt-paper.github.io</a></dd><dt>PDF</dt><dd><a href="https://openaccess.thecvf.com/content/CVPR2026/papers/Zhang_Efficiently_Reconstructing_Dynamic_Scenes_One_D4RT_at_a_Time_CVPR_2026_paper.pdf">CVF OpenAccess PDF</a></dd><dt>Code</dt><dd>论文/项目页未说明</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 3：整体 pipeline</li><li>图 5：统一 query 表</li><li>图 8：速度/吞吐</li><li>图 10–12：主结果</li><li>图 13–16：消融</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p>D4RT：完成高分辨率图表抽取、深读页、manifest。</p><p>其它论文：待分话题推进。</p></div></section></aside></div></body></html>

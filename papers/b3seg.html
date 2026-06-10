@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B³-Seg 深读：没有相机、不训练，怎么把 3DGS 分割做成可证明高效的贝叶斯主动采样？</title>
+<meta name="description" content="CVPR 2026 Best Papers Digest · B³-Seg: Camera-Free, Training-Free 3DGS Segmentation 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Top Paper（候选）· 3DGS / Segmentation / Bayesian Active Sampling</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; 3DGS / Segmentation &gt; B³-Seg</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">09</span><span class="month">Jun</span></div><h1 id="paper-title">B³-Seg 深读：没有相机、不训练，怎么把 3DGS 分割做成“可证明高效”的贝叶斯主动采样？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-09</span><span>CVPR 2026 Top Paper（候选）</span><span>来源：arXiv:2602.17134 PDF</span></div><div class="tags"><span class="tag orange">3DGS Segmentation</span><span class="tag">Beta–Bernoulli</span><span class="tag">Expected Information Gain</span><span class="tag green">Training-free</span><span class="tag">Submodular (1−1/e)</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>B³-Seg 真正要回答的问题不是“能不能把一个 3D 高斯泼溅（3DGS）场景分割出某个物体”，而是：<strong>在没有预设相机、没有 GT 标签、也不允许重新训练的条件下，怎么用“几次便宜的渲染”换来一个可证明接近最优的逐高斯标注？</strong>它的答案是把分割重写成对每个高斯的 Beta–Bernoulli 贝叶斯计数，再用一个解析的 Expected Information Gain（EIG）主动挑下一个视角——而这套贝叶斯形式恰好让 EIG 具备 submodularity，于是贪心选视角带 $(1-1/e)$ 的近似最优保证。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>把 training-free / camera-free 的开放词表 3DGS 分割，重写成 Beta–Bernoulli 贝叶斯更新 + 解析 EIG 主动视角选择。</div><div class="kv"><b>关键机制</b>共轭让后验=先验+伪计数累加，信息增益可解析；用后验均值近似 mask，使 EIG 无需对每个候选视角跑 SAM2。</div><div class="kv"><b>核心证据</b>LERF-Mask / 3D-OVS 上与高成本监督法可比，端到端只需几秒；EIG 与真实 IG 高度吻合（图 5）。</div><div class="kv"><b>复现门槛</b>方法无训练；依赖 Grounding DINO + SAM2 + CLIP 这三块现成模型与 3DGS 重建场景。</div></div></div><figure class="hero-card"><a href="../assets/figures/b3seg/b3seg_fig1_teaser.png"><img src="../assets/figures/b3seg/b3seg_fig1_teaser.png" alt="B3-Seg teaser"></a><figcaption><strong>图 1 · B³-Seg teaser。</strong>首屏要看三件事：上排是若干候选视角的渲染，每个标着 EIG 值（红色高亮的 12110 是被选中的最具信息量视角）；中间是“选中视角→SAM2→Beta$(a_i,b_i)$ 更新”的循环，约 20 步；底部强调两个“不需要”——无需预设视角、无需 GT 语义掩码。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：交互式 3DGS 分割卡在哪里？</h2><p>影视/游戏里要对已经重建好的 3DGS 资产做实时编辑，前提是能把“用户指定的物体”从场景里分出来——也就是给每个高斯打上“属于/不属于”标签。难点有三：你通常<strong>不知道该从哪些相机看</strong>（camera-free），<strong>没有 GT 语义标签</strong>，并且<strong>不能为每个新场景重训一个分割头</strong>（training-free）。一个直接的做法是：多选几个视角，逐个渲染、跑 2D 分割、再投回 3D 投票。但这立刻撞上两个问题：2D mask 噪声大、视角之间不一致，怎么稳健地聚合成 3D 标签？以及——对每个候选视角都跑一次 SAM2 太贵，到底该看哪些视角？</p><div class="socratic"><p class="question">问：为什么不干脆均匀采一圈相机、每个都分割再投票？</p><p class="guide">引导：注意瓶颈不在“渲染”，而在“对每个视角做 2D 分割”这一步的开销，以及不同视角贡献的信息并不均等。</p><p class="answer">答：均匀采样把预算平摊到所有视角，但物体只在一部分视角里大、清晰、少遮挡——这些视角信息量高，其余近乎浪费。要在“几秒内”完成，就必须<strong>主动</strong>挑信息量最大的下一个视角，而不是盲采。问题随之变成：如何在<strong>不先跑分割</strong>的情况下，估计一个视角“值不值得看”？</p><p class="takeaway"><strong>Takeaway：</strong>B³-Seg 把问题从“分割得更准”挪到“用最少的昂贵观测，最快地把 3D 标签的不确定性降下来”。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献</strong>有三层：第一，把 3DGS 分割<strong>重写成概率推断</strong>——对每个高斯放一个 Beta–Bernoulli 共轭模型，多视角观测变成伪计数的贝叶斯更新；第二，提出<strong>解析的 Expected Information Gain</strong>，用当前后验均值近似掉真实 mask，使“选视角”不必为每个候选都跑一次 SAM2；第三，给出<strong>理论保证</strong>：在这套贝叶斯形式下 EIG 满足 adaptive monotonicity 与 submodularity，贪心选视角因此有 $(1-1/e)$ 的近似最优界。</p><p><strong>读者能进一步推断的是</strong>：已有的 FlashSplat 等“投票/线性规划”式标签选择，其实是这套贝叶斯框架在对称先验下的 MAP 特例（见式 4 的推导）。也就是说 B³-Seg 不是又加了一个 trick，而是给“多视角投票分割”补了一个概率主干，顺带把“主动选视角”变成可分析的子模优化。</p></section>
+
+<section id="datasets"><h2>3. 数据集与任务：这里没有训练集，只有评测协议</h2><p>B³-Seg 是 <strong>training-free / camera-free</strong> 方法，因此没有新训练数据，也没有预训练/微调阶段。数据角色是评测：在 <strong>LERF-Mask</strong>（开放词表 3D 分割，按 accuracy）与 <strong>3D-OVS</strong>（按 mIoU）上，与“需要重建视角/标签”的高成本方法以及“camera-free & training-free”的同类做对比。</p><div class="table-wrap"><table><caption><strong>表 A.</strong> 任务与数据在方法中的作用。</caption><thead><tr><th>项目</th><th>论文披露</th><th>输入 → 输出</th><th>作用</th><th>缺失信息</th></tr></thead><tbody><tr><td>分割任务</td><td>开放词表 3DGS 物体分割</td><td>重建好的 3DGS + 文本 prompt → 逐高斯 object 标签</td><td>方法主体</td><td>—</td></tr><tr><td>LERF-Mask</td><td>按 accuracy 评测；含 Teatime 等场景</td><td>渲染视角 + prompt → mask / 3D 标签</td><td>主评测之一</td><td>论文未逐场景展开完整协议细节</td></tr><tr><td>3D-OVS</td><td>按 mIoU 评测</td><td>同上</td><td>主评测之二</td><td>—</td></tr><tr><td>外部模型</td><td>Grounding DINO + SAM2 + CLIP</td><td>prompt/视角 → 2D mask 与语义打分</td><td>被查询的分割与排序器</td><td>这些模型的训练成本不属于本文披露范围</td></tr></tbody></table></div></section>
+
+<section id="pipeline"><h2>4. Pipeline：从一个文本 prompt 到逐高斯标签</h2><figure class="fig-wide"><a href="../assets/figures/b3seg/b3seg_fig3_ig_vs_eig.png"><img src="../assets/figures/b3seg/b3seg_fig3_ig_vs_eig.png" alt="Information Gain vs Expected Information Gain"></a><figcaption><strong>图 2 · Information Gain（IG）vs. Expected Information Gain（EIG）。</strong>(a) 真实 IG 需要先用 SAM2 在候选视角上分割、再更新 Beta 后验——每个候选都要一次昂贵推理；(b) B³-Seg 的 EIG 直接用<strong>当前先验</strong>的 Beta 均值近似这次更新，避开 SAM2，于是评估一个视角只要一次廉价渲染。数据流是 prompt/视角 → 渲染响应 → 后验更新；模型流只在“被选中的视角”上调用 SAM2；训练流不存在。</figcaption></figure><ol><li><strong>初始化。</strong>所有高斯 $(a_i,b_i)\leftarrow(a_{\mathrm{init}},b_{\mathrm{init}})$；从一个 canonical 视角估一张初始 mask 并更新后验，得到物体中心 $c_{\mathrm{obj}}$、半径 $r_{\mathrm{obj}}$。</li><li><strong>候选采样。</strong>在以 $c_{\mathrm{obj}}$ 为心的球面上均匀采 $N_{\mathrm{cand}}$ 个视角。</li><li><strong>EIG 评估。</strong>每个候选只渲染一次拿到响应 $\tau_i$，用式（10）算近似伪计数、式（11）算 EIG，<strong>不</strong>跑 SAM2。</li><li><strong>选 + 观测。</strong>取 $v^\star=\arg\max_v \mathrm{EIG}(v)$，只在它上面渲染 RGB、跑 SAM2 得到真实 mask，按式（5）(6) 做 Beta 更新，并刷新 $c_{\mathrm{obj}},r_{\mathrm{obj}}$。</li><li><strong>迭代 $T$ 次后</strong>，输出满足 $a_i>b_i$ 的高斯作为 3D mask。</li></ol><div class="socratic"><p class="question">问：如果去掉 EIG、改成随机/均匀选视角，会怎样？</p><p class="answer">答：后验熵下降会变慢（图 6 右），要达到同样精度需要更多次昂贵的 SAM2 调用，几秒级的延迟主张就站不住。EIG 的作用正是把“看哪儿”从经验启发变成对信息量的解析排序。</p><p class="takeaway"><strong>Takeaway：</strong>整条 pipeline 的关键不是某个分割器，而是“贵的观测只花在最值得看的视角上”。</p></div></section>
+
+<section id="method"><h2>5. 模型与方法：共轭、EIG 近似与 (1−1/e) 保证</h2><p><strong>先问为什么要做成贝叶斯。</strong>多视角 2D mask 是带噪、互相不一致的弱观测；直接投票既难定权重，又没有“看够了没有”的停机信号。把每个高斯 $g_i$ 的归属 $y_i\in\{0,1\}$ 放进一个 Beta–Bernoulli 共轭模型，就同时拿到三样东西：可累加的后验、可解析的不确定度，以及一个能被信息增益驱动的主动采样目标。</p><div class="equation">$$y_i\mid p_i\sim\mathrm{Bernoulli}(p_i),\qquad p_i\sim\mathrm{Beta}(a_i,b_i)$$<div class="eq-caption">式 1：逐高斯的 Beta–Bernoulli 先验。</div></div><p>给定一次渲染 $I(v)$ 与其 mask $M(v)$，把每个像素按渲染责任 $\alpha_i T_i$ 折算成 success/failure 伪计数；由共轭性，后验就是先验加上这些计数的累加：</p><div class="equation">$$e_{i,1}(v)=\!\!\sum_{(j,k)\in I(v)}\!\!\alpha_i T_i\,\mathbb{1}[M_{j,k}=1],\quad e_{i,0}(v)=\!\!\sum_{(j,k)\in I(v)}\!\!\alpha_i T_i\,\mathbb{1}[M_{j,k}=0]$$<div class="eq-caption">式 2：一次观测的软伪计数。</div></div><div class="equation">$$p_i\sim\mathrm{Beta}\!\Big(a_{\mathrm{init}}+\textstyle\sum_v e_{i,1}(v),\ b_{\mathrm{init}}+\textstyle\sum_v e_{i,0}(v)\Big),\qquad y_i=\mathbb{1}[a_i>b_i]$$<div class="eq-caption">式 3：多视角后验与 MAP 决策。</div></div><div class="formula-note"><p class="note-title">第一层洞见：聚合变成了加法，旧方法是它的特例</p><p>共轭让“融合多视角证据”退化为<strong>把伪计数相加</strong>——与视角顺序无关、闭式、便宜。更妙的是，在对称先验 $a_{\mathrm{init}}=b_{\mathrm{init}}$ 下，式 3 的 MAP 决策正好等价于“取累计计数更大的类”，也就是 FlashSplat 的标签选择规则。所以已有的投票/规划式分割，是这套贝叶斯框架的<strong>点估计特例</strong>；B³-Seg 给它补了完整后验，于是才能谈“信息增益”和“何时停”。</p></div><p>有了闭式后验，单个视角的信息增益就是前后 Beta 熵之差，而 Beta 熵有解析式——<strong>这就是“共轭让 IG 可解析”的含义</strong>。但真实 IG 仍需要先有 $M(v)$，也就是要先跑 SAM2。B³-Seg 的关键近似是：用当前后验均值 $m_i=a_i/(a_i+b_i)$ 顶替未知 mask，把一次廉价渲染的响应 $\tau_i=\sum_{(j,k)}\alpha_i T_i$ 按 $m_i$ 劈成期望伪计数：</p><div class="equation">$$\tilde e_{i,1}=m_i\,\tau_i,\qquad \tilde e_{i,0}=(1-m_i)\,\tau_i,\qquad m_i=\frac{a_i}{a_i+b_i}$$<div class="eq-caption">式 4：EIG 的 mean-field 近似——用后验均值代替真实 mask。</div></div><div class="formula-note"><p class="note-title">公式读法</p><p>$\tau_i$ 只需渲染、不需分割。式 4 假设“高斯 $g_i$ 落在 mask 内的概率就是当前后验均值 $m_i$”，于是 $\mathrm{EIG}(v)=\sum_i[H(\mathrm{Beta}(a_i,b_i))-H(\mathrm{Beta}(a_i+\tilde e_{i,1},b_i+\tilde e_{i,0}))]$ 完全由“现有后验 + 一次渲染”算出。<strong>它的技术作用</strong>是把“评估一个视角”从“渲染 + SAM2”降到“只渲染”，候选评估因此能放大到几十个视角。</p></div><figure class="fig-wide"><a href="../assets/figures/b3seg/b3seg_fig5_view_eig.png"><img src="../assets/figures/b3seg/b3seg_fig5_view_eig.png" alt="Candidate-view EIG"></a><figcaption><strong>图 3 · Teatime 场景上各候选视角的 EIG（prompt：stuffed bear）。</strong>物体更大、遮挡更少的视角 EIG 更高，正是该优先观测的视角；这把抽象的“信息量”放回了直觉。</figcaption></figure><div class="formula-note"><p class="note-title">第二层洞见：为什么贪心选视角有 (1−1/e) 保证</p><p>论文证明：在这套贝叶斯计数模型下，把“已选视角集合”映到“总信息增益”的函数是 <strong>adaptive monotone</strong>（多看一个视角不会让信息变少）且 <strong>submodular</strong>（边际信息递减——越往后，新视角能补的越少）。对单调 + 子模函数做贪心最大化，正是经典组合优化结论（Nemhauser–Wolsey–Fisher）给出 $(1-1/e)\approx0.63$ 近似最优的场景。所以“每步取 $\arg\max$ EIG”不是启发式，而是带可证明界的策略。<strong>但要标清两条假设：</strong>(i) 式 4 的 mean-field 近似在后验接近平先验（$m_i\approx0.5$）时较弱，所以要先用一个 canonical 视角把后验“点亮”；(ii) submodular 保证的是<strong>信息目标</strong>，不是最终 mIoU——目标与指标之间仍有间隙，靠实验兜底。</p></div></section>
+
+<section id="training"><h2>6. 训练细节与算力账本：没有训练，只有几秒推理</h2><p>这篇论文最特殊的一点是：<strong>B³-Seg 没有训练阶段。</strong>它不训练新网络、不做微调，主要计算是“少量渲染 + 在被选视角上调用 SAM2”。因此训练账本写成“不适用”，不能把 Grounding DINO / SAM2 / CLIP 的预训练成本算到 B³-Seg 头上。</p><div class="table-wrap"><table><caption><strong>表 B.</strong> 论文披露的实现与推理成本。</caption><thead><tr><th>项目</th><th>论文披露</th><th>解释</th><th>缺失信息</th></tr></thead><tbody><tr><td>训练</td><td>training-free，无新模型训练</td><td>没有 optimizer / LR / epoch</td><td>不适用</td></tr><tr><td>外部模块</td><td>Grounding DINO（区域提议）+ SAM2（mask）+ CLIP（语义重排）</td><td>开放词表分割与打分由现成模型完成</td><td>这些模型的训练成本不在本文范围</td></tr><tr><td>迭代预算</td><td>约 20 次视角更新；每次只在选中视角跑一次 SAM2</td><td>主动采样把昂贵推理次数压到很低</td><td>不同场景的最优 $T$ 略有差异</td></tr><tr><td>端到端延迟</td><td>整套分割在“几秒”内完成（表 4 给出 runtime breakdown）</td><td>实时交互编辑的主要证据</td><td>不同硬件/实现的复测数据需自行核对</td></tr></tbody></table></div></section>
+
+<section id="experiments"><h2>7. 实验结果：精度、效率、信息效率是否同时成立？</h2><p><strong>先说怎么读主表。</strong>LERF-Mask 与 3D-OVS 都分两栏：上栏是“假设已有重建视角/GT 标签”的监督法（要 ~30k 步、几十分钟，<strong>不可直接比较</strong>），下栏才是与 B³-Seg 同台的 camera-free / training-free 采样法。真正的对手是 FlashSplat 的两个变体（候选视角分别来自均匀球面 Uniform-Sphere 与重建相机 Recon-Cam）。</p><div class="table-wrap"><table><caption><strong>表 D.</strong> LERF-Mask 精度（mIoU / mBIoU）、假设与延迟；下栏为可直接比较的 camera-free / training-free 方法（均 20 视角/更新）。</caption><thead><tr><th>方法</th><th>figurines</th><th>ramen</th><th>teatime</th><th>mean</th><th>假设 · 延迟</th></tr></thead><tbody><tr><td>ObjectGS（监督·参考）</td><td>88.2/89.0</td><td>88.0/79.9</td><td>88.9/88.6</td><td>88.4/85.8</td><td>需 GT · ~50 min</td></tr><tr><td>FlashSplat（Uniform-Sphere）</td><td>60.2/57.5</td><td>68.4/61.5</td><td>80.4/76.3</td><td>69.6/65.1</td><td>camera-free · 10.2 s</td></tr><tr><td>FlashSplat（Recon-Cam）</td><td>71.6/69.1</td><td>71.4/66.3</td><td>86.6/83.9</td><td>76.5/73.1</td><td>camera-free · 10.1 s</td></tr><tr><td><strong>B³-Seg（本文）</strong></td><td><strong>88.3/85.4</strong></td><td><strong>75.3/69.7</strong></td><td><strong>89.8/88.0</strong></td><td><strong>84.5/81.0</strong></td><td>camera-free · 12.1 s</td></tr></tbody></table></div><p>读数：可比组里 B³-Seg 的 mean 是 <strong>84.5/81.0</strong>，比最强的 FlashSplat（Recon-Cam）76.5/73.1 高约 <strong>8 个点</strong>；在 figurines（88.3）与 teatime（89.8）两个场景甚至追平/超过需要 GT、跑约 50 分钟的监督法 ObjectGS（88.2 / 88.9）——而 B³-Seg 只用 <strong>12.1 秒</strong>、零相机轨迹、零标签。</p><figure class="fig-wide"><a href="../assets/figures/b3seg/b3seg_fig4_qualitative.png"><img src="../assets/figures/b3seg/b3seg_fig4_qualitative.png" alt="Qualitative comparison"></a><figcaption><strong>图 4 · LERF-Mask / 3D-OVS 上的定性对比。</strong>对应表 D/E 的数字：在 camera-free / training-free 设定下，B³-Seg 的物体边界比 FlashSplat 更干净、更完整。重点看遮挡与细边界处是否被错误纳入或漏掉。</figcaption></figure><div class="table-wrap"><table><caption><strong>表 E.</strong> 3D-OVS（mIoU，逐场景）；下栏为 camera-free / training-free 可比方法。</caption><thead><tr><th>方法</th><th>Bed</th><th>Bench</th><th>Sofa</th><th>Lawn</th></tr></thead><tbody><tr><td>ObjectGS（监督·参考）</td><td>98.0</td><td>96.4</td><td>97.2</td><td>95.4</td></tr><tr><td>FlashSplat（Uniform-Sphere）</td><td>91.7</td><td>86.9</td><td>90.2</td><td>91.9</td></tr><tr><td>FlashSplat（Recon-Cam）</td><td>94.3</td><td>90.3</td><td>85.7</td><td>96.3</td></tr><tr><td><strong>B³-Seg（本文）</strong></td><td><strong>97.1</strong></td><td><strong>92.2</strong></td><td><strong>94.1</strong></td><td><strong>96.8</strong></td></tr></tbody></table></div><p>3D-OVS 上 B³-Seg 在<strong>全部四个场景都超过</strong>两个 FlashSplat 变体（97.1/92.2/94.1/96.8），并贴近监督天花板（ObjectGS 98.0/96.4/97.2/95.4）。</p><div class="table-wrap"><table><caption><strong>表 F.</strong> B³-Seg 端到端运行时间分解（20 视角）。</caption><thead><tr><th>阶段</th><th>SAM2 mask 推理</th><th>EIG 视角选择</th><th>Beta 更新</th><th>其它</th><th>总计</th></tr></thead><tbody><tr><td>时间 (s)</td><td><strong>9.76</strong></td><td>2.11</td><td>0.12</td><td>0.12</td><td>12.11</td></tr></tbody></table></div><p><strong>钱花在哪？</strong>12.11 秒里 <strong>SAM2 mask 推理就占 9.76 秒</strong>，而 B³-Seg 自己的 EIG 视角选择只要 2.11 秒、Beta 更新 0.12 秒。这正印证式 4 的设计动机：EIG 用“一次廉价渲染 + 当前后验”估信息量，<strong>避免对每个候选视角都跑一次昂贵的 SAM2</strong>——昂贵观测只花在被选中的视角上。</p><figure class="fig-wide"><a href="../assets/figures/b3seg/b3seg_fig67_eig_entropy.png"><img src="../assets/figures/b3seg/b3seg_fig67_eig_entropy.png" alt="EIG vs IG and entropy curves"></a><figcaption><strong>图 5 · 左：预测 EIG 与真实 IG 高度吻合（相关系数 $r=0.964$）；右：三种选视角策略下后验熵随迭代下降。</strong>左图量化验证了式 4 的承重假设——用后验均值近似 mask 确实逼近真实信息增益；右图显示 EIG 贪心比均匀/随机更快把不确定性压下去（每步熵降最大）。两图从“近似是否准”和“策略是否更优”两个独立角度支撑同一主张。</figcaption></figure><div class="socratic"><p class="question">问：这些数字足以证明“贝叶斯主动采样普遍更好”吗？</p><p class="answer">答：更准确地说，它们证明的是——在 LERF-Mask / 3D-OVS、20 视角/20 更新的预算下，EIG 贪心以 ~12 秒延迟把 mean mIoU 做到 84.5（LERF）、四场景全胜（3D-OVS），逼近需要 GT、慢约 250× 的监督法，且 $r=0.964$ 的 EIG↔IG 相关性给了理论近似一个实测背书。它没有证明在任意外部分割器、强遮挡或极端薄结构下都最优——而且端到端延迟其实被 SAM2（9.76 s）卡着。</p><p class="takeaway"><strong>Takeaway：</strong>主张成立的边界是“camera-free / training-free 的实时交互分割”，证据覆盖精度（表 D/E）、延迟分解（表 F）与信息效率（$r=0.964$、熵曲线）三面。</p></div></section>
+
+<section id="ablations"><h2>8. 消融：哪些设计真的必要？</h2><div class="table-wrap"><table><caption><strong>表 G.</strong> LERF-Mask 上的模块消融（mIoU / mBIoU 与相对 Base 的增量）。</caption><thead><tr><th>CLIP 重排</th><th>SAM2 prior 输入</th><th>mIoU</th><th>mBIoU</th><th>Δ mIoU</th></tr></thead><tbody><tr><td>—</td><td>—</td><td>74.9</td><td>70.2</td><td>—</td></tr><tr><td>✓</td><td>—</td><td>81.5</td><td>76.6</td><td>+6.6</td></tr><tr><td>✓</td><td>✓</td><td><strong>84.5</strong></td><td><strong>81.0</strong></td><td><strong>+9.6</strong></td></tr></tbody></table></div><p><strong>两个稳健性补丁各值多少。</strong><strong>CLIP 语义重排</strong>把 mIoU 从 74.9 抬到 81.5（<strong>+6.6</strong>）——它修正“分对了区域但语义错”的候选；再叠加 <strong>SAM2 的 prior 引导</strong>（用当前后验均值渲一张先验图喂给 SAM2）到 84.5（累计 <strong>+9.6</strong>）——它稳定 mask 估计。两者与 EIG 主动选视角互补，不是可有可无的装饰。</p><p><strong>对超参不敏感。</strong>候选数 $N_{\mathrm{cand}}$ 从 5→10→20→30，mIoU 是 76.2→83.1→<strong>84.5</strong>→84.6，约在 20 处<strong>饱和</strong>；迭代数 $T$ 从 5→10→20→30 是 79.8→82.7→<strong>84.5</strong>→84.8，同样在 20 饱和，而耗时近线性上升（3.5→6.6→12.1→19.4 s）。所以“20 视角 / 20 更新”是个又够用又便宜的工作点，不是精挑的甜点。</p><p><strong>对初始化鲁棒。</strong>把初始物体中心 $c_{\mathrm{obj}}$ 沿随机方向偏移 $r_{\mathrm{obj}}$ 的 0/20/50/70/100%，mIoU 是 84.5/83.6/82.9/81.7/80.7——即便偏 <strong>50% 也只掉 1.6 个点</strong>。这说明 EIG 主动选视角能快速补偿不好的初始后验，呼应第 5 节“先用 canonical 视角点亮后验、之后 EIG 自我纠偏”的判断。</p><div class="socratic"><p class="question">问：消融和理论是否自洽？</p><p class="answer">答：自洽。表 G“CLIP/SAM2 各 +6.6/+9.6”说明 EIG 选出好视角后，仍需语义重排与 mask 稳定来收口；初始化 50% 偏移只掉 1.6，对应式 4“mean-field 在平先验处偏弱、但一旦点亮就可靠”——后验必须先离开平先验，EIG 才是可信的排序信号，理论预测的失败模式与鲁棒区间都被数字证实。</p><p class="takeaway"><strong>Takeaway：</strong>关键设计是“贝叶斯计数 + EIG（$r=0.964$ 的可信代理）+ 一次点亮后验”，外加 CLIP（+6.6）/ SAM2-prior（再 +3.0）两个稳健补丁。</p></div></section>
+
+<section id="limitations"><h2>9. 局限与复现门槛：什么时候要谨慎？</h2><div class="table-wrap"><table><caption><strong>表 C.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/方法信息</th><th>读者应如何理解</th></tr></thead><tbody><tr><td>依赖外部模型</td><td>分割/语义全靠 Grounding DINO + SAM2 + CLIP</td><td>若这三块对某类物体本身弱，贝叶斯框架无法凭空补全能力</td></tr><tr><td>独立性假设</td><td>各高斯的 Beta 先验相互独立</td><td>保住了共轭与闭式，但忽略邻近高斯的空间相关，边界处可能欠平滑</td></tr><tr><td>目标 ≠ 指标</td><td>$(1-1/e)$ 保证的是信息目标，不是 mIoU</td><td>“可证明高效”指信息采样，不等于分割精度也有同样的界</td></tr><tr><td>近似的弱区</td><td>mean-field EIG 在平先验处偏弱</td><td>需要 canonical 视角先点亮后验；初始 mask 太差会拖累整条轨迹</td></tr><tr><td>评测范围</td><td>主评测为 LERF-Mask 与 3D-OVS</td><td>大规模、强动态、室外无界场景仍需额外验证</td></tr></tbody></table></div><div class="socratic"><p class="question">问：这篇论文最容易被过度宣传成什么？</p><p class="answer">答：容易被说成“几秒钟、可证明最优地分割任何 3DGS 场景”。更严谨的说法是：在 camera-free / training-free 设定与现成分割器之上，B³-Seg 用 Beta–Bernoulli 后验把多视角证据闭式聚合，并用解析 EIG 以 $(1-1/e)$ 的信息效率主动选视角，从而在几秒内达到与高成本法可比的精度。</p><p class="takeaway"><strong>Takeaway：</strong>强项是“无训练、无相机、信息高效、可证明”；边界是外部模型能力、独立性假设与目标-指标间隙。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>B³-Seg 的价值在于把“多视角 3DGS 分割”从经验投票提升为<strong>带后验、带主动采样、带近似最优界</strong>的贝叶斯推断，而且全程无训练、无预设相机。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li>共轭是地基：Beta–Bernoulli 让证据聚合变成加法、让信息增益可解析，并把 FlashSplat 收成 MAP 特例。</li><li>EIG 的 mean-field 近似是效率来源：用后验均值顶替真实 mask，省掉对每个候选视角的 SAM2 调用。</li><li>submodularity 把“贪心选视角”从启发式升级为带 $(1-1/e)$ 界的策略，但这条界是信息目标的界，不是 mIoU 的界。</li></ol></div></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Hiromichi Kamata, Samuel Arthur Munro, Fuminori Homma. <em>B³-Seg: Camera-Free, Training-Free 3DGS Segmentation via Analytic EIG and Beta–Bernoulli Bayesian Updates</em>. CVPR 2026 / arXiv:2602.17134.</li><li>本文公式、表格与实验数字以 arXiv PDF 为准；$(1-1/e)$ 近似最优为单调子模最大化的经典结论（Nemhauser–Wolsey–Fisher），非本文独有，本文的贡献是证明该问题落入该框架。</li><li>图像说明：所有正文图为本地 PNG，来自 arXiv PDF 的高 DPI 页面裁切（图 1/2/3/5）与嵌入高分辨率图（图 4），路径位于 <code>assets/figures/b3seg/</code>。</li></ol></section>
+</main><footer class="article-footer">CVPR 2026 Best Papers Digest · B³-Seg 深读。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">任务与数据</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法与理论</a></li><li><a href="#training">训练与算力</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>B³-Seg: Camera-Free, Training-Free 3DGS Segmentation</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper（候选）</dd><dt>Topic</dt><dd>3DGS Segmentation / Bayesian Active Sampling</dd><dt>arXiv</dt><dd>2602.17134</dd><dt>Compute</dt><dd>无训练；几秒级推理</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：teaser</li><li>图 2：IG vs EIG</li><li>图 3：候选视角 EIG</li><li>图 4：定性对比</li><li>图 5：EIG≈IG 与熵曲线</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> B³-Seg 深读</p><p><span class="status-good">figures</span> 5 张 PNG 素材入库</p><p><span class="status-good">formula</span> MathJax 预检通过</p><p><span class="status-warn">scope</span> 结论限于 camera-free / training-free 设定</p></div></section></aside></div></body></html>

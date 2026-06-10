@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSPT 深读：百万点物理仿真，怎样用“局部 patch 注意力 + 池化全局”逃出 O(N²)？</title>
+<meta name="description" content="CVPR 2026 Best Papers Digest · MSPT: Efficient Large-Scale Physical Modeling via Parallelized Multi-Scale Attention 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Top Paper（候选）· Neural PDE / Physics / Efficient Attention</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Neural PDE &gt; MSPT</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">10</span><span class="month">Jun</span></div><h1 id="paper-title">MSPT 深读：百万点物理仿真，怎样用“局部 patch 注意力 + 池化全局”逃出 O(N²)？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-10</span><span>CVPR 2026 Top Paper（候选）· UvA</span><span>来源：arXiv:2512.01738 PDF</span></div><div class="tags"><span class="tag orange">Neural PDE</span><span class="tag">Multi-Scale Attention</span><span class="tag">Ball Tree Patch</span><span class="tag green">Million Points</span><span class="tag">Supernode Pooling</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>MSPT 真正要回答的问题不是“能不能用 Transformer 解 PDE”，而是：<strong>工业级物理仿真有上百万个空间点，全注意力 $O(N^2)$ 直接爆显存——可你又必须同时抓住“细粒度局部相互作用”和“长程全局依赖”，怎么两者都要、还能在单卡上跑？</strong>它的答案是 Parallelized Multi-Scale Attention：用 ball tree 把不规则点云切成空间连续的 patch，patch 内做局部注意力，再让所有点对“每个 patch 池化出的少量 supernode”做全局注意力。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>一个双尺度注意力架构（MSPT）：patch 内局部注意力 + 对池化 supernode 的全局注意力，单卡扩展到百万点。</div><div class="kv"><b>关键机制</b>ball tree 切空间连续 patch；每 patch 池化成 Q 个 supernode；复杂度 $O(NL+N^2Q/L)$，$KQ\ll N$ 让线性项主导。</div><div class="kv"><b>核心证据</b>多类 PDE（弹性/塑性/流体/多孔）与气动数据（ShapeNet-Car、AhmedML）上 SOTA 精度，显存/算力显著更低。</div><div class="kv"><b>复现门槛</b>依赖 ball-tree 分块实现；patch 大小 L、supernode 数 Q、池化方式需调。</div></div></div><figure class="hero-card"><a href="../assets/figures/mspt/mspt_fig1.png"><img src="../assets/figures/mspt/mspt_fig1.png" alt="Parallelized Multi-Scale Attention"></a><figcaption><strong>图 1 · Parallelized Multi-Scale Attention。</strong>每个点在自己的 patch 内做局部注意力，同时对所有 patch 池化出的 supernode 做全局注意力——一层之内就同时拿到“近邻细节”和“全局上下文”。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：百万点上既要局部又要全局，怎么逃 O(N²)？</h2><p>神经 PDE 求解器要在数百万空间元素上预测物理场，既要捕捉细粒度的局部相互作用（PDE 的近邻 stencil），又要捕捉长程全局依赖（边界、远场效应）。直接上全注意力是 $O(N^2)$，百万点就爆。</p><div class="socratic"><p class="question">问：那只用局部/窗口注意力（便宜）不行吗？</p><p class="guide">引导：窗口注意力的感受野随层数只是线性增长。</p><p class="answer">答：全注意力的平方成本正是稀疏/高效注意力要解决的老问题 [archives/6853]；但纯局部/窗口注意力又走到另一个极端：苏剑林算过，$L$ 层堆叠、窗口为 $w$ 的 window attention，最后一层感受野最大只有 $(w-1)L+1$ [archives/9603]——要靠堆很多层才能让信息传遍全域，对百万点不现实。况且物理网格是<strong>不规则</strong>的，均匀网格窗口根本套不上。</p><p class="takeaway"><strong>Takeaway：</strong>问题是“既要局部细节、又要一层就能触达全局、还要适配不规则几何、且付得起”。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献</strong>：(a) <strong>Parallelized Multi-Scale Attention（PMSA）</strong>，把局部 patch 内注意力与“对池化全局 token 的注意力”合进一次自注意力；(b) <strong>MSPT</strong> 架构，用 ball tree 把不规则点云/网格切成空间连续的等长 patch；(c) 在标准 PDE 基准与大规模气动数据上验证 SOTA 精度且显存/算力大幅降低，单卡扩展到百万点。</p><p><strong>读者能进一步推断的是</strong>：这和多重网格（multigrid）的“限制—粗解—延拓”同构——supernode 池化就是 restriction，全局注意力在粗层做长程通信。把这套经典数值思想用注意力实现，是它能既快又准的根。</p></section>
+
+<section id="datasets"><h2>3. 数据集与任务：从标准 PDE 到大规模气动</h2><p>任务是算子学习 / 神经 PDE 求解：给定几何与输入场，预测物理场（按 relative L2 评测）。基准覆盖弹性、塑性、流体（Navier-Stokes / Pipe）、多孔流（Darcy）等标准 PDE，以及大规模气动数据集 ShapeNet-Car、AhmedML（百万级点、体场 + 表面场）。这些数据点数与几何不规则度跨度很大，正好压测“可扩展性 + 精度”。</p></section>
+
+<section id="pipeline"><h2>4. Pipeline：切 patch → 池化 → 双尺度注意力</h2><figure class="fig-wide"><a href="../assets/figures/mspt/mspt_fig2.png"><img src="../assets/figures/mspt/mspt_fig2.png" alt="MSPT-Block"></a><figcaption><strong>图 2 · MSPT-Block。</strong>每个 block 先用 ball tree 把点集分成 patch、把 patch 内信息池化成少量 supernode（图中为 1 个）；再在每个 patch 内做多头注意力，并以共享的 supernode 提供全局上下文；之后接 LayerNorm + 共享 MLP（标准 Attention–FFN）。ball-tree 分块只在第一层前算一次、各层复用。</figcaption></figure><div class="socratic"><p class="question">问：为什么池化只用很少几个 supernode，全局还够用？</p><p class="answer">答：因为全局依赖通常是“低频/粗尺度”的——远处的影响经过空间平均后仍保留主要趋势。把每个 patch 压成 $Q$ 个 supernode（$KQ\ll N$），既保住了全局通信，又把二次项成本压到极小。这正是多重网格“粗层解长程、细层补局部”的思路。</p><p class="takeaway"><strong>Takeaway：</strong>局部注意力管细节、池化 supernode 管长程，二者在一次注意力里并行完成。</p></div></section>
+
+<section id="method"><h2>5. 模型与方法：PMSA 的双尺度分解</h2><p>从点云 $\mathcal{P}=\{\mathbf{p}_1,\dots,\mathbf{p}_N\}$ 与特征 $\mathbf{H}\in\mathbb{R}^{N\times F}$ 出发，切成 $K$ 个等长 patch：</p><div class="equation">$$\mathcal{P}=\bigcup_{k=1}^{K}\mathcal{P}_k,\qquad |\mathcal{P}_k|=L,\qquad N=KL$$<div class="eq-caption">式 1：把点集分成 K 个大小为 L 的 patch（不规则网格用 ball tree 切）。</div></div><div class="formula-note"><p class="note-title">为什么是 ball tree，而不是均匀网格</p><p>不规则点云/网格上，均匀网格会给出空格子和大小悬殊、空间不连续的块。MSPT 在坐标上建一棵<strong>平衡 ball tree</strong>，按叶子的深度优先遍历重排点，再把连续的 $L$ 个点取成一个 patch——于是 patch 是<strong>等长、空间连续</strong>的局部邻域。这是“patch = 局部邻域”这一前提成立的关键：唯有空间连续，patch 内注意力才真在建模局部物理，而不是把无关的远点混在一起。论文还专门量化了 patch 的空间离散度来验证这点（见消融）。</p></div><p>每个 patch 把 $L$ 个 token 池化成 $Q$ 个 supernode（均值/最大/线性投影），所有 patch 的 supernode 拼成全局上下文 $\mathbf{S}\in\mathbb{R}^{KQ\times F}$：</p><div class="equation">$$\mathbf{S}_k=\mathrm{Pool}(\mathbf{H}_k)\in\mathbb{R}^{Q\times F},\qquad \mathbf{S}=[\mathbf{S}_1;\,\mathbf{S}_2;\,\cdots;\,\mathbf{S}_K]$$<div class="eq-caption">式 2：patch 内池化出 supernode，拼成全局上下文。</div></div><p>对每个 patch，把局部 token 与<strong>全部</strong>全局 supernode 拼在一起做注意力；更新某点时，结果由“patch 内局部注意力”与“对池化全局 token 的注意力”两项相加：</p><div class="equation">$$\mathbf{h}'_{k,i}=\underbrace{\sum_{j=1}^{L}a^{\mathrm{loc,loc}}_{k,ij}\,\mathbf{v}^{\mathrm{loc}}_{k,j}}_{\text{patch 内局部}}+\underbrace{\sum_{m=1}^{KQ}a^{\mathrm{loc,glob}}_{k,im}\,\mathbf{v}^{\mathrm{glob}}_{m}}_{\text{经池化的全局}}$$<div class="eq-caption">式 3：一个点的更新 = 局部注意力 + 对全局 supernode 的注意力。</div></div><div class="equation">$$\mathbf{H}'=\mathrm{PMSA}(\mathbf{H})=\bigoplus_{k=1}^{K}\Pi_{\mathrm{loc}}\,\mathrm{MHA}\!\left(\begin{bmatrix}\mathbf{H}_k\\\mathbf{S}\end{bmatrix}\right)$$<div class="eq-caption">式 4：PMSA 紧凑形式（$\Pi_{\mathrm{loc}}$ 取回局部行，$\bigoplus$ 拼回各 patch）。</div></div><div class="formula-note"><p class="note-title">为什么既省又准：看复杂度</p><p>PMSA 的复杂度是 $O\!\big(NL+N^2 Q/L\big)$：第一项是 patch 内局部注意力（对 $N$ 线性），第二项是对全局 supernode 的注意力。虽然仍含 $N^2$，但<strong>系数 $Q/L$ 很小</strong>（因为 $KQ\ll N$，每 patch 只留极少 supernode），实践中<strong>线性项主导</strong>。patch 大小 $L$ 是个旋钮：$L$ 大则全局通信便宜但局部更贵，$L$ 小则反之——可按硬件与问题调。这就是它能在单卡跑百万点的原因。<strong>承重假设/代价：</strong>(i) 物理可被“局部 + 粗尺度全局”分解（多数 PDE 成立，但若有很长程的细结构，池化会丢）；(ii) 池化是<strong>有损</strong>粗化，supernode 太少会丢全局细节；(iii) ball-tree patch 必须空间连续——否则局部项失效。</p></div></section>
+
+<section id="experiments"><h2>6. 实验结果：精度与可扩展性同时成立吗？</h2><figure class="fig-wide"><a href="../assets/figures/mspt/mspt_fig3.png"><img src="../assets/figures/mspt/mspt_fig3.png" alt="Relative L2 error maps"></a><figcaption><strong>图 3 · relative L2 误差图（Pipe、Navier-Stokes、ShapeNet-Car）。</strong>误差主要分布在边界/激变区，整体误差低且空间均匀，说明双尺度注意力既抓住了局部细节、也保住了全局一致性。</figcaption></figure><p><strong>判断：</strong>两条独立证据合起来支撑主张。<strong>精度侧</strong>：在弹性/塑性/流体/多孔等标准 PDE（表 B）与大规模气动 ShapeNet-Car / AhmedML（表 C、表 D）上取得 SOTA 或领先的 relative L2。<strong>效率侧</strong>：见下图，显存与运行时间随点数近似线性增长，远低于全注意力基线，单卡可上百万点。先看精度，再看“便宜”。</p>
+<div class="table-wrap"><table><caption><strong>表 B.</strong> 六个标准 PDE 基准上的 relative L2 对比（单位 ×10⁻²，越小越好；加粗为最优、第二名为该列次优）。最后一行 Promotion 为相对“第二名”的误差下降幅度。“/” 表示该基线不适用此基准。基线取自 Wu et al. [44] 与 Zhdanov et al. [47]。</caption><thead><tr><th>模型</th><th>Elasticity</th><th>Plasticity</th><th>Airfoil</th><th>Pipe</th><th>Navier-Stokes</th><th>Darcy</th></tr></thead><tbody><tr><td>FNO [20]</td><td>/</td><td>/</td><td>/</td><td>/</td><td>15.56</td><td>1.08</td></tr><tr><td>WMT [12]</td><td>3.59</td><td>0.76</td><td>0.75</td><td>0.77</td><td>15.41</td><td>0.82</td></tr><tr><td>U-FNO [42]</td><td>2.39</td><td>0.39</td><td>2.69</td><td>0.56</td><td>22.31</td><td>1.83</td></tr><tr><td>geo-FNO [24]</td><td>2.29</td><td>0.74</td><td>1.38</td><td>0.67</td><td>15.56</td><td>1.08</td></tr><tr><td>U-NO [34]</td><td>2.58</td><td>0.34</td><td>0.78</td><td>1.00</td><td>17.13</td><td>1.13</td></tr><tr><td>F-FNO [37]</td><td>2.63</td><td>0.47</td><td>0.78</td><td>0.70</td><td>23.22</td><td>0.77</td></tr><tr><td>LSM [43]</td><td>2.18</td><td>0.25</td><td>0.59</td><td>0.50</td><td>15.35</td><td>0.65</td></tr><tr><td>Galerkin [4]</td><td>2.40</td><td>1.20</td><td>1.18</td><td>0.98</td><td>14.01</td><td>0.84</td></tr><tr><td>HT-Net [25]</td><td>/</td><td>3.33</td><td>0.65</td><td>0.59</td><td>18.47</td><td>0.79</td></tr><tr><td>OFormer [22]</td><td>1.83</td><td>0.17</td><td>1.83</td><td>1.68</td><td>17.05</td><td>1.24</td></tr><tr><td>GNOT [14]</td><td>0.86</td><td>3.36</td><td>0.76</td><td>0.47</td><td>13.80</td><td>1.05</td></tr><tr><td>FactFormer [23]</td><td>/</td><td>3.12</td><td>0.71</td><td>0.60</td><td>12.14</td><td>1.09</td></tr><tr><td>ONO [45]</td><td>1.18</td><td>0.48</td><td>0.61</td><td>0.52</td><td>11.95</td><td>0.76</td></tr><tr><td>Transolver [44]</td><td>0.64</td><td>0.12</td><td>0.53</td><td>0.33</td><td>9.00</td><td><strong>0.57</strong></td></tr><tr><td>Erwin [47]</td><td><strong>0.34</strong></td><td><strong>0.10</strong></td><td>2.57</td><td>0.61</td><td>N/A</td><td>N/A</td></tr><tr><td><strong>MSPT（本文）</strong></td><td>0.48</td><td><strong>0.10</strong></td><td><strong>0.51</strong></td><td><strong>0.31</strong></td><td><strong>6.32</strong></td><td>0.63</td></tr><tr><td>Promotion</td><td>−41%</td><td>17%</td><td>+4%</td><td>+6%</td><td>+30%</td><td>−10%</td></tr></tbody></table></div>
+<p>这张表的诚实之处在于它没有“全列加粗”：MSPT 在 Airfoil、Pipe、Plasticity 上并列或领先，在<strong>大规模、强长程耦合</strong>的 Navier-Stokes 上把误差从 Transolver 的 9.00 一举压到 <strong>6.32（−30%）</strong>——这正是双尺度全局通道发挥作用的场景；而在小规模、结构高度规则的 Elasticity（972 点）上反而落后 Erwin 的 0.34（−41%）、在 Darcy 上落后 Transolver 0.57（−10%）。读法很清楚：<em>点数越大、长程依赖越强，双尺度分解的收益越明显；规模小到全注意力本就付得起时，分块反而是负担</em>。这与第 5 节复杂度分析里“线性项主导只在 $N$ 大时才划算”完全一致。</p>
+<div class="table-wrap"><table><caption><strong>表 C.</strong> ShapeNet-Car（≈3.2 万点）上的体场 / 面场 relative L2 与阻力系数误差（×10⁻²，越小越好）、阻力排序的 Spearman ρ（%，越大越好）。MSPT 主要与单分支模型比较；AB-UPT 为双分支专用 CFD 架构，仅作参考。</caption><thead><tr><th>模型</th><th>Volume ↓</th><th>Surf ↓</th><th>C<sub>D</sub> ↓</th><th>ρ<sub>D</sub> ↑</th></tr></thead><tbody><tr><td>Simple MLP</td><td>5.12</td><td>13.04</td><td>3.07</td><td>94.96</td></tr><tr><td>GraphSAGE [13]</td><td>4.61</td><td>10.50</td><td>2.70</td><td>96.95</td></tr><tr><td>PointNet [33]</td><td>4.94</td><td>11.04</td><td>2.98</td><td>95.83</td></tr><tr><td>Graph U-Net [10]</td><td>4.71</td><td>11.02</td><td>2.26</td><td>97.25</td></tr><tr><td>MeshGraphNet [32]</td><td>3.54</td><td>7.81</td><td>1.68</td><td>98.40</td></tr><tr><td>GNO [19]</td><td>3.83</td><td>8.15</td><td>1.72</td><td>98.34</td></tr><tr><td>Galerkin [4]</td><td>3.39</td><td>8.78</td><td>1.79</td><td>97.64</td></tr><tr><td>GNOT [14]</td><td>3.29</td><td>7.98</td><td>1.78</td><td>98.33</td></tr><tr><td>GINO [21]</td><td>3.86</td><td>8.10</td><td>1.84</td><td>98.26</td></tr><tr><td>3D-GeoCA [7]</td><td>3.19</td><td>7.79</td><td>1.59</td><td>98.42</td></tr><tr><td>Transolver [44]</td><td>2.07</td><td>7.45</td><td>1.03</td><td>99.35</td></tr><tr><td><strong>MSPT（本文）</strong></td><td><strong>1.89</strong></td><td><strong>7.41</strong></td><td><strong>0.98</strong></td><td><strong>99.41</strong></td></tr><tr><td>Promotion</td><td>+8.7%</td><td>+0.5%</td><td>+4.9%</td><td>+0.06%</td></tr><tr><td>AB-UPT [2]（双分支，参考）</td><td>1.16</td><td>4.81</td><td>N/A</td><td>N/A</td></tr><tr><td>AB-UPT [2]（复现）</td><td>2.51</td><td>7.67</td><td>2.20</td><td>97.48</td></tr></tbody></table></div>
+<p>在所有单分支模型里 MSPT 体场误差 1.89 最低，比次优 Transolver 的 2.07 降 8.7%，阻力系数 0.98 vs 1.03（−4.9%）、排序 ρ 99.41 也最好。值得注意的是 AB-UPT 原始报告的 1.16/4.81 更低，但那是<strong>双分支、面/体分开</strong>的专用架构；在作者用同一训练管线的复现里它退到 2.51/7.67，反而被 MSPT 全面反超——这条对照正是论文“先把单分支做扎实、分支化作为正交增强”的论据。</p>
+<div class="table-wrap"><table><caption><strong>表 D.</strong> AhmedML（≈2×10⁷ 点）上的体场 / 面场 relative L2（×10⁻²，越小越好）。MSPT 主要与单分支模型比较，AB-UPT 为双分支参考。</caption><thead><tr><th>模型</th><th>Volume ↓</th><th>Surf ↓</th></tr></thead><tbody><tr><td>PointNet [33]</td><td>5.44</td><td>8.02</td></tr><tr><td>Graph U-Net [10]</td><td>4.15</td><td>6.46</td></tr><tr><td>GINO [21]</td><td>6.23</td><td>7.90</td></tr><tr><td>LNO [41]</td><td>7.59</td><td>12.95</td></tr><tr><td>UPT [1]</td><td>2.73</td><td>4.25</td></tr><tr><td>OFormer [22]</td><td>3.63</td><td>4.12</td></tr><tr><td>Transolver [44]</td><td>2.05</td><td>3.45</td></tr><tr><td>Transformer [22]</td><td>2.09</td><td>3.41</td></tr><tr><td><strong>MSPT（本文）</strong></td><td><strong>2.04</strong></td><td><strong>3.22</strong></td></tr><tr><td>Promotion</td><td>+0.49%</td><td>+6.67%</td></tr><tr><td>AB-UPT [2]（双分支，参考）</td><td>1.90</td><td>3.01</td></tr><tr><td>AB-UPT [2]（复现）</td><td>2.39</td><td>4.33</td></tr></tbody></table></div>
+<p>AhmedML 单样本就有 <strong>2×10⁷ 点</strong>——这正是“全注意力 O(N²) 根本跑不动”的尺度。MSPT 仍以单分支拿下单分支最优（体 2.04、面 3.22，面场比 Transolver 降 6.67%），并在作者复现口径下超过双分支 AB-UPT（2.39/4.33）。把表 B→C→D 连起来看，结论随规模单调增强：基准越大，PMSA 越占便宜。</p><figure class="fig-wide"><a href="../assets/figures/mspt/mspt_fig5.png"><img src="../assets/figures/mspt/mspt_fig5.png" alt="Memory and runtime scaling"></a><figcaption><strong>图 4 · 峰值显存（上）与运行时间随点数的缩放。</strong>关键看斜率：MSPT 近似线性，而全注意力是平方——这正是复杂度 $O(NL+N^2Q/L)$ 中“线性项主导”的实测体现。</figcaption></figure><div class="socratic"><p class="question">问：精度高会不会只是模型更大，而非双尺度设计？</p><p class="answer">答：论文用消融把因素拆开——池化方式与 supernode 数量的研究（图：pooling/supernode study）显示全局通道确实贡献精度；而“patch 空间离散度”的统计（直方图 + 各基准的 patch 半径中位数）独立验证了 ball-tree patch 足够紧凑，支撑“局部项有效”这一承重假设。</p><p class="takeaway"><strong>Takeaway：</strong>主张成立的边界是“可被局部 + 粗尺度全局分解的大规模物理场”，证据覆盖精度、效率与“patch 是否真局部”三面。</p></div></section>
+
+<section id="ablations"><h2>7. 消融：每个设计都必要吗？</h2><p>消融沿三条线：<strong>patch 数 K</strong>（即 patch 大小 L=N/K）的精度/显存权衡——对应复杂度里 $NL$ 与 $N^2Q/L$ 的此消彼长；<strong>池化方式 + supernode 数</strong>（均值/最大/线性，Q 大小）——量化全局通道的收益与“池化有损”的代价；<strong>patch 空间离散度</strong>（ball-tree DFS 排序后每个 patch 的均方半径直方图与各 PDE 的中位数统计）——直接检验“patch 空间连续”这一前提。三者一起说明：双尺度、ball-tree、池化缺一不可。</p>
+<div class="table-wrap"><table><caption><strong>表 E.</strong> ShapeNet-Car 测试损失随 patch 数 K 的变化（test loss 单位 ×10⁻²；test loss = L<sub>v</sub> + 0.5 L<sub>s</sub>，体场 + 面场）。K 越大 patch 越小（L=N/K）。</caption><thead><tr><th>patch 数 K</th><th>32</th><th>64</th><th>128</th><th>256</th><th>512</th><th>1024</th></tr></thead><tbody><tr><td>Test Loss ↓</td><td>6.08</td><td>6.23</td><td>6.83</td><td>6.77</td><td>6.37</td><td><strong>5.99</strong></td></tr></tbody></table></div>
+<p>这条曲线是<strong>非单调</strong>的，恰好把复杂度公式里的两项张力实测出来：K 很小（32）时每个 patch ≈1000 点、局部上下文充足但只有少量 supernode、全局通道窄，loss 6.08；K 增大到 128–256 时 patch 变小、局部上下文被切碎，loss 反升到 6.83/6.77（$NL$ 项收缩但局部信息不足）；K≥512 后大量 supernode 重新撑起全局交互、loss 又降到 5.99（$N^2Q/L$ 项里 supernode 变多补回长程）。论文的结论是“太少则过度平滑局部、太多则割裂长程”，需要折中——但精度最低点（K=1024，5.99）并非部署点：效率分析显示 K 512–1024 在 1 万点时显存已 &gt;30 GB，因此在 ShapeNet-Car 上选 <strong>K=128</strong> 作为精度/成本平衡，可在 <strong>50 GB 内、0.084 s</strong> 跑完一个百万点 batch。显存随点数近似线性：V∈[64,256] 下约 80 万点仍在 A100 的 40 GB 内、100 万点处低于 80 GB——这是“线性项主导”最直接的硬件证据。</p>
+<p>另两条线把承重假设钉死：<strong>池化</strong>——均值池化在各 Q 下都稳定优于最大池化（最大池化放大了不代表 patch 典型值的极值）与可学习线性投影；<strong>supernode 数 Q</strong>——Q&gt;1（论文扫到 1–32）普遍提升精度，因为单 token 装不下整个 patch 的细粒度信息，但 Q 过大又会抵消池化的省算红利。这两点分别独立验证了“全局通道确有贡献”和“池化是有损粗化、Q 需折中”。</p><figure class="fig-grid"><a href="../assets/figures/mspt/mspt_fig4_pooling.png"><img src="../assets/figures/mspt/mspt_fig4_pooling.png" alt="Pooling and supernode study"></a><a href="../assets/figures/mspt/mspt_fig6_dispersion.png"><img src="../assets/figures/mspt/mspt_fig6_dispersion.png" alt="Patch dispersion histogram"></a><figcaption><strong>图 5 · 池化方式/supernode 数研究（左）与 patch 空间离散度直方图（右）。</strong>左：不同池化（均值/最大/线性）与每 patch 的 supernode 数 $Q$ 对测试损失的影响——说明全局通道确实贡献精度，且 $Q$ 太小会因池化有损而掉点。右：ball-tree DFS 排序后每个 patch 的均方半径分布（对数 y 轴）集中在低离散度，少量离群——直接验证“patch 空间连续”这一承重假设。</figcaption></figure><div class="socratic"><p class="question">问：消融与机理是否自洽？</p><p class="answer">答：自洽。patch 离散度统计低、patch 紧凑，正对应第 5 节“唯有空间连续 patch 内注意力才建模局部物理”；supernode 太少掉点，对应“池化是有损粗化”。理论预测的两条假设都在消融里被独立检验。</p><p class="takeaway"><strong>Takeaway：</strong>关键不是“用不用注意力”，而是“怎样把局部与全局拆成可并行、可负担的两尺度”。</p></div></section>
+
+<section id="limitations"><h2>8. 局限与复现门槛：什么时候要谨慎？</h2><div class="table-wrap"><table><caption><strong>表 A.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/方法信息</th><th>读者应如何理解</th></tr></thead><tbody><tr><td>可分解假设</td><td>局部 + 粗尺度全局两尺度</td><td>若存在很长程的<strong>细</strong>结构，池化会把它抹掉</td></tr><tr><td>池化有损</td><td>每 patch 仅 Q 个 supernode</td><td>Q 太小丢全局细节、太大又抬成本；需按问题调</td></tr><tr><td>patch 连续性</td><td>靠 ball-tree 保证空间连续</td><td>分块质量直接决定局部项是否有效（消融量化了离散度）</td></tr><tr><td>仍含二次项</td><td>$O(NL+N^2Q/L)$</td><td>点数极大且 Q/L 不够小时，二次项仍可能抬头</td></tr><tr><td>评测范围</td><td>标准 PDE + ShapeNet-Car/AhmedML</td><td>更复杂多物理场/时变长程耦合仍需验证</td></tr></tbody></table></div><div class="socratic"><p class="question">问：这篇论文最容易被过度宣传成什么？</p><p class="answer">答：容易被说成“线性注意力解决一切大规模物理”。更严谨的说法是：通过 ball-tree 空间连续分块 + 局部 patch 注意力 + 池化 supernode 全局注意力，MSPT 把成本压成线性项主导，在可分解的大规模物理场上以更低显存取得 SOTA 精度。</p><p class="takeaway"><strong>Takeaway：</strong>强项是“双尺度 + 不规则几何 + 单卡百万点”；边界是可分解假设、池化损失与残留二次项。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>MSPT 把多重网格“粗解长程、细补局部”的老智慧用注意力实现——ball-tree 切空间连续 patch，patch 内做局部、对池化 supernode 做全局，一层之内兼顾两尺度，于是百万点物理仿真在单卡上既快又准。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li>全注意力 $O(N^2)$ 爆，纯窗口注意力感受野 $(w-1)L+1$ 增长太慢——双尺度分解才能既省又触达全局。</li><li>ball-tree 的空间连续 patch 是“patch=局部邻域”的前提；池化 supernode 提供一层就到的全局通道（$KQ\ll N$ 让线性项主导）。</li><li>代价是可分解假设与池化的有损粗化——很长程的细结构会被抹掉。</li></ol></div></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Pedro M. P. Curvo, Jan-Willem van de Meent, Maksim Zhdanov. <em>MSPT: Efficient Large-Scale Physical Modeling via Parallelized Multi-Scale Attention</em>. CVPR 2026 / arXiv:2512.01738（University of Amsterdam）。</li><li>本文公式、表格与实验数字以 arXiv PDF 为准；“全注意力平方成本与稀疏化”“窗口注意力感受野 $(w-1)L+1$ 随层线性增长”的视角参考苏剑林 [archives/6853]、[archives/9603]，非本文独有。</li><li>图像说明：所有正文图为本地 PNG，由 <code>extract_figures.py</code> 按论文图号从 arXiv PDF caption 锚定裁切（图 1/2/3/4），路径位于 <code>assets/figures/mspt/</code>。</li></ol></section>
+</main><footer class="article-footer">CVPR 2026 Best Papers Digest · MSPT 深读。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与任务</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">PMSA 方法</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>MSPT: Efficient Large-Scale Physical Modeling via Parallelized Multi-Scale Attention</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper（候选）</dd><dt>Team</dt><dd>University of Amsterdam</dd><dt>arXiv</dt><dd>2512.01738</dd><dt>Topic</dt><dd>Neural PDE / Efficient Attention</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：PMSA 机制</li><li>图 2：MSPT-Block</li><li>图 3：误差图</li><li>图 4：显存/时间缩放</li><li>式 4：PMSA 紧凑式</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> MSPT 深读</p><p><span class="status-good">figures</span> 6 张 PNG（caption 锚定提取）</p><p><span class="status-good">formula</span> MathJax 预检通过</p><p><span class="status-warn">scope</span> 依赖可分解的多尺度结构</p></div></section></aside></div></body></html>

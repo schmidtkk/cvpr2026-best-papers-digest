@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAM 3D 深读：单张自然图像如何变成可组合 3D 场景？</title>
+<meta name="description" content="CVPR 2026 Best Papers Digest · SAM 3D 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head><body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Best Paper / Honorable Mention · 按论文原文逐篇深读</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#datasets">数据</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; Best Paper Honorable Mention &gt; SAM 3D 深读</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">06</span><span class="month">Jun</span></div>
+<h1 id="paper-title">SAM 3D 深读：单张自然图像如何变成可组合 3D 场景？</h1>
+<div class="article-meta"><span>CVPR 2026 Best Paper Honorable Mention</span><span>3D Reconstruction / Foundation Model</span><span>Meta Superintelligence Labs</span><span>基于 CVF PDF / Supplement / 项目主页 / GitHub</span></div>
+<div class="tags"><span class="tag">Single-image 3D</span><span class="tag">Human-in-the-loop</span><span class="tag">Model-in-the-loop</span><span class="tag">SFT / DPO</span><span class="tag">SA-3DAO Benchmark</span></div></header>
+<main class="content">
+<p id="abstract" class="lead"><strong>导读。</strong>SAM 3D 真正要回答的问题不是“能不能从单图出一个漂亮 mesh”，而是：如果输入是遮挡、杂乱、尺度未知的真实自然图像，模型如何同时恢复每个物体的形状、纹理和在场景中的布局？论文给出的答案是一个闭环系统：先用合成数据学 3D 先验，再用人和模型共同生成的真实图像-3D 对齐数据做 post-training，最后用偏好数据进行 SFT/DPO 对齐。核心结论是：真实图像中的 3D 重建瓶颈不只是架构，而是可规模化的 3D supervision。</p>
+
+<div class="hero-split"><div class="hero-card"><p><strong>核心问题。</strong>给定图像 $I$ 和目标 mask $M$，SAM 3D 想恢复的不只是可见表面，而是完整物体 $S$、纹理 $T$、旋转/平移/尺度 $(R,t,s)$。这比“单物体居中渲染图 → mesh”困难得多，因为真实图像里有遮挡、截断、背景上下文和多个物体。</p><p><strong>一句话贡献。</strong>论文把 3D object generation、layout estimation、human/model-in-the-loop data engine、SFT/DPO post-training 放到同一套训练链路里，目标是把 SAM 式 mask grounding 推到 3D。</p></div><figure class=""><a href="../assets/figures/sam3d/sam3d_fig1_teaser.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_fig1_teaser.png" alt="图 1 · 论文 teaser。SAM 3D 把一张真实图像拆成可组合的 3D objects：上方展示室内与街景，底部展示为单个物体恢复出的 3D assets。读者应看黄框标注的目标物体如何被还原成独立 3D 资产。" loading="lazy"></a><figcaption><strong>图 1 · 论文 teaser。</strong>SAM 3D 把一张真实图像拆成可组合的 3D objects：上方展示室内与街景，底部展示为单个物体恢复出的 3D assets。读者应看黄框标注的目标物体如何被还原成独立 3D 资产。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 先问核心问题：为什么真实图像的 3D 重建比 demo 难得多？</h2>
+<p>许多 image-to-3D 方法在孤立物体、干净背景、合成渲染或产品图上表现不错，但真实图像要求模型从上下文中“猜完整”：椅子腿可能被桌子挡住，窗户只露一角，玩具和家具混在同一张图里。SAM 3D 把任务定义为从 $(I,M)$ 估计一个条件分布，而不是单点回归：</p>
+<div class="equation">$$
+p(S,T,R,t,s \mid I,M), \qquad q_\theta(S,T,R,t,s \mid I,M)
+$$<div class="eq-caption">式 1：从图像与 mask 到形状、纹理、位姿与尺度的条件建模。</div></div>
+<div class="formula-note"><p class="note-title">公式读法</p><p>$S$ 是 3D shape，$T$ 是 texture，$R,t,s$ 是物体相对相机或场景的旋转、平移与尺度。这个公式提醒我们：SAM 3D 不是单纯预测 mesh 顶点，而是在恢复一个可放回场景的 3D object。</p></div>
+<div class="socratic"><p class="question">问：为什么不能只用更多合成数据解决？</p><p class="guide">引导：合成数据能提供干净 3D ground truth，但真实图像里最难的是 occlusion、clutter、mask-following 和人类偏好的“看起来对”。</p><p class="answer">答：论文把训练分成 synthetic pre-training、semi-synthetic mid-training、real-world post-training。合成数据负责基础形状先验，真实数据和偏好对齐负责让模型知道哪些补全在人类看来可信。</p><div class="takeaway"><strong>Takeaway：</strong>SAM 3D 的核心不是某个单点 trick，而是用数据闭环跨过真实图像的 3D data barrier。</div></div>
+</section>
+
+<section id="contribution"><h2>2. 整体贡献：作者明确新增了什么？</h2>
+<div class="table-wrap"><table><caption><strong>表 1.</strong> SAM 3D 的贡献与证据链。注意区分论文主张与读者推断。</caption><thead><tr><th>贡献</th><th>作者明确提出</th><th>正文证据</th><th>边界</th></tr></thead><tbody>
+<tr><td>Foundation model for 3D objects</td><td>从单张图像重建 geometry、texture 和 layout。</td><td>Fig. 1/2 展示可组合场景与两阶段模型架构；Table 2/3 比较 shape/layout 指标。</td><td>任务仍依赖目标 mask；自动全场景实例分割不是本文主问题。</td></tr>
+<tr><td>MITL/HITL data engine</td><td>用 model-in-the-loop + human selection/pose alignment 收集真实图像 3D supervision。</td><td>Fig. 5 与 Algorithm 1 展示数据闭环；Supplement 给出标注规模。</td><td>标注成本、平台细节、质量控制完整策略未全部公开。</td></tr>
+<tr><td>Multi-stage training + alignment</td><td>synthetic pre-training、render-paste mid-training、SFT、DPO、distillation。</td><td>Fig. 4/Table 1 与 Table 4 展示阶段性收益。</td><td>论文披露 training tokens，但未完整披露硬件账本。</td></tr>
+<tr><td>Benchmark SA-3DAO</td><td>真实自然图像上的 artist-created mesh benchmark。</td><td>实验部分说明包含 1K 个 3D artist-created meshes。</td><td>benchmark 规模相对真实互联网分布仍有限。</td></tr>
+</tbody></table></div>
+<figure class="fig-wide"><a href="../assets/figures/sam3d/sam3d_fig2_architecture.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_fig2_architecture.png" alt="图 2 · SAM 3D architecture。上半部分 Geometry model 预测 coarse shape 与 layout；下半部分 Texture &amp; Refinement model 在 coarse voxels 上细化 mesh/GS 输出。右侧 Mixture-of-Transformers 说明 shape token 与 layout token 共享信息但有 attention mask 约束。" loading="lazy"></a><figcaption><strong>图 2 · SAM 3D architecture。</strong>上半部分 Geometry model 预测 coarse shape 与 layout；下半部分 Texture & Refinement model 在 coarse voxels 上细化 mesh/GS 输出。右侧 Mixture-of-Transformers 说明 shape token 与 layout token 共享信息但有 attention mask 约束。</figcaption></figure>
+</section>
+
+<section id="datasets"><h2>3. 数据集与任务：SAM 3D 的“隐形模型”是什么？</h2>
+<p>论文中的数据不是一个简单数据集，而是一个生产 3D supervision 的系统。pre-training 使用约 2.7M 个 3D meshes，渲染 24 个视角，形成 Iso-3DO；mid-training 构造 61M render-paste samples、2.8M unique meshes 的 RP-3DO；post-training 阶段通过数据引擎标注近 1M 张图片，得到约 3.14M untextured meshes、约 100K textured meshes，以及布局与偏好样本。</p>
+<figure class="fig-wide"><a href="../assets/figures/sam3d/sam3d_fig3_data_examples.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_fig3_data_examples.png" alt="图 3 · SAM 3D data examples。四行分别对应 Isolated 3D Objects、Render-Paste 3D Objects、MITL 3D Objects、Artist 3D Objects。它说明训练数据逐步从干净合成走向真实遮挡/杂乱场景。" loading="lazy"></a><figcaption><strong>图 3 · SAM 3D data examples。</strong>四行分别对应 Isolated 3D Objects、Render-Paste 3D Objects、MITL 3D Objects、Artist 3D Objects。它说明训练数据逐步从干净合成走向真实遮挡/杂乱场景。</figcaption></figure>
+<div class="table-wrap"><table><caption><strong>表 2.</strong> 数据在方法中的作用。</caption><thead><tr><th>数据</th><th>规模/来源</th><th>训练作用</th><th>缺失或注意点</th></tr></thead><tbody>
+<tr><td>Iso-3DO</td><td>2.7M meshes；每个 24 views；约 2.5T training tokens</td><td>Stage 1 pre-training：学习孤立物体 shape/texture 先验</td><td>具体 licensed datasets 的完整清单论文未完全展开</td></tr>
+<tr><td>RP-3DO</td><td>61M samples；2.8M unique meshes；约 2.7T training tokens</td><td>Stage 1.5 mid-training：mask-following、occlusion robustness、layout</td><td>render-paste 的真实感仍有限，需 post-training 弥合 domain gap</td></tr>
+<tr><td>MITL-3DO / Art-3DO</td><td>近 1M images；约 3.14M untextured meshes、100K textured meshes</td><td>SFT / DPO：真实图像对齐与偏好优化</td><td>标注成本、标注人员分布和完整质量控制论文未说明</td></tr>
+<tr><td>SA-3DAO</td><td>1K artist-created meshes from natural images</td><td>评测：shape、layout、preference</td><td>规模有限，但比孤立合成 benchmark 更贴近真实输入</td></tr>
+</tbody></table></div>
+<figure class=""><a href="../assets/figures/sam3d/sam3d_supp_fig10_category_distribution.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_supp_fig10_category_distribution.png" alt="图 6 · Supplement Fig. 10 类别分布。top-80 类别呈长尾分布。读者应关注尾部类别：真实图像 3D 重建不仅是常见家具/车辆，还要处理稀有小物体。" loading="lazy"></a><figcaption><strong>图 6 · Supplement Fig. 10 类别分布。</strong>top-80 类别呈长尾分布。读者应关注尾部类别：真实图像 3D 重建不仅是常见家具/车辆，还要处理稀有小物体。</figcaption></figure>
+<div class="formula-note"><p class="note-title">数据引擎为什么能闭合 domain gap：一个 bootstrap</p><p>真实图像没有 3D ground truth，这本身是先有鸡还是先有蛋。三段式 curriculum 把它拆开：合成 Iso-3DO 给形状/纹理先验；render-paste 注入 mask-following 与遮挡鲁棒性，但真实感有限；数据引擎再用<strong>当前模型</strong>对真实图像提议 3D、由<strong>人工</strong>校验改正，产出真实图像监督去回训模型——一个自我改进的闭环。它能 work 的关键是：每一轮只要求模型“好到能给人一个可修的草稿”，而<strong>验证比从零标注便宜</strong>，于是标注成本可控、真实覆盖却能滚大。这条机制可从两个独立角度交叉验证：(i) 数据引擎成功率曲线（图 8 左）先在常见类提升、再覆盖长尾，且评测放在真实图像的 SA-3DAO 而非合成 benchmark；(ii) §3 表里明确写 render-paste 真实感有限、“需 post-training 弥合 domain gap”——若收益只来自合成规模，后训这一段就不该有效。</p></div><div class="socratic"><p class="question">问：为什么 Supplement 的类别分布图值得放进正文？</p><p class="answer">答：因为它显示训练数据是长尾的。长尾意味着模型不只是记常见椅子/汽车，还要处理消防栓、遮阳棚、路牌、玩具等真实图像里的杂物；但长尾也意味着罕见类标注质量和覆盖仍可能成为失败来源。</p><div class="takeaway"><strong>Takeaway：</strong>SAM 3D 的数据系统定义了模型能“看懂”的 3D 世界，不能把它当作普通 appendix 工程细节。</div></div>
+</section>
+
+<section id="pipeline"><h2>4. Pipeline 拆解：数据流、模型流和训练流如何衔接？</h2>
+<p>可以把 SAM 3D 分成两条 pipeline。第一条是数据流：真实图像 → 选目标/mask → 生成候选 3D → 人类 pairwise selection → 2.5D scene alignment → SFT/DPO。第二条是模型流：image/mask/context/可选 pointmap → Geometry model → coarse shape/layout → Texture & Refinement model → mesh / Gaussian splat decoders。</p>
+<figure class="fig-wide"><a href="../assets/figures/sam3d/sam3d_fig4_training_paradigm_table1.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_fig4_training_paradigm_table1.png" alt="图 4 · 训练范式与阶段表。左侧是 synthetic pre-training → semi-synthetic mid-training → real-world SFT/post-training → preference optimization 的闭环；右侧 Table 1 把每个阶段对应的数据和输入条件列出。" loading="lazy"></a><figcaption><strong>图 4 · 训练范式与阶段表。</strong>左侧是 synthetic pre-training → semi-synthetic mid-training → real-world SFT/post-training → preference optimization 的闭环；右侧 Table 1 把每个阶段对应的数据和输入条件列出。</figcaption></figure>
+<figure class="fig-wide"><a href="../assets/figures/sam3d/sam3d_fig5_data_collection_pipeline.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_fig5_data_collection_pipeline.png" alt="图 5 · 数据收集 pipeline。Stage 1 选目标与 mask，Stage 2 选择 shape/texture 候选，Stage 2.5 把困难样本交给 3D artists，Stage 3 做 2.5D scene alignment。该图是理解 SAM 3D 数据闭环的核心。" loading="lazy"></a><figcaption><strong>图 5 · 数据收集 pipeline。</strong>Stage 1 选目标与 mask，Stage 2 选择 shape/texture 候选，Stage 2.5 把困难样本交给 3D artists，Stage 3 做 2.5D scene alignment。该图是理解 SAM 3D 数据闭环的核心。</figcaption></figure>
+<div class="socratic"><p class="question">问：为什么数据引擎要先让人“选”，而不是让人直接建模？</p><p class="guide">引导：3D mesh creation 很贵，但人类比较两个候选哪个更像输入图像便宜得多。</p><p class="answer">答：这就是 model-in-the-loop 的放大效应。模型先生成 $N=8$ 个候选，人类选择最优并给质量评分；失败样本再进入艺术家建模或后续模型改进。随着模型变强，它自己产生的候选越来越多地成为可训练数据，论文称最终约 80% 的标注数据由 SAM 3D 生成。</p><div class="takeaway"><strong>Takeaway：</strong>数据引擎是一个 bootstrapping loop：模型越好，生成可标注数据越便宜；数据越好，模型继续变好。</div></div>
+<figure class="fig-wide"><a href="../assets/figures/sam3d/sam3d_supp_algorithm1_alignment.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_supp_algorithm1_alignment.png" alt="图 7 · Algorithm 1: SAM 3D Basic Alignment。该算法把候选生成、人类排序、质量阈值过滤、SFT 与 DPO 串成循环。它证明 post-training 不是一次性人工标注，而是模型与数据共同进化。" loading="lazy"></a><figcaption><strong>图 7 · Algorithm 1: SAM 3D Basic Alignment。</strong>该算法把候选生成、人类排序、质量阈值过滤、SFT 与 DPO 串成循环。它证明 post-training 不是一次性人工标注，而是模型与数据共同进化。</figcaption></figure>
+</section>
+
+<section id="method"><h2>5. 模型与方法：两阶段架构为什么必要？</h2>
+<p><strong>先问为什么要两阶段、还要把位姿一起去噪。</strong>单图 3D 的难点不在“画一个 mesh”，而在输出同时耦合两类完全不同的未知量：物体在标准坐标下的<strong>内在形状</strong>，和它在相机里的<strong>外在摆放</strong> $(R,t,s)$。若把两者分开、先后预测，误差会互相放大——位姿错了，形状监督就不自洽；形状错了，位姿又无从定义。所以真正的问题是：能不能让“是什么形状”和“摆在哪里”在同一个过程里相互校准？</p>
+<p>Geometry model 先预测 coarse shape 和 layout。它接收 cropped object、full image、object mask，以及可选 scene point map $P$，输出粗体素 shape $O\in\mathbb{R}^{64^3}$ 和 $(R,t,s)$。Texture & Refinement model 再在 coarse shape 的 active voxels 上做 sparse latent flow，补充高分辨率几何细节和 texture，最后由 mesh decoder 与 Gaussian splat decoder 输出 3D asset。</p>
+<div class="equation">$$
+q_{\theta_g}(O,R,t,s \mid I,M,P), \qquad q_{\theta_r}(S,T \mid I,M,O)
+$$<div class="eq-caption">式 2：Geometry model 先预测粗形状与布局，Texture & Refinement model 再细化形状与纹理。</div></div>
+<div class="equation">$$
+\mathcal{L}_{\mathrm{CFM}}=
+\sum_{m\in\mathcal{M}}\omega_m\,
+\mathbb{E}_{\epsilon,x_0^m,\tau}
+\left\|v^m-v_\theta^m(x_\tau^m,c,\tau)\right\|_2^2,
+\qquad \mathcal{M}=\{S,R,t,s\},\ c=(I,M)
+$$<div class="eq-caption">式 3：多模态 conditional flow matching loss；不同模态用权重 $\omega_m$ 平衡。</div></div>
+<div class="formula-note"><p class="note-title">公式读法</p><p>$O$ 是 coarse voxel shape，$P$ 是可选 point map。式 3 的直觉是把 shape、rotation、translation、scale 都看作要去噪的变量，让模型同时学习“对象是什么形状”和“它在图中哪里”。若去掉第一阶段，第二阶段缺少可靠几何骨架；若去掉 refinement，输出会更像 coarse shape 而不是可用资产。</p></div>
+<div class="formula-note"><p class="note-title">为什么 flow matching 能把位姿和形状一起去噪</p><p>flow/扩散模型本质上是学一个把简单噪声分布搬到数据分布的速度场（对扩散/流模型的系统梳理可参考苏剑林 [archives/9119]、[archives/5776]）。式 3 正是把这套框架用在一个<strong>异构状态</strong>上：把形状 $S$、旋转 $R$、平移 $t$、尺度 $s$ 拼成同一个状态，对每个模态学一个共享条件 $c=(I,M)$ 的速度场 $v_\theta^m$，按 $\omega_m$ 加权。因为它们共用“噪声 → 数据”的同一传输过程，“是什么形状”和“摆在哪里”是在采样的每一步里<strong>一起被去噪、相互校准</strong>，而不是先后拼接。<strong>代价是一条假设：</strong>每个变量都要能定义良好的噪声路径与速度目标——$S$ 在欧氏体素上没问题，但 $R$ 活在 SE(3) 流形上，CFM 是否良定取决于所选参数化；$\omega_m$ 也必须让各模态损失可比，否则某一模态会主导训练。</p></div>
+<figure class=""><a href="../assets/figures/sam3d/sam3d_supp_fig13_fig14_data_engine_reward.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_supp_fig13_fig14_data_engine_reward.png" alt="图 8 · 数据引擎改进与 reward recovery。左图说明模型成功率在常见类别先提升，再逐步覆盖尾部；右图显示用 VLM/reward model 做 best-of-N 搜索以提高困难样本通过率。" loading="lazy"></a><figcaption><strong>图 8 · 数据引擎改进与 reward recovery。</strong>左图说明模型成功率在常见类别先提升，再逐步覆盖尾部；右图显示用 VLM/reward model 做 best-of-N 搜索以提高困难样本通过率。</figcaption></figure>
+<div class="table-wrap"><table><caption><strong>表 3.</strong> 模型结构要点。</caption><thead><tr><th>模块</th><th>论文披露</th><th>技术作用</th></tr></thead><tbody>
+<tr><td>Feature encoding</td><td>DINOv2 features from cropped object + mask and full image + mask</td><td>同时获得局部目标细节与全局场景上下文</td></tr>
+<tr><td>Geometry model</td><td>1.2B parameter flow transformer; Mixture-of-Transformers; outputs $O,R,t,s$</td><td>先解决“是什么形状、在场景哪里”</td></tr>
+<tr><td>Texture & Refinement</td><td>600M sparse latent flow transformer</td><td>对 active voxels 增加细节与 texture</td></tr>
+<tr><td>Decoders</td><td>mesh decoder 与 Gaussian splat decoder</td><td>服务不同下游渲染/资产需求</td></tr>
+<tr><td>Distillation</td><td>Geometry model NFE 从 25 降到 4</td><td>支持 sub-second shape/layout 推理；具体硬件延迟论文未完整列出</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="training"><h2>6. 训练细节与算力账本：哪些能复现，哪些仍缺？</h2>
+<p>补充材料披露了多阶段训练的 GPU 数、batch/GPU、epoch、learning rate 与 token 规模；但没有披露每阶段 wall-clock 时长、实际吞吐、checkpointing 和完整工程配置。因此本文只整理账本，不换算 GPU-hours / GPU-days。</p>
+<div class="table-wrap"><table><caption><strong>表 4.</strong> 训练账本。只列论文/补充材料明确披露的信息；未披露项不推测。</caption><thead><tr><th>模块</th><th>阶段</th><th>数据/输入</th><th>硬件与 batch</th><th>学习率 / 长度</th><th>未说明</th></tr></thead><tbody>
+<tr><td>Geometry</td><td>Pre-training</td><td>Iso-3DO；object-centric crop</td><td>512 A100；batch/GPU = 6</td><td>200 epochs；LR $10^{-4}$；约 2.5T tokens</td><td>wall-clock、吞吐、总电费/账单未说明</td></tr>
+<tr><td>Geometry</td><td>Mid-training</td><td>RP-3DO / ProcThor；full image / pointmap</td><td>FO：320 A100 后接 128 A100；OS-R：256 A100；batch/GPU = 6</td><td>FO 50+50 epochs；OS-R 12 epochs；LR $10^{-4}$；约 2.7T tokens</td><td>完整数据混合比例与所有工程细节未说明</td></tr>
+<tr><td>Geometry</td><td>SFT / DPO</td><td>MITL-3DO / Art-3DO / preference</td><td>SFT：128 H200；DPO：128 A100；batch/GPU = 6</td><td>SFT 100 epochs，LR $10^{-5}$；DPO 1 epoch，LR $2.5\times10^{-6}$；最终约 0.5T tokens</td><td>人类/艺术家标注成本未说明</td></tr>
+<tr><td>Texture &amp; Refinement</td><td>Pre / Mid / SFT / DPO</td><td>Trellis500K、RP-3DO、MITL preference</td><td>256 A100、256 A100、192 A100、128 A100；batch/GPU = 4/4/4/3</td><td>245、80、89、2 epochs；LR $10^{-4}$、$10^{-4}$、$10^{-5}$、$10^{-6}$；EMA 0.9999/0.999/0.99</td><td>训练时长、精度设置、推理延迟细项未说明</td></tr>
+</tbody></table></div>
+<div class="note"><p class="note-title">算力说明</p><p>这些数字说明 SAM 3D 是重型数据与训练系统，而非单卡可复现的模型实验。由于论文没有给出 wall-clock，本文不做“按论文披露数字粗略估算”的 GPU-hours/GPU-days；缺失处统一记为“论文未说明”。</p></div>
+</section>
+
+<section id="experiments"><h2>7. 实验结果：每张表到底支持了哪条主张？</h2>
+<h3>7.1 Shape：SAM 3D 是否真的比 image-to-3D SOTA 更准？</h3>
+<p>Table 2 比较单物体 shape。SAM 3D 在 SA-3DAO 上 F1@0.01 从最强基线 Hi3DGen 的 0.1629 提升到 0.2344，vIoU 从 0.1531 提升到 0.2311，Chamfer 从最好基线 TripoSG 的 0.0844 降到 0.0400，EMD 从 0.2049/0.2057 降到 0.1211。这个结果支持“真实图像对齐数据提升几何准确性”的主张。</p>
+<figure class="fig-wide"><a href="../assets/figures/sam3d/sam3d_fig6_qualitative_comparison.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_fig6_qualitative_comparison.png" alt="图 9 · qualitative comparison。左侧比较单物体 shape，右侧比较场景重建。要看遮挡物体和复杂场景里，SAM 3D 是否能恢复完整物体并放回正确位置。" loading="lazy"></a><figcaption><strong>图 9 · qualitative comparison。</strong>左侧比较单物体 shape，右侧比较场景重建。要看遮挡物体和复杂场景里，SAM 3D 是否能恢复完整物体并放回正确位置。</figcaption></figure>
+<figure class=""><a href="../assets/figures/sam3d/sam3d_table2_shape_quantitative.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_table2_shape_quantitative.png" alt="表 5 · Shape quantitative comparison。SAM 3D 在 SA-3DAO 的 F1、vIoU、Chamfer、EMD 上明显优于基线；但 ULIP 并非最高，提示视觉语义相似度和几何精度不是完全同一个指标。" loading="lazy"></a><figcaption><strong>表 5 · Shape quantitative comparison。</strong>SAM 3D 在 SA-3DAO 的 F1、vIoU、Chamfer、EMD 上明显优于基线；但 ULIP 并非最高，提示视觉语义相似度和几何精度不是完全同一个指标。</figcaption></figure>
+<h3>7.2 Layout：为什么联合生成比 pipeline 拼接更重要？</h3>
+<p>Table 3 比较 layout。SAM 3D joint model 在 SA-3DAO 和 Aria Digital Twin 上均显著优于 Trellis/HY3D + MegaPose/FoundationPose 等 pipeline；例如 SA-3DAO 3D IoU 达 0.4254，ADD-S@0.1 达 0.7232。关键不是单独 pose estimator 失败，而是单图 3D asset 和 pose/layout 相互耦合，pipeline 容易把形状误差传给姿态。</p>
+<figure class="fig-wide"><a href="../assets/figures/sam3d/sam3d_table3_layout_quantitative.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_table3_layout_quantitative.png" alt="表 6 · Layout quantitative comparison。SAM 3D joint model 在 SA-3DAO 与 Aria Digital Twin 上均显著超过 pipeline 组合，支持“shape 与 layout 应联合建模”的观点。" loading="lazy"></a><figcaption><strong>表 6 · Layout quantitative comparison。</strong>SAM 3D joint model 在 SA-3DAO 与 Aria Digital Twin 上均显著超过 pipeline 组合，支持“shape 与 layout 应联合建模”的观点。</figcaption></figure>
+<h3>7.3 Human preference：指标外的“看起来对”是否也更好？</h3>
+<p>Figure 7/8 用人类偏好比较 scene-level、object-level 和 texture。论文报告真实图像上 object/scene 至少 5:1 偏好胜率，scene reconstruction 约 6:1 胜过 prior SOTA。这个证据比纯 Chamfer 更接近用户感知，但也依赖评测集、界面、采样和标注规则；它支持“实用质量更高”，不等价于所有场景都正确。</p>
+<figure class="fig-wide"><a href="../assets/figures/sam3d/sam3d_fig7_fig8_preferences.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_fig7_fig8_preferences.png" alt="图 10 · Preference comparison。左侧是 scene/object reconstruction 的偏好率，右侧是 texture 偏好率。读者应把它看作感知质量证据，而不是替代几何指标。" loading="lazy"></a><figcaption><strong>图 10 · Preference comparison。</strong>左侧是 scene/object reconstruction 的偏好率，右侧是 texture 偏好率。读者应把它看作感知质量证据，而不是替代几何指标。</figcaption></figure>
+<h3>7.4 Ablation：收益来自数据、训练阶段还是偏好对齐？</h3>
+<p>Table 4 是最关键的消融。Pre-training 只有 F1=0.1349；加入 RP-3DO mid-training 后到 0.1705；SFT(MITL-3DO) 到 0.2027；DPO(MITL-3DO) 到 0.2156；再加入 Art-3DO 的 SFT/DPO 最终到 0.2344。这个阶梯式变化说明作者的主张不是“只靠大模型”，而是“合成先验 + 真实对齐 + 偏好优化 + 高质量艺术家数据”逐步贡献。</p>
+<div class="fig-grid"><figure class=""><a href="../assets/figures/sam3d/sam3d_fig9_data_engine.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_fig9_data_engine.png" alt="图 11 · Data engine iterations。Elo 随迭代上升，但单纯扩展 training data 的收益逐渐递减，说明数据质量与阶段设计同样关键。" loading="lazy"></a><figcaption><strong>图 11 · Data engine iterations。</strong>Elo 随迭代上升，但单纯扩展 training data 的收益逐渐递减，说明数据质量与阶段设计同样关键。</figcaption></figure><figure class=""><a href="../assets/figures/sam3d/sam3d_table4_multistage_ablation.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_table4_multistage_ablation.png" alt="表 7 · Multi-stage training ablation。从 pre-training 到 mid-training、SFT、DPO、Art-3DO，每一步都带来累计收益，是论文最重要的因果证据之一。" loading="lazy"></a><figcaption><strong>表 7 · Multi-stage training ablation。</strong>从 pre-training 到 mid-training、SFT、DPO、Art-3DO，每一步都带来累计收益，是论文最重要的因果证据之一。</figcaption></figure></div>
+<figure class="fig-wide"><a href="../assets/figures/sam3d/sam3d_supp_fig20_additional_qualitative.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_supp_fig20_additional_qualitative.png" alt="图 12 · Additional qualitative shape and texture。Supplement 中的大量例子展示了自然图像、zoom-in、SAM 3D 与多个基线的对比；它补充说明主文 Figure 6 不是孤例。" loading="lazy"></a><figcaption><strong>图 12 · Additional qualitative shape and texture。</strong>Supplement 中的大量例子展示了自然图像、zoom-in、SAM 3D 与多个基线的对比；它补充说明主文 Figure 6 不是孤例。</figcaption></figure>
+</section>
+
+<section id="limitations"><h2>8. 局限与启发：如何批判性看待 SAM 3D？</h2>
+<div class="kv-grid"><div class="kv"><b>依赖 mask</b>本文任务以目标 object mask 为输入；完整自动场景解析还需分割/实例选择链路。</div><div class="kv"><b>数据闭环成本</b>MITL/HITL 显著降低建模成本，但论文没有公开完整标注成本、人员配置和质量控制细节。</div><div class="kv"><b>真实物理与可编辑性</b>几何/纹理好看不等于拓扑、材质、UV、物理可用性都满足生产 pipeline。</div><div class="kv"><b>复现门槛</b>代码、权重和 demo 已发布，但论文级数据引擎和大规模训练链路并不等同于完全可复现。</div></div>
+<figure class="fig-wide"><a href="../assets/figures/sam3d/sam3d_supp_fig21_scene_reconstruction.png" target="_blank"><img src="../assets/figures/sam3d/sam3d_supp_fig21_scene_reconstruction.png" alt="图 13 · Scene reconstruction qualitative examples。多房间、商店、农场等场景中，SAM 3D 输出可组合 objects；读者应同时看成功的布局恢复和仍然可能出现的对象缺失/尺度不稳。" loading="lazy"></a><figcaption><strong>图 13 · Scene reconstruction qualitative examples。</strong>多房间、商店、农场等场景中，SAM 3D 输出可组合 objects；读者应同时看成功的布局恢复和仍然可能出现的对象缺失/尺度不稳。</figcaption></figure>
+<div class="socratic"><p class="question">问：如果要把 SAM 3D 用到真实系统，最先验证什么？</p><p class="answer">答：首先验证目标域的 mask 质量、遮挡分布、尺度/相机假设、生成 mesh 的拓扑可用性、纹理与几何一致性，以及多人/多物体交互场景。论文已经证明真实图像 3D 重建可以通过数据闭环显著提升，但部署系统还要面对错误传播和资产可编辑性。</p><div class="takeaway"><strong>Takeaway：</strong>SAM 3D 最值得迁移的思想不是“照抄模型”，而是“用模型生成候选，用人类偏好和 2.5D 对齐把真实图像监督持续放大”。</div></div>
+</section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol>
+<li>Xingyu Chen, Fu-Jen Chu, Pierre Gleize, Kevin J Liang, Alexander Sax, Hao Tang, Weiyao Wang, et al. <em>SAM 3D: 3Dfy Anything in Images</em>. CVPR 2026.</li>
+<li>Meta AI Research publication page：用于摘要、作者、发布说明与项目入口。</li>
+<li>CVF OpenAccess PDF 与 supplemental：用于图 1-9、Table 1-4、Algorithm 1、Supplement 图 10/11/13/14/20/21 的高分辨率 PNG 抽取。</li>
+<li>GitHub facebookresearch/sam-3d-objects：用于代码、demo、权重发布状态说明。图像仅用于学术交流解读；点击正文图片可查看本地 PNG。</li>
+</ol></section>
+</main><footer class="article-footer">生成说明：本文为 CVPR 2026 Best Papers Digest 的单篇学术解读页。所有未在论文/PDF/项目页中找到的信息均标注“论文未说明”；公式已做 MathJax-safe 预检。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">核心贡献</a></li><li><a href="#datasets">数据与任务</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">模型与方法</a></li><li><a href="#training">训练与算力</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#limitations">局限</a></li></ol></div></section>
+<section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>SAM 3D: 3Dfy Anything in Images</dd><dt>Authors</dt><dd>SAM 3D Team; Xingyu Chen, Fu-Jen Chu, Pierre Gleize, Kevin J Liang, Alexander Sax, Hao Tang, Weiyao Wang et al.</dd><dt>Venue</dt><dd>CVPR 2026 · Best Paper Honorable Mention</dd><dt>Project</dt><dd><a href="https://ai.meta.com/sam3d/">ai.meta.com/sam3d</a></dd><dt>Code</dt><dd><a href="https://github.com/facebookresearch/sam-3d-objects">facebookresearch/sam-3d-objects</a></dd><dt>Compute</dt><dd>硬件/训练时长：论文未说明</dd></dl></div></section>
+<section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：teaser</li><li>图 2：模型架构</li><li>图 5：数据引擎</li><li>Algorithm 1：对齐循环</li><li>Table 2-4：主结果与消融</li></ul></div></section>
+<section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">完成：</span>PDF/补充材料图表抽取、公式核对、深读页。</p><p><span class="status-warn">待补：</span>若官方发布 awards press 页面，可把奖项来源从社交/作者页升级为官方新闻。</p></div></section></aside>
+</div></body></html>

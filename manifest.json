@@ -1,0 +1,294 @@
+{
+  "site": "CVPR 2026 Best Papers Digest",
+  "subtitle": "按研究领域浏览 Best Paper / Best Student Paper 获奖论文深读",
+  "generated_date": "2026-06-09",
+  "scope": "best_papers_first",
+  "processing_policy": {
+    "writing": "Paper2Html academic blog; Socratic question→guidance→answer→takeaway; figures are evidence, not decoration",
+    "figures": "High-resolution local PNG extracted from paper PDF, supplementary PDF, or official project/home pages",
+    "missing_info": "论文未说明",
+    "formula_check": "No ASCII control chars, no Math input error literal, balanced $$, local image paths verified"
+  },
+  "verification_sources": {
+    "cvpr_home": "https://cvpr.thecvf.com/",
+    "cvf_openaccess": "https://openaccess.thecvf.com/content/CVPR2026/",
+    "d4rt_project_award": "https://d4rt-paper.github.io/",
+    "native_author_page": "https://wangrc.site/",
+    "nitrogen_author_page": "https://www.yisongyue.com/publication/magne-nitrogen-2026/",
+    "sam3d_meta_page": "https://ai.meta.com/research/publications/sam-3d-3dfy-anything-in-images/",
+    "chordedit_project": "https://chordedit.github.io/",
+    "cvpr_official_social_student_awards": "https://x.com/CVPR/status/2062912282582208847",
+    "chordedit_cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Lu_ChordEdit_One-Step_Low-Energy_Transport_for_Image_Editing_CVPR_2026_paper.html",
+    "chordedit_author_award": "https://cnshiyang.github.io/"
+  },
+  "status_summary": {
+    "completed_pages": 12,
+    "pending_pages": 0,
+    "completed_ids": [
+      "d4rt",
+      "sam3d",
+      "nitrogen",
+      "native",
+      "chordedit",
+      "b3seg",
+      "rgpt",
+      "tttlrm",
+      "mactok",
+      "deltatok",
+      "mspt",
+      "sam3dbody"
+    ],
+    "pending_ids": []
+  },
+  "papers": [
+    {
+      "id": "d4rt",
+      "award": "Best Paper",
+      "title": "Efficiently Reconstructing Dynamic Scenes One D4RT at a Time",
+      "category": "3D & Geometry",
+      "authors": "Chuhan Zhang; Guillaume Le Moing; Skanda Koppula; Ignacio Rocco; Liliane Momeni; Junyu Xie; Shuyang Sun; Rahul Sukthankar; Joëlle K Barral; Raia Hadsell; Zoubin Ghahramani; Andrew Zisserman; Junlin Zhang; Mehdi S. M. Sajjadi",
+      "links": {
+        "project": "https://d4rt-paper.github.io/",
+        "arxiv": "https://arxiv.org/abs/2512.08924",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Zhang_Efficiently_Reconstructing_Dynamic_Scenes_One_D4RT_at_a_Time_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/d4rt.html",
+      "thumbnail": "assets/figures/d4rt_pdf_fig1_teaser.png",
+      "status": "completed_high_quality_rebuild_mathfix",
+      "figures_count": 28,
+      "formula_check": "passed",
+      "short": "D4RT",
+      "topic": "3D & Geometry · Dynamic 4D Reconstruction",
+      "blurb": "用统一 query decoder 把 4D tracking、depth、pose、all-pixels reconstruction 接到同一个 feedforward Transformer。",
+      "tags": "Best Paper 3D Geometry D4RT dynamic scene reconstruction tracking"
+    },
+    {
+      "id": "sam3d",
+      "award": "Best Paper Honorable Mention",
+      "title": "SAM 3D: 3Dfy Anything in Images",
+      "category": "3D & Geometry",
+      "authors": "SAM 3D Team; Jianing Yang; Georgia Gkioxari; Anushka Sagar; Aohan Lin; Bowen Song; Bowen Zhang; Fu-Jen Chu; Hao Tang; Jiawei Liu; Jitendra Malik; Kevin J Liang; Matt Feiszli; Michelle Guo; Pierre Gleize; Piotr Dollár; Alexander Sax; Thibaut Hardin; Weiyao Wang; Xiang Li; Xiaodong Wang; Xingyu Chen; Ziqi Ma",
+      "links": {
+        "project": "https://ai.meta.com/research/publications/sam-3d-3dfy-anything-in-images/",
+        "code": "https://github.com/facebookresearch/sam-3d-objects",
+        "arxiv": "https://arxiv.org/abs/2511.16624"
+      },
+      "page_path": "papers/sam3d.html",
+      "thumbnail": "assets/figures/sam3d/sam3d_thumb.png",
+      "status": "completed",
+      "figures_count": 20,
+      "formula_check": "passed",
+      "short": "SAM 3D",
+      "topic": "3D & Geometry · Foundation Model",
+      "blurb": "从单张自然图像恢复物体 geometry、texture 与 layout，通过 model/human-in-the-loop 数据引擎做真实图像对齐。",
+      "tags": "Honorable 3D Geometry SAM 3D reconstruction texture layout"
+    },
+    {
+      "id": "nitrogen",
+      "award": "Best Paper Honorable Mention",
+      "title": "NitroGen: An Open Foundation Model for Generalist Gaming Agents",
+      "category": "Embodied AI",
+      "authors": "Loïc Magne; Anas Awadalla; Guanzhi Wang; Yinzhen Xu; Joshua Belofsky; Fengyuan Hu; Joohwan Kim; Ludwig Schmidt; Georgia Gkioxari; Jan Kautz; Yisong Yue; Yejin Choi; Yuke Zhu; Linxi Jim Fan",
+      "links": {
+        "project": "https://nitrogen.minedojo.org/",
+        "code": "https://github.com/MineDojo/NitroGen",
+        "arxiv": "https://arxiv.org/abs/2601.02427"
+      },
+      "page_path": "papers/nitrogen.html",
+      "thumbnail": "assets/figures/nitrogen/nitrogen_fig1_overview_pdf_crop.png",
+      "status": "completed",
+      "figures_count": 13,
+      "formula_check": "passed",
+      "short": "NitroGen",
+      "topic": "Embodied AI · Gaming Agents",
+      "blurb": "从公开视频中恢复 action labels，训练跨商业游戏的 vision-action foundation policy。",
+      "tags": "Honorable Embodied AI NitroGen gaming agents video action foundation model"
+    },
+    {
+      "id": "native",
+      "award": "Best Student Paper",
+      "title": "Native and Compact Structured Latents for 3D Generation",
+      "category": "3D & Geometry",
+      "authors": "Jianfeng Xiang; Xiaoxue Chen; Sicheng Xu; Ruicheng Wang; Zelong Lv; Yu Deng; Hongyuan Zhu; Yue Dong; Hao Zhao; Nicholas Jing Yuan; Jiaolong Yang",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2512.14692",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Xiang_Native_and_Compact_Structured_Latents_for_3D_Generation_CVPR_2026_paper.html",
+        "author_page": "https://wangrc.site/"
+      },
+      "page_path": "papers/native.html",
+      "thumbnail": "assets/figures/native/native_thumb.png",
+      "status": "completed_high_quality_rebuild",
+      "figures_count": 18,
+      "formula_check": "passed",
+      "missing_info": "训练总时长、steps/epochs、完整 LR schedule、采样步数等已标注论文未说明",
+      "short": "Native",
+      "topic": "3D & Geometry · Structured Latents",
+      "blurb": "用 O-Voxel 保留复杂拓扑与 PBR 材质，再用 SC-VAE 压成 compact SLat，支撑约 4B flow-matching 3D 生成模型。",
+      "tags": "Student 3D Geometry Native O-Voxel structured latents PBR flow"
+    },
+    {
+      "id": "chordedit",
+      "award": "Best Student Paper Honorable Mention",
+      "title": "ChordEdit: One-Step Low-Energy Transport for Image Editing",
+      "category": "Image Editing",
+      "authors": "Liangsi Lu; Xuhang Chen; Minzhe Guo; Shichu Li; Jingchao Wang; Yang Shi",
+      "links": {
+        "project": "https://chordedit.github.io/",
+        "code": "https://github.com/ChordEdit/ChordEdit",
+        "arxiv": "https://arxiv.org/abs/2602.19083"
+      },
+      "page_path": "papers/chordedit.html",
+      "thumbnail": "assets/figures/chordedit/chordedit_fig1_teaser_thumb.png",
+      "status": "completed",
+      "figures_count": 22,
+      "formula_check": "passed",
+      "pdf": "https://openaccess.thecvf.com/content/CVPR2026/papers/Lu_ChordEdit_One-Step_Low-Energy_Transport_for_Image_Editing_CVPR_2026_paper.pdf",
+      "supplement": "https://openaccess.thecvf.com/content/CVPR2026/supplemental/Lu_ChordEdit_One-Step_Low-Energy_CVPR_2026_supplemental.pdf",
+      "notes": "ChordEdit deep-dive page with PDF/Supp/project figures and MathJax formula preflight.",
+      "short": "ChordEdit",
+      "topic": "Image Editing · Transport / One-step T2I Editing",
+      "blurb": "用低能量 Chord Control Field 替代 naive drift difference，实现 training-free、inversion-free 的 one-step 实时图像编辑。",
+      "tags": "Student Honorable Editing ChordEdit image editing transport"
+    },
+    {
+      "id": "b3seg",
+      "award": "Top Paper (candidate)",
+      "title": "B³-Seg: Camera-Free, Training-Free 3DGS Segmentation via Analytic EIG and Beta–Bernoulli Bayesian Updates",
+      "category": "3DGS / Segmentation",
+      "short": "B³-Seg",
+      "topic": "3DGS Segmentation · Bayesian Active Sampling",
+      "blurb": "把 training-free / camera-free 的 3DGS 分割重写成 Beta–Bernoulli 贝叶斯更新 + 解析 EIG 主动视角选择，并证明贪心选视角有 (1−1/e) 近似最优界。",
+      "tags": "Top Paper candidate 3DGS Segmentation Bayesian EIG submodular training-free camera-free",
+      "authors": "Hiromichi Kamata; Samuel Arthur Munro; Fuminori Homma",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2602.17134"
+      },
+      "page_path": "papers/b3seg.html",
+      "thumbnail": "assets/figures/b3seg/b3seg_fig1_teaser.png",
+      "status": "completed",
+      "figures_count": 12,
+      "formula_check": "passed"
+    },
+    {
+      "id": "rgpt",
+      "award": "Top Paper (candidate)",
+      "title": "4D-RGPT: Toward Region-level 4D Understanding via Perceptual Distillation",
+      "category": "Multimodal LLM / 4D",
+      "short": "4D-RGPT",
+      "topic": "Multimodal LLM · Region-level 4D VQA",
+      "blurb": "用 Perceptual 4D Distillation 把冻结 4D 专家的潜在 + 显式表征蒸馏进 MLLM 主干，配时间戳编码与区域级提示，做深度感知的 4D 视频问答；并提出 R4D-Bench。",
+      "tags": "Top Paper candidate Multimodal LLM 4D VQA distillation NVIDIA region-level depth temporal R4D-Bench",
+      "authors": "Chiao-An Yang; Ryo Hachiuma; Sifei Liu; Subhashree Radhakrishnan; Raymond A. Yeh; Yu-Chiang Frank Wang; Min-Hung Chen",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2512.17012",
+        "code": "https://github.com/NVlabs/4D-RGPT"
+      },
+      "page_path": "papers/rgpt.html",
+      "thumbnail": "assets/figures/rgpt/rgpt_fig1_overview.png",
+      "status": "completed",
+      "figures_count": 9,
+      "formula_check": "passed"
+    },
+    {
+      "id": "tttlrm",
+      "award": "Top Paper (candidate)",
+      "title": "tttLRM: Test-Time Training for Long Context and Autoregressive 3D Reconstruction",
+      "category": "3D Reconstruction / LRM",
+      "short": "tttLRM",
+      "topic": "Large Reconstruction Model · Test-Time Training",
+      "blurb": "把跨视角记忆从注意力 KV cache 换成被梯度更新的 fast weights（TTT/LaCT），实现线性复杂度、长上下文（64 视角）、高分辨率且自回归流式的前馈 3DGS 重建。",
+      "tags": "Top Paper candidate 3D Reconstruction LRM test-time training TTT LaCT fast weights long context autoregressive Adobe",
+      "authors": "Chen Wang; Hao Tan; Wang Yifan; Zhiqin Chen; Yuheng Liu; Kalyan Sunkavalli; Sai Bi; Lingjie Liu; Yiwei Hu",
+      "links": {
+        "project": "https://cwchenwang.github.io/tttLRM",
+        "arxiv": "https://arxiv.org/abs/2602.20160",
+        "code": "https://github.com/cwchenwang/tttLRM"
+      },
+      "page_path": "papers/tttlrm.html",
+      "thumbnail": "assets/figures/tttlrm/tttlrm_fig1_teaser.png",
+      "status": "completed",
+      "figures_count": 11,
+      "formula_check": "passed"
+    },
+    {
+      "id": "mactok",
+      "award": "Top Paper (candidate)",
+      "title": "MacTok: Robust Continuous Tokenization for Image Generation",
+      "category": "Image Tokenizer / Generation",
+      "short": "MacTok",
+      "topic": "Continuous Tokenizer · Posterior Collapse",
+      "blurb": "用随机 + DINO 语义掩码重建和全局/局部表征对齐，防止少 token 连续 tokenizer 的 posterior collapse，64/128 token 即取得 ImageNet SOTA gFID。",
+      "tags": "Top Paper candidate Image Tokenizer generation posterior collapse masking DINO alignment 1D continuous VAE Fudan",
+      "authors": "Guanghao Li; Yuxiang Yan; Xin Gao; Hengyu Zeng; Jiaoyang Ruan; Junpeng Ma; Haoyu Albert Wang; Jian Pu",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2603.29634"
+      },
+      "page_path": "papers/mactok.html",
+      "thumbnail": "assets/figures/mactok/mactok_fig1_masking.png",
+      "status": "completed",
+      "figures_count": 9,
+      "formula_check": "passed"
+    },
+    {
+      "id": "deltatok",
+      "award": "Top Paper (candidate)",
+      "title": "A Frame is Worth One Token: Efficient Generative World Modeling with Delta Tokens",
+      "category": "World Model / Video",
+      "short": "Delta Tokens",
+      "topic": "Generative World Model · Delta Tokens",
+      "blurb": "用 Best-of-Many 单前向出多样未来、再把相邻帧 VFM 特征差压成一个 delta token（视频 3D→1D，1024× 压缩），让生成式世界模型既多样又便宜。",
+      "tags": "Top Paper candidate world model video Best-of-Many delta token VFM feature space mode averaging Amazon generative",
+      "authors": "Tommie Kerssies; Gabriele Berton; Ju He; Qihang Yu; Wufei Ma; Daan de Geus; Gijs Dubbelman; Liang-Chieh Chen",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2604.04913",
+        "code": "https://github.com/amazon-far/deltatok"
+      },
+      "page_path": "papers/deltatok.html",
+      "thumbnail": "assets/figures/deltatok/deltatok_fig1_outline.png",
+      "status": "completed",
+      "figures_count": 9,
+      "formula_check": "passed"
+    },
+    {
+      "id": "mspt",
+      "award": "Top Paper (candidate)",
+      "title": "MSPT: Efficient Large-Scale Physical Modeling via Parallelized Multi-Scale Attention",
+      "category": "Neural PDE / Physics",
+      "short": "MSPT",
+      "topic": "Neural PDE · Multi-Scale Attention",
+      "blurb": "用 ball-tree 切空间连续 patch、patch 内做局部注意力 + 对池化 supernode 做全局注意力，复杂度线性项主导，单卡扩展到百万点物理仿真并取得 SOTA 精度。",
+      "tags": "Top Paper candidate Neural PDE physics multi-scale attention ball tree supernode pooling efficient transformer million points Amsterdam",
+      "authors": "Pedro M. P. Curvo; Jan-Willem van de Meent; Maksim Zhdanov",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2512.01738",
+        "code": "https://github.com/pedrocurvo/mspt"
+      },
+      "page_path": "papers/mspt.html",
+      "thumbnail": "assets/figures/mspt/mspt_fig1.png",
+      "status": "completed",
+      "figures_count": 11,
+      "formula_check": "passed"
+    },
+    {
+      "id": "sam3dbody",
+      "award": "Top Paper (candidate)",
+      "title": "SAM 3D Body: Robust Full-Body Human Mesh Recovery",
+      "category": "Human Mesh Recovery / Pose Estimation",
+      "short": "SAM 3D Body",
+      "topic": "Human Mesh Recovery · Promptable Enc–Dec",
+      "blurb": "共享编码器 + 身体/手部双解码器拆解优化冲突，用手腕+肘部 re-prompt 缝回一致全身；配 VLM 数据引擎与多阶段网格拟合标注（700 万图），成为首个身手两端同时立住的单模型。",
+      "tags": "Top Paper candidate Human Mesh Recovery pose estimation promptable two-way decoder Momentum Human Rig data engine Meta MHR",
+      "authors": "Xitong Yang; Devansh Kukreja; Don Pinkus; Anushka Sagar; Taosha Fan; Jinhyung Park; Soyong Shin; Jinkun Cao; Jiawei Liu; Nicolas Ugrinovic; Matt Feiszli; Jitendra Malik; Piotr Dollar; Kris Kitani",
+      "links": {
+        "project": "https://ai.meta.com/sam3d",
+        "code": "https://github.com/facebookresearch/sam-3d-body",
+        "arxiv": "https://arxiv.org/abs/2602.15989"
+      },
+      "page_path": "papers/sam3dbody.html",
+      "thumbnail": "assets/figures/sam3dbody/sam3dbody_fig1.png",
+      "status": "completed",
+      "figures_count": 13,
+      "formula_check": "passed"
+    }
+  ]
+}

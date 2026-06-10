@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CVPR 2026 Best Papers Digest</title>
+<meta name="description" content="按研究领域浏览 CVPR 2026 Best Paper / Best Student Paper 深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head><body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>按研究领域浏览获奖论文 · Best Paper first</small></p></div><nav class="top-nav"><a href="#papers">论文</a><a href="manifest.json">manifest</a><a href="assets/figures_manifest.json">figures manifest</a></nav></div></header>
+<main class="home">
+<section class="home-panel">
+  <div class="home-hero">
+    <div>
+      <div class="tags"><span class="tag orange">CVPR 2026 Awards</span><span class="tag">Research Blog</span><span class="tag green">PDF figures first</span></div>
+      <h1 style="margin-top:14px">先做 Best Papers：从获奖论文开始读 CVPR 2026</h1>
+      <p class="lead" style="margin-top:14px">本专题优先收录已公开的 Best Paper、Best Paper Honorable Mention、Best Student Paper 与 Best Student Paper Honorable Mention。首页只做轻量导航；每篇论文页按论文原文、PDF、Supplement 与项目主页做苏格拉底式深读，重点回答 motivation、dataset、pipeline、model、training、experiments、ablations 与 limitations。</p>
+      <p class="source-note">奖项状态按项目页、作者/机构公开页面、CVPR/CVF 公开入口与官方社交媒体记录在 manifest 中交叉维护；若 CVPR awards press 页面更新，后续以 manifest 同步。所有 completed 页面均使用本地 PNG 图表。</p>
+    </div>
+    <figure><a href="assets/figures/native/native_fig1_teaser.png" target="_blank"><img src="assets/figures/native/native_fig1_teaser.png" alt="Native teaser" loading="lazy"></a><figcaption><strong>首屏图。</strong>Native 是 Best Student Paper；站点已补齐 ChordEdit 单篇深读与 27 张本地图表素材，按论文逐篇推进继续扩展。</figcaption></figure>
+  </div>
+</section>
+<section id="papers" class="home-panel" style="margin-top:18px">
+  <h2>按话题浏览</h2>
+  <div class="filterbar"><button class="active" data-filter="all">All</button><button data-filter="Best Paper">Best Paper</button><button data-filter="Honorable">Honorable Mention</button><button data-filter="Student">Student Paper</button><button data-filter="3D">3D & Geometry</button><button data-filter="Embodied">Embodied AI</button><button data-filter="Editing">Image Editing</button></div>
+  <input id="search" class="search" type="search" placeholder="搜索标题、作者、关键词，例如 D4RT / SAM 3D / Native / NitroGen / ChordEdit">
+  <!-- PAPERS:START -->
+  <h2 style="margin-top:26px">3D &amp; Geometry</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Best Paper 3D Geometry D4RT dynamic scene reconstruction tracking d4rt completed">
+      <img src="assets/figures/d4rt_pdf_fig1_teaser.png" alt="D4RT thumbnail" loading="lazy">
+      <div><h3>D4RT: Efficiently Reconstructing Dynamic Scenes One D4RT at a Time</h3><p><strong>Best Paper.</strong> 用统一 query decoder 把 4D tracking、depth、pose、all-pixels reconstruction 接到同一个 feedforward Transformer。</p><p class="mini">领域：3D &amp; Geometry · Dynamic 4D Reconstruction</p><div class="card-links"><a href="https://d4rt-paper.github.io/">Project</a><a href="https://arxiv.org/abs/2512.08924">arXiv</a><a href="papers/d4rt.html">Blog Digest</a></div></div>
+    </article>
+    <article class="paper-card" data-tags="Honorable 3D Geometry SAM 3D reconstruction texture layout sam3d completed">
+      <img src="assets/figures/sam3d/sam3d_thumb.png" alt="SAM 3D thumbnail" loading="lazy">
+      <div><h3>SAM 3D: 3Dfy Anything in Images</h3><p><strong>Best Paper Honorable Mention.</strong> 从单张自然图像恢复物体 geometry、texture 与 layout，通过 model/human-in-the-loop 数据引擎做真实图像对齐。</p><p class="mini">领域：3D &amp; Geometry · Foundation Model</p><div class="card-links"><a href="https://ai.meta.com/research/publications/sam-3d-3dfy-anything-in-images/">Project</a><a href="https://github.com/facebookresearch/sam-3d-objects">Code</a><a href="papers/sam3d.html">Blog Digest</a></div></div>
+    </article>
+    <article class="paper-card" data-tags="Student 3D Geometry Native O-Voxel structured latents PBR flow native completed">
+      <img src="assets/figures/native/native_thumb.png" alt="Native thumbnail" loading="lazy">
+      <div><h3>Native and Compact Structured Latents for 3D Generation</h3><p><strong>Best Student Paper.</strong> 用 O-Voxel 保留复杂拓扑与 PBR 材质，再用 SC-VAE 压成 compact SLat，支撑约 4B flow-matching 3D 生成模型。</p><p class="mini">领域：3D &amp; Geometry · Structured Latents</p><div class="card-links"><a href="https://arxiv.org/abs/2512.14692">arXiv</a><a href="https://openaccess.thecvf.com/content/CVPR2026/html/Xiang_Native_and_Compact_Structured_Latents_for_3D_Generation_CVPR_2026_paper.html">CVF</a><a href="papers/native.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+  <h2 style="margin-top:26px">Embodied AI</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Honorable Embodied AI NitroGen gaming agents video action foundation model nitrogen completed">
+      <img src="assets/figures/nitrogen/nitrogen_fig1_overview_pdf_crop.png" alt="NitroGen thumbnail" loading="lazy">
+      <div><h3>NitroGen: An Open Foundation Model for Generalist Gaming Agents</h3><p><strong>Best Paper Honorable Mention.</strong> 从公开视频中恢复 action labels，训练跨商业游戏的 vision-action foundation policy。</p><p class="mini">领域：Embodied AI · Gaming Agents</p><div class="card-links"><a href="https://nitrogen.minedojo.org/">Project</a><a href="https://github.com/MineDojo/NitroGen">Code</a><a href="papers/nitrogen.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+  <h2 style="margin-top:26px">Image Editing</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Student Honorable Editing ChordEdit image editing transport chordedit completed">
+      <img src="assets/figures/chordedit/chordedit_fig1_teaser_thumb.png" alt="ChordEdit thumbnail" loading="lazy">
+      <div><h3>ChordEdit: One-Step Low-Energy Transport for Image Editing</h3><p><strong>Best Student Paper Honorable Mention.</strong> 用低能量 Chord Control Field 替代 naive drift difference，实现 training-free、inversion-free 的 one-step 实时图像编辑。</p><p class="mini">领域：Image Editing · Transport / One-step T2I Editing</p><div class="card-links"><a href="https://chordedit.github.io/">Project</a><a href="https://github.com/ChordEdit/ChordEdit">Code</a><a href="papers/chordedit.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+  <h2 style="margin-top:26px">3DGS / Segmentation</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Top Paper candidate 3DGS Segmentation Bayesian EIG submodular training-free camera-free b3seg completed">
+      <img src="assets/figures/b3seg/b3seg_fig1_teaser.png" alt="B³-Seg thumbnail" loading="lazy">
+      <div><h3>B³-Seg: Camera-Free, Training-Free 3DGS Segmentation via Analytic EIG and Beta–Bernoulli Bayesian Updates</h3><p><strong>Top Paper (candidate).</strong> 把 training-free / camera-free 的 3DGS 分割重写成 Beta–Bernoulli 贝叶斯更新 + 解析 EIG 主动视角选择，并证明贪心选视角有 (1−1/e) 近似最优界。</p><p class="mini">领域：3DGS Segmentation · Bayesian Active Sampling</p><div class="card-links"><a href="https://arxiv.org/abs/2602.17134">arXiv</a><a href="papers/b3seg.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+  <h2 style="margin-top:26px">Multimodal LLM / 4D</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Top Paper candidate Multimodal LLM 4D VQA distillation NVIDIA region-level depth temporal R4D-Bench rgpt completed">
+      <img src="assets/figures/rgpt/rgpt_fig1_overview.png" alt="4D-RGPT thumbnail" loading="lazy">
+      <div><h3>4D-RGPT: Toward Region-level 4D Understanding via Perceptual Distillation</h3><p><strong>Top Paper (candidate).</strong> 用 Perceptual 4D Distillation 把冻结 4D 专家的潜在 + 显式表征蒸馏进 MLLM 主干，配时间戳编码与区域级提示，做深度感知的 4D 视频问答；并提出 R4D-Bench。</p><p class="mini">领域：Multimodal LLM · Region-level 4D VQA</p><div class="card-links"><a href="https://github.com/NVlabs/4D-RGPT">Code</a><a href="https://arxiv.org/abs/2512.17012">arXiv</a><a href="papers/rgpt.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+  <h2 style="margin-top:26px">3D Reconstruction / LRM</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Top Paper candidate 3D Reconstruction LRM test-time training TTT LaCT fast weights long context autoregressive Adobe tttlrm completed">
+      <img src="assets/figures/tttlrm/tttlrm_fig1_teaser.png" alt="tttLRM thumbnail" loading="lazy">
+      <div><h3>tttLRM: Test-Time Training for Long Context and Autoregressive 3D Reconstruction</h3><p><strong>Top Paper (candidate).</strong> 把跨视角记忆从注意力 KV cache 换成被梯度更新的 fast weights（TTT/LaCT），实现线性复杂度、长上下文（64 视角）、高分辨率且自回归流式的前馈 3DGS 重建。</p><p class="mini">领域：Large Reconstruction Model · Test-Time Training</p><div class="card-links"><a href="https://cwchenwang.github.io/tttLRM">Project</a><a href="https://github.com/cwchenwang/tttLRM">Code</a><a href="papers/tttlrm.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+  <h2 style="margin-top:26px">Image Tokenizer / Generation</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Top Paper candidate Image Tokenizer generation posterior collapse masking DINO alignment 1D continuous VAE Fudan mactok completed">
+      <img src="assets/figures/mactok/mactok_fig1_masking.png" alt="MacTok thumbnail" loading="lazy">
+      <div><h3>MacTok: Robust Continuous Tokenization for Image Generation</h3><p><strong>Top Paper (candidate).</strong> 用随机 + DINO 语义掩码重建和全局/局部表征对齐，防止少 token 连续 tokenizer 的 posterior collapse，64/128 token 即取得 ImageNet SOTA gFID。</p><p class="mini">领域：Continuous Tokenizer · Posterior Collapse</p><div class="card-links"><a href="https://arxiv.org/abs/2603.29634">arXiv</a><a href="papers/mactok.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+  <h2 style="margin-top:26px">World Model / Video</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Top Paper candidate world model video Best-of-Many delta token VFM feature space mode averaging Amazon generative deltatok completed">
+      <img src="assets/figures/deltatok/deltatok_fig1_outline.png" alt="Delta Tokens thumbnail" loading="lazy">
+      <div><h3>Delta Tokens: A Frame is Worth One Token: Efficient Generative World Modeling with Delta Tokens</h3><p><strong>Top Paper (candidate).</strong> 用 Best-of-Many 单前向出多样未来、再把相邻帧 VFM 特征差压成一个 delta token（视频 3D→1D，1024× 压缩），让生成式世界模型既多样又便宜。</p><p class="mini">领域：Generative World Model · Delta Tokens</p><div class="card-links"><a href="https://github.com/amazon-far/deltatok">Code</a><a href="https://arxiv.org/abs/2604.04913">arXiv</a><a href="papers/deltatok.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+  <h2 style="margin-top:26px">Neural PDE / Physics</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Top Paper candidate Neural PDE physics multi-scale attention ball tree supernode pooling efficient transformer million points Amsterdam mspt completed">
+      <img src="assets/figures/mspt/mspt_fig1.png" alt="MSPT thumbnail" loading="lazy">
+      <div><h3>MSPT: Efficient Large-Scale Physical Modeling via Parallelized Multi-Scale Attention</h3><p><strong>Top Paper (candidate).</strong> 用 ball-tree 切空间连续 patch、patch 内做局部注意力 + 对池化 supernode 做全局注意力，复杂度线性项主导，单卡扩展到百万点物理仿真并取得 SOTA 精度。</p><p class="mini">领域：Neural PDE · Multi-Scale Attention</p><div class="card-links"><a href="https://github.com/pedrocurvo/mspt">Code</a><a href="https://arxiv.org/abs/2512.01738">arXiv</a><a href="papers/mspt.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+  <h2 style="margin-top:26px">Human Mesh Recovery / Pose Estimation</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Top Paper candidate Human Mesh Recovery pose estimation promptable two-way decoder Momentum Human Rig data engine Meta MHR sam3dbody completed">
+      <img src="assets/figures/sam3dbody/sam3dbody_fig1.png" alt="SAM 3D Body thumbnail" loading="lazy">
+      <div><h3>SAM 3D Body: Robust Full-Body Human Mesh Recovery</h3><p><strong>Top Paper (candidate).</strong> 共享编码器 + 身体/手部双解码器拆解优化冲突，用手腕+肘部 re-prompt 缝回一致全身；配 VLM 数据引擎与多阶段网格拟合标注（700 万图），成为首个身手两端同时立住的单模型。</p><p class="mini">领域：Human Mesh Recovery · Promptable Enc–Dec</p><div class="card-links"><a href="https://ai.meta.com/sam3d">Project</a><a href="https://github.com/facebookresearch/sam-3d-body">Code</a><a href="papers/sam3dbody.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+<!-- PAPERS:END -->
+</section>
+<section class="home-panel" style="margin-top:18px">
+  <h2>处理状态</h2>
+  <div class="table-wrap"><table><thead><tr><th>论文</th><th>奖项</th><th>类别</th><th>状态</th><th>素材/核验</th><th>阅读</th></tr></thead><tbody>
+  <!-- STATUS:START -->
+  <tr><td>D4RT</td><td>Best Paper</td><td>3D &amp; Geometry</td><td>完成</td><td>26 图 · 2 表 · 公式passed</td><td><a href="papers/d4rt.html">Blog Digest</a></td></tr>
+  <tr><td>SAM 3D</td><td>Best Paper Honorable Mention</td><td>3D &amp; Geometry</td><td>完成</td><td>16 图 · 4 表 · 公式passed</td><td><a href="papers/sam3d.html">Blog Digest</a></td></tr>
+  <tr><td>NitroGen</td><td>Best Paper Honorable Mention</td><td>Embodied AI</td><td>完成</td><td>10 图 · 3 表 · 公式passed</td><td><a href="papers/nitrogen.html">Blog Digest</a></td></tr>
+  <tr><td>Native</td><td>Best Student Paper</td><td>3D &amp; Geometry</td><td>完成</td><td>14 图 · 4 表 · 公式passed</td><td><a href="papers/native.html">Blog Digest</a></td></tr>
+  <tr><td>ChordEdit</td><td>Best Student Paper Honorable Mention</td><td>Image Editing</td><td>完成</td><td>18 图 · 4 表 · 公式passed</td><td><a href="papers/chordedit.html">Blog Digest</a></td></tr>
+  <tr><td>B³-Seg</td><td>Top Paper (candidate)</td><td>3DGS / Segmentation</td><td>完成</td><td>5 图 · 7 表 · 公式passed</td><td><a href="papers/b3seg.html">Blog Digest</a></td></tr>
+  <tr><td>4D-RGPT</td><td>Top Paper (candidate)</td><td>Multimodal LLM / 4D</td><td>完成</td><td>5 图 · 4 表 · 公式passed</td><td><a href="papers/rgpt.html">Blog Digest</a></td></tr>
+  <tr><td>tttLRM</td><td>Top Paper (candidate)</td><td>3D Reconstruction / LRM</td><td>完成</td><td>5 图 · 6 表 · 公式passed</td><td><a href="papers/tttlrm.html">Blog Digest</a></td></tr>
+  <tr><td>MacTok</td><td>Top Paper (candidate)</td><td>Image Tokenizer / Generation</td><td>完成</td><td>5 图 · 4 表 · 公式passed</td><td><a href="papers/mactok.html">Blog Digest</a></td></tr>
+  <tr><td>Delta Tokens</td><td>Top Paper (candidate)</td><td>World Model / Video</td><td>完成</td><td>6 图 · 3 表 · 公式passed</td><td><a href="papers/deltatok.html">Blog Digest</a></td></tr>
+  <tr><td>MSPT</td><td>Top Paper (candidate)</td><td>Neural PDE / Physics</td><td>完成</td><td>6 图 · 5 表 · 公式passed</td><td><a href="papers/mspt.html">Blog Digest</a></td></tr>
+  <tr><td>SAM 3D Body</td><td>Top Paper (candidate)</td><td>Human Mesh Recovery / Pose Estimation</td><td>完成</td><td>6 图 · 7 表 · 公式passed</td><td><a href="papers/sam3dbody.html">Blog Digest</a></td></tr>
+<!-- STATUS:END -->
+  </tbody></table></div>
+</section>
+<footer class="home-panel" style="margin-top:18px"><p class="source-note">数据来源：CVPR/CVF 公开入口、CVF OpenAccess、论文 PDF / Supplement、项目主页、作者/机构页面。生成日期：2026-06-09。本地 manifest：<a href="manifest.json">manifest.json</a>；图表 manifest：<a href="assets/figures_manifest.json">assets/figures_manifest.json</a>。</p></footer>
+</main>
+<script>
+const buttons=[...document.querySelectorAll('.filterbar button')];const cards=[...document.querySelectorAll('.paper-card')];const search=document.getElementById('search');let current='all';function apply(){const q=(search.value||'').toLowerCase();cards.forEach(c=>{const tags=c.dataset.tags;const text=c.innerText.toLowerCase();const okFilter=current==='all'||tags.includes(current);const okSearch=!q||text.includes(q)||tags.toLowerCase().includes(q);c.style.display=(okFilter&&okSearch)?'grid':'none';})}buttons.forEach(b=>b.onclick=()=>{buttons.forEach(x=>x.classList.remove('active'));b.classList.add('active');current=b.dataset.filter;apply();});search.addEventListener('input',apply);
+</script>
+</body></html>

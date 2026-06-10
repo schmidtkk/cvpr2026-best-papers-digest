@@ -1,0 +1,14 @@
+# Working files — not part of the deployed static site.
+# (Trailing inline comments are NOT allowed in .gitignore — keep notes on their own lines.)
+
+# Third-party paper PDFs (copyright); used only for figure/table extraction
+sources/
+
+# Local skill runtime / lightmem / session state (may appear in subdirs too)
+.claude/
+
+# Browser-automation artifacts
+.playwright-mcp/
+
+*.log
+.DS_Store

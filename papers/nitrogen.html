@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NitroGen 深读：互联网游戏视频怎样变成通用具身智能的行动数据？</title>
+<meta name="description" content="CVPR 2026 Best Papers Digest · NitroGen 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head><body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Best Paper / Honorable Mention · 按论文原文逐篇深读</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#datasets">数据</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; Best Paper Honorable Mention &gt; NitroGen 深读</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">06</span><span class="month">Jun</span></div>
+<h1 id="paper-title">NitroGen 深读：互联网游戏视频怎样变成通用具身智能的行动数据？</h1>
+<div class="article-meta"><span>CVPR 2026 Best Paper Honorable Mention</span><span>Embodied AI / Gaming Agents</span><span>NVIDIA · Stanford · Caltech · UChicago · UT Austin</span><span>基于 CVF PDF / Supplement / 项目主页</span></div>
+<div class="tags"><span class="tag">Vision-Action Foundation Model</span><span class="tag">Internet-scale Dataset</span><span class="tag">Behavior Cloning</span><span class="tag">Flow Matching</span><span class="tag">Game Agents</span></div></header>
+<main class="content">
+<p id="abstract" class="lead"><strong>导读。</strong>NitroGen 真正要回答的问题不是“模型能不能玩游戏”，而是：如果具身智能也想复用视觉/语言模型的 scaling 经验，能否从互联网视频里自动恢复足够多、足够准的 action labels？论文给出的回答是一个三件套：从公开 gameplay videos 中抽取动作标签，构造可跨商业游戏评测的 universal harness，再用统一 vision-action policy 做大规模行为克隆。核心结论要谨慎读：它证明了大规模 noisy internet data 可以训练出可迁移的 fast-reacting policy，但还不是一个能长期规划、听语言指令、端到端通关的游戏智能体。</p>
+
+<div class="hero-split"><div class="hero-card"><p><strong>核心问题。</strong>LLM 和视觉模型的 scaling 依赖海量可监督数据；机器人和游戏 agent 的动作数据却昂贵、稀缺、接口不统一。NitroGen 把“玩家把手柄操作叠在直播/录像画面上”这一互联网副产物转化为 supervision source。</p><p><strong>一句话贡献。</strong>它把 video-action dataset、benchmark harness 和 500M 级 vision-action policy 放在同一个闭环里检验：数据能不能支撑预训练，预训练能不能提升 unseen games 的下游微调。</p></div><figure class=""><a href="../assets/figures/nitrogen/nitrogen_fig1_overview_pdf_crop.png" target="_blank"><img src="../assets/figures/nitrogen/nitrogen_fig1_overview_pdf_crop.png" alt="图 1 · NitroGen 总览。左边是 universal simulator，中间是 multi-game foundation agent，右边是 internet-scale video-action dataset。读者应重点看这三块的闭环：没有动作标签，就无法行为克隆；没有统一 harness，就无法评测跨游戏泛化。" loading="lazy"></a><figcaption><strong>图 1 · NitroGen 总览。</strong>左边是 universal simulator，中间是 multi-game foundation agent，右边是 internet-scale video-action dataset。读者应重点看这三块的闭环：没有动作标签，就无法行为克隆；没有统一 harness，就无法评测跨游戏泛化。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 先问核心问题：具身智能为什么缺“互联网规模”的行动数据？</h2>
+<p>视觉和语言模型可以从网页、图像和文本中获得大规模监督信号，但具身 agent 的核心监督是“在某个 observation 下采取什么 action”。传统路线要么依赖专门模拟器和手工奖励，要么依赖人工 demonstration，二者都难以跨上千个环境扩展。NitroGen 观察到一个常被忽略的数据源：很多 gameplay 视频自带 gamepad overlay，画面角落实时显示玩家按键和摇杆位置。</p>
+<div class="socratic"><p class="question">问：为什么这比“直接从视频学动作”更关键？</p><p class="guide">引导：视频里有画面，但没有 action label；没有 action，behavior cloning 就退化成模仿视觉结果，而不是学会控制。</p><p class="answer">答：overlay 把动作从不可见变量变成可识别图像区域。NitroGen 的关键不是发明一个新游戏 simulator，而是把公开视频变成 frame-level observation-action pairs，从而绕过手工采集 action logs 的瓶颈。</p><div class="takeaway"><strong>Takeaway：</strong>这篇论文最值得读的不是“会玩哪些游戏”，而是“互联网视频能否变成具身学习的数据基础设施”。</div></div>
+</section>
+
+<section id="contribution"><h2>2. 整体贡献：作者明确提出了什么，新意在哪里？</h2>
+<p>论文把贡献明确拆成三部分：action-labeled internet-scale dataset、multi-game evaluation suite、以及大规模 behavior-cloning 预训练模型。读者可以进一步推断的启发是：具身智能的 scaling 可能不必只等真实机器人数据，也可以先在可交互、规则多样、动作密集的视频游戏世界中验证。</p>
+<div class="table-wrap"><table><caption><strong>表 1.</strong> NitroGen 的贡献与证据链。这里区分作者主张和读者能进一步推断的启发。</caption><thead><tr><th>模块</th><th>作者明确提出</th><th>论文证据</th><th>不要过度外推</th></tr></thead><tbody>
+<tr><td>Video-action dataset</td><td>从公开 gameplay videos 中自动抽取 player actions，形成 40,000 小时、超过 1,000 个游戏的数据。</td><td>Fig. 2 展示 action extraction pipeline；Fig. 3 给出小时数与类型分布。</td><td>这不是无噪声 ground-truth log；overlay 延迟、解析误差和手柄映射差异仍存在。</td></tr>
+<tr><td>Universal harness</td><td>用 Gymnasium API 包装商业游戏，统一 observation/action interface。</td><td>Fig. 1 左侧与正文 2.2 节说明 frame-by-frame control。</td><td>论文把 real-time / asynchronous deployment 留给未来工作。</td></tr>
+<tr><td>Vision-action policy</td><td>训练 500M 级模型，从 256×256 RGB frame 预测 16-step gamepad action chunk。</td><td>Fig. 5/7 展示预训练和下游微调收益。</td><td>它是 system-1 fast-reacting sensory model，不是长期规划 agent。</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="datasets"><h2>3. 数据集与任务：模型到底看到了什么？</h2>
+<p>NitroGen 的数据构建从 71,000 小时 raw videos 开始，经过动作密度过滤后保留 40,000 小时；数据覆盖超过 1,000 个游戏，包含 38,739 个视频，来自 818 个创作者，平均视频长度约 1 小时 50 分。它的输入输出形式是：单帧 RGB observation → 标准化 gamepad action chunk。论文还构建了 10 个商业游戏、30 个任务的 evaluation suite，用来测试跨游戏迁移。</p>
+<figure class="fig-wide"><a href="../assets/figures/nitrogen/nitrogen_fig2_action_pipeline_pdf_crop.png" target="_blank"><img src="../assets/figures/nitrogen/nitrogen_fig2_action_pipeline_pdf_crop.png" alt="图 2 · Video-action dataset pipeline。左侧展示不同 gamepad overlays 的多样性；右侧展示从视频定位 controller 区域、裁剪、再用 hybrid classification-segmentation network 解析 joystick 与 buttons 的流程。它证明 NitroGen 的数据不是人工日志，而是从图像中的控制器叠层恢复 action。" loading="lazy"></a><figcaption><strong>图 2 · Video-action dataset pipeline。</strong>左侧展示不同 gamepad overlays 的多样性；右侧展示从视频定位 controller 区域、裁剪、再用 hybrid classification-segmentation network 解析 joystick 与 buttons 的流程。它证明 NitroGen 的数据不是人工日志，而是从图像中的控制器叠层恢复 action。</figcaption></figure>
+<div class="table-wrap"><table><caption><strong>表 2.</strong> 数据构建流程。论文没有给出所有 raw collection 的检索策略，因此相应处标注边界。</caption><thead><tr><th>阶段</th><th>输入</th><th>处理</th><th>输出</th><th>作用</th></tr></thead><tbody>
+<tr><td>Raw collection</td><td>公开 gameplay videos with gamepad overlays</td><td>论文说明收集 71,000 小时 raw video；具体平台检索细节论文未说明</td><td>带 controller overlay 的候选视频</td><td>把互联网视频变成可挖掘数据源</td></tr>
+<tr><td>Template matching</td><td>视频帧 + 约 300 个 controller templates</td><td>每个视频采样 25 帧，用 SIFT/XFeat 匹配，要求至少 20 个 inliers</td><td>controller 区域 crop</td><td>定位动作标签所在区域</td></tr>
+<tr><td>Action parsing</td><td>连续两帧 controller crop</td><td>SegFormer 预测 11×11 joystick segmentation grid 与 binary button states</td><td>frame-level actions</td><td>把视觉 overlay 变成行为克隆标签</td></tr>
+<tr><td>Quality filtering</td><td>action sequences</td><td>保留至少 50% timesteps 有非零 action 的 chunks；保留 55% 数据</td><td>40,000 小时 filtered dataset</td><td>降低 null-action 过预测风险</td></tr>
+</tbody></table></div>
+<figure class=""><a href="../assets/figures/nitrogen/nitrogen_fig3_dataset_distribution_pdf_crop.png" target="_blank"><img src="../assets/figures/nitrogen/nitrogen_fig3_dataset_distribution_pdf_crop.png" alt="图 3 · 数据分布。左图显示 846 个游戏超过 1 小时、91 个超过 100 小时、15 个超过 1,000 小时；右图显示 Action-RPG 占 34.9%，Platformer 占 18.4%，Action-Adventure 占 9.2%。这既证明规模，也暴露数据偏向。" loading="lazy"></a><figcaption><strong>图 3 · 数据分布。</strong>左图显示 846 个游戏超过 1 小时、91 个超过 100 小时、15 个超过 1,000 小时；右图显示 Action-RPG 占 34.9%，Platformer 占 18.4%，Action-Adventure 占 9.2%。这既证明规模，也暴露数据偏向。</figcaption></figure>
+<div class="socratic"><p class="question">问：数据质量真的够支撑训练吗？</p><p class="answer">答：论文用 action parsing quality 和 downstream policy results 两层证据支撑。动作解析在合成 OBS benchmark 上平均 joystick $R^2=0.84$、button accuracy $=0.96$；但这仍是代理评估，不等于所有真实视频都有同等精度。</p><div class="takeaway"><strong>Takeaway：</strong>NitroGen 的数据价值来自规模与覆盖面；它的风险也来自同一个地方：噪声、偏向和接口差异都被一并 scale up。</div></div>
+</section>
+
+<section id="pipeline"><h2>4. Pipeline 拆解：从公开视频到可微调 agent</h2>
+<p>完整 pipeline 可以分成三条流：数据流、模型流和评测流。数据流负责从 overlay videos 生产 actions；模型流用 SigLIP 2 encoder + Action DiT 学习 action chunks；评测流用 universal harness 把商业游戏变成 Gymnasium-like 环境。三条流互相约束：如果数据流不可靠，模型会学到错误动作；如果评测流不统一，就无法比较跨游戏 transfer。</p>
+<div class="fig-grid">
+<figure class=""><a href="../assets/figures/nitrogen/nitrogen_overview_project.png" target="_blank"><img src="../assets/figures/nitrogen/nitrogen_overview_project.png" alt="图 4a · 项目页 overview。项目图用更干净的方式展示三件套：dataset、foundation agent 和 simulator。它适合在读完整论文 pipeline 后回看整体闭环。" loading="lazy"></a><figcaption><strong>图 4a · 项目页 overview。</strong>项目图用更干净的方式展示三件套：dataset、foundation agent 和 simulator。它适合在读完整论文 pipeline 后回看整体闭环。</figcaption></figure>
+<figure class=""><a href="../assets/figures/nitrogen/nitrogen_fig4_rollouts_pdf_crop.png" target="_blank"><img src="../assets/figures/nitrogen/nitrogen_fig4_rollouts_pdf_crop.png" alt="图 4b · In-game rollouts。不同游戏画面说明评测并非单一环境。读者应看画面风格、视角和任务类型差异：这正是论文要测试“generalist gaming agent”的原因。" loading="lazy"></a><figcaption><strong>图 4b · In-game rollouts。</strong>不同游戏画面说明评测并非单一环境。读者应看画面风格、视角和任务类型差异：这正是论文要测试“generalist gaming agent”的原因。</figcaption></figure>
+</div>
+<div class="socratic"><p class="question">继续追问：如果去掉 universal harness，会怎样？</p><p class="guide">引导：只训练模型还不够，具身智能必须闭环交互。</p><p class="answer">答：没有统一 harness，结果会停留在 offline action prediction，无法评价 action 在真实游戏状态中是否完成任务。NitroGen 的实验主张依赖 task completion rate，而不是只依赖 action-label accuracy。</p><div class="takeaway"><strong>Takeaway：</strong>这篇论文把数据、模型和评测绑在一起，是它比普通 dataset paper 更有价值的地方。</div></div>
+</section>
+
+<section id="method"><h2>5. 模型与方法：为什么是 action chunk + flow matching？</h2>
+<p>NitroGen 的 policy 采用 256×256 单帧 RGB 输入，使用 SigLIP 2 vision transformer 编码成 frame tokens；Action DiT 接收带噪 action chunk，并通过 cross-attention 条件化在视觉 tokens 上，输出连续 action 向量。论文报告多帧 conditioning 没有带来收益，因此最终使用单帧上下文并生成 16-step action chunks，以提升 temporal consistency。</p>
+<p><strong>先问为什么要“生成”动作，而不是“回归”动作。</strong>给定同一帧画面，往往有多个都合理的动作（动作分布是多模态的）。若用一步 MSE 回归训练确定性策略，最优解是条件均值 $\mathbb{E}[a\mid o]$——而几个合法动作的平均通常本身不合法（“向左”和“向右”平均成“原地/乱动”，连续控制里两条合法轨迹的均值也可能落到流形之外）。这就是回归到均值、mode averaging 的老问题，也是 MSE 图像回归会发糊的同一个原因（苏剑林对该现象有过讨论 [archives/7574]）。</p>
+<div class="equation">$$
+a_t=(1-t)\epsilon+t a, \qquad \epsilon\sim\mathcal{N}(0,I),\quad t\in[0,1]
+$$<div class="eq-caption">式 1：在 action chunk 空间中构造从噪声到真实动作的线性插值。</div></div>
+<div class="equation">$$
+u^{\mathrm{cond}}(x,t,a,\epsilon,o)=a-\epsilon
+$$<div class="eq-caption">式 2：条件 velocity field；模型要预测从当前 noisy action 指向真实 action 的方向。</div></div>
+<div class="equation">$$
+\mathcal{L}^{\mathrm{CFM}}(\theta,\phi)=\mathbb{E}_{t,a,\epsilon}\left[\left\|\pi_\theta\left(a_t,\psi_\phi(o),t\right)-(a-\epsilon)\right\|^2\right]
+$$<div class="eq-caption">式 3：conditional flow-matching loss；$\psi_\phi$ 是图像编码器，$\pi_\theta$ 是 Action DiT。</div></div>
+<div class="equation">$$
+a_{t+1/k}=a_t+\frac{1}{k}\pi_\theta\left(a_t,\psi_\phi(o),t\right), \qquad k=16
+$$<div class="eq-caption">式 4：推理时用 Euler integration 迭代去噪；论文使用 16 个 denoising steps。</div></div>
+<div class="formula-note"><p class="note-title">公式读法</p><p>这些公式把动作生成从“一步回归”变成“在 action space 中从噪声移动到可执行动作”。这对游戏控制有两个直觉优势：一是 action chunk 能表达短期连续控制，二是 flow matching 的采样过程可以在固定 $k=16$ 步内输出动作序列。去掉 chunk 可能会损害 temporal consistency；去掉视觉条件则模型无法根据当前画面选择动作。</p></div>
+<div class="formula-note"><p class="note-title">为什么 flow matching 正好治这个病</p><p>flow matching 不预测一个点，而是学一个把噪声样本搬到<strong>条件分布</strong> $p(a\mid o)$ 的速度场（flow/扩散的传输视角见 [archives/9119]）。式 1–4 就是：在 $a_t=(1-t)\epsilon+ta$ 的直线路径上，让 $\pi_\theta$ 预测条件速度 $a-\epsilon$（式 2–3），推理时用 $k=16$ 步 Euler 积分采一个样（式 4）。因为它<strong>采样</strong>而不是<strong>回归均值</strong>，几个合法动作会保留成不同模态，不会被平均掉。<strong>代价是几条假设：</strong>动作空间要连续、能用线性插值路径（离散按键需另设嵌入或路径）；$k=16$ 步要足以把流积分准（太少则采样动作有离散化误差）；以及论文报告的“单帧条件足够”——这假设当前帧已含足够状态，强部分可观测（需历史）时会失效。</p></div>
+<figure class=""><a href="../assets/figures/nitrogen/nitrogen_appendix_formula_crop.png" target="_blank"><img src="../assets/figures/nitrogen/nitrogen_appendix_formula_crop.png" alt="图 5 · Supplement 中的 flow matching 公式原图。正文公式已重写为 MathJax-safe TeX；这张图用于核对符号与论文原意，避免从 PDF 文本抽取时出现反斜杠或上标错误。" loading="lazy"></a><figcaption><strong>图 5 · Supplement 中的 flow matching 公式原图。</strong>正文公式已重写为 MathJax-safe TeX；这张图用于核对符号与论文原意，避免从 PDF 文本抽取时出现反斜杠或上标错误。</figcaption></figure>
+</section>
+
+<section id="training"><h2>6. 训练细节与算力账本：哪些写清楚了，哪些没有？</h2>
+<div class="table-wrap"><table><caption><strong>表 3.</strong> 训练与实现细节。主模型硬件/训练时长未披露，不做 GPU-hours 估算。</caption><thead><tr><th>项目</th><th>论文披露</th><th>作用 / 影响</th></tr></thead><tbody>
+<tr><td>主 policy 规模</td><td>500M pre-training model</td><td>验证大规模 behavior cloning 是否能跨多游戏泛化</td></tr>
+<tr><td>视觉输入</td><td>单帧 RGB，256×256；SigLIP 2 encoder，256 image tokens/frame</td><td>降低实时控制输入复杂度；放弃显式长历史</td></tr>
+<tr><td>动作输出</td><td>16-action chunks；统一 gamepad action space</td><td>提升短期动作连贯性</td></tr>
+<tr><td>训练目标</td><td>Conditional flow matching；推理 $k=16$ denoising steps</td><td>在动作空间中迭代生成 chunk</td></tr>
+<tr><td>数据增强</td><td>brightness/contrast/saturation/hue、$[-5^\circ,5^\circ]$ rotation、random crops</td><td>缓解视频压缩、UI、直播画面风格差异</td></tr>
+<tr><td>优化器</td><td>AdamW；weight decay 0.001；WSD schedule；constant LR phase 0.0001；EMA decay 0.9999</td><td>论文称 EMA weights consistently outperform non-EMA</td></tr>
+<tr><td>主模型 batch / steps / GPU</td><td>论文未说明</td><td>无法可靠估算 GPU-hours / GPU-days</td></tr>
+<tr><td>Action parsing model</td><td>SegFormer；8M synthetic labeled frames；AdamW；LR 0.0001；linear decay；weight decay 0.1；batch size 256</td><td>用于从 overlay crop 中恢复 joystick/buttons</td></tr>
+</tbody></table></div>
+<div class="note"><p class="note-title">算力说明</p><p>论文没有披露主 policy 的 GPU/TPU 类型、数量、训练时长、global batch size 或总 steps。因此本页不做 GPU-hours 估算；任何估算都需要额外假设，不符合“基于论文原文”的要求。</p></div>
+</section>
+
+<section id="experiments"><h2>7. 实验与消融：结果是否真正支持作者主张？</h2>
+<h3>7.1 Action extraction：先证明标签能用</h3>
+<p>如果动作标签解析不准，后续 policy 学到的就是错误 supervision。论文先在 synthetic OBS benchmark 上评估 action parser：joystick position 的平均 $R^2$ 为 0.84，button accuracy 为 0.96。这个结果支持“可以自动抽取较高质量标签”，但 benchmark 仍是合成 overlay，不完全等同所有互联网视频。</p>
+<figure class=""><a href="../assets/figures/nitrogen/nitrogen_action_quality_project.png" target="_blank"><img src="../assets/figures/nitrogen/nitrogen_action_quality_project.png" alt="图 6 · Action quality / parsing 结果。这张图对应“标签能不能信”的基础问题：如果 joystick 和 buttons 解析错误，下游 BC 不可能稳定。读者应关注不同 controller family 的差异，而不是只看平均数。" loading="lazy"></a><figcaption><strong>图 6 · Action quality / parsing 结果。</strong>这张图对应“标签能不能信”的基础问题：如果 joystick 和 buttons 解析错误，下游 BC 不可能稳定。读者应关注不同 controller family 的差异，而不是只看平均数。</figcaption></figure>
+<h3>7.2 Multi-game pretraining：不是只会一种游戏</h3>
+<p>Fig. 5 汇总 500M NitroGen 在不同游戏和任务上的预训练表现。论文强调模型在可记忆 fixed layouts 和 procedural generation 场景中都取得 non-trivial success，这支持了“noisy internet-scale data 可以训练出多游戏 policy”的主张。但它不是零失误 agent，也不是长期规划系统。</p>
+<figure class="fig-wide"><a href="../assets/figures/nitrogen/nitrogen_fig5_pretraining_results_pdf_crop.png" target="_blank"><img src="../assets/figures/nitrogen/nitrogen_fig5_pretraining_results_pdf_crop.png" alt="图 7 · 500M pre-training results。它要支撑的是单一模型能在 3D、2D side-scrolling、top-down 等不同游戏类型中产生有效控制。关键不是每个柱子多高，而是多个任务族均非零，说明统一 policy 不是只记住单一游戏。" loading="lazy"></a><figcaption><strong>图 7 · 500M pre-training results。</strong>它要支撑的是单一模型能在 3D、2D side-scrolling、top-down 等不同游戏类型中产生有效控制。关键不是每个柱子多高，而是多个任务族均非零，说明统一 policy 不是只记住单一游戏。</figcaption></figure>
+<h3>7.3 Post-training：预训练是否帮助 unseen games？</h3>
+<p>更关键的实验是 hold-out game fine-tuning。Fig. 7 比较从 NitroGen 权重微调与同架构从零训练：isometric roguelike 平均相对提升约 10%，3D action-RPG 平均相对提升约 25%；在低数据 30h 下，combat 任务最高达到 52% relative improvement，navigation 为 25%，game-specific task 只有 5%。这说明预训练更擅长迁移通用操作技能，而不是自动掌握新游戏特有机制。</p>
+<figure class=""><a href="../assets/figures/nitrogen/nitrogen_fig7_post_training_pdf_crop.png" target="_blank"><img src="../assets/figures/nitrogen/nitrogen_fig7_post_training_pdf_crop.png" alt="图 8 · Post-training transfer。左图看数据量变化，右图看任务类型差异。读者应重点看 combat/navigation 与 game-specific 的分化：这正是“预训练学到通用控制，但不等于理解所有新规则”的证据。" loading="lazy"></a><figcaption><strong>图 8 · Post-training transfer。</strong>左图看数据量变化，右图看任务类型差异。读者应重点看 combat/navigation 与 game-specific 的分化：这正是“预训练学到通用控制，但不等于理解所有新规则”的证据。</figcaption></figure>
+<h3>7.4 Self-imitation：能否作为 RL-style adaptation 起点？</h3>
+<p>论文还在 2D metroidvania boss 任务上做 self-imitation：base model 成功率 18.7%，仅用原始 BC 数据微调到 30.1%；一轮 self-imitation 到 53.9%，三轮达到 90.5%。这证明 NitroGen 可作为后续 RL/self-imitation 的起点，但该实验涉及手动筛选 best trajectories，不能直接等价于全自动强化学习闭环。</p>
+<figure class=""><a href="../assets/figures/nitrogen/nitrogen_results_finetune_project.png" target="_blank"><img src="../assets/figures/nitrogen/nitrogen_results_finetune_project.png" alt="图 9 · 项目页 fine-tuning / self-imitation 结果。项目页图更清晰地把 post-training 与 self-imitation 放在一起。它证明预训练权重有助于低数据迁移，也暴露了仍需 task-specific adaptation。" loading="lazy"></a><figcaption><strong>图 9 · 项目页 fine-tuning / self-imitation 结果。</strong>项目页图更清晰地把 post-training 与 self-imitation 放在一起。它证明预训练权重有助于低数据迁移，也暴露了仍需 task-specific adaptation。</figcaption></figure>
+<div class="socratic"><p class="question">问：这些实验足以证明“generalist embodied agent”了吗？</p><p class="answer">答：足以支持更窄的主张：NitroGen 是一个可跨游戏预训练、可微调迁移的 vision-action foundation model。它不足以证明端到端长期游戏智能、语言跟随或真实机器人迁移，因为这些能力在论文中不是主要实验对象。</p><div class="takeaway"><strong>Takeaway：</strong>实验强在数据规模、跨游戏评测和下游微调；边界在长期规划、真实实时部署和语言/任务理解。</div></div>
+</section>
+
+<section id="limitations"><h2>8. 局限与复现门槛：这篇论文没有证明什么？</h2>
+<ul><li><strong>不是长期规划 agent。</strong>论文明确称 NitroGen 是 fast-reacting system-1 sensory model，不设计为端到端通关、长时规划或语言指令跟随。</li><li><strong>zero-shot 仍有限。</strong>模型能在一些任务中产生有效行为，但 robust zero-shot gameplay on unseen games 需要进一步研究，例如在上下文中学习游戏物理和按键语义。</li><li><strong>数据偏向明显。</strong>数据更偏向 action games 和 gamepad-played games；keyboard-only、复杂操控、strategy/simulation 类型较少。</li><li><strong>真实实时部署未解决。</strong>universal harness 使用 frame-by-frame control；论文将 real-time / asynchronous deployment 留给未来工作。</li><li><strong>主模型算力未公开。</strong>论文未说明训练主模型所需 GPU 数、时长、global batch 和总 steps，限制了复现成本评估。</li></ul>
+<div class="socratic"><p class="question">问：如果我要借鉴 NitroGen，最不该先做什么？</p><p class="answer">答：最不该先堆一个更大的 Action DiT，而是先问 action labels 从哪里来、能否统一动作空间、评测是否闭环可复现。NitroGen 的真正方法论是“数据可得性 → 标签可用性 → 统一接口 → 预训练迁移”的顺序。</p><div class="takeaway"><strong>Takeaway：</strong>NitroGen 的学术价值在于把互联网视频转化为具身行动监督；工程价值取决于后续能否把 noisy gamepad supervision 推向更强的长期决策与真实实时系统。</div></div>
+</section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol>
+<li>Loïc Magne et al. <em>NitroGen: An Open Foundation Model for Generalist Gaming Agents</em>. CVPR 2026 paper PDF / arXiv 2601.02427.</li>
+<li>NitroGen project page：用于项目总览图、dataset analysis、action quality 和 fine-tuning 可视化。</li>
+<li>Supplementary material：用于 conditional flow matching objective 与 Euler inference 公式核对。</li>
+<li>图像说明：本文插图均保存为本地 PNG，来源记录见 <code>assets/figures_manifest.json</code>；正文判断以论文表格、图注和项目页为依据，缺失信息标注“论文未说明”。</li>
+</ol></section>
+</main><footer class="article-footer">本页为 CVPR 2026 Best Papers Digest 的 NitroGen 深读页。图文用于学术交流；转载请保留论文与图像来源说明。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献</a></li><li><a href="#datasets">数据集</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">模型与公式</a></li><li><a href="#training">训练与算力</a></li><li><a href="#experiments">实验</a></li><li><a href="#limitations">局限</a></li></ol></div></section>
+<section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>NitroGen: An Open Foundation Model for Generalist Gaming Agents</dd><dt>Authors</dt><dd>Loïc Magne et al.</dd><dt>Venue</dt><dd>CVPR 2026 Oral</dd><dt>Project</dt><dd><a href="https://nitrogen.minedojo.org/">nitrogen.minedojo.org</a></dd><dt>PDF</dt><dd><a href="https://openaccess.thecvf.com/content/CVPR2026/papers/Magne_NitroGen_An_Open_Foundation_Model_for_Generalist_Gaming_Agents_CVPR_2026_paper.pdf">CVF OpenAccess PDF</a></dd><dt>Code</dt><dd><a href="https://github.com/MineDojo/NitroGen">MineDojo/NitroGen</a></dd></dl></div></section>
+<section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：三件套总览</li><li>图 2：动作标签抽取</li><li>图 3：数据分布</li><li>图 5：flow matching 公式</li><li>图 7–9：预训练/微调/自模仿</li></ul></div></section>
+<section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p>NitroGen：完成 PDF/项目图抽取、公式核对、深读页、manifest。</p><p>SAM 3D：已列入 Best Paper Honorable Mention 下一篇，暂未生成深读页。</p></div></section></aside></div></body></html>

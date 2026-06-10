@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Native 深读：为什么 3D 生成需要“原生而紧凑”的结构化 latent？</title>
+<meta name="description" content="CVPR 2026 Best Papers Digest · Native and Compact Structured Latents for 3D Generation 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Best Student Paper · 3D Representation / Generative Models</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 Best Papers &gt; Best Student Paper &gt; Native and Compact Structured Latents for 3D Generation</div>
+<article class="article"><header class="article-head clearfix"><div class="date-card"><span class="day">06</span><span class="month">Jun</span></div><h1>Native 深读：为什么 3D 生成需要“原生而紧凑”的结构化 latent？</h1><div class="article-meta"><span>CVPR 2026 Best Student Paper</span><span>3D Generation</span><span>O-Voxel / SC-VAE / Flow Matching</span><span>基于 CVF PDF 与补充材料</span></div><div class="tags"><span class="tag">Best Student Paper</span><span class="tag">3D & Geometry</span><span class="tag">Structured Latents</span><span class="tag">PBR Materials</span><span class="tag">Flow Matching</span></div></header>
+<main class="content">
+<p id="abstract" class="lead"><strong>核心问题。</strong>如果 image-to-3D 已经可以生成看起来不错的物体，为什么还要重新设计 3D latent？Native 这篇论文的回答是：瓶颈不只是生成器，而是现有表示没有足够“原生”地保留 mesh 的拓扑、开放面、内部结构与 PBR 材质，同时又没有足够“紧凑”地让大模型高效学习。它提出 O-Voxel 与 Sparse Compression VAE，把原始 3D 资产先转成可双向转换、可压缩、可生成的结构化 latent，再在这个 latent 上训练大规模 flow-matching 模型。</p>
+
+<section id="hero"><div class="hero-split"><div class="hero-card"><h2>先看 teaser：这篇论文要回答什么？</h2><p>图 1 把三件事放在同一张图里：高分辨率重建、完整 PBR 纹理生成，以及“更少 token 却更高保真”的 compactness 对比。读者要重点看右下角：这不是单纯把分辨率拉到 $1536^3$，而是在问<strong>什么样的 3D latent 才能同时支持细节、材质和可扩展生成</strong>。</p><div class="socratic"><p class="question">问：为什么 teaser 不先展示一个新模型结构，而先展示重建、生成、token 数？</p><p class="answer">答：因为论文的主张是表示层面的：如果 latent 本身丢掉开放面、内表面或材质属性，后面的 flow 模型再大也只能学习一个被简化过的 3D 世界。</p></div></div><figure class="fig-wide"><a href="../assets/figures/native/native_fig1_teaser.png" target="_blank"><img src="../assets/figures/native/native_fig1_teaser.png" alt="Native teaser"></a><figcaption><strong>图 1 · 论文 teaser。</strong>左侧展示高分辨率重建，右侧展示 image-to-3D 形状与 PBR 纹理生成；中间的 compactness 对比说明 O-Voxel/SC-VAE 试图用更少 latent token 保留更多 3D 信息。</figcaption></figure></div></section>
+
+<section id="motivation"><h2>1. 研究动机：3D 生成真正缺的是“模型”，还是“表示”？</h2><p>Native 把问题落在 3D 表示上。论文认为，常见 iso-surface field 路线，例如 SDF 或 Flexicubes，往往假设较规整的封闭表面，因而在开放面、非流形结构、完全包裹的内部结构上容易受限；同时，许多 3D 生成 pipeline 只把纹理当成 RGB 贴图，而没有把 metallic、roughness、opacity 等 PBR 属性作为原生信号建模。</p><div class="socratic"><p class="question">继续追问：为什么这会影响生成？</p><p class="answer">引导：生成器学习的是 latent 分布。如果 3D asset 在进入 latent 前已经被投影成“封闭、外表面、RGB-only”的近似，那么模型学到的就不是原始资产分布，而是一个被表示系统改写过的分布。</p><p class="takeaway"><strong>Takeaway：</strong>Native 的新意不是只加大 DiT，而是先定义一个能保留原始 mesh 复杂性的中间世界。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><div class="table-wrap"><table><caption><strong>表 A.</strong> 贡献与证据。这里区分论文明确贡献与读者能进一步推断的启发。</caption><thead><tr><th>层次</th><th>作者明确贡献</th><th>它解决的瓶颈</th><th>正文证据</th></tr></thead><tbody><tr><td>表示</td><td>O-Voxel：field-free sparse voxel structure，编码几何与 PBR 材质</td><td>开放面、非流形、内部表面与材质属性难以同时保留</td><td>图 3、公式 1、公式 3</td></tr><tr><td>压缩</td><td>Sparse Compression VAE，把 O-Voxel 压成 compact SLat</td><td>高分辨率 3D 资产 token 数过大，难以被大模型生成</td><td>图 4、表 1、表 3</td></tr><tr><td>生成</td><td>约 4B 参数的多阶段 flow-matching 3D 生成模型</td><td>结构、几何、材质联合生成难以稳定扩展</td><td>图 2、表 2、图 5–7</td></tr><tr><td>启发</td><td>读者推断：3D scaling 顺序应是表示质量 → latent 压缩 → 生成器容量</td><td>避免直接堆模型而忽略数据/表示失真</td><td>由 pipeline 与 ablation 共同支持；不是作者单独定理</td></tr></tbody></table></div></section>
+
+<section id="datasets"><h2>3. 数据集与任务：模型到底学习哪些 3D 资产？</h2><p>论文训练在开放 3D 资产之上，补充材料给出了更细的数据构成：TexVerse、Objaverse-XL 的 Sketchfab/GitHub 子集、ABO、HSSD，以及 Toys4K 评测集。关键不是“用了很多数据”，而是根据任务分出 shape training set 与 material training set；材质 VAE 还需要标准 metallic-roughness PBR workflow，因此会过滤掉不符合材质格式的资产。</p><figure class="fig-wide"><a href="../assets/figures/native/native_supp_table3_dataset.png" target="_blank"><img src="../assets/figures/native/native_supp_table3_dataset.png" alt="Native dataset composition"></a><figcaption><strong>图 2 · 数据集构成。</strong>补充材料表 3 展示了 shape 与 material 两条训练数据线：例如全训练集合约 976K shape assets 与 737K material assets；SC-VAE 训练子集约 473K/355K。读者应注意两条数据线规模不同，因为 PBR 材质要求更严格。</figcaption></figure><div class="table-wrap"><table><caption><strong>表 B.</strong> 数据在方法中的作用。</caption><thead><tr><th>数据</th><th>作用</th><th>输入 → 输出</th><th>论文未说明/边界</th></tr></thead><tbody><tr><td>TexVerse / Objaverse-XL / ABO / HSSD</td><td>训练 SC-VAE 与生成模型</td><td>Textured mesh → O-Voxel → SLat</td><td>各数据源许可与完整清洗规则未在正文逐项展开</td></tr><tr><td>渲染图像</td><td>image-to-3D 条件训练</td><td>多视角 RGB prompt → 结构/几何/材质 latent</td><td>完整渲染随机种子与全部相机分布论文未说明</td></tr><tr><td>Toys4K / curated Sketchfab</td><td>重建评测</td><td>mesh → O-Voxel/重建 mesh → 距离与 normal 指标</td><td>人工筛选的 curated test set 细则有限</td></tr></tbody></table></div></section>
+
+<section id="pipeline"><h2>4. Pipeline：从原始 3D asset 到可生成 SLat</h2><figure class="fig-wide"><a href="../assets/figures/native/native_fig2_pipeline.png" target="_blank"><img src="../assets/figures/native/native_fig2_pipeline.png" alt="Native pipeline"></a><figcaption><strong>图 3 · 方法总览。</strong>数据流是 3D assets → O-Voxel → SC-VAE → SLat；模型流是结构、几何、材质三阶段 flow；推理流则反向走 SLat → O-Voxel → textured mesh。图中最重要的连接是“instant bidirectional conversion”：O-Voxel 必须能和 raw mesh 快速双向转换，否则就只是另一个离线中间格式。</figcaption></figure><div class="socratic"><p class="question">问：为什么 pipeline 不直接从图像生成 mesh？</p><p class="answer">答：直接生成 mesh 要同时处理拓扑、顶点数量、材质、UV/属性绑定等离散结构。Native 先把 mesh 变成稀疏 voxel 上的局部几何与材质 token，再让 flow 模型在这个结构化 latent 上学习，降低生成器面对的离散复杂度。</p><p class="takeaway"><strong>Takeaway：</strong>O-Voxel 是“mesh 与生成模型之间的协议层”，SC-VAE 是“协议层到紧凑 latent 的压缩器”。</p></div></section>
+
+<section id="method"><h2>5. 方法一：O-Voxel 如何同时保留形状与材质？</h2><figure class="fig-wide"><a href="../assets/figures/native/native_fig3_ovoxel.png" target="_blank"><img src="../assets/figures/native/native_fig3_ovoxel.png" alt="O-Voxel"></a><figcaption><strong>图 4 · O-Voxel 表示。</strong>左侧的 Flexible Dual Grid 负责 shape：每个 active voxel 存局部几何结构；右侧的 volumetric surface attributes 负责 material：PBR 属性随表面局部区域绑定，而不是只在最终渲染阶段补一张贴图。</figcaption></figure><div class="equation">$$
+f=\{(f_i^{\mathrm{shape}}, f_i^{\mathrm{mat}}, p_i)\}_{i=1}^{L}
+$$<div class="eq-caption">式 1：O-Voxel 的基本表示。</div></div><div class="formula-note"><p class="note-title">公式读法</p><p>$p_i$ 是 active voxel 的三维坐标，$f_i^{\mathrm{shape}}$ 存局部几何，$f_i^{\mathrm{mat}}$ 存材质属性。这个式子强调：几何与材质并不是两个互不相干的后处理结果，而是绑定在同一稀疏空间结构上。</p></div><p>形状转换时，论文使用 QEF 求解每个局部 dual vertex，同时加入边界项来处理开放面。这个设计很关键：开放面不是“封闭网格的失败情况”，而是许多真实 3D asset 的原生拓扑。</p><div class="equation">$$
+\min_{v\in\mathrm{voxel}} e(v)
+=\sum_i d_{\Pi,i}^{2}
++\lambda_{\mathrm{bound}}\sum_j d_{L,j}^{2}
++\lambda_{\mathrm{reg}}d_{\hat{q}}^{2}
+$$<div class="eq-caption">式 2：O-Voxel 局部顶点的 QEF 目标。</div></div><div class="formula-note"><p class="note-title">公式读法</p><p>第一项让顶点贴近局部切平面，boundary 项改善开放边界，regularization 项避免局部求解不稳定。去掉边界项，开放薄面和非闭合结构会更容易被错误封闭或折叠。</p></div><div class="equation">$$
+f_i^{\mathrm{mat}}=(c_i,m_i,r_i,\alpha_i)
+$$<div class="eq-caption">式 3：PBR material token。</div></div><p>其中 $c_i$、$m_i$、$r_i$、$\alpha_i$ 分别表示 base color、metallic、roughness 与 opacity。论文真正想保留的不是“看起来有颜色”，而是渲染管线可用的表面属性。</p></section>
+
+<section id="scvae"><h2>6. 方法二：SC-VAE 为什么是压缩器，不只是 autoencoder？</h2><figure class="fig-wide"><a href="../assets/figures/native/native_fig4_scvae.png" target="_blank"><img src="../assets/figures/native/native_fig4_scvae.png" alt="Sparse Compression VAE"></a><figcaption><strong>图 5 · Sparse Compression VAE。</strong>图中上方是 shape encoder/decoder，下方是 material encoder/decoder；残差 autoencoding layer 与 early-pruning upsampler 是为了在高压缩率下保留局部细节，并避免稀疏解码阶段产生过多无效计算。</figcaption></figure><div class="equation">$$
+\mathcal{L}_{s1}
+=\lambda_v\|\hat{v}-v\|_2^2
++\lambda_{\delta}\,\mathrm{BCE}(\hat{\delta},\delta)
++\lambda_{\rho}\,\mathrm{BCE}(\hat{\rho},\rho)
++\lambda_{\mathrm{mat}}\|\hat{f}^{\mathrm{mat}}-f^{\mathrm{mat}}\|_1
++\lambda_{\mathrm{KL}}\mathcal{L}_{\mathrm{KL}}
+$$<div class="eq-caption">式 4：SC-VAE 第一阶段训练目标。</div></div><div class="equation">$$
+\mathcal{L}_{s2}=\mathcal{L}_{s1}+\mathcal{L}_{\mathrm{render}}
+$$<div class="eq-caption">式 5：第二阶段加入渲染一致性。</div></div><div class="formula-note"><p class="note-title">为什么这是“压缩器”：KL 项就是 rate</p><p>普通 autoencoder 只压重建误差，没有任何力量逼 latent 变小或变规整。式 4 的关键是 $\lambda_{\mathrm{KL}}\mathcal{L}_{\mathrm{KL}}$ 这一项：VAE 的 KL 正则本质上就是变分信息瓶颈（VIB）里的 <strong>rate</strong> 项，把后验拉向先验、上界化 latent 携带的信息量（苏剑林对此有系统推导 [archives/6181]、[archives/5253]）。于是式 4 可以读成一个有损压缩目标——重建项（顶点 $\ell_2$、占据/符号 BCE、材质 $\ell_1$）是 <strong>distortion</strong>，KL 是 <strong>rate</strong>，最小化 distortion $+\lambda\cdot$rate 正是“在有限比特预算下只编码对重建重要的信息”。稀疏（只有 active voxel 带 latent）、残差 AE 与 early-pruning upsampler 进一步压低 rate 又保住局部细节；式 5 的 render loss 则把 distortion 的度量从原始 PBR 数值换到渲染空间。<strong>承重假设：</strong>$\lambda_{\mathrm{KL}}$ 要调得当——太大则后验坍缩、丢几何/材质细节，太小则 latent 太大太散、下游 flow 难建模；把 KL 拉向 $\mathcal{N}(0,I)$ 同时也让 latent 足够平滑，好对上 flow matching 的噪声端点。这条“压缩器”主张能从两侧独立验证：重建侧看高压缩比下的重建保真，生成侧看约 4B flow 模型能在 $512^3/1024^3/1536^3$ 上以 3/17/60 秒生成——latent 若不是真的又紧又规整，这两件事不会同时成立。</p></div><div class="socratic"><p class="question">问：为什么材质 VAE 还要 render loss？</p><p class="answer">因为 PBR 参数本身的 L1 距离不一定等于最终视觉效果的距离。加入渲染一致性，是把材质 token 拉回“能被真实渲染器看到”的误差空间。</p><p class="takeaway"><strong>Takeaway：</strong>SC-VAE 的目标不是复原一个好看的预览图，而是把 O-Voxel 压成大模型能生成、又能解回 mesh/PBR 的 compact latent。</p></div></section>
+
+<section id="generative-model"><h2>7. 生成模型：为什么拆成结构、几何、材质三阶段？</h2><p>Native 在 SLat 上训练 flow-matching 模型，但它不是一个单阶段“图像 → 全部 latent”的黑箱。论文将生成拆为 sparse structure generation、geometry generation、material generation：先确定哪些稀疏 voxel 活跃，再生成局部几何，最后生成与形状对齐的 PBR material。这样做的直觉是：结构决定可见空间布局，几何决定局部表面，材质依赖已有表面。</p><div class="equation">$$
+x(t)=(1-t)x_0+t\epsilon
+$$<div class="eq-caption">式 6：补充材料中的线性插值路径。</div></div><div class="equation">$$
+\mathcal{L}_{\mathrm{CFM}}(\theta)
+=\mathbb{E}_{t,x_0,\epsilon}\left[
+\left\|v_{\theta}(x(t),t)-(\epsilon-x_0)\right\|_2^2
+\right]
+$$<div class="eq-caption">式 7：Conditional Flow Matching 目标。</div></div><div class="formula-note"><p class="note-title">公式读法</p><p>这里的写法按补充材料：路径从数据 $x_0$ 插值到噪声 $\epsilon$，目标向量是 $\epsilon-x_0$。不要把它和“噪声到数据”的记号混用；符号方向不同，但核心都是学习一条可积分的向量场。</p></div></section>
+
+<section id="training"><h2>8. 训练细节与算力账本：哪些信息够复现，哪些还缺？</h2><div class="table-wrap"><table><caption><strong>表 C.</strong> 论文披露的训练与推理信息。</caption><thead><tr><th>模块</th><th>论文披露</th><th>作用</th><th>缺失信息</th></tr></thead><tbody><tr><td>SC-VAE</td><td>16 H100，batch size 128；基于过滤后的开放 3D 资产训练</td><td>把 O-Voxel 压成 compact SLat</td><td>训练时长、step/epoch、完整 LR schedule 论文未说明</td></tr><tr><td>DiT flow 模型</td><td>约 1.3B 参数/模型，三模型合计约 4B；width 1536、30 blocks、12 heads、MLP 8192；32 H100，batch size 256；AdamW，LR $10^{-4}$，weight decay 0.01，CFG drop 0.1</td><td>结构、几何、材质三阶段生成</td><td>总训练小时、采样步数、混合精度策略论文未说明</td></tr><tr><td>推理速度</td><td>论文报告 $512^3$、$1024^3$、$1536^3$ 生成大约 3s、17s、60s；teaser 标注 $1536^3$ 约 35s shape + 25s texture</td><td>证明 compact latent 支持高分辨率推理</td><td>不同硬件表述中出现 H100/A100 场景，实际部署成本需按具体实现复测</td></tr></tbody></table></div><figure class="fig-wide"><a href="../assets/figures/native/native_supp_fig1_flexgemm_speed.png" target="_blank"><img src="../assets/figures/native/native_supp_fig1_flexgemm_speed.png" alt="FlexGEMM speed"></a><figcaption><strong>图 6 · FlexGEMM 加速。</strong>补充材料展示自定义 Triton backend 对稀疏卷积/矩阵乘的加速。它说明 Native 的效率不只来自模型设计，也来自对稀疏算子的工程优化；但完整工程配置仍需代码复核。</figcaption></figure><div class="note"><p class="note-title">算力说明</p><p>这里不做 GPU-hours 估算，因为论文没有同时给出训练时长与完整训练步数。若后续代码或技术报告补充训练天数，才能按披露数字进行粗略估算；否则应写“论文未说明”。</p></div></section>
+
+<section id="experiments"><h2>9. 实验结果：这些表是否真的支持论文主张？</h2><h3>9.1 重建：compact latent 是否牺牲 fidelity？</h3><figure class="fig-wide"><a href="../assets/figures/native/native_table1_reconstruction.png" target="_blank"><img src="../assets/figures/native/native_table1_reconstruction.png" alt="Native reconstruction table"></a><figcaption><strong>图 7 · 重建主结果表。</strong>表 1 对比 SparseFlex、TRELLIS、Michelangelo 等表示。关键数字不是单一指标最高，而是 Ours-1024 在约 9.6K tokens 下同时取得较低 MD、更好 normal 指标和较快 decoder runtime，支持“紧凑且高保真”的表示主张。</figcaption></figure><p>值得谨慎的是，MD/CD/F1 与 normal PSNR/LPIPS 只能覆盖几何距离和法线外观，不等价于完整 DCC pipeline 可用性。论文用 curated Sketchfab 作为更真实测试集，但完整工业资产兼容性仍需额外验证。</p>
+<h3>9.2 生成：是不是只在指标上好看？</h3><figure class="fig-wide"><a href="../assets/figures/native/native_fig5_generation_gallery.png" target="_blank"><img src="../assets/figures/native/native_fig5_generation_gallery.png" alt="Native generation gallery"></a><figcaption><strong>图 8 · 生成画廊。</strong>形状与材质一起展示，读者应看复杂拓扑、薄结构、透明/粗糙/金属材质是否同时被保留。这张图承担的是“输出形态覆盖面”的证据。</figcaption></figure><figure class="fig-wide"><a href="../assets/figures/native/native_fig6_visual_comparison.png" target="_blank"><img src="../assets/figures/native/native_fig6_visual_comparison.png" alt="Native visual comparison"></a><figcaption><strong>图 9 · 与其它 image-to-3D 方法的可视化比较。</strong>对比重点在形状完整性和材质贴合：Native 尝试减少过度光滑、结构缺失、材质漂移等问题。</figcaption></figure><div class="fig-grid"><figure><a href="../assets/figures/native/native_table2_generation.png" target="_blank"><img src="../assets/figures/native/native_table2_generation.png" alt="Generation metrics"></a><figcaption><strong>图 10 · 生成指标与用户偏好。</strong>Ours 在 CLIP、CLIP-N、ULIP-2、Uni3D 与用户偏好上领先；用户偏好 Overall 约 66.5%，Shape 约 69.0%。</figcaption></figure><figure><a href="../assets/figures/native/native_supp_table4_user_study.png" target="_blank"><img src="../assets/figures/native/native_supp_table4_user_study.png" alt="User study table"></a><figcaption><strong>图 11 · 用户研究补充表。</strong>补充材料给出 paired user study 选择比例。它支持“人类偏好”主张，但仍依赖测试样本、展示视角与参与者判断标准。</figcaption></figure></div><h3>9.3 消融：SC-VAE 的模块是否必要？</h3><figure class="fig-wide"><a href="../assets/figures/native/native_table3_ablation.png" target="_blank"><img src="../assets/figures/native/native_table3_ablation.png" alt="SC-VAE ablation"></a><figcaption><strong>图 12 · SC-VAE 消融。</strong>去掉 Residual AE 后，MD 明显上升；在更强压缩的 f32c128 设置中退化尤其严重。这说明 residual autoencoding 不是装饰，而是在高压缩率下保住局部几何的关键。</figcaption></figure><figure class="fig-wide"><a href="../assets/figures/native/native_fig8_test_time_scaling.png" target="_blank"><img src="../assets/figures/native/native_fig8_test_time_scaling.png" alt="Test-time scaling"></a><figcaption><strong>图 13 · Test-time scaling。</strong>图中通过增加中间 refinement / resolution step 改善局部错误，说明 compact latent 还能作为推理时扩展计算的接口；但它并不证明所有类别都能稳定受益。</figcaption></figure><h3>9.4 材质：PBR 是否只是贴图更清晰？</h3><figure class="fig-wide"><a href="../assets/figures/native/native_fig7_pbr_texture.png" target="_blank"><img src="../assets/figures/native/native_fig7_pbr_texture.png" alt="PBR material comparison"></a><figcaption><strong>图 14 · PBR texture 生成比较。</strong>这张图的重点不是颜色更鲜艳，而是材质属性与形状是否一致：金属、粗糙度、透明度等属性需要在表面局部区域正确绑定。</figcaption></figure></section>
+
+<section id="limitations"><h2>10. 局限与复现门槛：什么时候 Native 仍会失败？</h2><div class="socratic"><p class="question">问：O-Voxel 是不是解决了所有拓扑问题？</p><p class="answer">答：不是。补充材料明确指出，O-Voxel 的表达能力仍受空间分辨率限制；小于 voxel 尺度的细节会 alias，两张非常接近的平行表面落入同一 voxel 时，QEF 顶点可能位于二者之间，材质也会被平均或模糊。</p><p class="takeaway"><strong>Takeaway：</strong>Native 把 3D 表示瓶颈往前推进了一大步，但它仍不是无限分辨率、无限拓扑精度的表示。</p></div><div class="table-wrap"><table><caption><strong>表 D.</strong> 局限与应对。</caption><thead><tr><th>边界</th><th>论文/补充材料信息</th><th>读者应如何解读</th></tr></thead><tbody><tr><td>分辨率限制</td><td>小于 voxel 尺度的几何会 alias</td><td>高分辨率推理能缓解，但会增加计算和内存</td></tr><tr><td>近距离平行面</td><td>同一 voxel 内 QEF 解可能落在两面之间</td><td>对薄壳、夹层、复杂内部结构仍需额外验证</td></tr><tr><td>小孔与闭合性</td><td>结果可能包含小 holes，可用 hole filling 修补</td><td>生成高质量资产不等于直接满足所有 CAD/游戏引擎规范</td></tr><tr><td>语义结构</td><td>当前 O-Voxel 关注几何与材质，不包含 part graph / semantic structure</td><td>后续若要编辑、装配、物理交互，仍需更高层结构表示</td></tr><tr><td>复现</td><td>4B 模型、H100 训练、Triton 稀疏算子均有工程门槛</td><td>论文结论成立，不等于普通实验室可完整复现最大配置</td></tr></tbody></table></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>Native 的核心价值是把 3D 生成的 scaling 问题从“生成器够不够大”重新拉回“原始 3D 资产能否被忠实、紧凑、可生成地表示”。O-Voxel 负责保留开放拓扑、内部结构和 PBR 属性，SC-VAE 负责把它压成 compact SLat，flow-matching 模型再在这个 latent 上做结构、几何、材质生成。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li>3D latent 不是中间缓存，而是在定义生成模型能学到的 3D 世界。</li><li>紧凑性与高保真不是矛盾目标；关键在于压缩前的表示是否保留了正确的局部结构。</li><li>实验支持 Native 在重建、生成、材质和用户偏好上有明显优势，但复现最大模型与实际资产管线可用性仍需谨慎验证。</li></ol></div></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Jianfeng Xiang et al., <em>Native and Compact Structured Latents for 3D Generation</em>, CVPR 2026 paper / supplementary material.</li><li>CVF Open Access PDF and supplementary PDF；本文所有 Native 图均从论文 PDF 或补充材料以高分辨率 PNG 裁切，存放于 <code>assets/figures/native/</code>。</li><li>作者主页与 arXiv 条目用于核对题名、作者、摘要与 Best Student Paper 标注；训练与实验数字以论文原文/补充材料为准。</li></ol></section>
+</main><footer class="article-footer">CVPR 2026 Best Papers Digest · Native 单篇深读验收版。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">研究动机</a></li><li><a href="#datasets">数据集</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">O-Voxel</a></li><li><a href="#scvae">SC-VAE</a></li><li><a href="#training">训练与算力</a></li><li><a href="#experiments">实验与消融</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Native and Compact Structured Latents for 3D Generation</dd><dt>Award</dt><dd>CVPR 2026 Best Student Paper</dd><dt>Topic</dt><dd>3D representation / generation</dd><dt>Compute</dt><dd>16/32 H100 信息披露；总训练时长论文未说明</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：teaser / compactness</li><li>图 3：整体 pipeline</li><li>图 4：O-Voxel 表示</li><li>图 7：重建主结果</li><li>图 12：SC-VAE 消融</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> Native 单篇高质量版</p><p><span class="status-good">figures</span> 20 张 PNG 素材入库</p><p><span class="status-warn">missing</span> 训练时长/steps 未披露</p></div></section></aside></div></body></html>

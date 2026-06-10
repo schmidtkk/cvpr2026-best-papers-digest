@@ -1,0 +1,297 @@
+[
+  {
+    "id": "native_fig1_teaser",
+    "file": "assets/figures/native/native_fig1_teaser.png",
+    "paper": "native",
+    "source": "CVPR 2026 paper PDF Fig. 1",
+    "page": 1,
+    "rect_pt": [
+      52,
+      203,
+      570,
+      412
+    ],
+    "title": "Figure 1 teaser: reconstruction/generation/compactness comparison",
+    "dpi": 260
+  },
+  {
+    "id": "native_fig2_pipeline",
+    "file": "assets/figures/native/native_fig2_pipeline.png",
+    "paper": "native",
+    "source": "CVPR 2026 paper PDF Fig. 2",
+    "page": 3,
+    "rect_pt": [
+      50,
+      70,
+      290,
+      155
+    ],
+    "title": "Figure 2 overview pipeline: 3D assets → O-Voxel → SC-VAE → SLat → flow",
+    "dpi": 260
+  },
+  {
+    "id": "native_fig3_ovoxel",
+    "file": "assets/figures/native/native_fig3_ovoxel.png",
+    "paper": "native",
+    "source": "CVPR 2026 paper PDF Fig. 3",
+    "page": 3,
+    "rect_pt": [
+      315,
+      68,
+      572,
+      295
+    ],
+    "title": "Figure 3 O-Voxel representation and bidirectional conversion",
+    "dpi": 260
+  },
+  {
+    "id": "native_fig4_scvae",
+    "file": "assets/figures/native/native_fig4_scvae.png",
+    "paper": "native",
+    "source": "CVPR 2026 paper PDF Fig. 4",
+    "page": 5,
+    "rect_pt": [
+      55,
+      76,
+      305,
+      222
+    ],
+    "title": "Figure 4 SC-VAE architecture",
+    "dpi": 260
+  },
+  {
+    "id": "native_fig5_generation_gallery",
+    "file": "assets/figures/native/native_fig5_generation_gallery.png",
+    "paper": "native",
+    "source": "CVPR 2026 paper PDF Fig. 5",
+    "page": 7,
+    "rect_pt": [
+      55,
+      62,
+      558,
+      290
+    ],
+    "title": "Figure 5 generation gallery: geometry and PBR materials",
+    "dpi": 250
+  },
+  {
+    "id": "native_fig6_visual_comparison",
+    "file": "assets/figures/native/native_fig6_visual_comparison.png",
+    "paper": "native",
+    "source": "CVPR 2026 paper PDF Fig. 6",
+    "page": 7,
+    "rect_pt": [
+      55,
+      285,
+      565,
+      430
+    ],
+    "title": "Figure 6 visual comparison with other image-to-3D methods",
+    "dpi": 250
+  },
+  {
+    "id": "native_fig7_pbr_texture",
+    "file": "assets/figures/native/native_fig7_pbr_texture.png",
+    "paper": "native",
+    "source": "CVPR 2026 paper PDF Fig. 7",
+    "page": 7,
+    "rect_pt": [
+      310,
+      430,
+      570,
+      670
+    ],
+    "title": "Figure 7 shape-conditioned PBR texture generation comparison",
+    "dpi": 250
+  },
+  {
+    "id": "native_table1_reconstruction",
+    "file": "assets/figures/native/native_table1_reconstruction.png",
+    "paper": "native",
+    "source": "CVPR 2026 paper PDF Table 1",
+    "page": 8,
+    "rect_pt": [
+      62,
+      66,
+      565,
+      218
+    ],
+    "title": "Table 1 reconstruction efficiency and fidelity",
+    "dpi": 260
+  },
+  {
+    "id": "native_table2_generation",
+    "file": "assets/figures/native/native_table2_generation.png",
+    "paper": "native",
+    "source": "CVPR 2026 paper PDF Table 2",
+    "page": 8,
+    "rect_pt": [
+      56,
+      224,
+      302,
+      350
+    ],
+    "title": "Table 2 image-to-3D generation metrics and user study",
+    "dpi": 260
+  },
+  {
+    "id": "native_table3_ablation",
+    "file": "assets/figures/native/native_table3_ablation.png",
+    "paper": "native",
+    "source": "CVPR 2026 paper PDF Table 3",
+    "page": 8,
+    "rect_pt": [
+      55,
+      352,
+      308,
+      450
+    ],
+    "title": "Table 3 SC-VAE ablation",
+    "dpi": 260
+  },
+  {
+    "id": "native_fig8_test_time_scaling",
+    "file": "assets/figures/native/native_fig8_test_time_scaling.png",
+    "paper": "native",
+    "source": "CVPR 2026 paper PDF Fig. 8",
+    "page": 8,
+    "rect_pt": [
+      320,
+      220,
+      562,
+      320
+    ],
+    "title": "Figure 8 test-time resolution and compute scaling",
+    "dpi": 260
+  },
+  {
+    "id": "native_supp_fig1_flexgemm_speed",
+    "file": "assets/figures/native/native_supp_fig1_flexgemm_speed.png",
+    "paper": "native",
+    "source": "CVPR 2026 supplementary PDF Fig. 1",
+    "page": 5,
+    "rect_pt": [
+      45,
+      66,
+      570,
+      255
+    ],
+    "title": "Supplement Figure 1 FlexGEMM speed comparison",
+    "dpi": 240
+  },
+  {
+    "id": "native_supp_table3_dataset",
+    "file": "assets/figures/native/native_supp_table3_dataset.png",
+    "paper": "native",
+    "source": "CVPR 2026 supplementary PDF Table 3",
+    "page": 5,
+    "rect_pt": [
+      50,
+      245,
+      308,
+      340
+    ],
+    "title": "Supplement Table 3 training/evaluation dataset composition",
+    "dpi": 260
+  },
+  {
+    "id": "native_supp_fig2_user_study",
+    "file": "assets/figures/native/native_supp_fig2_user_study.png",
+    "paper": "native",
+    "source": "CVPR 2026 supplementary PDF Fig. 2",
+    "page": 7,
+    "rect_pt": [
+      305,
+      65,
+      568,
+      555
+    ],
+    "title": "Supplement Figure 2 user study interface",
+    "dpi": 230
+  },
+  {
+    "id": "native_supp_table4_user_study",
+    "file": "assets/figures/native/native_supp_table4_user_study.png",
+    "paper": "native",
+    "source": "CVPR 2026 supplementary PDF Table 4",
+    "page": 8,
+    "rect_pt": [
+      56,
+      75,
+      310,
+      200
+    ],
+    "title": "Supplement Table 4 user study statistics",
+    "dpi": 260
+  },
+  {
+    "id": "native_supp_fig3_reconstruction",
+    "file": "assets/figures/native/native_supp_fig3_reconstruction.png",
+    "paper": "native",
+    "source": "CVPR 2026 supplementary PDF Fig. 3",
+    "page": 10,
+    "rect_pt": [
+      70,
+      60,
+      560,
+      720
+    ],
+    "title": "Supplement Figure 3 additional reconstruction results",
+    "dpi": 230
+  },
+  {
+    "id": "native_supp_fig4_shape_fidelity",
+    "file": "assets/figures/native/native_supp_fig4_shape_fidelity.png",
+    "paper": "native",
+    "source": "CVPR 2026 supplementary PDF Fig. 4",
+    "page": 11,
+    "rect_pt": [
+      95,
+      60,
+      570,
+      720
+    ],
+    "title": "Supplement Figure 4 shape reconstruction qualitative comparison",
+    "dpi": 230
+  },
+  {
+    "id": "native_supp_fig5_more_generation",
+    "file": "assets/figures/native/native_supp_fig5_more_generation.png",
+    "paper": "native",
+    "source": "CVPR 2026 supplementary PDF Fig. 5",
+    "page": 12,
+    "rect_pt": [
+      70,
+      60,
+      560,
+      720
+    ],
+    "title": "Supplement Figure 5 additional image-to-3D generation results",
+    "dpi": 230
+  },
+  {
+    "id": "native_supp_fig6_more_comparison",
+    "file": "assets/figures/native/native_supp_fig6_more_comparison.png",
+    "paper": "native",
+    "source": "CVPR 2026 supplementary PDF Fig. 6",
+    "page": 13,
+    "rect_pt": [
+      70,
+      60,
+      560,
+      725
+    ],
+    "title": "Supplement Figure 6 more generation comparisons",
+    "dpi": 230
+  },
+  {
+    "id": "native_thumb",
+    "file": "assets/figures/native/native_thumb.png",
+    "paper": "native",
+    "source": "Derived from Native Figure 1 teaser",
+    "page": 1,
+    "rect_pt": null,
+    "title": "thumbnail",
+    "dpi": null
+  }
+]

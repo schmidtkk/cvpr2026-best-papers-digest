@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChordEdit 深读：为什么 one-step 图像编辑不能只做 prompt drift 相减？</title>
+<meta name="description" content="CVPR 2026 Best Papers Digest · ChordEdit: One-Step Low-Energy Transport for Image Editing 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Best Student Paper Honorable Mention · Image Editing / Optimal Transport</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 Best Papers &gt; Image Editing &gt; ChordEdit</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">09</span><span class="month">Jun</span></div><h1 id="paper-title">ChordEdit 深读：为什么 one-step 图像编辑不能只做 prompt drift 相减？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-09</span><span>CVPR 2026 Best Student Paper Honorable Mention</span><span>来源：CVF PDF / Supplement / 项目主页 / GitHub</span></div><div class="tags"><span class="tag orange">Image Editing</span><span class="tag">One-step T2I</span><span class="tag">Dynamic OT</span><span class="tag green">Training-free</span><span class="tag">MathJax checked</span></div></header>
+<main class="content"><p id="abstract" class="lead"><strong>导读。</strong>ChordEdit 真正要回答的问题不是“能不能更快生成一张编辑图”，而是：<strong>当生成模型已经被蒸馏成 one-step 路径时，传统 training-free 编辑里常用的 source/target drift 相减，为什么会在一步积分中突然变得危险？</strong>论文的回答是：这个差分场在 one-step 模型上是高能量、高方差、非平滑的；与其硬走这条噪声路径，不如把编辑重写成源分布到目标分布的低能量 transport，并用时间窗口平均构造 Chord Control Field。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>训练无关、无需 inversion、模型无关的 one-step 文本引导图像编辑。</div><div class="kv"><b>关键机制</b>用 Chord Control Field 替代 naive drift difference，使单步积分更稳定。</div><div class="kv"><b>核心证据</b>PIE-Bench 上 0.38s、6988MiB；用户研究语义偏好 42.5%、保持质量偏好 48.3%。</div><div class="kv"><b>复现门槛</b>无新训练；实验跑在单块 NVIDIA Titan 24GB，预训练 T2I backbone 的训练账本不属于本文披露范围。</div></div></div><figure class="hero-card"><a href="../assets/figures/chordedit/chordedit_pdf_fig1_teaser.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_pdf_fig1_teaser.png" alt="ChordEdit teaser"></a><figcaption><strong>图 1 · ChordEdit teaser。</strong>首屏应看三件事：左侧是原图，中间是语义变化标签，右侧是编辑结果。它不是单纯展示“好看样例”，而是要点出同一个方法可接到 SD-Turbo 与 SwiftBrush-v2 等 fast generative backbones，并尽量保留非编辑区域。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：为什么 one-step 编辑会比 one-step 生成更难？</h2><p>One-step T2I 模型把多步扩散/flow 采样蒸馏成一次大步前进，这让实时合成成为可能。但编辑不是从噪声到图像的普通生成，它要在“改目标语义”和“保留非编辑区域”之间同时满足约束。传统 training-free 路线通常在每个时间步计算 target prompt 与 source prompt 的 drift 差；多步时，误差可以被很多小步摊开，一步时，所有误差会被一次性放大。</p><figure class="fig-grid"><a href="../assets/figures/chordedit/chordedit_pdf_fig2_runtime_quality.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_pdf_fig2_runtime_quality.png" alt="Runtime quality scatter"></a><a href="../assets/figures/chordedit/chordedit_pdf_fig3_simple_drift_failure.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_pdf_fig3_simple_drift_failure.png" alt="Simple drift failure"></a><figcaption><strong>图 2 · 速度/质量散点与 naive drift 失败案例。</strong>左图把运行时间、语义 CLIP 与 PSNR 放在一起看；右图展示 simple drift 会在 one-step 情况下产生物体扭曲和背景破碎。读这两张图时，不要只看 ChordEdit 的速度，而要看作者如何把“实时”与“非编辑区域一致性”绑定成同一个问题。</figcaption></figure><div class="socratic"><p class="question">问：如果多步编辑已经能靠 drift difference 工作，为什么不直接把它压成一步？</p><p class="guide">引导：注意多步算法的稳定性来自“反复小步修正”，而 one-step 模型要求一次大步穿过高度非线性的场。</p><p class="answer">答：论文认为 naive residual field 在 one-step 模型上是 high-energy and irregular。一步积分时，这类场的局部误差无法被后续步骤纠正，于是表现为主体变形、背景崩坏和伪结构。</p><p class="takeaway"><strong>Takeaway：</strong>ChordEdit 不是在“减少步数”，而是在为 one-step 编辑重新定义一个能走大步的低能量控制场。</p></div></section>
+
+<section id="contribution"><h2>2. 整体解读与贡献：作者明确提出了什么，新意在哪里？</h2><p><strong>作者明确提出的贡献</strong>可以概括为三点：第一，把 one-step text-guided image editing 建模为源 prompt 分布到目标 prompt 分布的 transport 问题；第二，从 dynamic optimal transport 推导出时间加权平均的 Chord Control Field；第三，在 PIE-Bench 与多种 one-step/few-step/multi-step 编辑器上验证速度、保持质量、语义对齐与模型无关性。</p><p><strong>读者能进一步推断的是</strong>：fast generative backbone 的可控性不等于直接可编辑性。模型在 one-step synthesis 中学到的是一条压缩过的生成路径；编辑控制需要处理这个路径的数值稳定性，而不是只做 prompt vector arithmetic。</p><div class="table-wrap"><table><caption><strong>表 A.</strong> ChordEdit 与相邻路线的差异。</caption><thead><tr><th>路线</th><th>是否训练新模块</th><th>是否需要 inversion</th><th>典型瓶颈</th><th>ChordEdit 的取舍</th></tr></thead><tbody><tr><td>多步 inversion-based editing</td><td>通常不训练</td><td>需要</td><td>慢，且 inversion 误差会影响真实图编辑</td><td>放弃 inversion，追求实时交互</td></tr><tr><td>few-step editing</td><td>方法依赖具体 backbone</td><td>常常需要或隐含重构</td><td>4-8 steps 仍不够“真实时”</td><td>把 transport 压到 1-NFE，再可选 1-NFE prox</td></tr><tr><td>training-based one-step editing</td><td>需要专用网络</td><td>依赖训练得到的 inversion/编辑器</td><td>模型无关性弱</td><td>只查询已有 one-step T2I 模型的 observable field</td></tr><tr><td>naive one-step drift difference</td><td>不训练</td><td>不需要</td><td>高能量场导致背景破坏</td><td>用 Chord Control Field 做时间平滑</td></tr></tbody></table></div></section>
+
+<section id="datasets"><h2>3. 数据集与任务：这里没有训练集，但有严格评测协议</h2><p>ChordEdit 是 <strong>training-free / inversion-free</strong> 方法，因此没有新训练数据集，也没有预训练/微调阶段。论文的主要数据角色是评测：使用 PIE-Bench 作为 instruction-based image editing benchmark。论文说明该 benchmark 包含 700 个 512×512 样本，分布在 10 个编辑类别中；每个实例包含源图、文本 prompt 和用于区分编辑区/非编辑区的 ground-truth mask。</p><div class="table-wrap"><table><caption><strong>表 B.</strong> 任务与数据在方法中的作用。</caption><thead><tr><th>项目</th><th>论文披露</th><th>输入 → 输出</th><th>作用</th><th>缺失信息</th></tr></thead><tbody><tr><td>编辑任务</td><td>Text-guided real image editing</td><td>source image + source prompt + target prompt → edited image</td><td>方法主体</td><td>论文未说明每个类别的完整样本分布细节</td></tr><tr><td>PIE-Bench</td><td>700 samples，10 editing categories，512×512</td><td>图像、prompt、mask → PSNR/MSE/CLIP 等指标</td><td>主评测</td><td>论文未说明是否对所有 prompt 做人工筛查</td></tr><tr><td>预训练 T2I backbone</td><td>SD-Turbo、SwiftBrush-v2、InstaFlow 等</td><td>noisy state + condition → observable output / drift</td><td>被查询的生成场</td><td>这些 backbone 的训练数据与算力不是本文贡献，论文未统一披露</td></tr></tbody></table></div><div class="socratic"><p class="question">问：没有训练集，为什么还要认真写“数据集与任务”？</p><p class="answer">答：因为 ChordEdit 的主张不是“训练一个更好的编辑器”，而是“给定已有 fast T2I 模型，也能稳定地做单步编辑”。因此评测集的 mask、prompt 与指标定义决定了论文证据是否能支持“保持非编辑区域”和“语义改变”这两个目标。</p><p class="takeaway"><strong>Takeaway：</strong>本文的数据核心是评测协议，不是训练监督。</p></div></section>
+
+<section id="pipeline"><h2>4. Pipeline：从一张真实图到 one-step edit 发生了什么？</h2><figure class="fig-wide"><a href="../assets/figures/chordedit/chordedit_project_method.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_project_method.png" alt="ChordEdit method diagram"></a><figcaption><strong>图 3 · 方法总览。</strong>左侧说明多步 simple drift 可以靠连续小步修正；中间说明 one-step simple drift 的大步会偏离；右侧是 ChordEdit：在相邻时间窗口上平均 observable fields $R(x_\tau,t)$ 与 $R(x_\tau,t-\delta)$，得到更低能量的 chord field。数据流是 image/prompt → noisy proxy/model query → field estimate → edited latent；模型流是调用已有 T2I backbone；训练流不存在，因为方法 training-free。</figcaption></figure><div class="fig-grid"><figure><a href="../assets/figures/chordedit/chordedit_pdf_algorithm1.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_pdf_algorithm1.png" alt="Algorithm 1"></a><figcaption><strong>图 4 · 单噪声算法。</strong>默认 $n=1$：查询 $R(t-\delta)$ 和 $R(t)$，计算 $\hat{u}$，做 $x_{pred}=x_{in}+\lambda\hat{u}$，再可选 proximal refinement。</figcaption></figure><figure><a href="../assets/figures/chordedit/chordedit_pdf_fig6_proximal_refinement.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_pdf_fig6_proximal_refinement.png" alt="Proximal refinement"></a><figcaption><strong>图 5 · Proximal refinement。</strong>这一步不是 transport 本身，而是用目标 prompt 的一次 native predict-$x_0$ 调用增强语义。论文把能量指标放在 refinement 之前计算，以免混淆“稳定 transport”和“语义增强”。</figcaption></figure></div><ol><li><strong>输入。</strong>源图 $x_{src}$、源 prompt $c_{src}$、目标 prompt $c_{tar}$，以及时间 $t$、窗口 $\delta$、步长 $\lambda$、refinement 时间 $t_c$。</li><li><strong>查询场。</strong>在 VAE latent space 中对同一输入查询 source/target condition 下的 observable residual field。</li><li><strong>构造 Chord field。</strong>用时间窗口平均替代瞬时差分，降低 field energy 和 variance。</li><li><strong>单步 transport。</strong>一步移动到 $x_{pred}$。</li><li><strong>可选语义增强。</strong>一次 proximal refinement 得到最终图。</li></ol><div class="socratic"><p class="question">问：如果去掉 Chord averaging，只保留 source/target drift 差分，会怎样？</p><p class="answer">答：它退化为论文中的 naive baseline。消融显示 naive 的能量在 step count 趋近 1 时会尖峰化，PSNR 随之崩塌；定性图则表现为背景和主体被同时破坏。</p><p class="takeaway"><strong>Takeaway：</strong>Pipeline 的关键不是多加一个后处理，而是把“一步编辑的控制信号”先变成可积分的低能量场。</p></div></section>
+
+<section id="method"><h2>5. 模型与方法：Chord Control Field 到底平滑了什么？</h2><p>论文从 conditional probability flow 出发。预训练 T2I 模型在条件 $c$ 下诱导 drift $v(x_t,t,c)$，编辑直觉上是把 source prompt 下的流改成 target prompt 下的流。naive 方法直接用两者差分，但 ChordEdit 认为这个可观测差分含有噪声和高能量尖峰。</p><div class="equation">$$
+\frac{d x_t}{d t}=v(x_t,t,c),\qquad
+\Delta v(x_t,t)=v(x_t,t,c_{tar})-v(x_t,t,c_{src})
+$$<div class="eq-caption">式 1：conditional probability flow 与 naive residual drift。</div></div><div class="formula-note"><p class="note-title">公式读法</p><p>$x_t$ 是时间 $t$ 的图像/latent 状态，$c_{src}$ 与 $c_{tar}$ 是源/目标 prompt。naive drift difference 看似直接，但在 one-step distilled model 中会成为高能量控制信号。</p></div><div class="formula-note"><p class="note-title">先把“能量”说清楚</p><p>本文语境下，控制场的“能量”可理解为其幅度与窗口内粗糙度：场越大、在 $[t-\delta,t]$ 上变化越剧烈，用 explicit Euler 走一步 $x_{in}+\lambda\hat{u}$ 时的截断误差就越大。naive $\Delta v$ 恰好在 one-step distilled model 上又大又抖，于是一步积分会放大它的尖峰。<strong>降低能量＝降低幅度与窗口内方差＝降低一步积分误差</strong>，这就是后面所有构造的目标函数。</p></div><p>ChordEdit 改为估计一个局部常量的低能量场 $u$。论文在短窗口 $[t-\delta,t]$ 上定义一个二次 surrogate：它既不要离上一个估计 $\hat{u}_{t-\delta}$ 太远，也要贴近当前窗口中的 observable proxy field $R(x_\tau,\xi)$。</p><div class="equation">$$
+\Phi_t(u;x_\tau)=t\left\|u-\hat{u}_{t-\delta}(x_\tau)\right\|_2^2+
+\int_{t-\delta}^{t}\left\|u-R(x_\tau,\xi)\right\|_2^2\,d\xi
+$$<div class="eq-caption">式 2：局部低能量估计的二次 surrogate。</div></div><div class="formula-note"><p class="note-title">式 2 → 式 3：一行求极值</p><p>$\Phi_t(\cdot\,;x_\tau)$ 是关于 $u$ 的严格凸二次型，令其梯度为零即可：$\partial_u\Phi_t = 2t\,(u-\hat{u}_{t-\delta}) + 2\int_{t-\delta}^{t}\!\big(u-R(x_\tau,\xi)\big)\,d\xi = 0$。窗口长度为 $\delta$，整理得 $(t+\delta)\,u = t\,\hat{u}_{t-\delta} + \int_{t-\delta}^{t}\! R\,d\xi$，正是式 3。所以式 3 不是凑出来的——它是“既贴近上一估计、又贴近窗口内观测”这一二次目标的<strong>唯一最优解</strong>。</p></div><div class="equation">$$
+u_t^*(x_\tau)=\frac{t}{t+\delta}\hat{u}_{t-\delta}(x_\tau)+
+\frac{1}{t+\delta}\int_{t-\delta}^{t}R(x_\tau,\xi)\,d\xi
+$$<div class="eq-caption">式 3：对 surrogate 求极值得到的局部最优估计。</div></div><p>从式 3 到式 4 用了两个<strong>显式近似</strong>：(i) 用窗口左端的可观测残差代替上一步估计，$\hat{u}_{t-\delta}\approx R(x_\tau,t-\delta)$；(ii) 用右端点做 causal 一阶近似积分，$\int_{t-\delta}^{t}\! R\,d\xi\approx \delta\,R(x_\tau,t)$。两者都假设 $R$ 在短窗口 $[t-\delta,t]$ 上足够平滑。代入式 3 即得最关键的 Chord Control Field：</p><div class="equation">$$
+\hat{u}_t(x_\tau)=\frac{t\,R(x_\tau,t-\delta)+\delta\,R(x_\tau,t)}{t+\delta}
+$$<div class="eq-caption">式 4：Chord Control Field。</div></div><div class="formula-note"><p class="note-title">公式读法</p><p>$R(x_\tau,t)$ 是在 anchor $x_\tau$ 上通过 noisy proxy 查询到的可观测残差场。式 4 本质上是对 naive field 的 causal one-sided smoothing：用 $t-\delta$ 与 $t$ 两个时刻的 observable residual 做加权平均。它的技术作用是降低尖峰能量，让 explicit Euler 的一步积分误差更可控。<strong>代价是上面那两个近似：</strong>当 $R$ 在窗口内突变（强结构边缘、剧烈语义跳变）时，左端不再代表上一估计、右端点也压不住中间尖峰，chord 会欠平滑——这正是后文能量图与消融要检验的边界。</p></div><figure class="fig-wide"><a href="../assets/figures/chordedit/chordedit_pdf_fig5_toy_transport.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_pdf_fig5_toy_transport.png" alt="2D toy transport"></a><figcaption><strong>图 6 · 2D toy transport。</strong>这张图把抽象公式拉回直觉：naive residual field 在 coarse discretization 下轨迹弯曲且不稳定；Chord field 更像一条低能量弦，能把粒子更直地送到目标分布。</figcaption></figure><div class="equation">$$
+x_{pred}=x_{in}+\lambda\hat{u},\qquad
+x_{tar}=\operatorname{prox}(x_{pred},t_c,c_{tar})
+$$<div class="eq-caption">式 5：单步 transport 与可选 proximal refinement。</div></div><div class="socratic"><p class="question">问：式 4 是不是只是“两个 drift 平均一下”的 heuristic？</p><p class="guide">引导：论文把它放在 dynamic OT 和局部 quadratic estimator 中，而不是单纯经验平滑。</p><p class="answer">答：不是。式 3 是式 2（严格凸二次目标）的<strong>唯一</strong>求极值解（见上方一行推导），式 4 只是它在“$R$ 窗口内平滑”假设下的两点 causal 近似。它能压尖峰，是因为凸权重平均 $\tfrac{t}{t+\delta},\tfrac{\delta}{t+\delta}$（和为 1）对窗口内 $R$ 做收缩，降低其幅度方差——也就是上文定义的“能量”被显式压低。代价正是那条平滑假设：$R$ 突变时近似失真，所以理论收益仍要靠后文能量图与消融来兜底。</p><p class="takeaway"><strong>Takeaway：</strong>ChordEdit 的新意在“低能量控制场的构造”，不是新训练一个编辑器。</p></div></section>
+
+<section id="training"><h2>6. 训练细节与算力账本：几乎没有训练账本，但有推理账本</h2><p>这篇论文最特殊的一点是：<strong>ChordEdit 本身没有训练阶段。</strong>它不训练新网络，不做 inversion，也不做 fine-tuning；主要计算是对已有 one-step T2I 模型进行少量 forward query。因此训练账本应写成“论文未说明/不适用”，不能把 SD-Turbo、SwiftBrush-v2、InstaFlow 的预训练成本算到 ChordEdit 自己身上。</p><div class="table-wrap"><table><caption><strong>表 C.</strong> 论文披露的实现与推理成本。</caption><thead><tr><th>项目</th><th>论文披露</th><th>解释</th><th>缺失信息</th></tr></thead><tbody><tr><td>训练</td><td>training-free，无新模型训练</td><td>没有 optimizer、learning rate、epoch/steps</td><td>不适用</td></tr><tr><td>硬件</td><td>所有实验在单块 NVIDIA Titan 24GB GPU 上完成</td><td>证明方法资源门槛相对低</td><td>完整 CPU/IO/环境时间未说明</td></tr><tr><td>默认超参</td><td>$n=1,t=0.90,\delta=0.15,\lambda=1.00,t_c=0.30$</td><td>$\delta$ 平衡稳定与语义强度；$t,\lambda,t_c$ 控制编辑强度和语义增强</td><td>不同类别是否使用同一超参，论文主表按默认报告</td></tr><tr><td>NFE</td><td>transport-only 为 1-NFE；默认含 prox 为 2-NFE</td><td>一轮 Chord transport + 可选一轮 refinement</td><td>不同 backbone 的底层 kernel/吞吐细节未说明</td></tr><tr><td>速度/显存</td><td>SD-Turbo 默认 ChordEdit：0.38s，6988MiB；w/o prox：0.20s，6988MiB</td><td>真实交互的主要证据</td><td>不同 GPU 上的复测数据论文未说明</td></tr></tbody></table></div><div class="note"><p class="note-title">算力说明</p><p>不做 GPU-hours 估算，因为 ChordEdit 没有训练过程；预训练 T2I backbone 的训练成本不是本文披露数字。若要估计系统实际成本，应把 backbone 获取、推理硬件、批处理大小与 UI latency 分开统计。</p></div></section>
+
+<section id="experiments"><h2>7. 主实验：速度、语义、背景保持是否同时成立？</h2><figure class="fig-wide"><a href="../assets/figures/chordedit/chordedit_pdf_table1_main_results.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_pdf_table1_main_results.png" alt="Main results table"></a><figcaption><strong>图 7 · PIE-Bench 主结果表。</strong>这张表要支撑的结论是：ChordEdit 在 training-free、inversion-free、one-step/few-step/multi-step 对比中处于效率前沿。关键数字：SD-Turbo 默认版本 0.38s、6988MiB、CLIP-Edited 22.96；transport-only 版本 0.20s、NFE=1、PSNR 23.89。表中也显示 FlowEdit 的语义分数更高但慢很多，InfEdit 的 PSNR 高但不是 one-step。</figcaption></figure><p>作者的结论并不是“所有指标第一”。更准确地说，ChordEdit 把效率、非编辑区域保持和语义对齐放在一个折中面上：w/o prox 更偏保持，w/ prox 更偏语义。读者应该特别看 ChordEdit 与 SwiftEdit 的同类 one-step 对比：SwiftEdit 需要训练/不满足 T-free/I-free，而 ChordEdit 在 0.38s 下保持训练无关和 inversion-free。</p><figure class="fig-wide"><a href="../assets/figures/chordedit/chordedit_project_comparison.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_project_comparison.png" alt="Qualitative comparison"></a><figcaption><strong>图 8 · PIE-Bench 定性比较。</strong>这张图服务于表 1 的解释：狗项圈、汽车条纹、草地变水面、圆蛋糕变方蛋糕、咖啡拉花等例子分别测试局部属性、形状变化、背景保持和细粒度语义。重点看非编辑区域是否被不必要地重绘。</figcaption></figure><div class="socratic"><p class="question">问：主表足以证明“最佳编辑方法”吗？</p><p class="answer">答：不应这样概括。表 1 更能证明 ChordEdit 在 one-step real-time setting 下非常强，尤其是 training-free / inversion-free / low VRAM 的组合。它不能证明在所有高分辨率、复杂遮挡、精确局部编辑或安全审查场景中都优于专用编辑器。</p><p class="takeaway"><strong>Takeaway：</strong>论文主张成立的边界是“fast one-step backbone 上的实时、轻量、无训练编辑”。</p></div></section>
+
+<section id="ablations"><h2>8. 消融：低能量场真的解释了结果吗？</h2><h3>8.1 Energy visualization：失败不是随机坏图，而是场不稳定</h3><figure class="fig-wide"><a href="../assets/figures/chordedit/chordedit_project_ablation.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_project_ablation.png" alt="Energy ablation"></a><figcaption><strong>图 9 · 能量可视化。</strong>Naive baseline 的高能量区域和编辑失败位置高度相关：比如 dog→wolf、summer→winter、clownfish→goldfish 中，背景和主体被一起扰动。ChordEdit 的低能量图更集中，说明它不是简单“少改一点”，而是更稳定地把控制分布在正确区域。</figcaption></figure><figure class="fig-grid"><a href="../assets/figures/chordedit/chordedit_pdf_fig9_stability_pareto.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_pdf_fig9_stability_pareto.png" alt="Stability pareto"></a><a href="../assets/figures/chordedit/chordedit_supp_fig1_fig2_hyperparam_pareto.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_supp_fig1_fig2_hyperparam_pareto.png" alt="Hyperparameter Pareto"></a><figcaption><strong>图 10 · step 稳定性与 Pareto 前沿。</strong>左图来自主文：当 step count 趋向 1，naive 能量上升、PSNR 下降；ChordEdit 更稳定。右图来自补充材料：在 MSE/PSNR/SSIM 与 CLIP 的权衡中，ChordEdit 的红色前沿整体优于 naive 蓝色前沿。</figcaption></figure><h3>8.2 Noise ablation：为什么默认一个噪声样本也够？</h3><figure class="fig-grid"><a href="../assets/figures/chordedit/chordedit_pdf_fig10_noise_samples.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_pdf_fig10_noise_samples.png" alt="Noise samples"></a><a href="../assets/figures/chordedit/chordedit_pdf_fig11_pareto_seed.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_pdf_fig11_pareto_seed.png" alt="Seed robustness"></a><figcaption><strong>图 11 · 噪声样本与 seed robustness。</strong>论文要说明的是：Chord Control Field 本身已经降低了估计方差，所以 $n=1$ 的效果接近多噪声样本，且 20 个 seed 上的 CLIP/PSNR 分布较紧。若成立，这直接支撑 0.38s 的效率主张。</figcaption></figure><h3>8.3 Transport 与 refinement：保持和语义是被拆开的</h3><figure class="fig-wide"><a href="../assets/figures/chordedit/chordedit_pdf_table2_table3_ablation.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_pdf_table2_table3_ablation.png" alt="Ablation tables"></a><figcaption><strong>图 12 · Transport/refinement 与模型无关性消融。</strong>表 2 显示 w/o prox 时 Ours 把 PSNR 从 naive 的 21.89 提到 23.89；加 prox 后 CLIP-Edited 从 21.87 提到 22.96。表 3 显示在 InstaFlow、SwiftBrush-v2、SD-Turbo 上 Ours 均优于 naive，支持 model-agnostic claim，但仍只覆盖这些 fast T2I backbones。</figcaption></figure><figure class="fig-wide"><a href="../assets/figures/chordedit/chordedit_supp_table1_extended_metrics.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_supp_table1_extended_metrics.png" alt="Extended metrics"></a><figcaption><strong>图 13 · 补充材料扩展表。</strong>扩展表加入 Struct. Dist、SSIM、LPIPS 等指标。它有助于避免只看 PSNR/CLIP 的单指标误读：ChordEdit w/o prox 在保持类指标上非常强，而 full version 把一部分保持质量换成语义增强。</figcaption></figure></section>
+
+<section id="user-study"><h2>9. 用户研究与更多可视化：自动指标是否被人类偏好支持？</h2><figure class="fig-grid"><a href="../assets/figures/chordedit/chordedit_supp_user_study_results.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_supp_user_study_results.png" alt="User study results"></a><a href="../assets/figures/chordedit/chordedit_supp_qualitative_more1.png" target="_blank"><img src="../assets/figures/chordedit/chordedit_supp_qualitative_more1.png" alt="Additional qualitative comparison"></a><figcaption><strong>图 14 · 用户研究与补充定性比较。</strong>用户研究包含 150 名参与者、30 个 prompt，每个准则 4500 票。ChordEdit 在 Semantic Alignment 中获得 42.5% 偏好，在 Preservation Quality 中获得 48.3% 偏好。右图补充更多类别，检验它是否只在主文挑选样例上好看。</figcaption></figure><p>用户研究是对自动指标的有力补充，但也有边界：参与者看到的是有限 prompt、有限候选方法和固定展示形式；它说明 ChordEdit 在该设置下更受偏好，不等于真实内容生产流程中的所有编辑目标都更优。</p></section>
+
+<section id="limitations"><h2>10. 局限与复现门槛：什么时候要谨慎？</h2><div class="table-wrap"><table><caption><strong>表 D.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/补充材料信息</th><th>读者应如何理解</th></tr></thead><tbody><tr><td>依赖 backbone</td><td>方法查询 SD-Turbo、SwiftBrush-v2、InstaFlow 等已有 fast T2I 模型</td><td>如果 backbone 对某类图像/语义本身弱，Chord field 无法凭空补全能力</td></tr><tr><td>语义-保持 trade-off</td><td>w/o prox 更保守，w/ prox 增强语义</td><td>不是单一超参解决所有编辑；真实应用可能要按任务调 $t,\delta,\lambda,t_c$</td></tr><tr><td>评测范围</td><td>主评测为 PIE-Bench 700 个 512×512 样本</td><td>高分辨率、视频一致性、精确局部 mask 编辑、复杂透明/文字编辑仍需额外验证</td></tr><tr><td>安全风险</td><td>补充材料承认高保真实时编辑可能被用于欺骗内容、 misinformation 或恶意媒体</td><td>低门槛实时编辑需要水印、检测、审计与使用规范配套</td></tr><tr><td>偏见继承</td><td>训练无关方法不会修正预训练 T2I 模型中的社会偏见</td><td>prompt 与 backbone 偏差可能被编辑过程保留或放大</td></tr><tr><td>开源复现</td><td>GitHub 给出 Python/PyTorch 与 SD-Turbo 权重依赖</td><td>复现主要难点不是训练，而是环境、backbone 权重、benchmark 协议和指标对齐</td></tr></tbody></table></div><div class="socratic"><p class="question">问：这篇论文最容易被过度宣传成什么？</p><p class="answer">答：容易被说成“0.38 秒完美编辑一切图像”。更严谨的说法是：在 one-step fast T2I backbones 与 PIE-Bench 设置中，ChordEdit 用低能量 transport 显著改善 naive one-step drift 的不稳定，并以低显存/低延迟达到很强的语义-保持折中。</p><p class="takeaway"><strong>Takeaway：</strong>强项是真实时、无训练、无 inversion；边界是 backbone 能力、任务分布和安全治理。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>ChordEdit 的价值在于把 one-step image editing 从“prompt drift 相减”提升为“低能量 transport 控制”。它没有训练新模型，却通过 Chord Control Field 让已有 fast T2I backbone 的可编辑性变得更稳定。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li>One-step 生成快，不代表 one-step 编辑天然稳定；编辑场的能量和方差是独立问题。</li><li>Chord Control Field 的核心是时间窗口平滑与低能量估计，让一次大步积分更不容易破坏背景。</li><li>实验支持 ChordEdit 在实时、轻量、training-free/inversion-free 设置下很强，但不要把结论外推到所有编辑任务、所有分辨率和所有安全场景。</li></ol></div></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Liangsi Lu, Xuhang Chen, Minzhe Guo, Shichu Li, Jingchao Wang, Yang Shi. <em>ChordEdit: One-Step Low-Energy Transport for Image Editing</em>. CVPR 2026 / arXiv:2602.19083.</li><li>CVF Open Access paper and supplementary PDF；本文的公式、表格与实验数字以 PDF / Supplement 为准。</li><li>项目主页 <code>https://chordedit.github.io/</code> 与 GitHub <code>https://github.com/ChordEdit/ChordEdit</code> 用于核对项目图、代码入口、依赖与 demo 信息。</li><li>图像说明：所有正文图均保存为本地 PNG，来自 PDF/Supp 高 DPI 裁切或项目页原图，路径位于 <code>assets/figures/chordedit/</code>；GIF teaser 只抽取为 PNG frame sheet，不直接嵌入动画。</li></ol></section>
+</main><footer class="article-footer">CVPR 2026 Best Papers Digest · ChordEdit 深读。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">研究动机</a></li><li><a href="#contribution">贡献解读</a></li><li><a href="#datasets">任务与数据</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">Chord Field</a></li><li><a href="#training">训练与算力</a></li><li><a href="#experiments">主实验</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>ChordEdit: One-Step Low-Energy Transport for Image Editing</dd><dt>Award</dt><dd>CVPR 2026 Best Student Paper Honorable Mention</dd><dt>Topic</dt><dd>Image Editing / One-step T2I</dd><dt>Code</dt><dd>GitHub: ChordEdit/ChordEdit</dd><dt>Compute</dt><dd>单块 NVIDIA Titan 24GB；无训练阶段</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：teaser</li><li>图 3：method diagram</li><li>图 7：PIE-Bench 主表</li><li>图 9：energy ablation</li><li>图 12：transport/prox 消融</li><li>图 14：user study</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> ChordEdit 深读</p><p><span class="status-good">figures</span> 27 张 PNG 素材入库</p><p><span class="status-good">formula</span> MathJax 预检通过</p><p><span class="status-warn">scope</span> 结论限于 one-step editing setting</p></div></section></aside></div></body></html>

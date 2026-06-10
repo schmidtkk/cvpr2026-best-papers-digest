@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAM 3D Body 深读：一个全身网格模型，凭什么同时打赢“身体专家”和“手部专家”？</title>
+<meta name="description" content="CVPR 2026 Best Papers Digest · SAM 3D Body: Robust Full-Body Human Mesh Recovery 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Top Paper（候选）· Human Mesh Recovery / Pose Estimation</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Human Mesh Recovery &gt; SAM 3D Body</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">10</span><span class="month">Jun</span></div><h1 id="paper-title">SAM 3D Body 深读：一个全身网格模型，凭什么同时打赢“身体专家”和“手部专家”？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-10</span><span>CVPR 2026 Top Paper（候选）· Meta Superintelligence Labs</span><span>来源：arXiv:2602.15989 PDF</span></div><div class="tags"><span class="tag orange">Human Mesh Recovery</span><span class="tag">Promptable Enc–Dec</span><span class="tag">Momentum Human Rig</span><span class="tag green">Data Engine</span><span class="tag">Two-way Decoder</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>SAM 3D Body（下称 3DB）真正要回答的问题，不是“能不能从单图恢复人体网格”——这件事 HMR 领域做了快十年——而是：<strong>为什么历史上「全身模型」在手上总输给「手部专家」、在身体上又难压「身体专家」，以至于没有一个单一模型能同时拿下两端？</strong>3DB 的答案有两层：架构上用<strong>共享编码器 + 身体/手部双解码器</strong>拆开二者互相打架的优化目标，再用<strong>可提示（promptable）接口</strong>把手腕与肘部互相“喂回去”完成合并；数据上用<strong>VLM 驱动的数据引擎</strong>主动挖难例 + 多阶段标注流水线产出 700 万张高质量标注。结果：它是<em>首个</em>在身体与手部两条战线同时达到/逼近各自专家水平的单模型。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>一个可提示的全身 HMR 模型 3DB：共享编码器 + 身体/手部双解码器，配 VLM 数据引擎与多阶段网格拟合标注。</div><div class="kv"><b>关键机制</b>双解码器化解身体/手部优化冲突；用手腕（手解码器）+ 肘部（身解码器）re-prompt 身解码器完成合并；MHR 解耦骨架与软组织。</div><div class="kv"><b>核心证据</b>5 标准 + 5 新基准 SOTA、FreiHand 手部逼近专家、7800 人偏好研究对最强基线 NLF 胜率 83.8%。</div><div class="kv"><b>复现门槛</b>700 万图多为授权/合成/多视角自采；MHR 与权重开源，但完整数据管线不可外部复现；训练算力未披露。</div></div></div><figure class="hero-card"><a href="../assets/figures/sam3dbody/sam3dbody_fig1.png"><img src="../assets/figures/sam3dbody/sam3dbody_fig1.png" alt="SAM 3D Body teaser"></a><figcaption><strong>图 1 · 全身网格恢复结果。</strong>跨视角、跨难度姿态的身体 + 手部统一估计。顶部为开源入口（Demo / Code / Website）。这张图要证明的是“单模型、多场景、身手一体”——后文所有定量结论都在拆解它何以成立。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：全身模型为什么打不过专家？</h2><p>从单张图估计人体的<strong>姿态</strong>（骨架结构）与<strong>形状</strong>（软组织）是视觉与具身智能理解人的基础能力。但论文开篇就点名痛处：现有 HMR 在<strong>野外图像</strong>上鲁棒性不足——挑战性姿态、严重遮挡、罕见视角下频频失败，而且很难在<em>同一个</em>框架里既给出可靠的整体身体姿态、又给出手脚的精细细节。</p><div class="socratic"><p class="question">问：那把“身体专家”和“手部专家”各跑一遍、再拼起来，不就行了？</p><p class="guide">引导：先想清楚二者为什么不能共用一套输出头。它们的输入分辨率、相机假设、监督目标都不一样。</p><p class="answer">答：这正是论文诊断的<strong>身体/手部联合优化冲突</strong>。把它拆成三个具名来源：<strong>(i) 输入分辨率</strong>——手在全身裁剪里只占百分之几，512×512 的身体裁剪下一只手也许只有几十像素，而手部专家喂的是贴合的高分辨率手部裁剪，每根手指的信号量差一两个数量级；<strong>(ii) 相机估计</strong>——身体姿态需要一个全局透视相机（含 FOV），手部姿态本质是手腕附近的局部、近正交问题，一个相机头同时服务两者会被往两个方向拉扯；<strong>(iii) 监督目标</strong>——身体数据给身体 + 脚的关键点，手部数据给 21 个手部关键点且<strong>手腕可自由摆动</strong>，二者的梯度恰好在共享的手腕/前臂自由度上打架。一个统一输出头必须二选一，于是哪边都不极致。</p><p class="takeaway"><strong>Takeaway：</strong>问题不是“能不能做全身”，而是“如何让身体头与手部头各自局部最优，同时还能拼成一个一致的全身”。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献（论文原文三点）</strong>：(a) 一个<strong>可提示的编码器–解码器架构</strong>，可选地以 2D 关键点、mask 或相机信息为条件做可控姿态估计，并在训练/歧义场景下提供交互式引导；(b) <strong>共享图像编码器 + 身体/手部两个独立解码器</strong>的「two-way-decoder」设计，缓解上节三类冲突；(c) 不用主流的 SMPL，而是建立在新参数化网格 <strong>MHR（Momentum Human Rig）</strong>上——它显式解耦骨架姿态与身体形状，带来更强的可控性与可解释性。此外还有<strong>数据侧</strong>三件套：质量（几何约束 + 参数先验 + 密集关键点回归自动产出高质量标注）、数量（700 万图）、多样性（VLM 数据引擎挖野外难例）。</p><p><strong>读者能进一步推断的是</strong>：这篇论文的“SAM 味”不在网络本身（编码器–解码器 + cross-attention 是标准件），而在<strong>把 SAM 的两件方法论搬进 HMR</strong>——可提示接口 + 数据引擎。真正决定鲁棒性的，是数据引擎与标注流水线，而非某个新算子；架构的巧思则集中在“如何用 promptability 把双解码器再缝回去”（见第 5 节）。</p></section>
+
+<section id="datasets"><h2>3. 数据集与表示：MHR、700 万标注与新评测集</h2><h3>3.1 为什么换掉 SMPL：MHR 的解耦</h3><p>最常用的人体网格模型 SMPL 把人体参数化为 pose 与 shape；SMPL-X 进一步加入手（MANO）与脸（FLAME）。问题在于：SMPL 的 shape 空间是对体扫的 PCA，它把<strong>骨架结构（骨长）</strong>与<strong>软组织质量分布</strong>纠缠进同一个线性空间——于是参数<em>不</em>直接对应骨长，可控性与可解释性受限。MHR（ATLAS 的增强版）则<strong>显式解耦</strong>骨架与形状，3DB 以它为人体表示。后文会看到，这个解耦不是审美选择：正因为骨架显式，才能在合并步把手部的局部 MHR 参数沿运动学树挂到手腕上。</p><h3>3.2 训练数据：单视角 + 多视角 + 合成，共 700 万</h3><p>训练集混合单视角野外、多视角一致、高保真合成三类，覆盖一般身体姿态、手、交互与“野外”条件。下表为论文 Table 1 的完整转录（带 ⋆ 者同时用于训练手部解码器）。</p>
+<div class="table-wrap"><table><caption><strong>表 1.</strong> 3DB 训练数据集（论文 Table 1 完整转录）。⋆ 表示该数据集提供样本训练手部解码器。</caption><thead><tr><th>数据集</th><th># 图像 / 帧</th><th># 主体</th><th># 视角</th></tr></thead><tbody><tr><td>MPII human pose</td><td>5K</td><td>5K+</td><td>1</td></tr><tr><td>MS COCO</td><td>24K</td><td>24K+</td><td>1</td></tr><tr><td>3DPW</td><td>17K</td><td>7</td><td>1</td></tr><tr><td>AIChallenger</td><td>172K</td><td>172K+</td><td>1</td></tr><tr><td>SA-1B</td><td>1.65M</td><td>1.65M+</td><td>1</td></tr><tr><td>Ego-Exo4D</td><td>1.08M</td><td>740</td><td>4+</td></tr><tr><td>DexYCB</td><td>291K</td><td>10</td><td>8</td></tr><tr><td>EgoHumans</td><td>272K</td><td>50+</td><td>15</td></tr><tr><td>Harmony4D</td><td>250K</td><td>24</td><td>20</td></tr><tr><td>InterHand ⋆</td><td>1.09M</td><td>27</td><td>66</td></tr><tr><td>Re:Interhand ⋆</td><td>1.50M</td><td>10</td><td>170</td></tr><tr><td>Goliath ⋆</td><td>966K</td><td>120+</td><td>500+</td></tr><tr><td>Synthetic ⋆</td><td>1.63M</td><td>–</td><td>–</td></tr></tbody></table></div>
+<p>读这张表要看两件事：<strong>野外多样性</strong>（SA-1B 1.65M 单视角野外图带来外观/场景广度）与<strong>几何高保真</strong>（Goliath 500+ 视角、Re:Interhand 170 视角带来可靠 3D 监督）。两类数据的张力——“多样但脏”vs“干净但窄”——正是数据引擎与标注流水线要弥合的（第 4 节）。论文还构建了一个按<strong>姿态与外观类别</strong>组织的新评测集（24 个 2D 类别、28 个 3D 类别），用于细粒度地拆开“模型在哪类图上强/弱”，而不是只看一个平均数。</p></section>
+
+<section id="pipeline"><h2>4. Pipeline：数据引擎 + 多阶段标注，才是鲁棒性的来源</h2><figure class="fig-wide"><a href="../assets/figures/sam3dbody/sam3dbody_fig3.png"><img src="../assets/figures/sam3dbody/sam3dbody_fig3.png" alt="Annotation tool and dense vs sparse keypoints"></a><figcaption><strong>图 2 · 标注工具与稠密/稀疏关键点。</strong>左：标注员在 3DB 初估的 2D 关键点上复核纠正并打可见性标签。右：稀疏关键点（粗）作为引导，密集关键点（细，595 个）用于伪标注网格拟合。论文新意在于让<strong>密集关键点检测器吃稀疏人工标注作引导</strong>，而非像以往只用像素视觉线索。</figcaption></figure><div class="socratic"><p class="question">问：为什么不直接拿海量视频做时序伪标注、量大管够？</p><p class="answer">答：因为视频虽量大，但姿态、外观、成像条件、背景往往高度相似——<strong>多样性</strong>不够。3DB 的数据引擎核心是 <strong>VLM 驱动的挖掘</strong>：让 VLM 自动生成并迭代更新挖掘规则，从数千万图里找出高价值难例——遮挡、罕见姿态（杂技/舞蹈）、交互（人–物/人–人）、极端尺度、低可见度（弱光/运动模糊）、手身高耦合（手语/运动）。挖掘规则<strong>基于当前模型的失败分析半自动迭代</strong>：在已标注图上评估 3DB、按关键点误差可视化最难样本、用几个词描述失败 → 拼成文本提示喂给 VLM → VLM 选出新图 → 路由人工标注。这是一个主动学习闭环，把标注预算花在最有信息量的样本上。</p><p class="takeaway"><strong>Takeaway：</strong>数据引擎不是“收集更多”，而是“定向收集模型当前最不会的”——这是泛化（第 6 节 leave-one-out）的真正来源。</p></div><p><strong>多阶段标注与网格拟合</strong>（论文 §6）：① <strong>人工标注</strong>——在 3DB 初估上复核 2D 关节并打可见性标签；② <strong>单图网格拟合</strong>——用当前 3DB 给 MHR 初值 + 高容量检测器给 595 个密集 2D 关键点，再做梯度细化，最小化复合损失（2D 重投影 + 初值锚定正则 + GMM 姿态/形状先验）；③ <strong>多视角网格拟合</strong>——同步多机位 2D 关键点三角化出稀疏 3D 点，二阶优化交替更新相机/形状/骨架/姿态，加 3D 关键点损失与时序平滑，RANSAC/鲁棒损失滤噪。<strong>595 个密集关键点</strong>被选为“捕捉多样体型与手姿的人体网格最小流形”，检测器迭代自举两轮（先在 3D 合成/Goliath 上训 → 拟合野外 COCO/MPII → 把网格投回密集关键点再训）。</p>
+<figure class="fig-wide"><a href="../assets/figures/sam3dbody/sam3dbody_fig5.png"><img src="../assets/figures/sam3dbody/sam3dbody_fig5.png" alt="Multi-view and scan-based mesh fitting"></a><figcaption><strong>图 3 · 网格拟合示例。</strong>(a) 多视角拟合（来源 EgoExo4D）：多机位三角化提供强 3D 监督；(b) 基于扫描的拟合（来源 Re:Interhand）。多视角因深度歧义更小、保真更高，弥补单视角伪标注的低保真。</figcaption></figure></section>
+
+<section id="method"><h2>5. 方法核心：双解码器，以及用 promptability 把它缝回去</h2><p>3DB 是一个可提示的编码器–解码器（图 4）。人体裁剪图 $I$ 过视觉骨干得稠密特征图 $F$；可选地把手部裁剪 $I_{\text{hand}}$ 再编码得 $F_{\text{hand}}$——<strong>这一步直接修复了上节的“分辨率饿死”</strong>：手部解码器看的是手部分辨率的特征，而非全身裁剪里那几十像素。</p>
+<figure class="fig-wide"><a href="../assets/figures/sam3dbody/sam3dbody_fig2.png"><img src="../assets/figures/sam3dbody/sam3dbody_fig2.png" alt="SAM 3D Body architecture"></a><figcaption><strong>图 4 · 3DB 架构。</strong>共享图像编码器 + 身体/手部两个解码器。查询 token 包含 MHR+相机 token、2D 关键点提示 token、辅助 2D/3D 关键点 token、可选手部位置 token；body 解码器 cross-attend 全身特征 $F$，hand 解码器 cross-attend 手部特征 $F_{\text{hand}}$。输出为 MHR 的 Pose / Shape / Skeleton 与 Camera。</figcaption></figure>
+<p>所有 token 拼成查询集，body 解码器对查询与全身特征做 cross-attention：</p><div class="equation">$$T=[\,T_{\text{pose}},\,T_{\text{prompt}},\,T_{\text{keypoint2D}},\,T_{\text{keypoint3D}},\,T_{\text{hand}}\,],\qquad O=\mathrm{Decoder}(T,\,F)$$<div class="eq-caption">式 1：查询 token 拼接 + 身体解码器 cross-attention。第一个输出 token 过 MLP 回归 MHR 参数 $\theta=\{P,S,C,S_k\}$（姿态/形状/相机/骨架）。</div></div>
+<div class="formula-note"><p class="note-title">为什么“共享编码器 + 双解码器”能化解冲突（动机优先）</p><p>把第 1 节的三类冲突映射到架构上：<strong>共享编码器</strong>保留表示学习的红利——一个高容量骨干吃下全部多样数据，多任务信号对它是<em>增益</em>而非负担；<strong>两个解码器</strong>则让身体与手各自拥有独立的查询 token、cross-attention、相机头与监督，于是梯度冲突被<strong>限制在编码器</strong>（它扛得住），而不在输出头上互相抵消。手部解码器额外 attend 手部裁剪特征 $F_{\text{hand}}$，直接补回分辨率。<strong>承重假设：</strong>身体与手的最优手腕自由度可以<em>暂时不一致</em>，把一致性推迟到合并步去解决——这正是下面 promptability 的用武之地。</p></div>
+<h3>5.1 合并：手腕给 hand 决定，肘部给 body 决定</h3><div class="socratic"><p class="question">问：双解码器各出一套，最后怎么拼成一个全身？直接把手挂到运动学树的手腕上不就好了？</p><p class="guide">引导：运动学树会传播。固定了手腕朝向，会反过来影响“隐含的肘部”。</p><p class="answer">答：论文明确指出，<strong>简单地把手部解码器输出塞进 MHR 运动学树中段，会让相邻关节、尤其是肘部出错</strong>。3DB 的解法很漂亮——复用自己的可提示性做<strong>自我调和</strong>：手部解码器给出可信的<strong>手腕位置</strong>，身体解码器给出可信的<strong>肘部位置</strong>，把这两者作为关键点提示<em>喂回</em>身体解码器，让它重新生成一个既尊重（好的）手腕、又尊重（好的）肘部的精细全身姿态；最后按运动学树把局部 MHR 参数合并成全身配置。它没有手写一条 IK 混合规则，而是让见过数百万次提示样本的解码器去解这个约束满足问题。</p><p class="takeaway"><strong>Takeaway：</strong>promptability 不是 UI 花活，而是<strong>承重</strong>的精度机制——同一个接口既给用户交互、又在内部完成身手合并。</p></div>
+<div class="formula-note"><p class="note-title">两条独立路径交叉验证“双解码器有效”</p><p><strong>路径一（机理）：</strong>手腕是身体监督与手部监督<em>共享</em>的自由度，其最优值在两种监督下不同（身体侧被肘/前臂约束，手部侧自由摆动以贴合手指）。单头必须取一个折中；双头让各自局部最优，再用 re-prompt 调和。<strong>路径二（实证）：</strong>FreiHand（表 4）上 3DB 在<em>未训练该集</em>的前提下 PA-MPJPE 5.5，追平 WiLoR/MaskHand（5.5）、优于 HaMeR（6.0）；与此<em>同时</em>身体侧（表 2）EMDB MPJPE 61.7 反超 NLF 的 68.4。一个模型两条战线同时拿分——这是“冲突被拆解”最直接的证据。训练时还像 SAM 那样<strong>多轮随机采样提示</strong>，正是让解码器对任意提示子集鲁棒，从而内部的“手腕+肘部”re-prompt 才能稳定工作（同一机制的两个角色）。</p></div>
+<h3>5.2 训练损失（多任务、提示感知）</h3><p>总损失 $L_{\text{train}}=\sum_i \lambda_i L_i$，每项针对某个预测头或解剖结构。要点：<strong>2D/3D 关键点</strong>用 $L_1$ 损失 + 可学习的逐关节不确定度（按预测置信度调权，3D 关节先按骨盆/手腕归一化）；<strong>MHR 参数</strong>用 $L_2$ 回归 + 关节角度上限惩罚防解剖学不可能姿态；<strong>手部检测</strong>用 GIoU + $L_1$ 回归手框、并预测手框不确定度（遮挡手在推理时关掉手部解码器）；3D 关键点损失用 warm-up 逐步加权以稳训。这里的<strong>逐关节不确定度</strong>是处理单目歧义的关键——让模型对“看不清的关节”降权，而非硬拟合噪声伪标签。</p></section>
+
+<section id="training"><h2>6. 训练与推理配置</h2><p>两个变体：<strong>3DB-H</strong> 用常见 ViT-H（632M）骨干；<strong>3DB-DINOv3</strong> 用更新的 DINOv3（840M）编码器。输入 resize 到 512×512；推理时用现成 FOV 估计器（如 MoGe-2）提供相机内参。评测沿用标准指标 MPJPE、PA-MPJPE、PVE、PCK；在 SMPL 系数据集上，把 MHR 网格映射到 SMPL 格式再评。<strong>论文未说明</strong>训练总 GPU-hours、steps/epochs、完整 LR schedule 与各损失权重 $\lambda_i$ 的具体取值。推理默认用身体解码器输出，检测到手时合并手部解码器输出（按 5.1 的 re-prompt 策略）。</p>
+<div class="note"><div class="note-title">关于算力</div><p>论文未披露训练 GPU-hours，本页不做估算。可定性地说：700 万图、840M 编码器、两段式解码器加多阶段标注流水线（含密集关键点检测器两轮自举、多视角二阶优化），整体属于工业级规模，外部小团队难以等比复现——但这是数据/工程量级的判断，<strong>不等同于任何具体账单</strong>。</p></div></section>
+
+<section id="experiments"><h2>7. 实验：身体、手部、泛化、人类偏好，四面都要立住</h2><p><strong>判断：</strong>论文的主张是“首个在身体与手部两端同时达到/逼近专家水平的单模型”。要立住它，需要四类独立证据：标准基准身体精度（表 2）、未见域泛化（表 3）、手部专家对比（表 4）、人类感知偏好（图 6）。逐一看。</p>
+<h3>7.1 五个标准基准：身体精度</h3>
+<div class="table-wrap"><table><caption><strong>表 2.</strong> 五个常用基准对比（论文 Table 2 转录）。3DPW/EMDB/RICH 报 PA-MPJPE / MPJPE / PVE（mm，越小越好）；COCO/LSPET 报 PCK@0.05（越大越好）。加粗为本页标注的该列最优（含并列）。RICH 为 NLF 的<strong>训练集内</strong>、为 3DB 的域外。</caption><thead><tr><th>模型</th><th>3DPW PA↓</th><th>3DPW MPJPE↓</th><th>3DPW PVE↓</th><th>EMDB PA↓</th><th>EMDB MPJPE↓</th><th>EMDB PVE↓</th><th>RICH PA↓</th><th>RICH MPJPE↓</th><th>RICH PVE↓</th><th>COCO PCK↑</th><th>LSPET PCK↑</th></tr></thead><tbody><tr><td>HMR2.0b</td><td>54.3</td><td>81.3</td><td>93.1</td><td>79.2</td><td>118.5</td><td>140.6</td><td>48.1</td><td>96.0</td><td>110.9</td><td>86.1</td><td>53.3</td></tr><tr><td>CameraHMR</td><td>35.1</td><td>56.0</td><td>65.9</td><td>43.3</td><td>70.3</td><td>81.7</td><td>34.0</td><td>55.7</td><td>64.4</td><td>80.5</td><td>49.1</td></tr><tr><td>PromptHMR</td><td>36.1</td><td>58.7</td><td>69.4</td><td>41.0</td><td>71.7</td><td>84.5</td><td>37.3</td><td>56.6</td><td>65.5</td><td>79.2</td><td>55.6</td></tr><tr><td>SMPLerX-H</td><td>46.6</td><td>76.7</td><td>91.8</td><td>64.5</td><td>92.7</td><td>112.0</td><td>37.4</td><td>62.5</td><td>69.5</td><td>–</td><td>–</td></tr><tr><td>NLF-L+fit</td><td>33.6</td><td>54.9</td><td>63.7</td><td>40.9</td><td>68.4</td><td>80.6</td><td><strong>28.7</strong></td><td><strong>51.0</strong></td><td><strong>58.2</strong></td><td>74.9</td><td>54.9</td></tr><tr><td>WHAM（视频）</td><td>35.9</td><td>57.8</td><td>68.7</td><td>50.4</td><td>79.7</td><td>94.4</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr><tr><td>TRAM（视频）</td><td>35.6</td><td>59.3</td><td>69.6</td><td>45.7</td><td>74.4</td><td>86.6</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr><tr><td>GENMO（视频）</td><td>34.6</td><td>53.9</td><td>65.8</td><td>42.5</td><td>73.0</td><td>84.8</td><td>39.1</td><td>66.8</td><td>75.4</td><td>–</td><td>–</td></tr><tr><td><strong>3DB-H（本文）</strong></td><td><strong>33.2</strong></td><td>54.8</td><td>64.1</td><td>38.5</td><td>62.9</td><td>74.3</td><td>31.9</td><td>55.0</td><td>61.7</td><td><strong>86.8</strong></td><td><strong>68.9</strong></td></tr><tr><td><strong>3DB-DINOv3（本文）</strong></td><td>33.8</td><td><strong>54.8</strong></td><td><strong>63.6</strong></td><td><strong>38.2</strong></td><td><strong>61.7</strong></td><td><strong>72.5</strong></td><td>30.9</td><td>53.7</td><td>60.3</td><td>86.5</td><td>67.8</td></tr></tbody></table></div>
+<p>这张表的诚实之处在于它没有“全列加粗”。3DB 在 <strong>EMDB</strong>（域外）上把 MPJPE 从次优 NLF 的 68.4 压到 <strong>61.7</strong>、PVE 80.6→72.5，泛化优势明显；在 COCO/LSPET 的 2D PCK 上也是 SOTA（68.9 vs 55.6），说明 2D 对齐强。唯一被反超的是 <strong>RICH</strong>——但论文如实说明：RICH 在 NLF 训练集内、却是 3DB 的域外，这条落后是“训练集内 vs 域外”的不对等比较，而非方法弱。更值得注意的是：3DB 是<em>单图</em>方法，却已与 WHAM/TRAM/GENMO 这些额外用<strong>时序</strong>信息的视频方法相当甚至更好。</p>
+<h3>7.2 五个新基准：未见域泛化（leave-one-out）</h3>
+<div class="table-wrap"><table><caption><strong>表 3.</strong> 五个新基准对比（论文 Table 3 转录，38.6K 图）。PVE / MPJPE（mm，越小越好），SA1B-Hard 报 Avg-PCK（越大越好）。基线（CameraHMR/PromptHMR/NLF 各训于 6/9/48 个数据集）均未见这些域；3DB 用 <strong>leave-one-out</strong> 公平对比，<strong>Full dataset</strong> 为域内上界参考。</caption><thead><tr><th>模型</th><th>EE4D-Phy PVE↓</th><th>EE4D-Phy MPJPE↓</th><th>EE4D-Proc PVE↓</th><th>EE4D-Proc MPJPE↓</th><th>Harmony4D PVE↓</th><th>Harmony4D MPJPE↓</th><th>Goliath PVE↓</th><th>Goliath MPJPE↓</th><th>Synthetic PVE↓</th><th>Synthetic MPJPE↓</th><th>SA1B-Hard PCK↑</th></tr></thead><tbody><tr><td>CameraHMR</td><td>71.1</td><td>58.8</td><td>70.3</td><td>60.2</td><td>84.6</td><td>70.8</td><td>66.7</td><td>54.5</td><td>102.8</td><td>87.2</td><td>63.0</td></tr><tr><td>PromptHMR</td><td>74.6</td><td>63.4</td><td>72.0</td><td>62.6</td><td>91.9</td><td>78.0</td><td>67.2</td><td>56.5</td><td>92.7</td><td>80.7</td><td>59.0</td></tr><tr><td>NLF</td><td>75.9</td><td>68.5</td><td>85.4</td><td>77.7</td><td>97.3</td><td>84.9</td><td>66.5</td><td>58.0</td><td>97.6</td><td>86.5</td><td>66.5</td></tr><tr><td><strong>3DB-H Leave-one-out</strong></td><td>49.7</td><td>44.3</td><td>52.9</td><td>47.4</td><td>63.5</td><td>54.0</td><td>54.2</td><td>46.5</td><td>85.6</td><td>75.5</td><td>73.1</td></tr><tr><td><strong>3DB-H Full dataset（上界）</strong></td><td><strong>37.0</strong></td><td><strong>31.6</strong></td><td><strong>41.9</strong></td><td><strong>36.3</strong></td><td><strong>41.0</strong></td><td><strong>33.9</strong></td><td><strong>34.5</strong></td><td><strong>28.8</strong></td><td><strong>55.2</strong></td><td><strong>47.2</strong></td><td><strong>76.6</strong></td></tr></tbody></table></div>
+<p>这是全文最有说服力的一张表。即便基线训练用了多达 48 个数据集，到这五个域仍大幅掉点；而 3DB 仅<strong>留一法</strong>（同样没见过该域）就把 EE4D-Phys 的 PVE 从最好基线 71.1 压到 <strong>49.7（−30%）</strong>、Harmony4D 84.6→63.5、SA1B-Hard 的 Avg-PCK 63.0→73.1。论文还观察到一个细节：基线们在不同数据集上<strong>轮流当第二</strong>，说明各自过拟合到训练分布的一个窄切片。泛化差距的这种“结构性”特征，正是<strong>数据引擎多样性</strong>（而非架构）在起作用的实证签名——架构是相当标准的 Transformer 编码器–解码器。</p>
+<h3>7.3 手部：未训 FreiHand 也逼近专家</h3>
+<div class="table-wrap"><table><caption><strong>表 4.</strong> FreiHand 手部姿态对比（论文 Table 4 转录）。PA-MPVPE / PA-MPJPE（mm，越小越好），F@5 / F@15（越大越好）。† 表示该方法<strong>用 FreiHand 训练</strong>；3DB <strong>未</strong>训 FreiHand。</caption><thead><tr><th>方法</th><th>PA-MPVPE↓</th><th>PA-MPJPE↓</th><th>F@5↑</th><th>F@15↑</th></tr></thead><tbody><tr><td>LookMa</td><td>8.1</td><td>8.6</td><td>0.653</td><td>–</td></tr><tr><td>METRO †</td><td>6.3</td><td>6.5</td><td>0.731</td><td>0.984</td></tr><tr><td>HaMeR †</td><td>5.7</td><td>6.0</td><td>0.785</td><td>0.990</td></tr><tr><td>MaskHand †</td><td>5.4</td><td><strong>5.5</strong></td><td>0.801</td><td>0.991</td></tr><tr><td>WiLoR †</td><td><strong>5.1</strong></td><td><strong>5.5</strong></td><td><strong>0.825</strong></td><td><strong>0.993</strong></td></tr><tr><td><strong>3DB-H（本文）</strong></td><td>6.3</td><td><strong>5.5</strong></td><td>0.735</td><td>0.988</td></tr><tr><td><strong>3DB-DINOv3（本文）</strong></td><td>6.2</td><td><strong>5.5</strong></td><td>0.737</td><td>0.988</td></tr></tbody></table></div>
+<p>读法要点：手部专家（WiLoR/MaskHand/HaMeR）都<strong>用 FreiHand 训练</strong>、享有强域内加成；3DB 是个<strong>全身</strong>模型、且<strong>没</strong>训 FreiHand，PA-MPJPE 仍打平到 5.5、F@15 0.988 紧贴最优 0.993。论文也坦诚顶点误差 PA-MPVPE（6.2–6.3）仍略逊于 WiLoR 的 5.1——但“一个全身模型在手部逼近手部专家”这件事，历史上几乎没发生过。机理上得益于：手部解码器吃手部裁剪 + 手部数据、加 promptability 对齐手腕（第 5 节）。</p>
+<h3>7.4 人类偏好：7800 人盲评</h3>
+<figure class="fig-wide"><a href="../assets/figures/sam3dbody/sam3dbody_fig8.png"><img src="../assets/figures/sam3dbody/sam3dbody_fig8.png" alt="Human preference win rate"></a><figcaption><strong>图 5 · 人类偏好胜率（论文 Figure 8）。</strong>六个独立成对比较，每个 1300 名独立参与者（共 7800 人、逾 2 万次投票）。括号为 80 题中的胜出题数。对最强基线 <strong>NLF 胜率 83.8%（67/80）</strong>，对 CameraHMR 95.0%、PromptHMR 97.5%、SMPLer-X 98.8%、SMPLest-X 100%、HMR2.0b 96.2%。</figcaption></figure>
+<p>定量指标抓几何/数值精度，但不总对齐人类感知。论文用大规模盲评补上这一面：把 3DB 与某基线的重建并排淡入到原图上，让参与者选“哪个更匹配原图”。结论一致——即便对最强的 NLF，3DB 仍以 83.8% 胜出。视觉质量上接近“5:1 的偏好”，与定量结论相互印证。</p>
+<figure class="fig-wide"><a href="../assets/figures/sam3dbody/sam3dbody_fig6.png"><img src="../assets/figures/sam3dbody/sam3dbody_fig6.png" alt="Qualitative comparison"></a><figcaption><strong>图 6 · 与六个 SOTA 方法的定性对比（来源 SA-1B）。</strong>聚焦复杂姿态、体型与遮挡。对比列可见 3DB（Ours）在肢体与手部细节、2D 叠合对齐上更准——尤其倒置身体、肢体劈叉、严重截断这类难例。</figcaption></figure></section>
+
+<section id="ablations"><h2>8. 分类细评 = 它到底强在哪：截断、罕见视角、极难姿态</h2><p>3DB 没有传统意义上逐组件开关的消融表，但它用<strong>分类细评</strong>（24 个 2D 类别 + 28 个 3D 类别）回答了一个更有意义的问题：<em>提升集中在哪类图上？</em>——这恰好反向验证“数据引擎挖难例”的因果。下面转录代表性类别（非全部 24/28 行）。</p>
+<div class="table-wrap"><table><caption><strong>表 5.</strong> SA-1B Hard 上的 2D 分类细评（论文 Table 5 节选代表性类别）。指标为 aPCK（身体 / 脚，越大越好）。3DB 在全部类别均最优，此处取差距最大者。</caption><thead><tr><th>类别</th><th>CameraHMR body/feet</th><th>PromptHMR body/feet</th><th>3DB body/feet</th></tr></thead><tbody><tr><td>Camera_view · Bottom-up view</td><td>55.18 / 34.84</td><td>46.56 / 29.25</td><td><strong>69.62 / 55.35</strong></td></tr><tr><td>Camera_view · Overhead view</td><td>55.08 / 39.46</td><td>43.65 / 24.63</td><td><strong>73.33 / 66.94</strong></td></tr><tr><td>Pose · Inverted body</td><td>46.12 / 30.01</td><td>39.83 / 24.64</td><td><strong>78.18 / 72.19</strong></td></tr><tr><td>Pose · Leg or arm splits</td><td>57.51 / 31.43</td><td>54.76 / 33.11</td><td><strong>83.69 / 72.49</strong></td></tr><tr><td>Pose · Contortion or bending</td><td>47.08 / 32.78</td><td>42.61 / 20.98</td><td><strong>65.20 / 53.04</strong></td></tr><tr><td>Visibility · Truncation (lower-body)</td><td>39.27 / –</td><td>46.50 / –</td><td><strong>61.95 / –</strong></td></tr><tr><td>Multi_people · Overlapped</td><td>53.11 / 41.88</td><td>57.17 / 41.43</td><td><strong>70.82 / 64.71</strong></td></tr><tr><td>Hand · Self-occluded hands</td><td>73.22 / 58.06</td><td>72.43 / 56.19</td><td><strong>80.07 / 80.82</strong></td></tr></tbody></table></div>
+<p>差距最大的几行——倒置身体（+32 pt vs CameraHMR）、肢体劈叉、底视/俯视、下半身截断——<strong>恰好是数据引擎挖掘规则里点名的“罕见姿态/极端视角/低可见度”</strong>。论文据此归因：截断类的大幅领先说明 3DB 学到了更强的<strong>姿态先验</strong>来处理画面外的躯体。换言之，2D 分类细评就是数据引擎有效性的“因果指纹”。</p>
+<div class="table-wrap"><table><caption><strong>表 6.</strong> 3D 分类细评（论文 Table 6 节选代表性类别）。PVE / MPJPE / PA-MPJPE（mm，越小越好）。3DB 全面领先，此处取最具代表性的“极难”类别。</caption><thead><tr><th>类别</th><th>CameraHMR PVE/MPJPE/PA</th><th>PromptHMR PVE/MPJPE/PA</th><th>3DB PVE/MPJPE/PA</th></tr></thead><tbody><tr><td>pose_3d : very_hard</td><td>213.66 / 206.34 / 143.23</td><td>186.35 / 179.46 / 129.51</td><td><strong>114.20 / 110.62 / 86.43</strong></td></tr><tr><td>pose_2d : very_hard</td><td>150.20 / 140.61 / 92.66</td><td>150.15 / 145.07 / 95.40</td><td><strong>62.22 / 56.84 / 42.39</strong></td></tr><tr><td>truncation : severe</td><td>230.51 / 213.64 / 124.01</td><td>186.57 / 168.22 / 122.70</td><td><strong>126.53 / 113.66 / 88.42</strong></td></tr><tr><td>aux : depth_ambiguous</td><td>126.25 / 102.25 / 81.33</td><td>109.58 / 91.77 / 69.24</td><td><strong>64.38 / 52.72 / 39.85</strong></td></tr><tr><td>interaction : close_interaction</td><td>107.59 / 90.95 / 57.62</td><td>115.19 / 98.12 / 64.87</td><td><strong>54.23 / 44.98 / 29.76</strong></td></tr><tr><td>viewpoint : topdown_view</td><td>101.69 / 91.13 / 59.15</td><td>104.29 / 97.92 / 63.39</td><td><strong>42.84 / 38.78 / 27.90</strong></td></tr></tbody></table></div>
+<p>3D 类别由规则自动生成（基于元数据与几何线索），比人工 2D 分类更客观。最刺眼的是 <strong>pose_2d:very_hard</strong>：3DB 的 PA-MPJPE 42.39，而两个基线都在 92–95——<strong>误差不到一半</strong>。truncation:severe 88.42 vs 122–124、depth_ambiguous 39.85 vs 69–81 同样数量级领先。把表 5（2D）与表 6（3D）并读，两套独立构造的评测在“极难姿态/严重截断/深度歧义”上给出一致结论——这正是 §5 的双解码器 + 强姿态先验该发力的地方。</p>
+<div class="socratic"><p class="question">问：合并策略（手腕+肘部 re-prompt）真比朴素拼接好吗？</p><p class="answer">答：论文用定性对比（图 9，附录）展示了这一点：朴素地把手部解码器输出塞进运动学树会在肘部引入误差，而 re-prompt 后的全身姿态在肘/前臂处更连贯。这是对 §5.1“承重假设——一致性推迟到合并步解决”的直接检验：把手腕与肘部都作为提示喂回 body 解码器，确实修掉了相邻关节的漂移。</p><p class="takeaway"><strong>Takeaway：</strong>关键不是“用不用双解码器”，而是“怎样用 promptability 把两套输出无缝缝回一个一致全身”。</p></div></section>
+
+<section id="limitations"><h2>9. 局限与复现门槛：什么时候要谨慎？</h2><p>论文<strong>未设独立的 Limitations 小节</strong>（仅在附录有合并策略的定性图）。以下边界部分来自论文如实陈述、部分为读者据方法推断，已分别标注。</p>
+<div class="table-wrap"><table><caption><strong>表 A.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/方法信息</th><th>读者应如何理解</th></tr></thead><tbody><tr><td>数据不可复现</td><td>700 万图含授权 stock、多视角自采（Goliath 500+ 视角）、Meta 合成</td><td>权重 + MHR 开源，但<strong>完整数据管线无法外部等比复现</strong>——这是鲁棒性的真正来源</td></tr><tr><td>伪标签上限</td><td>单图拟合保真低于多视角（论文自承深度歧义/遮挡）</td><td>野外 3D 监督仍是伪 GT；评测里多视角/合成的“高保真集”也多为 Meta 内部</td></tr><tr><td>手部顶点误差</td><td>PA-MPVPE 6.2–6.3 仍逊 WiLoR 5.1（表 4）</td><td>“逼近”专家而非“超越”；顶点级手部精度仍有差距</td></tr><tr><td>RICH 域外</td><td>RICH 上落后 NLF（表 2）</td><td>非弱点，而是“NLF 训练集内 vs 3DB 域外”的不对等</td></tr><tr><td>算力未披露</td><td>训练 GPU-hours / steps / LR / $\lambda_i$ 均未给</td><td>本页不估算；工业级规模，小团队难复现</td></tr><tr><td>评测可复现性</td><td>7800 人偏好研究、SA1B-Hard 24/28 类</td><td>偏好研究与部分评测集不可外部复现，需以原文为准</td></tr></tbody></table></div>
+<div class="socratic"><p class="question">问：这篇论文最容易被过度宣传成什么？</p><p class="answer">答：容易被说成“架构创新让全身 HMR 一统江湖”。更严谨的说法是：3DB 的<strong>网络</strong>是标准的可提示编码器–解码器，真正的杠杆是<strong>数据引擎 + 多阶段标注 + MHR 解耦表示</strong>；架构上唯一的精妙点，是用 promptability 把双解码器的输出无损缝合（手腕 + 肘部 re-prompt）。它的强项是“野外鲁棒 + 身手一体 + 交互可控”，边界是“数据/算力不可复现、手部顶点仍逊专家、单目伪标签上限”。</p><p class="takeaway"><strong>Takeaway：</strong>把它当作“数据 + 表示 + 可提示缝合”的系统性工程胜利，而非某个新算子的胜利。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>SAM 3D Body 把 SAM 的两件方法论（可提示接口 + 数据引擎）搬进全身 HMR——共享编码器扛多任务、身体/手部双解码器各自局部最优、再用“手腕+肘部 re-prompt”缝回一致全身；配上 VLM 主动挖难例与多阶段网格拟合标注，于是它成为首个在身体与手部两端同时立住的单模型。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li>全身模型历史性失利的根因是身体/手部在<strong>分辨率、相机、监督</strong>三处的优化冲突；共享编码器 + 双解码器把冲突限制在编码器，输出头各自极致。</li><li>promptability 是承重机制而非 UI 花活——同一接口既给用户交互、又在内部用手腕/肘部互喂完成合并，避开朴素运动学树拼接的肘部误差。</li><li>鲁棒性来自<strong>数据引擎</strong>：leave-one-out 泛化与“极难姿态/截断”分类细评的领先，是数据多样性（而非架构）的因果指纹；代价是数据/算力不可外部复现。</li></ol></div></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Xitong Yang, Devansh Kukreja, Don Pinkus, et al. <em>SAM 3D Body: Robust Full-Body Human Mesh Recovery</em>. CVPR 2026 / arXiv:2602.15989（Meta Superintelligence Labs）。Demo: aidemos.meta.com · Code: github.com/facebookresearch/sam-3d-body · Website: ai.meta.com/sam3d。</li><li>本文公式、表格与实验数字以 arXiv PDF 为准（表 1–6、图 8 均为原文转录；表 5/6 为代表性类别节选，已标注）。MHR 为 Ferguson et al. 2025（arXiv:2511.15586）、ATLAS 为 Park et al. 2025。</li><li>方法论说明：本页“动机优先 / 显式假设 / ≥2 角度交叉验证”的写法遵循 kexue.fm 风格，但 SuKnowledge 语料库未返回与 HMR/姿态估计相关的卡片，故<strong>不</strong>作苏剑林归因。</li><li>图像说明：所有正文图为本地 PNG，由 <code>extract_figures.py</code> 按论文图号从 arXiv PDF caption 锚定裁切（图 1/2/3/5/6/8），路径位于 <code>assets/figures/sam3dbody/</code>。</li></ol></section>
+</main><footer class="article-footer">CVPR 2026 Best Papers Digest · SAM 3D Body 深读。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与表示</a></li><li><a href="#pipeline">数据引擎 Pipeline</a></li><li><a href="#method">双解码器与合并</a></li><li><a href="#training">训练与推理</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">分类细评</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>SAM 3D Body: Robust Full-Body Human Mesh Recovery</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper（候选）</dd><dt>Team</dt><dd>Meta Superintelligence Labs</dd><dt>arXiv</dt><dd>2602.15989</dd><dt>Topic</dt><dd>Human Mesh Recovery / Pose Estimation</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 4：双解码器架构</li><li>表 2：5 标准基准（身体）</li><li>表 3：5 新基准（泛化）</li><li>表 4：FreiHand（手部）</li><li>表 6：3D 极难类别细评</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> SAM 3D Body 深读</p><p><span class="status-good">figures</span> 6 张 PNG（caption 锚定提取）</p><p><span class="status-good">formula</span> MathJax 预检通过</p><p><span class="status-warn">scope</span> 数据/算力不可外部复现</p></div></section></aside></div></body></html>

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4D-RGPT 深读：怎样把“深度 + 时间”的 4D 感知蒸馏进一个多模态大模型？</title>
+<meta name="description" content="CVPR 2026 Best Papers Digest · 4D-RGPT: Toward Region-level 4D Understanding via Perceptual Distillation 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Top Paper（候选）· Multimodal LLM / 4D Understanding / Distillation</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Multimodal LLM &gt; 4D-RGPT</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">09</span><span class="month">Jun</span></div><h1 id="paper-title">4D-RGPT 深读：怎样把“深度 + 时间”的 4D 感知蒸馏进一个多模态大模型？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-09</span><span>CVPR 2026 Top Paper（候选）· NVIDIA</span><span>来源：arXiv:2512.17012 PDF</span></div><div class="tags"><span class="tag orange">Multimodal LLM</span><span class="tag">4D Understanding</span><span class="tag">Perceptual Distillation</span><span class="tag green">Region-level VQA</span><span class="tag">R4D-Bench</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>4D-RGPT 真正要回答的问题不是“多模态大模型能不能回答视频问题”，而是：<strong>当一个 MLLM 的视觉特征只编码了“外观”、根本没有深度与时间这两个轴时，怎样不靠外挂模块、把“4D 感知”灌进它自己的 hidden states？</strong>它的答案是 Perceptual 4D Distillation（P4D）——把一个冻结的 4D 感知专家的表征，分“潜在”和“显式”两支蒸馏进 MLLM；蒸馏模块只在训练时存在，推理时丢弃，4D 感知已经长在主干里。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>一个能做 region-level 4D 视频问答的 MLLM（4D-RGPT）、一套把 4D 专家蒸馏进 MLLM 的训练框架（P4D）、一个深度感知动态场景的 benchmark（R4D-Bench）。</div><div class="kv"><b>关键机制</b>双支蒸馏：Latent Distillation 对齐中间 4D 特征，Explicit Distillation 对齐预测深度/光流；training-only 模块让 4D 感知内化进主干。</div><div class="kv"><b>核心证据</b>在已有 3D/4D VQA 与新提出的 R4D-Bench 上均有提升；消融显示 P4D 优于直接 SFT。</div><div class="kv"><b>复现门槛</b>依赖冻结的 4D 专家 L4P 提供监督；训练数据与完整算力细节论文部分置于补充材料。</div></div></div><figure class="hero-card"><a href="../assets/figures/rgpt/rgpt_fig1_overview.png"><img src="../assets/figures/rgpt/rgpt_fig1_overview.png" alt="4D-RGPT overview"></a><figcaption><strong>图 1 · Region-level 4D 理解总览。</strong>对同一个区域 ⟨R1⟩ 可以问三类问题：Region（2D，在哪）、Depth（3D，多远）、Time（4D，何时动）。baseline MLLM 在 3D/4D 问题上往往“I am not sure”，这正是本文要补的能力缺口。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：MLLM 为什么做不好 4D？</h2><p>要回答“那辆车的平均速度是多少”，模型既要知道位移（需要深度/3D），又要知道时长（需要时间/4D）。但主流 MLLM 是在 2D 图文上训练的，视觉特征编码的是<strong>外观</strong>，既没有显式的几何，也没有时间轴。常见的补救是外挂一个深度模型做 pipeline，但那是“拼接”而非“理解”，也给不了跨区域、跨时间的联合推理。</p><div class="socratic"><p class="question">问：那直接拿 4D 问答数据做 SFT，不就行了？</p><p class="guide">引导：注意 SFT 的监督信号是“答案 token”——它告诉模型答案是什么，却不告诉模型该<strong>如何感知</strong>深度和运动。</p><p class="answer">答：答案标签是很稀薄的监督。要从一句“away from the camera”里反推出整套深度/运动感知，等于让模型自己从近乎 one-hot 的信号里发现几何，非常低效。正如苏剑林对蒸馏的总结——大模型的中间层表征比输出标签携带丰富得多的信号 [archives/7575]，所以更好的做法是让模型去对齐一个 4D 专家的<strong>特征</strong>，而不只是对齐答案。</p><p class="takeaway"><strong>Takeaway：</strong>问题不是“缺 4D 数据”，而是“缺把 4D 感知写进 MLLM 表征的监督信号”。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献</strong>有三件：(a) <strong>4D-RGPT</strong>，一个带 training-only 4D 感知模块、并用时间戳位置编码增强时序感的 region-level MLLM；(b) <strong>P4D（Perceptual 4D Distillation）</strong>，把冻结 4D 专家的潜在与显式表征蒸馏进 MLLM 的训练框架；(c) <strong>R4D-Bench</strong>，一个面向深度感知动态场景、支持区域级提示、由“自动 + 人工核验”混合流程构建的 benchmark。</p><p><strong>读者能进一步推断的是</strong>：这套思路的可迁移性在于“把某种专家感知蒸馏进 MLLM 主干、推理时丢弃外挂”——不只限于 4D，任何 MLLM 缺失而存在现成专家模型的感知能力（如表面法向、材质、物理）都可能照此灌入。</p></section>
+
+<section id="datasets"><h2>3. 数据集与任务：训练用什么，评测用什么？</h2><p>训练用多种 3D/4D 对话数据（RoboFAC、SAT、VSTI-Bench 训练集、Wolf 等）；蒸馏的“监督”来自一个冻结的 4D 感知专家 <strong>L4P</strong>（沿用其架构与预训练权重）。评测除了已有 3D/4D VQA benchmark，还包括作者新建的 <strong>R4D-Bench</strong>。</p><figure class="fig-wide"><a href="../assets/figures/rgpt/rgpt_fig3_curation.png"><img src="../assets/figures/rgpt/rgpt_fig3_curation.png" alt="R4D-Bench curation pipeline"></a><figcaption><strong>图 2 · R4D-Bench 构建流程。</strong>给定已有的非区域 4D VQA，(a) 从问题抽关键词作为物体候选；(b) 若无 GT mask，用 Grounding DINO + SAM2 检测/分割；(c)-(d) 匹配与验证；(e) 用 Qwen-2.5-VL 把问题改写为带区域标记 ⟨R1⟩ 的形式。数据流是“旧 benchmark → 区域标注 → 区域级问答”；这是把静态、无区域提示的评测升级为深度感知、可指物的评测。</figcaption></figure></section>
+
+<section id="pipeline"><h2>4. Pipeline：P4D 框架怎么把 teacher 灌进 student</h2><figure class="fig-wide"><a href="../assets/figures/rgpt/rgpt_fig2_p4d.png"><img src="../assets/figures/rgpt/rgpt_fig2_p4d.png" alt="P4D framework"></a><figcaption><strong>图 3 · Perceptual 4D Distillation（P4D）框架。</strong>上排是冻结的 <strong>teacher</strong>（4D 感知模型）：视频经 Unified 4D Encoder 得潜在特征 $F^{4D}$，再由 Specialized 4D Decoder 输出显式信号（深度 $P^{depth}$、光流 $P^{flow}$）。下排是 <strong>student</strong> 4D-RGPT：帧经 video encoder、TPE、projector、LLM 得 hidden states，再由 training-only 的 $\mathrm{D_{4DP}}$ 解出 $\hat F^{4D}$、由 $\mathrm{D}_m$ 解出 $\hat P^m$。两条虚线就是 <strong>Latent Distillation（LD）</strong>与 <strong>Explicit Distillation（ED）</strong>。注意红/蓝标记：teacher 全程 frozen，蒸馏模块 training-only，推理时只剩 MLLM 主干。</figcaption></figure><div class="socratic"><p class="question">问：蒸馏模块推理时就丢了，那 4D 能力存在哪？</p><p class="answer">答：存在 MLLM 的 hidden states 里。LD/ED 的梯度经过 training-only 解码器<strong>回流进主干</strong>，把主干特征重塑成 4D-aware；推理时丢掉解码器，主干已经“会”感知深度与时间。这也是为什么训练必须让主干可训——见第 5 节的承重假设。</p><p class="takeaway"><strong>Takeaway：</strong>P4D 不是给 MLLM 外挂一个深度模型，而是把深度模型的“感知”蒸进 MLLM 自己的表征。</p></div></section>
+
+<section id="method"><h2>5. 模型与方法：双支蒸馏与时间戳编码</h2><p>4D-RGPT 在 MLLM 之上加两类 training-only 模块：一个 4D 感知解码器 $\mathrm{D_{4DP}}$ 解出潜在 4D 特征，和若干预测头 $\mathrm{D}_m$ 解出显式信号。先把各帧 hidden state 重排到目标形状，再解码：</p><div class="equation">$$\hat F^{4D}_{(n')}=\mathrm{D_{4DP}}\big(\mathrm{Rearrange}(F^{(n)}_{\mathrm{hidden}})\big),\qquad \hat P^{m}=\mathrm{D}_m\big(\hat F^{4D}\big)$$<div class="eq-caption">式 1：从 MLLM hidden states 解出潜在 4D 特征与显式 4D 信号（深度/光流）。</div></div><p>为补上时间轴，把采样时刻 $t^{(n)}$ 编成正弦 <strong>时间戳位置编码（TPE）</strong>，加到视觉特征上再送进 projector：</p><div class="equation">$$p^{(n)}[2i]=\sin\!\Big(\tfrac{t^{(n)}}{10000^{2i/D}}\Big),\qquad \tilde E_V(I^{(n)})=E_V(I^{(n)})+p^{(n)}$$<div class="eq-caption">式 2：正弦时间戳位置编码，给 MLLM 显式的“何时/多久”线索。</div></div><div class="formula-note"><p class="note-title">为什么特征级蒸馏比 SFT 标签更能灌入 4D 感知</p><p>SFT 的监督是答案 token，信号稀薄；而蒸馏让 student 去匹配 teacher 的<strong>表征</strong>。苏剑林对蒸馏的梳理点明了这一点：大模型的中间层结果（不只是输出 logits）携带远更丰富的信号，好的蒸馏往往要同时对齐多项中间量、用多项 loss [archives/7575]。P4D 正是这样设计的——它不止学答案，而是把 teacher 的 4D 特征几何直接拓印进 MLLM 主干。</p></div><p>两支蒸馏损失分别在<strong>潜在空间</strong>和<strong>信号空间</strong>对齐 teacher 与 student：</p><div class="equation">$$\mathcal{L}_{\mathrm{LD}}=\sum_{n'}\Delta_{\mathrm{LD}}\big(F^{4D}_{(n')},\hat F^{4D}_{(n')}\big),\qquad \mathcal{L}_{\mathrm{ED}}=\sum_{n}\sum_{m\in\mathcal{M}}\lambda_m\,\Delta_m\big(P^{m}_{(n)},\hat P^{m}_{(n)}\big)$$<div class="eq-caption">式 3：潜在蒸馏（LD，式 6）与显式蒸馏（ED，式 7）。</div></div><div class="equation">$$\mathcal{L}=\mathcal{L}_{\mathrm{SFT}}+\mathcal{L}_{\mathrm{LD}}+\mathcal{L}_{\mathrm{ED}}$$<div class="eq-caption">式 4：端到端总损失（交叉熵 SFT + 双支蒸馏）。</div></div><div class="formula-note"><p class="note-title">为什么 latent + explicit 双支互补</p><p>潜在蒸馏给的是<strong>丰富但抽象</strong>的中间指引——塑造特征流形；显式蒸馏给的是<strong>直接、可解释、无歧义</strong>的低层监督（真实深度/光流）——把特征钉在可测量的量上。只有 LD，特征可能数值上贴近 $F^{4D}$ 却漂移成几何上无意义的东西；只有 ED，又缺少对抽象 4D 结构的引导。两者互为正则。这与“好的蒸馏通常用多项 loss”的经验一致 [archives/7575]。<strong>承重假设：</strong>蒸馏模块是 training-only、推理时丢弃，所以 LD/ED 的梯度<strong>必须真的回流重塑 MLLM 主干</strong>——若主干被冻结、只更新解码器，推理时丢掉解码器就一无所得。这条假设正是第 7 节“训练哪些模块”消融要检验的。</p></div></section>
+
+<section id="training"><h2>6. 训练细节与算力账本</h2><div class="table-wrap"><table><caption><strong>表 A.</strong> 论文披露的训练设置。</caption><thead><tr><th>项目</th><th>论文披露</th><th>解释</th><th>缺失信息</th></tr></thead><tbody><tr><td>Teacher</td><td>冻结的 4D 感知专家 L4P（沿用其架构与权重）</td><td>提供潜在 + 显式 4D 监督</td><td>—</td></tr><tr><td>Student</td><td>MLLM + training-only 的 $\mathrm{D_{4DP}}$、$\mathrm{D}_m$、TPE</td><td>推理时只保留 MLLM 主干</td><td>具体 backbone 规模见正文/补充</td></tr><tr><td>损失</td><td>$\mathcal{L}_{\mathrm{SFT}}+\mathcal{L}_{\mathrm{LD}}+\mathcal{L}_{\mathrm{ED}}$，端到端</td><td>SFT 保语言能力，蒸馏灌 4D 感知</td><td>$\lambda_m$ 等权重细节部分在补充</td></tr><tr><td>训练数据</td><td>RoboFAC、SAT、VSTI-Bench（训练集）、Wolf 等 3D/4D 对话数据</td><td>多源 4D conversation</td><td>完整配比、训练步数/时长论文未在正文完整给出</td></tr></tbody></table></div><div class="note"><p class="note-title">算力说明</p><p>正文未完整给出训练小时数与硬件规模（部分在补充材料）。因此不做 GPU-hours 估算；若需估成本，应把 teacher L4P 的获取、MLLM backbone、视频采样与蒸馏前向分开统计。</p></div></section>
+
+<section id="experiments"><h2>7. 实验结果：P4D 是否真把 4D 灌进去了？</h2><p><strong>主结果一句话：一个 8B 模型在 4D 题型上追平 GPT-4o。</strong>在新建的 R4D-Bench（9 类深度感知 4D VQA，分静态 Sta / 动态 Dyn）上，4D-RGPT-8B 平均分 42.2，明显高于同量级开源 MLLM，并与体量大得多的 GPT-4o（42.8）接近。</p><div class="table-wrap"><table><caption><strong>表 C.</strong> R4D-Bench 主结果（准确率 %）。Avg/Dyn 为总体/动态；右侧选取最依赖深度与时间的几类任务：DM 维度测量、T 平移、SA 速度&加速度、DP 位移&路径。末行 Δ 为相对基座 NVILA-Lite-8B 的增量。</caption><thead><tr><th>模型</th><th>Avg</th><th>Dyn</th><th>DM</th><th>T</th><th>SA</th><th>DP</th></tr></thead><tbody><tr><td>Random</td><td>23.4</td><td>24.7</td><td>20.0</td><td>25.0</td><td>20.0</td><td>20.0</td></tr><tr><td>GPT-4o</td><td>42.8</td><td>47.5</td><td>26.8</td><td>51.8</td><td>27.0</td><td>10.7</td></tr><tr><td>Qwen2.5-VL-7B</td><td>40.6</td><td>43.1</td><td>25.7</td><td>46.6</td><td>45.9</td><td>28.6</td></tr><tr><td>NVILA-Lite-8B（基座）</td><td>37.9</td><td>41.3</td><td>20.2</td><td>41.9</td><td>45.9</td><td>32.1</td></tr><tr><td><strong>4D-RGPT-8B（本文）</strong></td><td><strong>42.2</strong></td><td><strong>45.7</strong></td><td><strong>26.3</strong></td><td><strong>48.7</strong></td><td><strong>50.9</strong></td><td><strong>38.9</strong></td></tr><tr><td><em>Δ vs 基座</em></td><td>+4.3</td><td>+4.4</td><td>+6.1</td><td>+6.8</td><td>+5.0</td><td>+6.8</td></tr></tbody></table></div><p>读数：把 P4D 蒸进同一个 NVILA-Lite-8B 基座，平均分从 37.9 提到 42.2（<strong>+4.3</strong>），而增益<strong>集中在最吃 4D 的任务</strong>上——维度测量 +6.1、平移 +6.8、速度/加速度 +5.0、位移/路径 +6.8；在不那么依赖 4D 的题上几乎不变（如 FP -0.5）。这正是“补的是几何/时间感知，而非泛语言能力”。值得一提：GPT-4o 平均略高（42.8），但在 DP（位移路径）只有 10.7，远低于 4D-RGPT 的 38.9——它不是没语言能力，是缺 4D 感知。</p><figure class="fig-wide"><a href="../assets/figures/rgpt/rgpt_fig4_vqa.png"><img src="../assets/figures/rgpt/rgpt_fig4_vqa.png" alt="VQA comparison"></a><figcaption><strong>图 4 · VQA 定性对比。</strong>对“物体加速度/朝向”这类需要深度 + 时间的问题，GPT/Qwen/NVILA 常答错，4D-RGPT 更接近真值——错的不是语言，而是几何/时序感知，正对应表 C 里 4D-heavy 任务的大幅增益。</figcaption></figure><figure class="fig-wide"><a href="../assets/figures/rgpt/rgpt_fig5_depth.png"><img src="../assets/figures/rgpt/rgpt_fig5_depth.png" alt="Predicted depth over training"></a><figcaption><strong>图 5 · 训练过程中预测深度的演化。</strong>随训练步数增加，MLLM 经 ED 解出的深度 $P^{depth}$ 从噪声逐渐变成合理的几何——这是“4D 感知确实在主干里成形”的直接可视化证据，也解释了为什么推理时丢掉解码器仍保有 4D 能力。</figcaption></figure><div class="socratic"><p class="question">问：这些提升是 P4D（蒸馏）带来的，还是只是多喂了 4D 数据？</p><p class="answer">答：见下一节表 D——直接 SFT 只到 40.1、拼特征 39.5，都不如 P4D 的 42.2；而且 P4D 推理零额外成本。说明关键不是“见过 4D 数据”，而是用特征级蒸馏把感知写进表征。</p><p class="takeaway"><strong>Takeaway：</strong>主张成立的边界是“深度/时间相关的 4D 题型”，证据覆盖 benchmark 数字（表 C，+4.3 且集中在 4D 任务）与深度可视化（图 5）两面。</p></div></section>
+
+<section id="ablations"><h2>8. 消融：每个部件都必要吗？</h2><p><strong>(1) 为什么是蒸馏，而不是直接 SFT 或拼特征？</strong>表 D 把 P4D 与三种朴素用法在 STI-Bench 与 R4D-Bench 上对比：</p><div class="table-wrap"><table><caption><strong>表 D.</strong> 利用 4D 数据/特征的几种策略对比。STI 为 STI-Bench，R4D 为 R4D-Bench Avg；“推理需 $F^{4D}$?”标注推理时是否还要再算一遍 4D 特征。</caption><thead><tr><th>策略</th><th>推理需 $F^{4D}$?</th><th>STI</th><th>R4D Avg</th></tr></thead><tbody><tr><td>Zero-shot（基座）</td><td>否</td><td>33.8</td><td>37.9</td></tr><tr><td>4D-SFT（仅微调）</td><td>否</td><td>34.7</td><td>40.1</td></tr><tr><td>4D-Concat（拼 4D 特征）</td><td>是</td><td>34.8</td><td>39.5</td></tr><tr><td>4D-PE（4D 特征当位置编码）</td><td>是</td><td>31.3</td><td>36.0</td></tr><tr><td><strong>P4D（本文）</strong></td><td><strong>否</strong></td><td><strong>37.6</strong></td><td><strong>42.2</strong></td></tr></tbody></table></div><p>三点：① 直接 SFT（40.1）与拼特征（39.5）都比 zero-shot（37.9）好，但都<strong>不如 P4D（42.2）</strong>——关键不是“见过 4D 数据”，而是特征级蒸馏；② 4D-PE 反而<strong>掉到 36.0（低于 zero-shot 37.9）</strong>，不是所有用法都有效；③ 4D-Concat / 4D-PE 推理时还要再算一遍 4D 特征，而 P4D 的 4D 模块是 training-only，<strong>推理与 zero-shot 一样省</strong>——这正是“把感知内化进主干”的直接好处。</p><p><strong>(2) 两支蒸馏与各模态的贡献。</strong>表 5 拆开 LD/ED：只用 LD 比 zero-shot <strong>+2.3</strong>（R4D 37.9→40.2），只用 ED <strong>+1.9</strong>（→39.8），其中 depth 与 flow 两个显式信号最有效（LD+D 40.8、LD+D+F 41.9 阶梯上升）；两支合起来 LD+ED 才到最佳 <strong>42.2</strong>——印证第 5 节“潜在塑形 + 显式钉准”互补的判断。</p><p><strong>(3) 时间轴与可训主干。</strong>TPE 的必要性靠一个受控玩具实验佐证：在“视频过了几秒？”这类纯时序题上，无显式时间线索的 NVILA-Lite 基本在<strong>瞎猜</strong>，加 TPE 才学得会“何时/多久”。而训练设计消融（表 7）则检验“梯度是否真的重塑主干”：若只用极轻量适配/冻结主干，training-only 解码器在推理时被丢掉后就一无所得——直接对应第 5 节那条承重假设。</p><div class="socratic"><p class="question">问：消融和机制是否自洽？</p><p class="answer">答：自洽。表 D“4D-PE 掉点、P4D 推理免费”说明用法对错由“是否把感知写进主干、推理是否还依赖外挂”决定；表 5“LD/ED 各 +2.3/+1.9、合起来才 42.2”对应双支互补；表 7“主干可训才有效”对应“蒸馏必须回流主干”。三处数字分别从策略、模态、可训性三个独立角度证实了机制。</p><p class="takeaway"><strong>Takeaway：</strong>关键部件是“双支蒸馏（LD+ED，+2.3/+1.9 互补）+ TPE + 可训练主干”，缺一则 4D 感知灌不进、时序错、或推理时丢失。</p></div></section>
+
+<section id="limitations"><h2>9. 局限与复现门槛：什么时候要谨慎？</h2><div class="table-wrap"><table><caption><strong>表 B.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/方法信息</th><th>读者应如何理解</th></tr></thead><tbody><tr><td>依赖 teacher</td><td>蒸馏监督来自冻结的 L4P 专家</td><td>student 的 4D 能力上限受 teacher 限制；teacher 弱则灌不进好感知</td></tr><tr><td>承重假设</td><td>蒸馏模块 training-only，靠梯度重塑主干</td><td>若主干不可训（纯 LoRA/冻结），推理时丢掉解码器就拿不到 4D 能力</td></tr><tr><td>能力干扰</td><td>4D 目标与语言能力共享主干</td><td>需靠 SFT 与权重平衡，避免“学会感知、丢了语言”</td></tr><tr><td>评测范围</td><td>主评测为已有 3D/4D VQA 与 R4D-Bench</td><td>提升集中于深度/时间题型，未必覆盖所有真实视频推理</td></tr><tr><td>复现细节</td><td>部分训练配比/算力在补充材料</td><td>完整复现需核对补充材料与 L4P、数据集许可</td></tr></tbody></table></div><div class="socratic"><p class="question">问：这篇论文最容易被过度宣传成什么？</p><p class="answer">答：容易被说成“MLLM 现在懂 4D 世界了”。更严谨的说法是：通过把冻结 4D 专家的潜在 + 显式表征蒸馏进 MLLM 主干，并辅以时间戳编码，4D-RGPT 在深度/时间相关的区域级 VQA 上显著优于通用 MLLM。</p><p class="takeaway"><strong>Takeaway：</strong>强项是“无外挂、特征级灌入 4D 感知 + 区域级时序提示”；边界是 teacher 能力、主干可训性与题型范围。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>4D-RGPT 的价值在于把“给 MLLM 加 4D 能力”从“外挂深度模型”改成“把 4D 专家的表征蒸进 MLLM 主干”，并配一套区域级、深度感知的评测。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li>SFT 标签太稀薄；特征级蒸馏把 teacher 的中间表征拓印进 student，才灌得进几何/时间感知。</li><li>双支互补：潜在蒸馏塑造抽象 4D 特征，显式蒸馏把它钉在可测的深度/光流上。</li><li>蒸馏模块 training-only，能力存在主干里——前提是梯度真的能重塑主干（表 7 验证了这条假设）。</li></ol></div></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Chiao-An Yang, Ryo Hachiuma, Sifei Liu, Subhashree Radhakrishnan, Raymond A. Yeh, Yu-Chiang Frank Wang, Min-Hung Chen. <em>4D-RGPT: Toward Region-level 4D Understanding via Perceptual Distillation</em>. CVPR 2026 / arXiv:2512.17012（NVIDIA）。</li><li>本文公式、表格与实验数字以 arXiv PDF 为准；潜在/显式蒸馏的“中间表征比标签信号更丰富、好蒸馏用多项 loss”的一般原理参考苏剑林 [archives/7575]，非本文独有。</li><li>图像说明：所有正文图为本地 PNG，来自 arXiv PDF 的高 DPI 页面裁切（图 1/2/3/4/5），路径位于 <code>assets/figures/rgpt/</code>；部分裁切含相邻结果表，便于对照阅读。</li></ol></section>
+</main><footer class="article-footer">CVPR 2026 Best Papers Digest · 4D-RGPT 深读。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与 benchmark</a></li><li><a href="#pipeline">P4D Pipeline</a></li><li><a href="#method">方法与公式</a></li><li><a href="#training">训练与算力</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>4D-RGPT: Toward Region-level 4D Understanding via Perceptual Distillation</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper（候选）</dd><dt>Team</dt><dd>NVIDIA</dd><dt>arXiv</dt><dd>2512.17012</dd><dt>Topic</dt><dd>Multimodal LLM / 4D VQA</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：4D 理解总览</li><li>图 3：P4D 框架</li><li>图 2：R4D-Bench 构建</li><li>图 4：VQA 对比</li><li>图 5：深度演化</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> 4D-RGPT 深读</p><p><span class="status-good">figures</span> 5 张 PNG 素材入库</p><p><span class="status-good">formula</span> MathJax 预检通过</p><p><span class="status-warn">scope</span> 提升集中于深度/时间题型</p></div></section></aside></div></body></html>

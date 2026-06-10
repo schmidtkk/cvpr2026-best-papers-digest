@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MacTok 深读：少 token 的连续 tokenizer 为什么会 posterior collapse，怎样用“把重建变难”反过来救它？</title>
+<meta name="description" content="CVPR 2026 Best Papers Digest · MacTok: Robust Continuous Tokenization for Image Generation 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Top Paper（候选）· Image Tokenizer / Generation / Posterior Collapse</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Image Tokenizer &gt; MacTok</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">10</span><span class="month">Jun</span></div><h1 id="paper-title">MacTok 深读：少 token 的连续 tokenizer 为什么会 posterior collapse，怎样用“把重建变难”反过来救它？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-10</span><span>CVPR 2026 Top Paper（候选）· 复旦</span><span>来源：arXiv:2603.29634 PDF</span></div><div class="tags"><span class="tag orange">Image Tokenizer</span><span class="tag">Posterior Collapse</span><span class="tag">Masked Reconstruction</span><span class="tag green">1D Continuous</span><span class="tag">DINO Alignment</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>MacTok 真正要回答的问题不是“能不能把图像压成更少的 token”，而是：<strong>当连续（VAE 式）tokenizer 的 token 压到 64–128 个时，KL 正则会把后验拉向先验、让 encoder 干脆不往 latent 里写信息（posterior collapse）——那要怎样逼这少数几个 token 重新变得“有用”？</strong>它的答案出人意料地朴素：把重建任务<strong>变难</strong>——随机 mask + DINO 语义 mask 让 decoder 没法只靠先验蒙混，再用与 DINO 特征的全局/局部对齐往 latent 注入判别性语义。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>一个 1D 连续 tokenizer，用掩码重建 + 表征对齐在强压缩（64/128 token）下防止 posterior collapse。</div><div class="kv"><b>关键机制</b>随机 mask 正则 latent、DINO 语义 mask 逼编码高层语义、latent 与 DINO 全局/局部对齐。</div><div class="kv"><b>核心证据</b>ImageNet 256 gFID 1.44、512 SOTA 1.52（SiT-XL），token 用量最多减少 64×。</div><div class="kv"><b>复现门槛</b>需 DINOv2 作语义引导/对齐 teacher；mask 比例与对齐权重需调。</div></div></div><figure class="hero-card"><a href="../assets/figures/mactok/mactok_fig1_masking.png"><img src="../assets/figures/mactok/mactok_fig1_masking.png" alt="MacTok masking effect"></a><figcaption><strong>图 1 · 掩码对连续 tokenizer 的作用。</strong>w/o mask 与 w/ latent mask 时，latent space 仍“塌成一团”（Collapsed，红色），decoder 基本靠先验；只有 w/ image mask 时 latent 才结构化分簇（Uncollapsed）。这张图就是全文的根：把重建变难，latent 才被迫变有用。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：少 token 为什么会 posterior collapse？</h2><p>生成模型在压缩 latent 上建模能省大量算力，而 tokenizer 决定了这个 latent。连续 tokenizer 用 VAE 的 KL 正则换来平滑、结构化的 latent；但 token 一少（强压缩），KL 这一项就容易把后验直接拉到先验——encoder 不再编码有用信息，decoder 主要靠先验重建，少数 token 形同虚设。</p><div class="socratic"><p class="question">问：KL 不是让 latent 更规整吗，怎么反而把信息挤没了？</p><p class="guide">引导：把 VAE 目标看成“重建（distortion）+ KL（rate）”的权衡——KL 是一个鼓励“遗忘/压缩”的 rate 项。</p><p class="answer">答：苏剑林把 VAE 目标写成 $\mathbb{E}_x\big[\mathbb{E}_{z\sim p(z|x)}[-\log q(x|z)]+\mathrm{KL}(p(z|x)\,\|\,q(z))\big]$，并指出那个 KL 项本质是“遗忘”的力量 [archives/6181]。当 latent 很小、而重建任务又<strong>太容易</strong>（强 decoder 不太需要 latent）时，优化器可以把 KL 压到 0（后验=先验）却几乎不增加重建误差——于是 rate 项“白赚”，encoder 干脆不写 latent。这就是 collapse；重建与 KL 的配比 [archives/5253] 决定了它有多容易发生。</p><p class="takeaway"><strong>Takeaway：</strong>collapse 的根因不是 KL 太强，而是“重建太容易、不需要 latent”，于是 KL→0 成了免费的午餐。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献</strong>：(a) <strong>MacTok</strong>，一个掩码增强的 1D 连续 tokenizer，用掩码重建 + 表征对齐在强压缩下防止 collapse；(b) 两种互补掩码——<strong>随机掩码</strong>正则 latent 学习、<strong>DINO 语义掩码</strong>遮住最有信息的区域以逼出高层语义；(c) <strong>全局 + 局部表征对齐</strong>，把 DINOv2 的判别性语义注入压缩 latent。结果：64/128 token 即可，ImageNet 256 gFID 1.44、512 SOTA 1.52，token 用量最多减 64×。</p><p><strong>读者能进一步推断的是</strong>：这套思路把“防止 collapse”从“调 KL 权重/退火”这类治标手段，换成了“改造重建任务本身”——只要让重建真正依赖 latent，collapse 就失去了存在的土壤。这对一切“压缩 + 重建”的自编码式表征都有借鉴意义。</p></section>
+
+<section id="datasets"><h2>3. 数据集与任务：tokenizer + 生成评测</h2><p>任务是训练一个连续图像 tokenizer，并用它支撑下游生成。评测在 ImageNet 256×256 与 512×512 上，用 SiT-XL 作生成器，报告 gFID（越低越好），并与其它连续 tokenizer 对比 token 数与重建/生成质量。语义引导与对齐用预训练 DINOv2 提供。</p></section>
+
+<section id="pipeline"><h2>4. Pipeline：从被遮挡的图到紧凑 latent</h2><figure class="fig-wide"><a href="../assets/figures/mactok/mactok_fig4_framework.png"><img src="../assets/figures/mactok/mactok_fig4_framework.png" alt="MacTok framework"></a><figcaption><strong>图 2 · MacTok 框架。</strong>ViT 编码器把图像 patch 与可学习 latent token 一起处理，输出紧凑 latent（KL 正则）；ViT 解码器从 latent 重建。训练时以各 50% 概率施加<strong>随机 mask</strong>或 <strong>DINO 语义 mask</strong>（按相似度图选最有信息的 patch）。同时把 latent 经 MLP 投影，与 DINOv2 的<strong>全局</strong>（cls/global token）和<strong>局部</strong>（patch token）特征对齐。数据流是“（部分遮挡的）图 → latent → 重建”，外加一条“latent ↔ DINO 特征”的对齐流。</figcaption></figure><div class="socratic"><p class="question">问：为什么要随机 mask 和语义 mask 两种，各占一半？</p><p class="answer">答：随机 mask 与语义无关，主要<strong>正则</strong>——逼 latent 从残缺上下文补全任意区域，提升鲁棒性；语义 mask 专挑“最像物体主体”的 patch 遮掉，让重建<strong>非懂高层语义不可</strong>，把 DINO 的物体级知识隐式搬进 latent。两者互补：一个管广度鲁棒，一个管语义判别。</p><p class="takeaway"><strong>Takeaway：</strong>掩码不是数据增强的副产品，而是“把重建难度抬到 latent 必须出力”的主动设计。</p></div></section>
+
+<section id="method"><h2>5. 模型与方法：用掩码把 collapse 的“免费午餐”拿掉</h2><p>先把 collapse 的机理写清楚。连续 tokenizer 的目标可写成重建 + KL 两项：</p><div class="equation">$$\mathbb{E}_{x}\Big[\underbrace{\mathbb{E}_{z\sim p(z|x)}[-\log q(x|z)]}_{\text{重建 / distortion}}+\underbrace{\mathrm{KL}\big(p(z|x)\,\|\,q(z)\big)}_{\text{KL / rate}}\Big]$$<div class="eq-caption">式 1：VAE 式目标——重建项 + KL（rate）项。</div></div><div class="formula-note"><p class="note-title">为什么会 collapse（rate-distortion 视角）</p><p>KL 是 rate 项，鼓励后验贴近先验、“遗忘”输入 [archives/6181]。若 latent 维度很小、重建又容易达成，distortion 对“是否使用 latent”几乎不敏感——优化器就会把 KL 压到 0、后验退化成先验，encoder 不再写信息。这正是 posterior collapse：不是 KL 太凶，而是 distortion 没给 latent“非用不可”的理由。重建与 KL 的配比 [archives/5253] 决定它发生的难易。</p></div><p>MacTok 的对策是抬高 distortion 对 latent 的依赖。<strong>随机掩码</strong>：以比例 $m\sim U[-0.1,M]$ 裁剪到 $[0,M]$（$M\!\approx\!0.7$，偶尔 $m=0$ 看到完整图）遮住 patch，逼 latent 从可见上下文补全缺失。<strong>语义掩码</strong>：用 DINOv2 的 cls token $c$ 与 patch token $p_i$ 的余弦相似度衡量信息量，遮掉最相似（最有信息）的 top-$\lfloor mN\rfloor$ 个：</p><div class="equation">$$s_i=\frac{c^\top p_i}{\lVert c\rVert\,\lVert p_i\rVert},\qquad \mathcal{M}_p=\mathrm{TopK}\big(\{s_i\}_{i=1}^N,\ \lfloor mN\rfloor\big)$$<div class="eq-caption">式 2：DINO 语义相似度与“遮住最有信息区域”的选择。</div></div><div class="formula-note"><p class="note-title">为什么“把重建变难”反而阻止 collapse</p><p>collapse 的前提是“decoder 不需要 latent 也能重建”。一旦遮住（尤其遮住<strong>主体</strong>）patch，仅靠可见上下文或先验就补不出来——重建<strong>必须</strong>读 latent 才能完成，distortion 于是强烈依赖 latent，KL→0 不再免费。换句话说，掩码把 rate-distortion 权衡里“latent 可有可无”的退化解堵死了。再叠加 latent 与 DINO 全局/局部特征的对齐，等于直接往这少数 token 里灌入判别性语义，让它们既被迫有用、又语义丰富。<strong>承重假设：</strong>掩码要让重建真依赖 latent——若可见上下文就能轻松补全（mask 太弱或没挑到要害），就压不出信息；这也是为什么要 DINO 语义挑“要害”、且 mask 比例要够大但不过头（$M\!\approx\!0.7$、偶尔 0）。</p></div><div class="equation">$$\mathcal{L}=\mathcal{L}_{\mathrm{recon}}+\lambda_{\mathrm{KL}}\,\mathcal{L}_{\mathrm{KL}}+\lambda_{\mathrm{align}}\,\mathcal{L}_{\mathrm{align}}^{\text{(global+local)}}$$<div class="eq-caption">式 3：总损失——重建 + KL + 全局/局部对齐。</div></div></section>
+
+<section id="experiments"><h2>6. 实验结果：少 token 还能高保真吗？</h2><p><strong>先看横向对比：同台的连续 tokenizer。</strong>在 ImageNet 256、SiT-B 训 500K 步下，MacTok 与一众连续 tokenizer 比重建（rFID）与生成（gFID）：</p><div class="table-wrap"><table><caption><strong>表 B.</strong> 连续 tokenizer 对比（ImageNet 256，SiT-B 500K 步，最优 CFG）。#Tok 为 token 数（越少越省）。</caption><thead><tr><th>Tokenizer</th><th>#Tok↓</th><th>rFID↓</th><th>PSNR↑</th><th>gFID↓</th><th>IS↑</th></tr></thead><tbody><tr><td>SD-VAE</td><td>1024</td><td>0.61</td><td>26.04</td><td>7.66</td><td>187.5</td></tr><tr><td>MAR-VAE</td><td>256</td><td>0.53</td><td>—</td><td>6.26</td><td>177.5</td></tr><tr><td>l-DeTok</td><td>256</td><td>0.68</td><td>—</td><td>5.13</td><td>207.3</td></tr><tr><td>VA-VAE</td><td>256</td><td>0.28</td><td>26.30</td><td>4.33</td><td>222.1</td></tr><tr><td>MAETok</td><td>128</td><td>0.48</td><td>23.61</td><td>4.77</td><td>243.2</td></tr><tr><td>SoftVQ-VAE</td><td>64</td><td>0.88</td><td>22.13</td><td>4.09</td><td>256.9</td></tr><tr><td><strong>MacTok</strong></td><td><strong>64</strong></td><td>0.75</td><td>23.10</td><td><strong>3.22</strong></td><td>262.8</td></tr><tr><td><strong>MacTok</strong></td><td><strong>128</strong></td><td><strong>0.43</strong></td><td>25.03</td><td><strong>3.15</strong></td><td>258.3</td></tr></tbody></table></div><p>读数：MacTok-128 的 gFID 是 <strong>3.15</strong>，<strong>低于所有对比的连续 tokenizer</strong>（MAETok 4.77、SoftVQ 4.09、VA-VAE 4.33、SD-VAE 7.66）；连只用 <strong>64 token</strong> 的版本（3.22）也都更好。重建侧，128-token 的 rFID 0.43 优于 MAETok 0.48、64-token 的 0.75 优于同样 64-token 的 SoftVQ-VAE 0.88——<strong>在更狠的压缩下反而更准</strong>，正是“掩码逼出有信息的 latent”的体现。</p><figure class="fig-wide"><a href="../assets/figures/mactok/mactok_fig5_latent.png"><img src="../assets/figures/mactok/mactok_fig5_latent.png" alt="Latent space visualization"></a><figcaption><strong>图 3 · latent 空间可视化。</strong>(a) Collapsed：塌成一团；(b) MacTok-128 去掉表征对齐（w/o R.A.）：好转但仍欠结构；(c) 完整 MacTok-128：清晰分簇。直接验证“掩码 + 对齐把 latent 从塌缩救回结构化”，也解释了表 B 里压缩更狠却反而更准。</figcaption></figure><figure class="fig-wide"><a href="../assets/figures/mactok/mactok_fig9_recon.png"><img src="../assets/figures/mactok/mactok_fig9_recon.png" alt="MacTok 64-token reconstruction"></a><figcaption><strong>图 4 · MacTok（64 token）的重建结果。</strong>仅 64 个 token 仍能重建出清晰、语义正确的图像，对照塌缩 KL-VAE 的模糊重建差距明显——呼应图 1“w/o mask 即塌缩”，也对应表 B 里 64-token rFID 0.75 反超 SoftVQ 的 0.88。</figcaption></figure><p><strong>再看系统级 SOTA。</strong>换成大模型 SiT-XL，MacTok 在 ImageNet 512 上把 gFID 做到 <strong>1.52</strong>（256 上 1.44），而所用 token 仅 64/128——对比下表，扩散类基线动辄 1024–4096 token：</p><div class="table-wrap"><table><caption><strong>表 C.</strong> ImageNet 512 系统级对比（SiT-XL，w/ CFG）。注意 token 数差距。</caption><thead><tr><th>方法</th><th>#Tok↓</th><th>gFID↓</th><th>IS↑</th></tr></thead><tbody><tr><td>SiT-XL/2</td><td>4096</td><td>2.62</td><td>252.2</td></tr><tr><td>MAR-H</td><td>1024</td><td>1.73</td><td>279.9</td></tr><tr><td>TexTok-128</td><td>128</td><td>1.80</td><td>305.4</td></tr><tr><td>MAETok</td><td>128</td><td>1.69</td><td>304.2</td></tr><tr><td>SoftVQ-VAE</td><td>64</td><td>2.21</td><td>290.5</td></tr><tr><td><strong>MacTok+SiT-XL</strong></td><td><strong>64</strong></td><td><strong>1.52</strong></td><td>306.0</td></tr><tr><td><strong>MacTok+SiT-XL</strong></td><td><strong>128</strong></td><td><strong>1.52</strong></td><td>316.0</td></tr></tbody></table></div><p>读数：64 与 128 token 都做到 gFID 1.52，<strong>优于所有对比方法</strong>（含 4096-token 的 SiT-XL/2 2.62、1024-token 的 MAR-H 1.73、128-token 的 MAETok 1.69），而 token 用量最多减 <strong>64×</strong>。强项明确在“强压缩区间又不掉生成质量”。</p><div class="socratic"><p class="question">问：这些提升是“掩码 + 对齐”带来的，还是只是 DINO 蒸馏的功劳？</p><p class="answer">答：见下节表 D——逐模块累加把 gFID 从 6.01 一路压到 3.15，随机掩码、局部/全局对齐、语义掩码各有贡献，去掉任一都更差，而非单靠 DINO。latent 可视化（图 3）与线性探针（下节图 5）又从“结构”和“判别性”两面独立佐证。</p><p class="takeaway"><strong>Takeaway：</strong>主张成立的边界是“强压缩连续 tokenization”，证据覆盖生成质量（表 B/C，gFID 3.15 / 1.52）与 latent 质量（图 3 结构、探针判别性）两面。</p></div></section>
+
+<section id="ablations"><h2>7. 消融：每个设计都必要吗？</h2><p><strong>(1) 逐模块拆：每加一块都降 gFID。</strong>在 KL-VAE 基础上依次加随机掩码、局部对齐、语义掩码、全局对齐（ImageNet 256，SiT-B，含 decoder 微调，最优 CFG）：</p><div class="table-wrap"><table><caption><strong>表 D.</strong> 模块消融（逐项累加）。</caption><thead><tr><th>累加模块</th><th>rFID↓</th><th>PSNR↑</th><th>gFID↓</th><th>IS↑</th></tr></thead><tbody><tr><td>+ 随机掩码</td><td>0.58</td><td>24.30</td><td>6.01</td><td>234.8</td></tr><tr><td>+ 局部对齐</td><td>0.44</td><td>25.02</td><td>3.53</td><td>241.9</td></tr><tr><td>+ 语义掩码</td><td>0.43</td><td>24.97</td><td>3.32</td><td>249.2</td></tr><tr><td><strong>+ 全局对齐（完整）</strong></td><td><strong>0.43</strong></td><td><strong>25.03</strong></td><td><strong>3.15</strong></td><td><strong>258.3</strong></td></tr></tbody></table></div><p>gFID 从 6.01 一路降到 3.15：随机掩码先把 KL 的 collapse 治住（让 latent 被用上），<strong>局部对齐降幅最大</strong>（6.01→3.53）把 latent 结构化，语义掩码再补判别性（→3.32），全局对齐收口（→3.15）。四块各有贡献，不是单靠 DINO。</p><figure class="fig-wide"><a href="../assets/figures/mactok/mactok_fig6_probing.png"><img src="../assets/figures/mactok/mactok_fig6_probing.png" alt="Linear probing accuracy"></a><figcaption><strong>图 5 · 线性探针精度与生成性能随训练步数。</strong>(a) latent 的线性可分性（判别性）随训练稳定上升，(b) 生成质量同步改善并比强基线收敛更快——量化证明掩码 + 对齐让压缩 latent 既<strong>判别性强</strong>又<strong>利于生成</strong>，对应表 D 里每块都降 gFID。</figcaption></figure><p><strong>(2) 掩码该多狠？</strong>最大掩码比 $M$ 从 0.4 到 0.8，gFID（无 CFG）先降后升，<strong>$M=0.7$ 最优</strong>（14.59）；把随机与语义掩码<strong>各占一半</strong>（dino 50%）比全用语义（dino 100% 14.84）更好（<strong>13.95</strong>）——太弱压不出信息、太强伤重建，且两种掩码互补。强掩码略降的重建保真可由 decoder 微调补回（rFID 回到 0.43）。</p><div class="socratic"><p class="question">问：消融与机理是否自洽？</p><p class="answer">答：自洽。表 D“随机掩码先把 gFID 从塌缩区拉到 6.01、再靠对齐/语义掩码降到 3.15”对应第 5 节“掩码堵住 KL→0 的退化解、对齐往 latent 灌语义”；掩码比 $M=0.7$ 最优、random+semantic 各半最好，对应“重建要难到 latent 必须出力、但别难到学不动”。理论、可视化（图 3）、探针（图 5）、消融（表 D）四处互证。</p><p class="takeaway"><strong>Takeaway：</strong>关键不是“加不加 KL”，而是“让重建非用 latent 不可（随机+语义掩码，$M\!\approx\!0.7$、各半最好）、并往 latent 里灌语义（局部 6.01→3.53、全局 →3.15）”。</p></div></section>
+
+<section id="limitations"><h2>8. 局限与复现门槛：什么时候要谨慎？</h2><div class="table-wrap"><table><caption><strong>表 A.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/方法信息</th><th>读者应如何理解</th></tr></thead><tbody><tr><td>依赖 DINO</td><td>语义掩码与对齐都用 DINOv2</td><td>latent 的语义上限受 DINO 限制；换弱 teacher 可能掉效果</td></tr><tr><td>掩码调参</td><td>mask 比例 $M\!\approx\!0.7$、随机/语义各半</td><td>太弱压不出信息、太强伤重建；需按数据/压缩率调</td></tr><tr><td>承重假设</td><td>掩码须让重建真依赖 latent</td><td>若可见上下文就能补全，掩码救不了 collapse</td></tr><tr><td>适用区间</td><td>强项在 64/128 token 的强压缩</td><td>token 充裕时相对优势收窄</td></tr><tr><td>评测范围</td><td>主评测为 ImageNet 256/512 + SiT-XL</td><td>更高分辨率/其它生成器仍需验证</td></tr></tbody></table></div><div class="socratic"><p class="question">问：这篇论文最容易被过度宣传成什么？</p><p class="answer">答：容易被说成“掩码万能解 collapse”。更严谨的说法是：在强压缩连续 tokenization 里，用掩码重建把“latent 可有可无”的退化解堵死、再用 DINO 对齐注入语义，从而在 64/128 token 下取得高保真生成。</p><p class="takeaway"><strong>Takeaway：</strong>强项是“强压缩 + 防塌缩 + 高保真”；边界是 DINO 依赖、掩码调参与适用区间。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>MacTok 把“防止 posterior collapse”从调 KL 的治标手段，改成“改造重建任务”——用掩码让重建非依赖 latent 不可，再用 DINO 对齐把语义灌进少数 token。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li>collapse 的根因是“重建太容易、不需要 latent”，于是 KL（rate 项）→0 成了免费午餐。</li><li>把重建变难（随机 + 语义掩码）让 distortion 强依赖 latent，堵死退化解，collapse 自然消失。</li><li>全局/局部表征对齐进一步把 DINO 的判别性语义注入压缩 latent，让少数 token 既被迫有用、又语义丰富。</li></ol></div></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Guanghao Li, Yuxiang Yan, Xin Gao, Hengyu Zeng, Jiaoyang Ruan, Junpeng Ma, Haoyu Albert Wang, Jian Pu. <em>MacTok: Robust Continuous Tokenization for Image Generation</em>. CVPR 2026 / arXiv:2603.29634（复旦大学）。</li><li>本文公式、表格与实验数字以 arXiv PDF 为准；VAE 目标的“重建 + KL（rate/遗忘）”视角与重建-KL 配比参考苏剑林 [archives/6181]、[archives/5253]，非本文独有。</li><li>图像说明：所有正文图为本地 PNG，来自 arXiv PDF 的高 DPI 页面裁切（图 1/2/3），路径位于 <code>assets/figures/mactok/</code>。</li></ol></section>
+</main><footer class="article-footer">CVPR 2026 Best Papers Digest · MacTok 深读。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与任务</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法与公式</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>MacTok: Robust Continuous Tokenization for Image Generation</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper（候选）</dd><dt>Team</dt><dd>复旦大学</dd><dt>arXiv</dt><dd>2603.29634</dd><dt>Topic</dt><dd>Image Tokenizer / Posterior Collapse</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：掩码 vs collapse</li><li>图 2：MacTok 框架</li><li>图 3：latent 可视化</li><li>式 1：重建 + KL</li><li>式 2：语义掩码</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> MacTok 深读</p><p><span class="status-good">figures</span> 5 张 PNG 素材入库</p><p><span class="status-good">formula</span> MathJax 预检通过</p><p><span class="status-warn">scope</span> 优势集中于强压缩区间</p></div></section></aside></div></body></html>

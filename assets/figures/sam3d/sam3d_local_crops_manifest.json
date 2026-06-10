@@ -1,0 +1,206 @@
+[
+  {
+    "file": "assets/figures/sam3d/sam3d_fig1_teaser.png",
+    "source_file": "page-01.png",
+    "source": "paper Fig. 1 teaser",
+    "crop_box_px": [
+      235,
+      1120,
+      2320,
+      1715
+    ],
+    "role": "paper Fig. 1 teaser"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_fig2_architecture.png",
+    "source_file": "page-03.png",
+    "source": "paper Fig. 2 architecture",
+    "crop_box_px": [
+      240,
+      300,
+      2325,
+      1095
+    ],
+    "role": "paper Fig. 2 architecture"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_fig3_data_examples.png",
+    "source_file": "page-04.png",
+    "source": "paper Fig. 3 data examples",
+    "crop_box_px": [
+      245,
+      300,
+      2310,
+      1485
+    ],
+    "role": "paper Fig. 3 data examples"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_fig4_training_paradigm_table1.png",
+    "source_file": "page-04.png",
+    "source": "paper Fig. 4 + Table 1 training paradigm",
+    "crop_box_px": [
+      245,
+      1695,
+      2315,
+      2255
+    ],
+    "role": "paper Fig. 4 + Table 1 training paradigm"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_fig5_data_collection_pipeline.png",
+    "source_file": "page-05.png",
+    "source": "paper Fig. 5 data collection pipeline",
+    "crop_box_px": [
+      245,
+      305,
+      2310,
+      780
+    ],
+    "role": "paper Fig. 5 data collection pipeline"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_fig6_qualitative_comparison.png",
+    "source_file": "page-06.png",
+    "source": "paper Fig. 6 qualitative comparison",
+    "crop_box_px": [
+      245,
+      275,
+      2315,
+      870
+    ],
+    "role": "paper Fig. 6 qualitative comparison"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_table2_shape_quantitative.png",
+    "source_file": "page-06.png",
+    "source": "paper Table 2 shape metrics",
+    "crop_box_px": [
+      245,
+      970,
+      1245,
+      1375
+    ],
+    "role": "paper Table 2 shape metrics"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_table3_layout_quantitative.png",
+    "source_file": "page-07.png",
+    "source": "paper Table 3 layout metrics",
+    "crop_box_px": [
+      245,
+      290,
+      2315,
+      835
+    ],
+    "role": "paper Table 3 layout metrics"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_fig7_fig8_preferences.png",
+    "source_file": "page-07.png",
+    "source": "paper Fig. 7/8 preferences",
+    "crop_box_px": [
+      245,
+      960,
+      2315,
+      1460
+    ],
+    "role": "paper Fig. 7/8 preferences"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_fig9_data_engine.png",
+    "source_file": "page-08.png",
+    "source": "paper Fig. 9 data engine",
+    "crop_box_px": [
+      245,
+      300,
+      1235,
+      780
+    ],
+    "role": "paper Fig. 9 data engine"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_table4_multistage_ablation.png",
+    "source_file": "page-08.png",
+    "source": "paper Table 4 multistage",
+    "crop_box_px": [
+      1340,
+      285,
+      2315,
+      710
+    ],
+    "role": "paper Table 4 multistage"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_supp_fig10_category_distribution.png",
+    "source_file": "page-03.png",
+    "source": "supp Fig. 10 category distribution",
+    "crop_box_px": [
+      225,
+      280,
+      1855,
+      1115
+    ],
+    "role": "supp Fig. 10 category distribution"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_supp_fig11_selection_ui.png",
+    "source_file": "page-03.png",
+    "source": "supp Fig. 11 UI sketch",
+    "crop_box_px": [
+      225,
+      1300,
+      900,
+      1695
+    ],
+    "role": "supp Fig. 11 UI sketch"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_supp_algorithm1_alignment.png",
+    "source_file": "page-05.png",
+    "source": "supp Algorithm 1 alignment",
+    "crop_box_px": [
+      220,
+      230,
+      1885,
+      995
+    ],
+    "role": "supp Algorithm 1 alignment"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_supp_fig13_fig14_data_engine_reward.png",
+    "source_file": "page-05.png",
+    "source": "supp Fig. 13/14 data engine/reward",
+    "crop_box_px": [
+      220,
+      1080,
+      1885,
+      1630
+    ],
+    "role": "supp Fig. 13/14 data engine/reward"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_supp_fig20_additional_qualitative.png",
+    "source_file": "page-18.png",
+    "source": "supp Fig. 20 additional qualitative",
+    "crop_box_px": [
+      290,
+      250,
+      1770,
+      2320
+    ],
+    "role": "supp Fig. 20 additional qualitative"
+  },
+  {
+    "file": "assets/figures/sam3d/sam3d_supp_fig21_scene_reconstruction.png",
+    "source_file": "page-19.png",
+    "source": "supp Fig. 21 scene reconstruction",
+    "crop_box_px": [
+      300,
+      300,
+      1800,
+      2305
+    ],
+    "role": "supp Fig. 21 scene reconstruction"
+  }
+]

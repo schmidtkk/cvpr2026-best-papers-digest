@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delta Tokens 深读：一帧只用一个 token，怎样让世界模型既多样又便宜？</title>
+<meta name="description" content="CVPR 2026 Best Papers Digest · A Frame is Worth One Token: Efficient Generative World Modeling with Delta Tokens 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Top Paper（候选）· World Model / Video / Mode-Averaging</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; World Model &gt; Delta Tokens</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">10</span><span class="month">Jun</span></div><h1 id="paper-title">Delta Tokens 深读：一帧只用一个 token，怎样让世界模型既多样又便宜？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-10</span><span>CVPR 2026 Top Paper（候选）· Amazon</span><span>来源：arXiv:2604.04913 PDF</span></div><div class="tags"><span class="tag orange">World Model</span><span class="tag">Best-of-Many</span><span class="tag">Delta Token</span><span class="tag green">VFM Feature Space</span><span class="tag">1024× 压缩</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>Delta Tokens 真正要回答的问题不是“能不能预测下一帧”，而是：<strong>未来本就是多样的，可判别式世界模型用回归去预测，必然把多个合法未来平均成一个不真实的“糊”；而生成式又太贵——能不能既给出多样未来、又便宜？</strong>它的答案有两步：用 Best-of-Many 让一次前向就吐出多个未来假设，再把相邻帧 VFM 特征的<strong>差分</strong>压成<strong>一个 delta token</strong>（一帧一 token，1024× 压缩），让“多假设”变得几乎免费。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>DeltaTok（把帧间特征差压成一个 delta token）+ DeltaWorld（在 delta token 上的生成式世界模型），高效生成多样未来。</div><div class="kv"><b>关键机制</b>Best-of-Many 单前向出多假设避开 mode averaging；delta token 把视频 3D→1D，1024× 减 token。</div><div class="kv"><b>核心证据</b>算力从约 60,000 TFLOPs 降到 31 TFLOPs 量级；best 远高于 mean，证明样本是真多样。</div><div class="kv"><b>复现门槛</b>依赖冻结 VFM（如 DINO）特征空间；BoM 假设数 K、delta 解码保真需调。</div></div></div><figure class="hero-card"><a href="../assets/figures/deltatok/deltatok_fig1_outline.png"><img src="../assets/figures/deltatok/deltatok_fig1_outline.png" alt="DeltaWorld outline"></a><figcaption><strong>图 1 · DeltaWorld 轮廓。</strong>既有生成式世界模型要“多次前向 + 每帧很多空间 token”；DeltaWorld 用<strong>一个 delta token</strong>编码相邻帧之差，一次前向就给出多个未来。对比的不是“好不好看”，而是“多样 + 便宜”能否同时成立。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：判别式世界模型为什么给不了“多样未来”？</h2><p>自动驾驶等场景要预测未来以避免碰撞，而未来本质多模态——行人可能左转也可能右转。判别式世界模型用回归预测下一帧特征，在不确定时会怎样？</p><div class="socratic"><p class="question">问：为什么 L2/L1 回归对“多个合法未来”必然塌成一个平均？</p><p class="guide">引导：回归损失的最优解是条件期望——它把所有可能未来按概率加权平均成一个点。</p><p class="answer">答：在平方损失下，最优预测是条件均值 $\mathbb{E}[\text{future}\mid \text{context}]$。当未来有多个分立模式（左转/右转），均值落在它们“中间”，往往不对应任何真实未来。苏剑林也点过同类现象：VQ-VAE 直接用 L2 重构，因信息平均，模糊是必然的 [archives/9984]。所以判别式世界模型给不了多样、可用的未来集合。生成式（如扩散）能多样，但生成一个样本要多次前向，且作用在整张 $H\times W\times T$ 的 token 网格上，太贵。</p><p class="takeaway"><strong>Takeaway：</strong>问题是“既要多样（别塌成均值）、又要便宜（别多次前向 + 大 token 网格）”。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献</strong>：(a) <strong>DeltaTok</strong>，把相邻两帧的 VFM 特征之差编码成<strong>单个连续 delta token</strong>的 tokenizer，把视频从 3D 时空表示降到 1D 时间序列（512×512 下 1024× token 缩减）；(b) <strong>DeltaWorld</strong>，在 delta token 上运行的生成式世界模型，用 Best-of-Many 一次前向高效产出多样未来；(c) 借这种紧凑表示让<strong>多假设训练</strong>可行——并行生成许多未来、只监督最好的那个。</p><p><strong>读者能进一步推断的是</strong>：这把“生成式 = 贵”的等式拆开了——贵主要来自“多次前向 × 大 token 网格”，而 BoM 去掉了前者、delta token 去掉了后者。只要目标空间有强时序冗余，“一帧一 token + 单前向多假设”就是一条通用的省钱路线。</p></section>
+
+<section id="datasets"><h2>3. 数据集与任务：VFM 特征空间里的未来预测</h2><p>任务是在冻结 VFM（如 DINO）的特征空间里，给定若干上下文帧、预测未来帧的特征，并要求能采样<strong>多个</strong>合理未来。在特征空间建模可抽离像素级变化，让预测器更紧凑。评测覆盖分割、深度等下游 dense forecasting，以及在 Cityscapes / VSPW / KITTI 等上的短/中时程预测；与判别式 DINO-world 及既有生成式世界模型对比质量与算力。</p></section>
+
+<section id="pipeline"><h2>4. Pipeline：把“帧”压成“变化”</h2><figure class="fig-wide"><a href="../assets/figures/deltatok/deltatok_fig3_deltatok.png"><img src="../assets/figures/deltatok/deltatok_fig3_deltatok.png" alt="DeltaTok overview"></a><figcaption><strong>图 2 · DeltaTok。</strong>两帧 $v_{t-1},v_t$ 经冻结 VFM 编成 patch token 网格 $x_{t-1},x_t$；DeltaTok 编码器同时吃这两者、压成<strong>单个</strong> delta token $z_t$；解码器再从 $x_{t-1}$ 与 $z_t$ 重建 $\hat x_t$，MSE 监督。编解码都是 ViT。注意 3D→1D 图例：整段视频从“每帧一张 token 网格”被压成“每帧一个 token”。</figcaption></figure><figure class="fig-wide"><a href="../assets/figures/deltatok/deltatok_fig4_deltaworld.png"><img src="../assets/figures/deltatok/deltatok_fig4_deltaworld.png" alt="DeltaWorld overview"></a><figcaption><strong>图 3 · DeltaWorld。</strong>预测器完全在 delta token 上运行（而非空间 token），因此“多假设”几乎免费：抽多个噪声 query → 一次前向出多个未来 delta token → 经 DeltaTok 解码回特征/帧。</figcaption></figure><div class="socratic"><p class="question">问：为什么压“差分”而不是压“整帧”？</p><p class="answer">答：一个 token 装不下整帧的全部空间内容（容量有限，细节会丢）；但相邻帧高度冗余，它们之间的<strong>变化</strong>是结构化、低维的（视频编码里的帧间/delta 压缩就是这个道理）。把 tokenizer 条件在前一帧上，单 token 只需编码“如何把上一帧变成这一帧”，所需信息远少于从零重描整个场景。</p><p class="takeaway"><strong>Takeaway：</strong>delta token 用“帧间冗余”换“一帧一 token”，把多假设训练的成本压到可忽略。</p></div></section>
+
+<section id="method"><h2>5. 模型与方法：Best-of-Many + Delta 压缩</h2><p>预测器在 VFM 特征空间里、对每个空间位置 $(h,w)$ 独立预测下一帧 patch token：</p><div class="equation">$$\hat x_{t+1,h,w}=f\big(q,\,X_{1:t},\,T_{1:t},\,\tau_{t+1},\,h,\,w\big)\in\mathbb{R}^{D}$$<div class="eq-caption">式 1：判别式 DINO-world 预测器（单 query $q$）。</div></div><div class="formula-note"><p class="note-title">mode averaging：判别式回归的死穴</p><p>式 1 用回归损失训练时，不确定下的最优解是条件均值——把多个分立未来平均成一个常常不真实的预测。这与“L2 重构必然模糊”是同一回事 [archives/9984]：损失只奖励“贴近平均”，不奖励“押中某一个模式”。</p></div><p><strong>Best-of-Many（BoM）：</strong>抽 $K$ 个噪声 query 各替换式 1 里的 $q$，得到 $K$ 个未来假设；<strong>只监督最接近真值的那一个</strong>：</p><div class="equation">$$q^{k}\sim\mathcal{N}(\mu,\Sigma),\qquad \hat x^{k}_{t+1,h,w}=f\big(q^{k},X_{1:t},T_{1:t},\tau_{t+1},h,w\big)$$<div class="eq-caption">式 2–3：K 个噪声 query 各产一个未来假设。</div></div><div class="equation">$$k^\star=\arg\min_{k}\sum_{h,w}\ell\big(x_{t+1,h,w},\hat x^{k}_{t+1,h,w}\big),\qquad \mathcal{L}_{\mathrm{BoM}}=\sum_{h,w}\ell\big(x_{t+1,h,w},\hat x^{k^\star}_{t+1,h,w}\big)$$<div class="eq-caption">式 4：只对“最优假设” $k^\star$ 计损失（winner-take-all）。</div></div><div class="formula-note"><p class="note-title">为什么只监督 best 能逼出多样、又有 mode collapse 风险</p><p>关键是<strong>不平均、只罚最好</strong>：一个假设只要“某个 query 押中真未来”就算成功，于是不同 query 可以各自专精到不同模式，一次前向就给出多样未来——避开了均值塌缩，也省去扩散的多次前向。<strong>承重假设/代价：</strong>每步只有 winner 拿到梯度，其余 $K-1$ 个没有信号；若总是少数 query 获胜，其余会“饿死”，退化成只覆盖少数模式（mode collapse）。多样性因此依赖“足够多的假设在数据上轮流获胜”，这也是为什么要看 best-of-many 的样本缩放曲线来验证。</p></div><p><strong>Delta 压缩：</strong>BoM 要并行评估很多假设，若每帧 $H\times W$ 个 token 就太贵。于是先把帧压成单 token（$z_t=g(x_t,z_{\mathrm{init}})$，解码 $\hat x_t=h(x^{\mathrm{init}},z_t)$，重建损失 $\lVert x_t-\hat x_t\rVert^2$）；但单 token 装不下整帧。最终方案是只压<strong>帧间差</strong>：DeltaTok 把编码器条件在前一帧上——</p><div class="equation">$$z_t=\mathrm{DeltaEnc}(x_{t-1},x_t),\qquad \hat x_t=\mathrm{DeltaDec}(x_{t-1},z_t),\qquad \mathcal{L}_{\mathrm{tok}}=\lVert x_t-\hat x_t\rVert^2$$<div class="eq-caption">式 5：DeltaTok——单 token 只编码“上一帧 → 这一帧”的变化。</div></div><div class="formula-note"><p class="note-title">公式读法</p><p>$z_t$ 不再描述整帧，而是描述<strong>变化</strong>；解码必须同时看 $x_{t-1}$ 与 $z_t$。因为相邻帧冗余大、变化低维，单 token 足以承载，于是视频 3D→1D、token 数 1024× 缩减，BoM 的多假设训练直接在“单 token 空间”里算，无需逐帧解空间特征图。</p></div></section>
+
+<section id="experiments"><h2>6. 实验结果：又多样又便宜成立吗？</h2><figure class="fig-wide"><a href="../assets/figures/deltatok/deltatok_fig2_perf.png"><img src="../assets/figures/deltatok/deltatok_fig2_perf.png" alt="Performance vs compute"></a><figcaption><strong>图 4 · 性能 / 算力对比（Cityscapes mid mIoU）。</strong>既有生成式要约 60,000 / 64,000 TFLOPs，DeltaWorld 只要 <strong>31 TFLOPs</strong> 量级却质量相当甚至更好。同时注意 <strong>Best 明显高于 Mean</strong>——这正是“样本真有多样性”的标志：若塌成均值，best 与 mean 不会拉开。</figcaption></figure><p><strong>判断：</strong>两条独立证据合起来支撑主张。<strong>算力侧</strong>：1024× token 缩减 + 单前向多假设，把生成式世界模型的成本压了几个数量级。<strong>多样性侧</strong>：best 与 mean 的稳定差距、best-of-many 样本缩放（图 5）、以及多样未来可视化（图 6）说明采样确实覆盖不同模式，而非换皮的均值预测。下面的 dense forecasting 主表把这两点钉死在数字上。</p>
+<div class="table-wrap"><table><caption><strong>表 B.</strong> Dense forecasting 主表（512×512 crop）。short ≈0.2 s 直接预测、mid ≈0.6 s 三步 rollout；生成式报 best-of-20，括号内为 mean。Copy last / Present 为下界 / 上界。GFLOPs 中生成式按生成全部 20 个样本计、DINO-World 按单次预测计。</caption><thead><tr><th>模型</th><th>GFLOPs ↓</th><th>VSPW short ↑</th><th>VSPW mid ↑</th><th>City. short ↑</th><th>City. mid ↑</th><th>KITTI short ↓</th><th>KITTI mid ↓</th></tr></thead><tbody><tr><td>Copy last（下界）</td><td>—</td><td>51.2</td><td>44.3</td><td>53.5</td><td>39.6</td><td>3.76</td><td>4.86</td></tr><tr><td>DINO-World [3]（判别式单点）</td><td>5.8×10³</td><td>54.0</td><td>47.9</td><td>62.0</td><td>49.8</td><td>3.16</td><td>4.07</td></tr><tr><td>Cosmos-4B [1]</td><td>6.0×10⁷</td><td>51.1 (49.7)</td><td>47.0 (44.5)</td><td>55.1 (54.9)</td><td>49.1 (48.4)</td><td>3.82 (3.75)</td><td>4.08 (4.14)</td></tr><tr><td>Cosmos-12B [1]</td><td>6.4×10⁷</td><td>51.7 (50.7)</td><td>47.7 (45.5)</td><td>55.3 (56.0)</td><td>53.3 (51.2)</td><td>3.72 (3.71)</td><td>4.01 (4.14)</td></tr><tr><td><strong>DeltaWorld（本文）</strong></td><td><strong>3.1×10⁴</strong></td><td><strong>55.4 (53.7)</strong></td><td><strong>50.1 (46.7)</strong></td><td><strong>65.8 (63.9)</strong></td><td><strong>55.4 (51.3)</strong></td><td><strong>3.00 (3.17)</strong></td><td><strong>3.88 (4.17)</strong></td></tr><tr><td>Present（上界）</td><td>—</td><td>58.4</td><td>58.4</td><td>70.5</td><td>70.5</td><td>2.79</td><td>2.79</td></tr></tbody></table></div>
+<p>读表的三条线：① <strong>算力</strong>——Cosmos 的 6.0–6.4×10⁷ GFLOPs（还各自挂了一个 7B 扩散解码器、FLOPs 由它主导）比 DeltaWorld 的 3.1×10⁴ 高约 <strong>2,000×</strong>，DeltaWorld 却在几乎所有指标上 best 全面超过 Cosmos（VSPW short 55.4 vs 51.7、Cityscapes short 65.8 vs 55.3、KITTI short 3.00 vs 3.72），mean 也大多更好。② <strong>对判别式</strong>——相对 DINO-World 的单点预测，DeltaWorld 的 best 大幅领先（Cityscapes short 65.8 vs 62.0），mean 在 Cityscapes 略好、在 VSPW/KITTI 略逊，说明多采样确实“捞到了”单点回归拿不到的合理模式。③ <strong>best–mean 间隔</strong>——DeltaWorld 的 best 与 mean 之差（如 Cityscapes short 65.8 vs 63.9、VSPW mid 50.1 vs 46.7）一致大于 Cosmos，正是“样本更有意义的多样性”的量化证据。</p><figure class="fig-grid"><a href="../assets/figures/deltatok/deltatok_fig5_bom.png"><img src="../assets/figures/deltatok/deltatok_fig5_bom.png" alt="Best-of-Many sample scaling"></a><a href="../assets/figures/deltatok/deltatok_fig6_futures.png"><img src="../assets/figures/deltatok/deltatok_fig6_futures.png" alt="Diverse sampled futures"></a><figcaption><strong>图 5 · Best-of-Many 样本缩放（左）与多样采样未来（右）。</strong>左：训练/评测 query 数越多，best 预测越好——若塌成均值，多采样不会变好，所以这条上升曲线本身就是“样本真多样”的证据；右：给定四帧上下文（VSPW 例），DeltaWorld 采出的多个未来在行人位置与自车运动上确实彼此不同。这两张图把第 7 节“best 高于 mean”的判断落到了实处。</figcaption></figure><div class="socratic"><p class="question">问：best 高于 mean，会不会只是“多采几次总有一个碰巧好”？</p><p class="answer">答：这正是要点。若模型塌成均值，多采样不会让 best 明显变好；而 best 随样本数稳定上升（图 5）说明不同样本落在不同合理模式上——是真多样，不是噪声。论文也强调这是判别式单点预测拿不到的。</p><p class="takeaway"><strong>Takeaway：</strong>主张成立的边界是“VFM 特征空间、强时序冗余的视频未来预测”，证据覆盖算力与多样性两面。</p></div></section>
+
+<section id="ablations"><h2>7. 消融：每个设计都必要吗？</h2><p>这篇的消融最漂亮的地方，是把整个方法拆成四步“逐步搭建”——从判别式基线一路加到 DeltaWorld，每一步只动一个设计，于是每个组件的代价与收益都一目了然（Cityscapes / VSPW mid-horizon ≈0.6 s，256×256 crop，K=16 训练、best-of-20 评测，括号内为 mean）。</p>
+<div class="table-wrap"><table><caption><strong>表 C.</strong> 走向高效生成式世界模型的逐步消融。GFLOPs 中步 (1)–(3) 按生成全部 20 个样本计、步 (0) 按单次预测计；Time / Mem 为相对步 (0) 的训练时间与显存。</caption><thead><tr><th>步骤</th><th>GFLOPs ↓</th><th>Time ↓</th><th>Mem ↓</th><th>VSPW best (mean) ↑</th><th>Cityscapes best (mean) ↑</th></tr></thead><tbody><tr><td>(0) 判别式基线（DINO-World）</td><td>959</td><td>1.0×</td><td>1.0×</td><td>44.8</td><td>45.4</td></tr><tr><td>(1) + Best-of-Many 训练</td><td>12013</td><td>4.9×</td><td>1.0×</td><td>47.0 (39.4)</td><td>46.8 (31.1)</td></tr><tr><td>(2) + 整帧压成单 token</td><td>631</td><td>0.4×</td><td>0.2×</td><td>45.7 (40.3)</td><td>42.7 (35.5)</td></tr><tr><td>(3) + delta 压差分（<strong>DeltaWorld</strong>）</td><td>672</td><td>0.5×</td><td>0.2×</td><td><strong>46.8 (44.4)</strong></td><td><strong>48.7 (45.5)</strong></td></tr></tbody></table></div>
+<p>逐行读出三个判断：① <strong>BoM 带来多样、也带来代价</strong>——步 (1) 把 best 顶到 47.0/46.8，但 mean 暴跌（Cityscapes 45.4→31.1、VSPW 44.8→39.4，许多样本塌成“整帧一个语义类”），训练时间还涨 ≈4.9×。光有 BoM 是“贵且 mean 崩”。② <strong>压整帧救了成本、没救精度</strong>——步 (2) 把 GFLOPs 从 12013 砍到 631（比步 (1) 快一个数量级、显存省 5×），但单 token 装不下整帧，best/mean 都掉到 45.7/42.7。③ <strong>压 delta 才两全</strong>——步 (3) 在几乎相同的成本（672 GFLOPs、0.5× time、0.2× mem）下，best 反超步 (1) 的无压缩 BoM（Cityscapes +1.9：48.7 vs 46.8，VSPW 仅差 0.2：46.8 vs 47.0），而 mean 直接恢复到判别式基线水平（VSPW 44.4 vs 44.8、Cityscapes 45.5 vs 45.4）。mean 的回升来自 delta 的天然先验——“预测无变化”就等于保留上一帧，天然不会塌成退化预测。预测器在生成 20 样本时只占总推理 FLOPs 的 0.5%（步 (1) 则占 97%）。</p>
+<p>这张表本身就是“两条假设各被独立检验”的证据：<em>压整帧的单 token 精度受限、压 delta 才够用</em>（步 2 vs 步 3）对应第 5 节“单 token 装不下整帧、却装得下低维帧间变化”；<em>去掉 BoM 就只剩均值</em>（步 0 vs 步 1）对应“回归塌缩到条件均值”。图 5 进一步量化了 best-of-many 随 $K$ 的缩放：best 随评测 query 数单调上升且不饱和，mean 在 $K{=}64$ 之后稳定——更多多样性不以牺牲均值质量为代价。</p>
+<div class="socratic"><p class="question">问：消融与机理是否自洽？</p><p class="answer">答：自洽。“压整帧的单 token 精度受限、压 delta 才够用”正对应第 5 节“单 token 装不下整帧、但装得下低维帧间变化”；“去掉 BoM 就只剩均值”对应“回归塌缩到条件均值”。理论的两条假设都在消融里被独立检验。</p><p class="takeaway"><strong>Takeaway：</strong>关键不是“用不用生成式”，而是“怎样的生成式才能既多样又付得起”。</p></div></section>
+
+<section id="limitations"><h2>8. 局限与复现门槛：什么时候要谨慎？</h2><div class="table-wrap"><table><caption><strong>表 A.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/方法信息</th><th>读者应如何理解</th></tr></thead><tbody><tr><td>delta 低维假设</td><td>单 token 只编码帧间变化</td><td>镜头切换/剧烈运动时变化不再低维，一个 token 可能不够</td></tr><tr><td>BoM mode collapse</td><td>只监督 winner，其余假设无梯度</td><td>若少数 query 长期获胜，多样性会退化；需足够假设与覆盖</td></tr><tr><td>依赖 VFM</td><td>在冻结 VFM 特征空间建模</td><td>预测的“未来”是特征级的；像素级保真受 VFM 与解码限制</td></tr><tr><td>特征空间评测</td><td>主评测在 VFM 特征/下游任务</td><td>“多样且合理”以下游指标衡量，不等同像素级视频生成</td></tr><tr><td>适用区间</td><td>强项在强时序冗余视频</td><td>冗余低的场景压缩收益与多样性都会打折</td></tr></tbody></table></div><div class="socratic"><p class="question">问：这篇论文最容易被过度宣传成什么？</p><p class="answer">答：容易被说成“一个 token 就能生成视频未来”。更严谨的说法是：在 VFM 特征空间、利用强帧间冗余，用 Best-of-Many 单前向出多样未来、用 delta token 把成本压几个数量级，从而让生成式世界模型变得可负担。</p><p class="takeaway"><strong>Takeaway：</strong>强项是“多样 + 单前向 + 极致压缩”；边界是 delta 低维假设、BoM 塌缩风险与特征级评测。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>Delta Tokens 把“生成式世界模型 = 贵”的成本拆成两块分别击破：Best-of-Many 去掉“多次前向”，delta token 去掉“大 token 网格”，于是多样未来变得便宜可训。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li>判别式回归在不确定下塌到条件均值（mode averaging），给不了多样未来。</li><li>Best-of-Many 只罚最优假设，让不同 query 专精不同模式、单前向出多样——但只 best 拿梯度，有 mode collapse 风险。</li><li>delta token 利用帧间冗余把一帧压成一个“变化 token”，1024× 缩减让多假设训练几乎免费。</li></ol></div></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Tommie Kerssies, Gabriele Berton, Ju He, Qihang Yu, Wufei Ma, Daan de Geus, Gijs Dubbelman, Liang-Chieh Chen. <em>A Frame is Worth One Token: Efficient Generative World Modeling with Delta Tokens</em>. CVPR 2026 / arXiv:2604.04913（Amazon）。</li><li>本文公式、表格与实验数字以 arXiv PDF 为准；“L2 回归/重构因平均而模糊”的视角参考苏剑林 [archives/9984]；Best-of-Many / winner-take-all 为既有多假设学习目标，非本文独有。</li><li>图像说明：所有正文图为本地 PNG，来自 arXiv PDF 的高 DPI 页面裁切（图 1/2/3/4），路径位于 <code>assets/figures/deltatok/</code>。</li></ol></section>
+</main><footer class="article-footer">CVPR 2026 Best Papers Digest · Delta Tokens 深读。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与任务</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法与公式</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>A Frame is Worth One Token: Efficient Generative World Modeling with Delta Tokens</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper（候选）</dd><dt>Team</dt><dd>Amazon · TU Eindhoven · JHU</dd><dt>arXiv</dt><dd>2604.04913</dd><dt>Topic</dt><dd>Generative World Model</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：DeltaWorld 轮廓</li><li>图 2：DeltaTok</li><li>图 3：DeltaWorld</li><li>图 4：算力对比</li><li>式 4：Best-of-Many</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> Delta Tokens 深读</p><p><span class="status-good">figures</span> 6 张 PNG 素材入库</p><p><span class="status-good">formula</span> MathJax 预检通过</p><p><span class="status-warn">scope</span> 优势依赖强时序冗余</p></div></section></aside></div></body></html>
