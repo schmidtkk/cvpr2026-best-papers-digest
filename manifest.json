@@ -22,7 +22,7 @@
     "chordedit_author_award": "https://cnshiyang.github.io/"
   },
   "status_summary": {
-    "completed_pages": 12,
+    "completed_pages": 14,
     "pending_pages": 0,
     "completed_ids": [
       "d4rt",
@@ -36,7 +36,9 @@
       "mactok",
       "deltatok",
       "mspt",
-      "sam3dbody"
+      "sam3dbody",
+      "lladamedv",
+      "voxtell"
     ],
     "pending_ids": []
   },
@@ -289,6 +291,50 @@
       "status": "completed",
       "figures_count": 13,
       "formula_check": "passed"
+    },
+    {
+      "id": "lladamedv",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "LLaDA-MedV: Exploring Large Language Diffusion Models for Biomedical Image Understanding",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "LLaDA-MedV",
+      "topic": "Medical AI · 掩码扩散语言 VLM",
+      "blurb": "首个生物医学掩码扩散 VLM：从固定长度全掩码画布迭代填空，长度成为输入超参而非 EOS 早停；开放式对话领先 ARM、闭合式 VQA 三连 SOTA（84.93/92.31/95.15）。",
+      "tags": "Medical Medical AI biomedical VLM masked diffusion LLaDA visual instruction tuning VQA length control closed-form SOTA ASU",
+      "authors": "Xuanzhao Dong; Wenhui Zhu; Xiwen Chen; Zhipeng Wang; Peijie Qiu; Shao Tang; Xin Li; Yalin Wang",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2508.01617",
+        "code": "https://github.com/LLM-VLM-GSL/LLaDA-MedV",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Dong_LLaDA-MedV_Exploring_Large_Language_Diffusion_Models_for_Biomedical_Image_Understanding_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/lladamedv.html",
+      "thumbnail": "assets/figures/lladamedv/lladamedv_thumb.png",
+      "status": "completed",
+      "figures_count": 7,
+      "formula_check": "passed",
+      "missing_info": "训练总时长、steps/epochs、完整 LR schedule 等已标注论文未说明"
+    },
+    {
+      "id": "voxtell",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "VoxTell: Free-Text Promptable Universal 3D Medical Image Segmentation",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "VoxTell",
+      "topic": "Medical AI · 文本提示 3D 医学分割 / 多尺度视觉-语言融合",
+      "blurb": "把文本融合从 MaskFormer 的“末端一次点积”改成“每个解码尺度都融一次 + 深监督”：62K+ CT/MRI/PET、1087 概念上训练，11 个未见数据集零样本平均 Dice 70.85（次优 SAT 51.23），真实放射报告整句提示下 50.2 而 SAT 仅 0.0。",
+      "tags": "Medical Medical AI text-promptable segmentation 3D CT MRI PET vision-language fusion multi-scale deep supervision UNet ResEncL Qwen3-Embedding open-vocabulary zero-shot DKFZ nnU-Net",
+      "authors": "Maximilian Rokuss; Moritz Langenberg; Yannick Kirchhoff; Fabian Isensee; Benjamin Hamm; Constantin Ulrich; Sebastian Regnery; Lukas Bauer; Efthimios Katsigiannopulos; Tobias Norajitra; Klaus Maier-Hein",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2511.11450",
+        "code": "https://github.com/MIC-DKFZ/VoxTell",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Rokuss_VoxTell_Free-Text_Promptable_Universal_3D_Medical_Image_Segmentation_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/voxtell.html",
+      "thumbnail": "assets/figures/voxtell/voxtell_fig1.png",
+      "status": "completed",
+      "figures_count": 9,
+      "formula_check": "passed",
+      "missing_info": "总训练 steps/epochs、完整 LR schedule、表 1/表 3 个别数据集精确名置于附录（正文按模态行+点名数值核对）"
     }
   ]
 }

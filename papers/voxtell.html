@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoxTell 深读：文本提示 3D 医学分割，为什么“每个尺度都融一次”胜过“最后点积一次”？</title>
+<meta name="description" content="CVPR 2026 Medical AI · VoxTell: Free-Text Promptable Universal 3D Medical Image Segmentation 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Medical AI · 文本提示 3D 医学分割 / 视觉-语言融合</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Medical AI &gt; VoxTell</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">11</span><span class="month">Jun</span></div><h1 id="paper-title">VoxTell 深读：文本提示 3D 医学分割，为什么“每个尺度都融一次”胜过“最后点积一次”？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-11</span><span>CVPR 2026 · Medical AI · DKFZ / Helmholtz Imaging</span><span>来源：arXiv:2511.11450 PDF</span></div><div class="tags"><span class="tag orange">Medical AI</span><span class="tag">Text-Promptable Segmentation</span><span class="tag">3D CT/MRI/PET</span><span class="tag green">Vision–Language Fusion</span><span class="tag">ResEncL · Qwen3-Embedding</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>VoxTell 真正要回答的问题，不是“能不能用一句话去分割 CT/MRI/PET”，而是：<strong>临床文本几乎从不是“肝”这种单词，而是“右肺下叶伴胸膜接触的毛刺癌”“两侧肝叶大小不等的低密度灶”——它把空间定位、语义关系、甚至拼写错误都揉进一句话里。可主流的 MaskFormer 范式（SAT、BioMedParse）只在解码器<em>最末端</em>做一次 query·image 点积，图像骨干在见到这句话之前就已经把特征定型了。那么，要让模型对“右肺”而非“左肺”作出反应，文本到底应该在解码的哪一步注入？</strong>VoxTell 的答案干脆利落：<strong>别等到最后——在 UNet 解码器的每一个分辨率上都融一次，再配上每尺度的深监督。</strong>这就是这篇 DKFZ（nnU-Net 同门）工作的立题。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>VoxTell：直接把自由文本（从单词到整句临床描述）映射到 3D 掩码的视觉-语言分割模型，在 62K+ CT/MRI/PET、1087 个概念上训练。</div><div class="kv"><b>关键机制</b>多尺度重复视觉-语言融合：在解码器每个尺度做通道级点积 $T_s\odot z'_s$ 把文本调制注入中间特征，配合每尺度 Dice+CE 深监督，强迫早期解码层就携带 prompt 条件信息。</div><div class="kv"><b>核心证据</b>11 个<strong>未见数据集</strong>零样本平均 Dice 70.85，碾压次优 SAT 的 51.23；报告级真实句子提示下 50.2 Dice，而 SAT 仅 0.0。</div><div class="kv"><b>复现门槛</b>最终模型 64×A100、batch 128、约 6 天；冻结 Qwen3-Embedding-4B 文本编码器；完全 OOD 解剖（膝关节）仍失败。</div></div></div><figure class="hero-card"><a href="../assets/figures/voxtell/voxtell_fig1.png"><img src="../assets/figures/voxtell/voxtell_fig1.png" alt="VoxTell 在四类递进难度 prompt 下的分割与真实放疗队列条形图"></a><figcaption><strong>图 1 · VoxTell 的“能力阶梯”。</strong>从左到右 prompt 难度递增：(a) 训练见过的已知结构、(b) 已知概念迁移到新模态、(c) 训练从未见过的新概念、(d) 来自真实放射报告的整句临床语言。右侧条形图是全文的“核心断言可视化”——在留出的放疗队列上用报告派生提示，VoxTell 50.18 Dice，而 SAT 为 0.00、SegVol 仅 8.09。这张图就是“文本何时注入决定成败”的证据。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：临床文本是“带定位的句子”，末端点积为何接不住？</h2><p>体素级分割是诊断与治疗计划的基石，但绝大多数方法被锁死在特定结构或特定模态上。SAM 范式用<strong>空间提示</strong>（点、框、涂鸦）做到了“万物可分”，MedSAM 等医学改编也跟进；但空间提示要人手动点，且无法利用现成的放射报告。<strong>文本提示</strong>则是更自然的临床接口：直接描述解剖/病理，或干脆把报告丢进去。</p><p>问题在于，现有文本引导医学分割模型（SAT、BioMedParse 系列）<strong>更像“用文本去选一个预定义分割头”的多任务网络</strong>：它们对措辞、同义词、拼写极其敏感，从单词标签（“liver”）一跨到复杂临床描述（“calcified nodules in right lung parenchyma”），性能就塌——而这恰恰是文本提示最该发光的场景。</p><div class="socratic"><p class="question">问：那把 SAT 这类模型多喂点同义词、多训几个数据集，不就能handle 复杂 prompt 了吗？</p><p class="guide">引导：盯住它们的<strong>融合位置</strong>——MaskFormer 范式里，最终掩码是 query 特征与<em>通用</em>图像特征的<strong>一次</strong>点积。图像骨干在整个前向里从没“听到”过这句 prompt。</p><p class="answer">答：论文的论点是结构性的，不是数据量问题。“lesion in right lung”这种<strong>空间定位 prompt</strong>，靠一个在体积上滑动的、共享的分割头根本接不住——它无法对“右”这个空间约束自适应，因为空间结构早在骨干里被烘焙成了 prompt-无关的语义图。第 5 节会从两条独立路径把这点钉死；这里先记住：<strong>难的不是“认词”，是“让文本去重塑空间响应”。</strong></p><p class="takeaway"><strong>Takeaway：</strong>核心问题是“文本应在解码的<strong>哪一步</strong>、<strong>注入几次</strong>”——VoxTell 赌的是“早注入、反复注入”，而非“末端一次性融合”。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献</strong>：</p><ul><li><strong>VoxTell</strong>——一个把自由文本（含整句临床描述）直接映射到体积掩码的 3D 文本提示分割模型。</li><li><strong>多尺度视觉-语言融合</strong>——在解码器多个尺度反复做跨模态交互，改善文本与体积特征的对齐（这是与 SAT/MaskFormer“单次末端融合”的关键分野）。</li><li><strong>SoTA 文本提示分割</strong>——在 CT、PET、MRI 多结构上验证，超过此前文本引导分割模型。</li><li><strong>迈向开集泛化</strong>——对模态漂移与“相关但未见”结构均有效。</li></ul><div class="formula-note"><p class="note-title">读数提醒：这篇的“评测设定”本身就是一个贡献</p><p>多数文本提示基线用<strong>同分布 train/test split</strong>刷分（训练和测试是同一批数据/结构）。VoxTell 反其道：<strong>只在未见数据集（OOD 图像）上评测</strong>，且覆盖“已知概念 + 新概念 + 已知概念换模态”三种情形。所以它报告的所有数字都该按“零样本 / 留出域”理解——这让 70.85 vs 51.23 的差距比同分布刷分更有说服力。</p></div><p><strong>读者能进一步推断的是</strong>：这篇的价值不在“又一个医学分割基础模型”，而在它把<strong>“融合位置”这一个架构变量</strong>单独拎出来、用消融证明它（而非数据或文本编码器）是处理复杂 prompt 的瓶颈。下面第 5、8 节会把这条因果链走两遍。</p></section>
+
+<section id="datasets"><h2>3. 数据与词表：62K 体积、1087 概念，以及“把标签写成人话”</h2><p>为训练和评测 VoxTell，作者整理了一个大规模多模态 3D 语料：<strong>158 个公开数据集、62K+ 体积扫描（≈4 TB）、1087 个解剖与病理概念</strong>，覆盖 CT、多序列 MRI、PET，含健康与病理解剖。论文称其在数据集数上是此前最大汇编（SAT 语料）的两倍多、体积数近三倍。每个数据集留 5% 作验证（消融全在此 split 上做），保证测试完整性。</p><figure><a href="../assets/figures/voxtell/voxtell_fig6.png"><img src="../assets/figures/voxtell/voxtell_fig6.png" alt="1087 个概念按身体区域组织的旭日图"></a><figcaption><strong>图 6（附录）· 1087 个统一概念的旭日图。</strong>内圈是身体大区（脑、胸、腹、骨骼肌、血管、心、脊柱…），外圈逐级细化到子结构与病灶。看这张图要抓的不是“有多少类”，而是<strong>覆盖的语义跨度</strong>——从“right rib cage”这种聚合体到“temporal lobe”这种细粒度子区，都进了同一个词表。正是这种跨度，给“相关但未见概念”的插值泛化提供了落脚的邻域。</figcaption></figure><h3>3.1 词表构建：让“right kidney”能被“dexter kidney”“right renal organ”命中</h3><p>关键不在于收了多少标签，而在于<strong>把标签语义抹平</strong>。流程三步：(1) <strong>跨数据集消歧</strong>——统一同义/重叠类名，解决“liver 是否含病灶”这类同名不同义；(2) <strong>标签扩展</strong>——用 LLM 依据数据集元信息生成解剖学精确的变体（“right kidney” → “right renal organ”“dexter kidney”），并组合层级聚合体（“left rib 1”–“left rib 12” → “left rib cage”）；(3) 验证。最终词表 <strong>1087 个统一概念、9682 个改写标签</strong>，训练时采样但以主词为主（用“liver”多于“hepatic organ”）。</p><div class="socratic"><p class="question">问：这套“同义词扩展”到底是工程润色，还是机制必需？</p><p class="answer">答：它是后面“prompt 鲁棒性”（图 3）能成立的<strong>数据侧前提</strong>。一个强文本编码器（Qwen3-Embedding-4B）固然能把“trachea/windpipe/airways”映射到相近嵌入，但若训练时从没见过这些写法与同一掩码配对，模型就学不到“这些不同写法 → 同一空间目标”的不变性。词表扩展 + 强编码器是<strong>互补</strong>的两半：编码器给嵌入的连续性，扩展给“写法→目标”的监督覆盖。第 8 节附录 D 的编码器消融正是用来切开这两半的贡献。</p><p class="takeaway"><strong>Takeaway：</strong>“把标签写成人话再训练”不是数据清洗的边角料，而是 VoxTell 能对同义词/拼写错误稳健的根。</p></div><h3>3.2 实例级数据：为“定位单个病灶”而生</h3><p>语义数据集只告诉模型“哪是肝”，不告诉“哪一个病灶”。为处理<strong>实例级、带空间定位</strong>的 prompt，作者额外组了一个实例聚焦数据集，用于 ReXGroundingCT 基准，来源三股：(i) ReXGroundingCT 官方训练 split（把报告 findings 链接到精确 3D 分割）；(ii) 用 TotalSegmentator 把语义病灶数据集转成实例级标注；(iii) 带结构化 DICOM 元信息的 TCIA 合集。在 ReXGroundingCT 上评测时，VoxTell 与对手都在该数据上微调，以公平评估实例级定位。</p></section>
+
+<section id="pipeline"><h2>4. Pipeline 与架构：两条流，在解码器里反复交汇</h2><p>图 2 是矢量图，这里转写为结构化流程（论文 Fig. 2）。VoxTell 灵感源自 MaskFormer，但刻意采用 <strong>UNet 风格骨干</strong>（ResEncL，6 个编码器阶段）而非纯 Transformer——理由是 UNet 系在 3D 医学分割上持续领先 Transformer（Touchstone 等大规模基准与近年挑战赛）。两条流：</p>
+<figure><div style="border:1px solid var(--line-strong);border-radius:10px;padding:18px 20px;background:var(--soft);font-family:var(--font-mono);font-size:14px;line-height:1.7">
+<div style="display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start">
+<div style="flex:1 1 280px;border-left:3px solid var(--brand);padding-left:12px"><b>视觉流</b><br>3D 体积 $V$<br>&nbsp;&nbsp;↓ <span style="color:var(--muted)">ResEncL UNet 编码器 $f_{enc}$</span><br>多尺度特征 $Z=\{z_1,\dots,z_S\}$<br>&nbsp;&nbsp;↓ <span style="color:var(--muted)">UNet 解码器 $f_{dec}$（粗→细）</span><br>每尺度：skip 连接 + 上一层上采样</div>
+<div style="flex:1 1 280px;border-left:3px solid var(--accent);padding-left:12px"><b>文本流</b><br>自由文本 $p$（词 → 整句）<br>&nbsp;&nbsp;↓ <span style="color:var(--muted)">冻结 Qwen3-Embedding-4B $f_{text}$</span><br>prompt 嵌入 $q$<br>&nbsp;&nbsp;↓ <span style="color:var(--muted)">6 层 Transformer prompt 解码器 $f_{prompt}$</span><br>多尺度文本引导 $T=\{T_1,\dots,T_S\}$</div>
+</div>
+<div style="margin-top:14px;border-top:1px dashed var(--line-strong);padding-top:12px;text-align:center"><b style="color:var(--green)">交汇点（每个尺度都做一次）</b><br>通道级点积 $T_s\odot z'_s$ → 把文本调制拼回中间特征 → 卷积 → 上采样<br><span style="color:var(--muted)">每尺度还挂一个分割头 $\hat Y_s$ 做深监督</span></div>
+</div><figcaption><strong>图 2（转写）· VoxTell 总览。</strong>左：体积编码成多尺度 latent；自由文本先嵌入、再经 prompt 解码器产出<em>多尺度</em>文本特征。右：解码器在每个分辨率让文本嵌入调制体积特征——把 MaskFormer 的“query–image 融合”从单次扩展到所有尺度，并加深监督。<strong>与 SAT/MaskFormer 的唯一本质区别就在这个“每尺度交汇”。</strong></figcaption></figure>
+<div class="formula-note"><p class="note-title">为什么坚持 UNet 而不是全 Transformer？</p><p>这是一个被动机驱动的选择：2D 分割里 Transformer 占优，但 3D 医学体积上 UNet 系仍是 SOTA。VoxTell 把文本条件<strong>直接注入 UNet 的多尺度特征图</strong>，确保 prompt 信息影响的是中间表示，而不是只作用在输出阶段。换句话说，它没有为了“赶时髦用 Transformer”而牺牲 3D 分割本身的强先验。</p></div></section>
+
+<section id="method"><h2>5. 方法：多尺度融合 + 深监督，为什么能接住“右肺”？</h2><h3>5.1 形式化：从编码到每尺度的文本调制</h3><p>设 $V\in\mathbb{R}^{H\times W\times D}$ 为输入体积，UNet 编码器抽取多尺度特征：</p>
+<div class="equation">$$Z=\{z_1,\dots,z_S\},\quad z_s\in\mathbb{R}^{C_s\times H_s\times W_s\times D_s}\qquad(1)$$<div class="eq-caption">式 1：$S$ 个尺度的视觉特征，$C_s$ 为通道数。</div></div>
+<p>自由文本 $p$ 经冻结文本编码器得 $q=f_{text}(p)\in\mathbb{R}^d$（式 2）。一个 Transformer prompt 解码器以 $q$ 为 query、瓶颈特征 $z_S$ 为 key–value，输出经各尺度专用 MLP 投影成多尺度文本引导张量：</p>
+<div class="equation">$$T=f_{prompt}(q,z_S)=\{T_1,\dots,T_S\},\quad T_s\in\mathbb{R}^{G\times C_s}\qquad(3)$$<div class="eq-caption">式 3：每个 $T_s$ 与对应解码尺度的通道维对齐；$G$ 为引导嵌入维度，设为 32。</div></div>
+<h3>5.2 跨尺度融合：把“点积”从末端搬到每一层</h3><p>解码器从粗到细重建。在尺度 $s$，上一级上采样输出 $y^{\uparrow}_{s-1}$ 先与编码器 skip $z_s$ 拼接、过卷积块：</p>
+<div class="equation">$$z'_s=\mathrm{ConvBlock}\big(\mathrm{concat}(y^{\uparrow}_{s-1},\,z_s)\big)\qquad(4)$$<div class="eq-caption">式 4：常规 UNet 解码的特征聚合，此时还没有文本。</div></div>
+<p>注入 prompt 条件的核心一步——把 MaskFormer“图像·文本点积”的原则<strong>推广到所有尺度</strong>：对 $z'_s$ 与 $T_s$ 做<strong>通道级点积</strong>，再拼回中间特征：</p>
+<div class="equation">$$y'_s=\mathrm{concat}\big(z'_s,\;T_s\odot z'_s\big),\quad y'_s\in\mathbb{R}^{(C_s+G)\times H_s\times W_s\times D_s}\qquad(5)$$<div class="eq-caption">式 5：$\odot$ 表示沿通道 $C$ 的点积，产生 $G$ 个新通道。随后 $y_s=f_{dec,s}(y_{s-1},z_s,T_s)$（式 6）。</div></div>
+<div class="formula-note"><p class="note-title">公式读法（式 5 是全文机制的心脏）</p><p>$z'_s$ 是当前尺度的视觉特征（$C_s$ 通道），$T_s$ 是 $G\times C_s$ 的文本引导。$T_s\odot z'_s$ 沿通道维把文本和视觉做内积，得到 $G$ 个“文本-视觉相似度图”——每张图回答“这个空间位置和 prompt 的第 $g$ 个语义方向有多匹配”。把这 $G$ 张相似度图<strong>拼回</strong> $z'_s$，后续卷积就能用它去<em>重塑</em>空间响应。<strong>关键</strong>：MaskFormer 只在 $s$=最末端做一次这个点积；VoxTell 在<em>每个</em> $s$ 都做。所以文本能在特征还在成形的途中、反复地改写“哪里该亮”。</p></div>
+<h3>5.3 深监督：让文本梯度直达早层</h3><p>每个中间解码输出 $y_s$ 再经一个分割头映射为预测 $\hat Y_s$，在多尺度上施加辅助监督。总损失：</p>
+<div class="equation">$$\mathcal{L}=\sum_{s=1}^{S}\lambda_s\,\mathcal{L}_{seg}\big(\hat Y_s,\,Y_s\big)\qquad(7)$$<div class="eq-caption">式 7：$Y_s$ 是下采样到尺度 $s$ 的真值掩码，$\mathcal{L}_{seg}$ = Dice + 交叉熵，$\lambda_s$ 为尺度权重。</div></div>
+<div class="socratic"><p class="question">问：“多尺度反复融合 + 深监督”为什么必然胜过“末端一次点积”？给我两条<strong>独立</strong>论证，别只说一句“融合更多更好”。</p><p class="answer"><strong>路径 A（表示学习 / 信息瓶颈，自上而下）：</strong>MaskFormer 范式里，图像骨干产出 prompt-<em>无关</em>的通用特征 $F$，最终掩码 = $\langle q_{text},F\rangle$ 一次点积。骨干在训练中从没把 query 当输入，它的目标是“对所有可能 prompt 平均最优”。按信息瓶颈 / 遗忘原理 [archives/6181]：一个为下游目标优化、经过瓶颈的表示，会<strong>主动丢弃下游目标用不到的信息</strong>。当下游目标是“prompt-无关的通用掩码 logits”，骨干就没有动力保留“哪个空间位置对应哪个文本概念”的<em>选择性</em>——它学到“这里像肺、那里像肝”的语义图，而非“右肺 vs 左肺”这种可被文本索引的空间方向。于是 “lesion in right lung” 无处发力。VoxTell 把点积放到每个尺度（式 5），等于在每一层都给骨干一个“必须回答当前 prompt”的压力，表示就不能再 collapse 成 prompt-无关；从互信息角度 [archives/6024]，这是在<em>每个</em>尺度最大化 $I(\text{文本};\text{视觉特征})$，而不是只在输出端。<br><br><strong>路径 B（优化 / 梯度，自下而上）：</strong>就算架构允许多尺度融合，若只在最末端算 loss，文本梯度要穿过整个解码器才能回到粗尺度——长路径上梯度被稀释、与视觉梯度纠缠。深监督（式 7）在每个尺度 $s$ 都挂 Dice+CE 头，文本调制后的中间特征<strong>直接</strong>收到监督，梯度短路，逼早期解码层就把 prompt 条件信息吃进去。<br><br><strong>两条路径交叉验证同一结论</strong>：表示角度说“不在途中融合就会丢掉 prompt 选择性”，优化角度说“不深监督文本梯度到不了早层”。两者都指向<em>同一处方</em>——prompt 信息必须<strong>早注入、且反复注入</strong>。第 8 节消融的单调阶梯（55→60→62→69）正是这条因果的双重证据。</p><p class="takeaway"><strong>Takeaway：</strong>末端点积让 $F$ 固定、query 只能线性 re-weight 通道（能“选类别”却不能“改空间结构”）；只有在 $F$ 还在多尺度成形时注入文本，空间结构才对文本可塑——这就是“为什么必须在解码途中、而非终点融合”的最小解释。</p></div>
+<div class="formula-note"><p class="note-title">最小可解模型（toy intuition）</p><p>把掩码看成 logits 场 $m(x)=\langle q,F(x)\rangle$。late fusion 里 $F(x)$ 已定，$q$ 只能对通道线性加权——它能挑“是不是肿瘤”，但改不了“肿瘤在左还是在右”，因为空间结构已经烘焙进 $F$。要让 “right lung” 区别于 “left lung”，需要 $q$ 能调制 $F$ 的<em>空间</em>响应；唯有在 $F$ 成形途中注入 $q$（式 5 改变后续卷积的输入），空间结构才对文本可塑。</p></div></section>
+
+<section id="training"><h2>6. 训练配置：64 张 A100、6 天，以及“负样本也要采”</h2><p>实现细节（论文 §5）：视觉骨干 ResEncL（6 编码阶段）；文本用<strong>冻结的 Qwen3-Embedding-4B</strong>（依附录 D 的编码器消融选定）；prompt 解码器为 6 层 Transformer、2048 维 query 空间；融合在<strong>所有</strong>解码尺度施加并配深监督。优化用 SGD，初始学习率 $1\times10^{-4}$、多项式衰减。</p><ul><li><strong>消融</strong>：单张 A100、batch size 2。</li><li><strong>最终模型</strong>：64 张 A100、batch size 128、约 6 天。</li><li><strong>正负 prompt 都采样</strong>：训练时既给图中存在的结构（正），也给图中<em>不存在</em>的结构（负 prompt）——这逼模型学会“该结构不在时就输出空掩码”，而非无脑高亮。</li></ul><div class="formula-note"><p class="note-title">关于算力</p><p>按论文披露的“64×A100 × ≈6 天”<strong>粗略估算</strong>：$64\times6\times24\approx 9{,}216$ A100·小时。此数<strong>按论文披露数字粗略估算，不等同于实际账单</strong>（未含失败重跑、数据预处理、消融）。总 steps/epochs、完整 LR 计划等<strong>论文未在正文细列</strong>，置于附录 A。</p></div><div class="socratic"><p class="question">问：为什么非要采“负 prompt”？不采会怎样？</p><p class="answer">答：文本提示分割的一个隐藏陷阱是“总能找到点东西分割出来”。若训练只给图中真实存在的结构，模型会学成“无论问什么都高亮一块最像的区域”——在临床里这是危险的假阳性。采负 prompt（问一个图里没有的结构）并要求输出空掩码，等于显式教会模型“说不”。这与第 1 节“在体积上滑动的共享头无法对空间约束自适应”的担忧呼应：负样本是把“存在性判断”也纳入文本条件的必要监督。</p><p class="takeaway"><strong>Takeaway：</strong>正负 prompt 联合采样是“可信文本分割”的工程红线，不是可有可无的数据增强。</p></div></section>
+
+<section id="experiments"><h2>7. 实验：零样本碾压、对措辞稳定、真实报告下从 0 到 50</h2><p><strong>判断：</strong>四组证据互补。<strong>表 1</strong>（零样本 SoTA）证明“在未见数据集上更准”；<strong>图 3</strong>（prompt 稳定性）证明“对同义词/拼写稳”；<strong>表 3</strong>（跨模态/未见概念）证明“能往相关概念插值”；<strong>图 4 + 放疗队列</strong>证明“真实临床整句下仍立得住”。逐一看。</p>
+<h3>7.1 零样本：11 个未见数据集，平均 70.85 vs 51.23</h3>
+<div class="table-wrap"><table><caption><strong>表 1.</strong> 跨未见 CT/MRI/PET 数据集的零样本分割 Dice（论文 Tab. 1 转写）。<code>*</code>=该方法未在此模态训练，<code>†</code>=未在此病理训练。<br><span style="color:var(--muted);font-size:13px">列名与模态严格按 Tab. 1；个别数据集精确出处见论文附录 B / Tab. 7。第 6 列为 PET 病理数据集。</span></caption><thead><tr><th>方法</th><th>Abd.<br>Organs<br><small>CT</small></th><th>Lung&amp;<br>Airway<br><small>CT</small></th><th>Lung<br>Vessels<br><small>CT</small></th><th>Head&amp;<br>Neck<br><small>CT</small></th><th>Heart<br><small>MRI</small></th><th>Liver<br>Tumor<br><small>PET</small></th><th>Multiple<br>Sclerosis<br><small>MRI</small></th><th>Adrenal<br>Tumor<br><small>CT</small></th><th>Liver<br>Lesions<br><small>CT</small></th><th>Bones<br>Fract.<br><small>CT</small></th><th>Brain<br>Mets<br><small>MRI</small></th><th><b>Mean</b></th></tr></thead><tbody>
+<tr><td>TotalSegmentator</td><td>67.64</td><td>85.23</td><td>49.48</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td>BioMedParse</td><td>9.12</td><td>0.00</td><td>6.53</td><td>1.66</td><td>8.12</td><td>2.73</td><td>9.57</td><td>52.91</td><td>41.25</td><td>0.47</td><td>9.61</td><td>12.91</td></tr>
+<tr><td>Text3DSam</td><td>26.56</td><td>65.36</td><td>28.91</td><td>1.34</td><td>15.65</td><td>12.21</td><td>0.21</td><td>0.00</td><td>0.52</td><td>24.75</td><td>0.10</td><td>15.97</td></tr>
+<tr><td>SegVol</td><td>52.50</td><td>88.67</td><td>41.34</td><td>17.93</td><td>1.85</td><td>0.00</td><td>0.00</td><td>51.08</td><td>58.35</td><td>22.11</td><td>0.00</td><td>30.35</td></tr>
+<tr><td>BioMedParseV2</td><td>51.78</td><td>62.59</td><td>35.06</td><td>20.65</td><td>18.11</td><td>0.47</td><td>2.03</td><td>55.86</td><td>70.37</td><td>1.35</td><td>18.66</td><td>30.59</td></tr>
+<tr><td>SAT（次优）</td><td>68.79</td><td>87.98</td><td>37.65</td><td>54.33</td><td>43.38</td><td>77.13</td><td>13.68</td><td>0.09</td><td>62.28</td><td>96.05</td><td>22.16</td><td>51.23</td></tr>
+<tr><td><b>VoxTell（本文）</b></td><td><b>72.94</b></td><td><b>89.65</b></td><td><b>60.56</b></td><td>51.28</td><td><b>52.72</b></td><td><b>83.24</b></td><td><b>72.71</b></td><td><b>77.23</b></td><td><b>73.24</b></td><td><b>97.59</b></td><td><b>48.19</b></td><td><b>70.85</b></td></tr>
+</tbody></table></div>
+<p>读这张表别只盯平均值 70.85 vs 51.23（+19.6）。看<strong>结构性</strong>：基线<strong>动辄整列归零</strong>——SAT 在 Adrenal Tumor 0.09、BioMedParse 在 Lung&amp;Airway 0.00、SegVol 在 Multiple Sclerosis / Brain Mets 0.00。这印证第 1 节的判断：它们没在该病理/模态训过就<strong>彻底失败</strong>。VoxTell 最弱的两列（Head&amp;Neck 51.28、Brain Mets 48.19）也仍是可用分割。注意 Abd. Organs 是<strong>儿科 CT</strong>（域漂移），解释了所有方法在该列偏低。</p>
+<h3>7.2 Prompt 稳定性：换同义词/拼错字，VoxTell 几乎不动</h3>
+<figure><a href="../assets/figures/voxtell/voxtell_fig3.png"><img src="../assets/figures/voxtell/voxtell_fig3.png" alt="三个结构上各方法对多种文本提示的 Dice 分布箱线图"></a><figcaption><strong>图 3 · Prompt 稳定性。</strong>对同一解剖结构喂多种写法（airway/airways/<em>ariways</em>/trachae/trachea/windpipe；stomach/<em>stomack</em>/gastric organ/belly/gaster/<em>stomac</em>；liver tumor/lesion/HCC/malignant hepatoma/hepatocarcinoma），画各方法的 Dice 分布。看<strong>箱体高度</strong>：竞品（紫 Text3DSam、黄 SegVol、绿 BioMedParseV2、红 SAT）箱体又长又低——某些同义词或拼写直接让它们崩；VoxTell（蓝）箱体又高又窄，<strong>对措辞几乎不敏感</strong>。这正是 §3.1 词表扩展 + 强文本编码器互补的直接回报。</figcaption></figure>
+<h3>7.3 跨模态与未见概念：往“相关邻域”插值</h3>
+<div class="table-wrap"><table><caption><strong>表 3.</strong> 跨模态与未见概念泛化 Dice（论文 Tab. 3 转写）。<br><span style="color:var(--muted);font-size:13px">列序、模态严格按 Tab. 3；正文点名 esophageal cancer = 69.1（第 5 列，CT）、bladder cancer = 25.8（第 4 列，MRI）作锚点；第 1 列为跨模态 PET 案例，其精确数据集名以论文 Tab. 3 / 附录为准。</span></caption><thead><tr><th>方法</th><th>跨模态<br><small>PET</small></th><th>Breast<br>Tumor<br><small>MRI</small></th><th>Pancreas<br>Sarcoma<br><small>MRI</small></th><th>Bladder<br>Cancer<br><small>MRI</small></th><th>Esophageal<br>Cancer<br><small>CT</small></th></tr></thead><tbody>
+<tr><td>BioMedParse</td><td>0.75</td><td>1.39</td><td>36.20</td><td>10.37</td><td>17.86</td></tr>
+<tr><td>Text3DSam</td><td>0.00</td><td>4.52</td><td>12.83</td><td>2.04</td><td>7.28</td></tr>
+<tr><td>SegVol</td><td>0.05</td><td>14.64</td><td>0.83</td><td>0.08</td><td>32.24</td></tr>
+<tr><td>BioMedParseV2</td><td>0.00</td><td>18.24</td><td>7.68</td><td>2.69</td><td>16.56</td></tr>
+<tr><td>SAT</td><td>58.26</td><td>19.25</td><td>10.64</td><td>9.56</td><td>0.00</td></tr>
+<tr><td><b>VoxTell（本文）</b></td><td><b>72.27</b></td><td><b>35.66</b></td><td><b>40.34</b></td><td><b>25.76</b></td><td><b>69.07</b></td></tr>
+</tbody></table></div>
+<p>这张表是“开集泛化”的硬证据：对<strong>训练从未见过</strong>的概念（如 esophageal cancer 69.07，而 SAT 直接 0.00），VoxTell 仍产出有意义的分割——论文归因于在已学概念的潜空间里做<strong>有效插值</strong>。但也诚实地标出参差：bladder cancer 仅 25.76。泛化是“朝相关邻域插值”，不是“无中生有”。</p>
+<h3>7.4 真实临床语言：从报告整句到掩码</h3>
+<figure style="max-width:680px"><a href="../assets/figures/voxtell/voxtell_fig4.png"><img src="../assets/figures/voxtell/voxtell_fig4.png" alt="ReXGroundingCT 上 SAT 与 VoxTell 的 Dice 与 HIT 条形图"></a><figcaption><strong>图 4 · ReXGroundingCT 基准（验证集）。</strong>该基准把放射报告 findings 链接到 CT-RATE 胸部 CT 的 3D 分割，评估“从文本做实例级定位”。按协议 SAT 与 VoxTell 都在训练集微调。VoxTell <strong>28.2 Dice / 67.8 HIT$_{5\%}$</strong>，SAT 仅 13.1 / 49.8（HIT$_{5\%}$ = Dice ≥ 5% 的样本占比）。两者同数据微调，差距主要来自架构——VoxTell 的多尺度融合 vs SAT 的单次融合。</figcaption></figure>
+<div class="socratic"><p class="question">问：留出放疗队列上“VoxTell 50.2、SAT 0.0”——SAT 明明训练时见过肺肿瘤，怎么会是 0？</p><p class="answer">答：这正是全文最尖锐的对照（图 1 右）。在作者自建的 203 例 SBRT 肺肿瘤队列上，prompt 是<strong>直接从放射报告抽的整句</strong>，如“spiculated carcinoma in the left upper lobe with pleural contact”。所有模型都在训练里见过“肺肿瘤”，但 SAT（0.0）、BioMedParseV2（1.2）、SegVol（8.1）一遇到这种<strong>带空间定位 + 复杂修饰</strong>的句子就整体失效——它们的单次末端融合接不住句子里的“left upper lobe / with pleural contact”。VoxTell 50.2，因为多尺度融合让“左/右、上叶、胸膜接触”这些空间语义在解码途中就改写了响应。这与第 5 节路径 A 的预测<strong>完全一致</strong>：定位 prompt 需要文本在 $F$ 成形途中介入。</p><p class="takeaway"><strong>Takeaway：</strong>“见过这个结构”≠“接得住描述这个结构的句子”。从 0.0 到 50.2 的跳变，量化的正是“融合位置”这一个变量的价值。</p></div>
+<figure><a href="../assets/figures/voxtell/voxtell_fig5.png"><img src="../assets/figures/voxtell/voxtell_fig5.png" alt="不同 prompt 复杂度下各方法的定性分割对比"></a><figcaption><strong>图 5 · 定性对比（按 prompt 复杂度）。</strong>(a) 已知解剖（liver/stomach/left kidney/…）、(b) 未见病理（bladder carcinoma）、(c) 整句临床描述（“Bronchial carcinoma in the right upper lobe with pleural contact.”）。最右列 VoxTell 在三类 prompt 上都给出准确掩码；竞品在 (a) 已显吃力，到 (b)(c) 大多失败或乱分。注意 (c) 里只有 VoxTell 把病灶正确落在<strong>右上叶</strong>——这是“文本重塑空间响应”的可视化。</figcaption></figure></section>
+
+<section id="ablations"><h2>8. 消融：把“融合次数 / 深监督 / 规模”逐一拆开</h2><p>为切开各架构成分的贡献，作者在验证集上做消融，<strong>固定训练数据与文本编码器</strong>（SAT + Qwen3-Embedding-4B），只改融合方式：</p>
+<div class="table-wrap"><table><caption><strong>表 2.</strong> 文本-图像融合消融（论文 Tab. 2，验证集 Dice）。融合阶段数=1 即退化为 MaskFormer 范式。</caption><thead><tr><th>模型</th><th>融合阶段</th><th>深监督</th><th>Dice</th></tr></thead><tbody>
+<tr><td colspan="4" style="background:var(--soft);font-style:italic;color:var(--muted)">单次融合（仅末端）</td></tr>
+<tr><td>Mask2Former</td><td>1</td><td>✗</td><td>51.68</td></tr>
+<tr><td>MaskFormer（SAT 式）</td><td>1</td><td>✗</td><td>55.11</td></tr>
+<tr><td colspan="4" style="background:var(--brand-soft);font-style:italic">多尺度融合（本文）</td></tr>
+<tr><td>Ours（3 尺度）</td><td>3</td><td>✗</td><td>60.16</td></tr>
+<tr><td>Ours（5 尺度）</td><td>5</td><td>✗</td><td>61.54</td></tr>
+<tr><td>Ours（+ 深监督）</td><td>5</td><td>✓</td><td>62.55</td></tr>
+<tr><td><b>Ours（+ 规模放大）</b></td><td>5</td><td>✓</td><td><b>69.43</b></td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：这张表怎么读，才算把第 5 节那两条路径“证实”了，而不是“看个热闹”？</p><p class="answer">答：拆成三段读。<strong>(1) 融合位置</strong>：55.11（1 次末端）→ 60.16（3 尺度）→ 61.54（5 尺度），单调上升 +6.4——直接对应<strong>路径 A</strong>：注入次数越多、越早，表示越不会 collapse 成 prompt-无关。<strong>(2) 深监督</strong>：61.54 → 62.55（+1.0），对应<strong>路径 B</strong>：文本梯度直达早层的额外收益。<strong>(3) 规模</strong>：62.55 → 69.43（+6.9），把 batch 从 2 放大到 128——说明架构与训练规模<strong>共同</strong>决定上限，但这是<em>正交</em>于融合机制的轴。<br><br>诚实标注一处<strong>混淆</strong>：表 2 控制了数据与文本编码器，但多尺度融合相比单次融合<em>引入了额外参数</em>（每尺度的 $T_s$ 投影与 $G$ 个新通道）。所以严格说，55→61 的增益里掺了“更多参数”的成分，论文未单独把“融合位置”与“融合参数量”解耦。要彻底证伪“增益只是来自容量”，应补一组<strong>参数量匹配</strong>的单次融合 baseline——这是这张表留下的反驳路径。</p><p class="takeaway"><strong>Takeaway：</strong>消融的单调阶梯支持“早注入 + 反复注入 + 深监督”的处方，但“融合位置 vs 融合容量”尚未完全解耦，是后续可补的对照。</p></div></section>
+
+<section id="limitations"><h2>9. 局限与复现门槛：什么时候 VoxTell 会失败？</h2><div class="table-wrap"><table><caption><strong>表 4.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/方法信息</th><th>读者应如何理解</th></tr></thead><tbody>
+<tr><td>完全 OOD 解剖</td><td>Stanford Knee（附录 Tab. 9）膝关节几乎失败</td><td>训练中膝部稀疏、目标少；文本引导无法外推到<strong>全然陌生</strong>的空间/视觉模式</td></tr>
+<tr><td>未见概念参差</td><td>esophageal 69.1 vs bladder 25.8</td><td>泛化是“朝相关邻域插值”，离已学概念越远越弱</td></tr>
+<tr><td>评测无 in-distribution</td><td>只在未见数据集评测</td><td>这是优点（更严苛），但也意味着<strong>无</strong>同分布上限参照</td></tr>
+<tr><td>依赖冻结文本编码器</td><td>Qwen3-Embedding-4B；附录 D 显示编码器质量显著影响性能</td><td>换弱编码器会掉点；中等尺寸是鲁棒性与算力的折中</td></tr>
+<tr><td>算力门槛</td><td>最终模型 64×A100、≈6 天</td><td>≈9216 A100·小时（粗估，不等同账单）；非大组难复现</td></tr>
+<tr><td>Table 1/3 部分列名</td><td>PDF 取出的表头有错位</td><td>本文已按模态+正文锚点核对数值；个别数据集精确名以附录为准</td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：第 5 节说多尺度融合能往“相关概念”插值——那为什么到了膝关节就彻底插不动？这跟机制矛盾吗？</p><p class="answer">答：不矛盾，反而是<strong>同一机制的边界预测</strong>。插值视角下，模型能到达“相关未见概念”（esophageal cancer 69.1），是因为潜空间里<strong>有可借的邻域</strong>——食管、肺、纵隔这些胸腹结构在训练里密集出现。但膝关节在训练集里<strong>稀疏、且只有少数标注目标</strong>，潜空间里根本没有可插值的邻域，融合再多次也是无米之炊（论文：模型“无法外推到全然陌生的空间或视觉模式”）。这与 2D 开放词表分割的已知规律一致——模型只在“接近已知类”的概念上 work，对真正未见类失败。<strong>所以“何时失效”是可预测的：当 prompt 指向的解剖在训练分布里没有近邻时。</strong>论文建议的出路是少样本适配 + 用报告-图像对做文本监督。</p><p class="takeaway"><strong>Takeaway：</strong>VoxTell 的泛化半径 = 训练概念在潜空间的覆盖半径。膝关节失败不是反例，是这条半径的边界标定。</p></div>
+<div class="formula-note"><p class="note-title">这篇最容易被过度宣传成什么</p><p>容易被说成“一个模型分割万物、任意文本”。更严谨的说法是：<strong>在留出数据集的零样本设定下，VoxTell 首次让文本提示 3D 分割在已知概念上稳超 SAT/TotalSegmentator，并对同义词/拼写稳健、能朝相关未见概念插值、首次把真实报告整句提示从近乎 0 拉到可用（50.2 / 28.2）；但对完全 OOD 解剖仍失败，且部分未见概念分数参差。</strong>它推进的是“融合位置”这一个清晰变量，而非宣告“通用分割已解决”。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>VoxTell 把文本提示 3D 医学分割的融合范式从“解码器末端一次 query·image 点积”改成“每个解码尺度都做一次通道级点积 + 每尺度深监督”——文本因此能在视觉特征<em>成形途中</em>反复重塑空间响应，于是“右肺下叶伴胸膜接触”这种带定位的整句临床 prompt 第一次被接住（放疗队列 0.0→50.2）。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li>“融合位置”是真正的瓶颈变量：消融 55→60→62 的单调阶梯，从表示（信息瓶颈 [archives/6181]）与优化（深监督梯度短路）两条独立路径都指向“早注入 + 反复注入”。</li><li>泛化半径 = 训练概念的潜空间覆盖半径：能到 esophageal cancer 69.1（有邻域可插值），却在膝关节失败（无邻域）——“何时失效”因此可预测。</li><li>评测设定本身是贡献：只在未见数据集上零样本评测，使 70.85 vs 51.23、以及真实报告下的 50.2 vs 0.0 比同分布刷分更可信。</li></ol></div><p>留给后续的两个反驳路径：<strong>(a)</strong> 表 2 未把“融合位置”与“融合参数量”解耦，需参数量匹配的单次融合 baseline；<strong>(b)</strong> 定位类 prompt 的增益是否显著大于非定位类，论文未单独切 split——若成立，将是路径 A 最直接的证据。</p></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Maximilian Rokuss, Moritz Langenberg, Yannick Kirchhoff, Fabian Isensee, Benjamin Hamm, Constantin Ulrich, Sebastian Regnery, Lukas Bauer, Efthimios Katsigiannopulos, Tobias Norajitra, Klaus Maier-Hein. <em>VoxTell: Free-Text Promptable Universal 3D Medical Image Segmentation</em>. CVPR 2026（CVF pp. 37538–37557）/ arXiv:2511.11450（German Cancer Research Center / DKFZ · Heidelberg University · Helmholtz Imaging）。代码：<code>github.com/MIC-DKFZ/VoxTell</code>。</li><li>本文公式（式 1–7）、表格（表 1–3）与全部实验数字以 arXiv PDF 为准；多尺度融合（式 5）、深监督（式 7）写法对照原文 §3。部分表头因 PDF 文本流错位，已按<strong>模态行 + 正文点名数值</strong>交叉核对（如 esophageal=69.1、bladder=25.8、liver lesions=73.2、lung&amp;airway=89.7），个别数据集精确名以论文附录 B / Tab. 7 为准。</li><li><strong>kexue:su 方法与归因</strong>：第 5、8 节“多尺度融合为何胜过末端融合”的双路径论证，按 <code>kexue:su</code> 方法（动机先行、假设显式、≥2 路径交叉验证）重新推导。其中“为下游目标优化的瓶颈表示会主动丢弃用不到的信息”这一<em>一般原理</em>引苏剑林《从变分编码、信息瓶颈到正态分布：论遗忘的重要性》[archives/6181] 与《深度学习的互信息：无监督提取特征》[archives/6024]——检索确返回此二卡片，故按原理引用并应用于本文情形；其余因果链为本文推导，未作 [archives] 归因。</li><li>图像说明：图 1、3、4、5、6 为本地 PNG，由 <code>extract_figures.py</code>（PyMuPDF，caption 锚定）从 arXiv PDF 裁切，路径 <code>assets/figures/voxtell/</code>。<strong>图 2（架构总览）为矢量图，提取器跳过，已在 §4 转写为等价的 HTML 流程图</strong>（含两条流与“每尺度交汇”点）。</li></ol></section>
+</main>
+
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与词表</a></li><li><a href="#pipeline">Pipeline / 架构</a></li><li><a href="#method">方法 / 多尺度融合</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融 / 融合位置</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>VoxTell: Free-Text Promptable Universal 3D Medical Image Segmentation</dd><dt>Venue</dt><dd>CVPR 2026 · Medical AI（已核验 pp.37538–37557）</dd><dt>Backbone</dt><dd>ResEncL UNet + Qwen3-Embedding-4B（冻结）+ 6 层 prompt 解码器</dd><dt>arXiv</dt><dd>2511.11450</dd><dt>Topic</dt><dd>Text-Promptable 3D Medical Segmentation</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：四级难度能力阶梯</li><li>式 5：每尺度通道级点积融合</li><li>表 1：11 数据集零样本 70.85</li><li>图 3：prompt 稳定性箱线</li><li>表 2：融合位置消融 55→69</li><li>图 4：ReXGroundingCT 28.2/67.8</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> VoxTell 深读</p><p><span class="status-good">figures</span> 5 张 PNG + 图 2 HTML 转写</p><p><span class="status-good">formula</span> 式 1–7 待 MathJax 预检</p><p><span class="status-warn">scope</span> 完全 OOD 解剖（膝）失败</p></div></section></aside></div></body></html>

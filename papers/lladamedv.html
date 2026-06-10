@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLaDA-MedV 深读：把医学 VLM 从“自回归早停”换成“掩码扩散填空”，长答案为何更可控？</title>
+<meta name="description" content="CVPR 2026 Medical AI · LLaDA-MedV: Exploring Large Language Diffusion Models for Biomedical Image Understanding 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Medical AI · 掩码扩散语言模型 / 生物医学 VLM</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Medical AI &gt; LLaDA-MedV</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">10</span><span class="month">Jun</span></div><h1 id="paper-title">LLaDA-MedV 深读：把医学 VLM 从“自回归早停”换成“掩码扩散填空”，长答案为何更可控？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-10</span><span>CVPR 2026 · Medical AI · ASU / Clemson</span><span>来源：arXiv:2508.01617 PDF</span></div><div class="tags"><span class="tag orange">Medical AI</span><span class="tag">Masked Diffusion LM</span><span class="tag">Biomedical VLM</span><span class="tag green">Visual Instruction Tuning</span><span class="tag">LLaDA-8B</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>LLaDA-MedV 真正要回答的问题，不是“能不能把扩散语言模型搬进医学”，而是：<strong>医学问答常常“多说一句才有用”——不仅要说“这是高密度影”，还要说可能病因、常见类型、是否建议进一步检查；可自回归模型（ARM）靠预测 EOS 来停，长度是它自己“涌现”出来的、外部很难强加。掩码扩散（masked diffusion）反过来，从一张固定长度的全 &lt;mask&gt; 画布出发、迭代填空——长度在采样前就被钉死。那么这种“填空式”生成，能不能既天然给出长度可控、又在医学语义上真正立得住？</strong>这就是首个生物医学掩码扩散 VLM 的立题。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>LLaDA-MedV：首个面向生物医学图像理解的掩码扩散语言 VLM，用 visual instruction tuning 把 LLaDA-8B 接上视觉。</div><div class="kv"><b>关键机制</b>前向把 token 以概率 $t$ 换成吸收态 &lt;mask&gt;，反向用双向注意力 mask predictor 在固定长度画布上迭代填空；长度 $L$ 是输入超参，而非 EOS 涌现。</div><div class="kv"><b>核心证据</b>开放式医学对话相对 LLaVA-Med 提升 7.855 分（GPT-4 评分制），闭合式 VQA 取得 SOTA：VQA-RAD 84.93%、SLAKE 92.31%、PathVQA 95.15%。</div><div class="kv"><b>复现门槛</b>4×A100 80G；token 重复是核心副作用，强依赖采样步数 $Z$ 与 domain-appropriate 初始化；open-form VQA 仍弱。</div></div></div><figure class="hero-card"><a href="../assets/figures/lladamedv/lladamedv_fig1.png"><img src="../assets/figures/lladamedv/lladamedv_fig1.png" alt="6 个医学 VLM 在开放式对话基准上的雷达对比"></a><figcaption><strong>图 1 · 开放式生物医学对话基准上的 6 个医学 VLM 雷达图。</strong>红色为 LLaDA-MedV：在 CXR、CT 两个模态上得分最高，整体（Overall）也居首；在 Histology 上略逊于 LLaDA-V。这张图就是全文的“核心断言可视化”——掩码扩散 VLM 在医学开放式问答上能与最强 ARM 基线掰手腕。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：医学回答要“长而准”，自回归的早停是不是天生不利？</h2><p>生物医学 VLM 至今几乎被自回归模型（ARM，GPT 式逐 token 生成）垄断：LLaVA-Med、BiomedGPT、MedVLM-R1 都是 ARM。而在通用域，掩码扩散模型（MDM）如 LLaDA 已经把规模做到 8B、与 LLaMA3 同台竞技。可一旦想把 MDM 搬进医学，真正的难点是<strong>领域鸿沟</strong>：医学图像（胸片、H&amp;E 病理、CT）的低层统计与语义本体，与自然图像差距极大。</p><div class="socratic"><p class="question">问：那把 ARM 的 max token 调大、或在 system prompt 里写“至少答 200 字”，不就能让它多说吗？</p><p class="guide">引导：长度对 ARM 是“涌现量”——它由模型何时预测出 EOS 决定，外部只能软约束。</p><p class="answer">答：论文实测给了反例。LLaVA-Med 默认平均每答 <strong>36.3 词</strong>；即便加上“请至少回答 200 字”的系统提示，也只爬到 <strong>≈40.9 词</strong>（表 D 的 LLaVA-Med<sup>200</sup>），几乎纹丝不动。ARM 一旦提前采到 EOS 就收尾，长度无法被可靠地“强加”。而医学场景恰恰需要把话说全——见下面图 2 的对照。</p><p class="takeaway"><strong>Takeaway：</strong>核心问题不是“扩散能不能做医学”，而是“固定长度画布 + 迭代填空”的生成范式，能否同时拿下<strong>长度可控</strong>与<strong>医学语义对齐</strong>这两件 ARM 做得别扭的事。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献</strong>：(a) <strong>LLaDA-MedV</strong>——首个基于掩码扩散建模、面向生物医学图像理解的视觉-语言模型，通过 visual instruction tuning 把视觉接进 LLaDA-8B；(b) 一套与 ARM 对手的<strong>系统实证对比</strong>，覆盖开放式医学对话与三个 VQA 基准，显示其回答更长、信息更全、长度更可控；(c) 对训练与推理行为的<strong>深入分析</strong>，指认出影响生成质量的几个设计因子——初始化权重、数据特定微调、采样步数 $Z$ 与重复之间的相互作用。</p><div class="formula-note"><p class="note-title">读数提醒：这里的“%”其实是“评分点之差”</p><p>摘要说“相对 LLaVA-Med 提升 7.855%、相对 LLaDA-V 提升 1.867%”，正文 5.2 又说“相对 LLaVA-Med、MedVLM-R1 提升 7.855% 和 2.45%”。对照表 1 的 Overall 列：Ours 52.605、LLaVA-Med 44.750、LLaDA-V 50.738、MedVLM-R1 50.154——可见 52.605−44.750=7.855、52.605−50.738=1.867、52.605−50.154=2.451。所以这些“%”是<strong>“相对 GPT-4 评分”这一指标上的绝对分差</strong>，不是相对百分比增益。本文按其口径转述，但请读者按“分差”理解，避免被“%”放大想象。</p></div><p><strong>读者能进一步推断的是</strong>：这篇的真正价值不在“刷了 SOTA”，而在它把“为什么 ARM 在医学长答上别扭、而扩散填空天然不别扭”这条因果讲清楚了——这是范式层面的论据，下面第 5–6 节会从机制把它钉死。</p></section>
+
+<section id="datasets"><h2>3. 数据与配置：三阶段各喂什么</h2><p>骨干用 <strong>LLaDA-8B-Instruct</strong> 作语言主干、<strong>SigLIP2</strong> 作视觉塔、一个两层 GELU MLP 作投影器；全部训练在 <strong>4×NVIDIA A100 80GB</strong> 上完成。三阶段数据：</p><ul><li><strong>Stage 1（语义对齐）</strong>：60 万 image–text 对齐对，只训投影器。</li><li><strong>Stage 2（端到端视觉指令微调）</strong>：6 万条多轮 inline-mention 对话（因其稳定表现被选中）。</li><li><strong>Stage 3（数据集特定微调）</strong>：VQA-RAD、SLAKE、PathVQA 的官方训练集，单轮问答格式。</li></ul><p>评测方面，开放式对话用 Biomedical Visual Chatbot benchmark：给定真实图注与问题，让 LLM 裁判（这里用 <strong>GPT-4.1 mini</strong>，因原 GPT-4-0314 已不可用，故所有基线全部重测以保公平）把模型回答与固定的 GPT-4 参考答案比较，按 helpfulness/relevance/accuracy/detail 打 1–10，再按问题类型与模态（CXR/MRI/Histology/Gross/CT，共 193 题）汇总成相对 GPT-4 的分数。</p></section>
+
+<section id="pipeline"><h2>4. Pipeline：冻结谁、训练谁，三步走</h2><p>三阶段的“冻结/解冻”安排，本身就是动机驱动的：</p><ol><li><strong>Stage 1 语义对齐</strong>：<em>冻结视觉塔 + 冻结语言主干</em>，只微调轻量 MLP 投影器——先把视觉特征投影进语言嵌入空间、与医学概念对齐，不动两个大模型，避免一上来就破坏预训练先验。</li><li><strong>Stage 2 视觉指令微调</strong>：<em>解冻语言主干 + 投影器，视觉塔仍冻结</em>——让主干学会“看图说话”。注意与 LLaDA-V [56] 不同，这里<strong>始终冻结视觉塔</strong>。</li><li><strong>Stage 3 数据特定微调</strong>：在三个 VQA 训练集上继续单轮微调，视觉塔仍冻，给闭合式/开放式医学问答提供自由格式答案能力。</li></ol><div class="socratic"><p class="question">问：为什么不直接拿通用域已训好的 LLaDA-V 权重来初始化，省掉对齐阶段？</p><p class="answer">答：作者试过，结论是<strong>反而退化</strong>——用 [56] 的权重初始化“削弱了模型解读医学图像的能力，并导致重复输出”。所以他们刻意<em>不</em>采用 LLaVA-Med 式的初始化策略。这条“负结果”后面第 6 节会用消融（表 E）量化，并从领域鸿沟给出机制解释。</p><p class="takeaway"><strong>Takeaway：</strong>三阶段的本质是“先对齐、再看图、最后专科化”，每一步都用冻结策略守住上一步的成果。</p></div></section>
+
+<section id="method"><h2>5. 方法：从吸收态前向到“填空式”反向，长度可控是怎么来的</h2><h3>5.1 前向：把 token 逐步换成吸收态 &lt;mask&gt;</h3><p>掩码扩散在离散 token 上定义一个前向–反向过程。前向里引入特殊 token <code>&lt;mask&gt; := M</code> 作为<strong>吸收态</strong>：时间 $t$ 越大，每个 token 要么保持不变、要么以概率 $t$ 跳到 $M$（一旦进 $M$ 就不再出来）。逐 token 独立：</p><div class="equation">$$q(x_t\mid x_0)=\prod_{i=1}^{L} q(x_t^i\mid x_0^i),\qquad q(x_t^i\mid x_0^i)=\begin{cases}1-t,& x_t^i=x_0^i\\[2pt] t,& x_t^i=M\end{cases}$$<div class="eq-caption">式 1：前向掩码过程。$t\in[0,1]$ 控制被掩码比例，$t{=}1$ 时序列全是 $M$。</div></div><div class="formula-note"><p class="note-title">公式读法</p><p>$x_0$ 是干净序列、$x_t$ 是被掩到 $t$ 程度的序列，$L$ 是序列长度。把 $t$ 想成“噪声强度”：$t$ 从 0 升到 1，画布上 $M$ 的比例线性升高，直到全掩。<strong>关键</strong>：这里 $L$ 是<em>给定</em>的——前向从不改变序列长度，它只改变“有多少格被遮住”。这一点是后面“长度可控”的种子。</p></div><h3>5.2 反向：从全掩画布迭代重建</h3><p>反向过程要从全掩序列恢复 $x_0$。对 $0\le s&lt;t\le 1$ 的一步反向转移：保留已揭开的 token，按比例 $s/t$ 继续遮住一部分、其余 $(1-s/t)$ 从模型预测的干净数据分布里采样回来。用一个<strong>双向注意力</strong>的 mask predictor $p_\theta(\cdot\mid x_t)$ 来预测被遮位置的干净 token——它对所有 $x_t^i=M$ 的位置满足 $q_{0\mid t}(x_0^i\mid x_t)=p_\theta(x_0^i\mid x_t)$。训练目标是只在被掩位置上的交叉熵：</p><div class="equation">$$\mathcal{L}_\theta=-\,\mathbb{E}_{t,x_0,x_t}\left[\frac{1}{t}\sum_{i=1}^{L}\mathbf{1}[x_t^i=M]\,\log p_\theta(x_0^i\mid x_t)\right],\qquad t\sim U[0,1]$$<div class="eq-caption">式 2：无条件掩码预测目标（LLaDA）。$\mathbf{1}[\cdot]$ 是指示函数，$1/t$ 是按掩码率的重加权。</div></div><h3>5.3 接上视觉与提示：条件化目标</h3><p>VLM 化只需把目标“条件”在用户提示 $u_0$ 与视觉特征 $X_v$ 上。给定训练三元组 $(X_v,u_0,r_0)$——图像、用户问句、真值回答，只对<strong>回答</strong> $r_0$ 做掩码与重建：</p><div class="equation">$$\mathcal{L}_\theta=-\,\mathbb{E}_{t,X_v,u_0,r_0,r_t}\left[\frac{1}{t}\sum_{j=1}^{L_{r_0}}\mathbf{1}[r_t^j=M]\,\log p_\theta\!\left(r_0^j \mid X_v,\,u_0,\,r_t\right)\right]$$<div class="eq-caption">式 3：LLaDA-MedV 的条件掩码交叉熵。只惩罚回答里被遮住的位置，条件在图像与问句上。</div></div><div class="formula-note"><p class="note-title">公式读法</p><p>$r_t$ 是真值回答 $r_0$ 经前向掩码后的版本，$L_{r_0}$ 是回答长度。直觉：训练就是教 mask predictor $p_\theta$——<strong>在给定问句与图像、且回答画布已知长度 $L_{r_0}$、任意掩码率下，补全被遮住的答句 token</strong>。注意它<em>从未</em>学习“何时该停”，因为损失里根本没有“预测 EOS / 决定长度”这一项。$p_\theta$ 用双向注意力的 Transformer 实现——这正是它能同时看左右文、一次性并行预测多个被遮位的根。</p></div><div class="socratic"><p class="question">问：那“掩码扩散给出 ARM 没有的显式长度控制”，到底从哪冒出来的？给我两条独立的论证。</p><p class="answer"><strong>路径 A（自上而下，看生成过程）：</strong>ARM 把“序列长度”当成一个需要模型<em>自己决定何时停</em>的随机变量——它逐 token 生成、靠采到 EOS 来终止，长度是涌现的，外部只能软约束（实测 36→40 词，几乎无效）。MDM 反过来：先铺一张长度 $L$ 的<strong>全 $M$ 画布</strong>，反向过程只是把这 $L$ 个位置逐步填实——<strong>长度在采样开始前就被钉死了</strong>。所以在 MDM 里，“控制长度”不是一种需要习得的能力，而是建模方式的<em>定义</em>。<br><br><strong>路径 B（自下而上，看训练目标）：</strong>盯式 3——损失只对 $r_t^j=M$ 的位置算交叉熵，且训练时回答长度 $L_{r_0}$ 已知、$t\sim U[0,1]$ 决定掩多少。模型学到的能力是“给定长度画布、在任意掩码率下补全”，<strong>没有任何一项在学“何时输出终止符”</strong>。于是推理期你换一个 $L$，它照样把 $L$ 个位置填满——没有 EOS 早停的机制可言。两条路径殊途同归：长度可控源于“固定画布 + 仅重建被掩位”这一对建模选择。</p><p class="takeaway"><strong>Takeaway：</strong>ARM 的长度是“涌现且软约束”，MDM 的长度是“输入且硬设定”。医学长答需要后者。</p></div></section>
+
+<section id="training"><h2>6. 训练期关键因子：为什么通用域初始化反而更差？</h2><p>表 E 把训练管线拆开做对照：<code>LLaDA-MedV*</code>（<em>不</em>用 LLaDA-V 初始化，只做对齐+SFT，即主实验配置）对阵两个用 LLaDA-V 初始化的变体——<code>V1</code>（LLaDA-V 初始化、仅 SFT、无对齐）与 <code>V2</code>（LLaDA-V 初始化 + 对齐 + SFT）。</p>
+<div class="table-wrap"><table><caption><strong>表 E.</strong> 训练管线分析（开放式对话 Overall Score，越大越好）。<code>*</code> 表示不采用 LLaDA-V 初始化；<code>V1/V2</code> 均从通用域 LLaDA-V 初始化。因性能差距大，<code>V1/V2</code> 未再做下游 VQA 微调。数据转自论文表 4 的 OE Overall 列。</caption><thead><tr><th>模型</th><th>初始化</th><th>对齐 Stage 1</th><th>OE Overall ↑</th></tr></thead><tbody><tr><td>LLaVA-Med*（ARM 参考）</td><td>—</td><td>—</td><td>44.750</td></tr><tr><td><strong>LLaDA-MedV*（本文主配置）</strong></td><td>不用 LLaDA-V</td><td>有</td><td><strong>52.605</strong></td></tr><tr><td>LLaDA-MedV<sup>V2</sup></td><td>LLaDA-V</td><td>有</td><td>31.056</td></tr><tr><td>LLaDA-MedV<sup>V1</sup></td><td>LLaDA-V</td><td>无</td><td>31.123</td></tr></tbody></table></div>
+<div class="socratic"><p class="question">问：通用域 LLaDA-V 见多识广，拿它热启动按理该更好，为什么从 52.605 掉到 31？</p><p class="answer">答：用领域鸿沟解释最自洽。LLaDA-V 在通用图像/视频理解上训练，其视觉-语言联合表征对齐的是<strong>自然图像</strong>的语义流形；而 CXR/H&amp;E/CT 的低层统计与语义本体与自然图像差很远。用它初始化，等于把参数拽进一个“对自然图像是好盆地、对医学却是系统性错位”的区域，后续 SFT 很难逃出来——而且更易诱发重复（图 5 的 Q4/Q5 正出自 V1/V2）。两条独立证据一致：<strong>消融数字</strong>（31 vs 52.6）+ 作者的<strong>直接观察</strong>（“从 [56] 权重初始化削弱了医学图像解读、导致重复”）。对齐与否（V1 vs V2，31.123 vs 31.056）几乎无差，说明瓶颈在错位的初始化盆地，而非对齐阶段本身。</p><p class="takeaway"><strong>Takeaway：</strong>“更强的通用先验”不等于“更好的医学起点”；domain-appropriate 初始化是把扩散 VLM 调进医学的前提，而不是锦上添花。</p></div></section>
+
+<section id="experiments"><h2>7. 实验：开放式对话领先，闭合式 VQA 夺冠，可这代价是什么？</h2><p><strong>判断：</strong>三张表给出互补证据。<strong>开放式对话</strong>（表 A）几乎全面领先；<strong>下游 VQA</strong>（表 B）闭合式拿 SOTA、开放式却落后；<strong>长度/时延</strong>（表 C）量化了“更长更全”的收益与“更慢”的代价。先看赢在哪，再看输在哪。</p>
+<div class="table-wrap"><table><caption><strong>表 A.</strong> 开放式生物医学对话基准（193 题），分数为相对 GPT-4 参考答案、由 GPT-4.1 评判（越大越好）。列括号内为题数。加粗为该列最优。</caption><thead><tr><th>模型</th><th>Conversation(143)</th><th>Description(50)</th><th>CXR(37)</th><th>MRI(38)</th><th>Histology(44)</th><th>Gross(34)</th><th>CT(40)</th><th>Overall(193)</th></tr></thead><tbody><tr><td>LLaMA</td><td>27.850</td><td>27.750</td><td>33.505</td><td>23.841</td><td>24.684</td><td>31.764</td><td>26.458</td><td>27.824</td></tr><tr><td>LLaVA</td><td>43.509</td><td>29.671</td><td>45.935</td><td>41.761</td><td>42.726</td><td>33.905</td><td>33.400</td><td>34.653</td></tr><tr><td>LLaVA-Med</td><td>51.750</td><td>24.730</td><td>40.819</td><td>39.928</td><td>51.452</td><td>48.880</td><td>42.083</td><td>44.750</td></tr><tr><td>Med-Flamingo</td><td>16.339</td><td>13.702</td><td>16.238</td><td>17.502</td><td>15.823</td><td>13.311</td><td>15.174</td><td>15.656</td></tr><tr><td>MedVLM-R1</td><td>52.774</td><td>42.663</td><td>52.944</td><td>49.159</td><td>53.801</td><td><strong>53.122</strong></td><td>41.984</td><td>50.154</td></tr><tr><td>Qwen-RL-Med</td><td>46.408</td><td>40.016</td><td>50.225</td><td>41.181</td><td>50.081</td><td>41.929</td><td>39.618</td><td>44.752</td></tr><tr><td>Qwen-VL</td><td>51.546</td><td>40.143</td><td>58.929</td><td>43.186</td><td>51.344</td><td>47.106</td><td>42.401</td><td>48.592</td></tr><tr><td>RetinalGPT</td><td>20.535</td><td>13.349</td><td>19.477</td><td>15.722</td><td>21.839</td><td>17.875</td><td>17.932</td><td>18.673</td></tr><tr><td>LLaDA-V</td><td>53.574</td><td>42.627</td><td>57.545</td><td>38.445</td><td><strong>64.191</strong></td><td>49.055</td><td>42.753</td><td>50.738</td></tr><tr><td><strong>LLaDA-MedV（本文）</strong></td><td><strong>54.141</strong></td><td><strong>48.214</strong></td><td><strong>64.352</strong></td><td>47.348</td><td>51.073</td><td>50.432</td><td><strong>50.268</strong></td><td><strong>52.605</strong></td></tr></tbody></table></div>
+<p>读表要诚实：LLaDA-MedV 的 Overall 52.605 居首，在 Conversation、Description、CXR、CT 四项最优；但在 <strong>Histology</strong> 上 51.073 明显逊于 LLaDA-V 的 64.191、在 MRI 上也非最优。这与图 1 雷达完全对得上——它的强项在影像类（CXR/CT），在病理染色（Histology）上通用域 LLaDA-V 的先验反而更有用。</p>
+<div class="table-wrap"><table><caption><strong>表 B.</strong> 下游 VQA：开放式（Open，token-level recall）与闭合式（Closed，accuracy）。“-”表示该基线未报告。加粗为该列最优。</caption><thead><tr><th rowspan="2">模型</th><th colspan="2">VQA-RAD</th><th colspan="2">SLAKE</th><th colspan="2">PathVQA</th></tr><tr><th>Open</th><th>Closed</th><th>Open</th><th>Closed</th><th>Open</th><th>Closed</th></tr></thead><tbody><tr><td>LLaVA</td><td>50.00</td><td>65.07</td><td>78.18</td><td>63.22</td><td>7.74</td><td>63.20</td></tr><tr><td>LLaVA-Med (from LLaVA)</td><td>61.52</td><td>84.19</td><td>83.08</td><td>85.34</td><td>37.95</td><td>91.21</td></tr><tr><td>VL Encoder-Decoder</td><td>71.49</td><td>82.47</td><td>-</td><td>-</td><td>71.49</td><td>85.61</td></tr><tr><td>Q2ATransformer</td><td><strong>79.19</strong></td><td>82.47</td><td>-</td><td>-</td><td>54.85</td><td>88.85</td></tr><tr><td>Prefix T. Medical LM</td><td>-</td><td>-</td><td><strong>84.30</strong></td><td>82.01</td><td>40.00</td><td>87.00</td></tr><tr><td>PubMedCLIP</td><td>60.10</td><td>80.00</td><td>78.40</td><td>82.50</td><td>-</td><td>-</td></tr><tr><td>BiomedCLIP</td><td>67.60</td><td>79.80</td><td>82.05</td><td>89.70</td><td>-</td><td>-</td></tr><tr><td>M2I2</td><td>66.50</td><td>83.50</td><td>74.70</td><td>91.10</td><td>36.30</td><td>88.00</td></tr><tr><td><strong>LLaDA-MedV（本文）</strong></td><td>45.60</td><td><strong>84.93</strong></td><td>68.85</td><td><strong>92.31</strong></td><td>31.96</td><td><strong>95.15</strong></td></tr></tbody></table></div>
+<p>这张表把 LLaDA-MedV 的“分裂人格”摆得很清楚：<strong>闭合式三连冠</strong>（84.93 / 92.31 / 95.15，全列最优），<strong>开放式却垫底梯队</strong>（VQA-RAD Open 仅 45.60，远低于 LLaVA-Med 的 61.52）。作者给的解释很关键也很诚实：开放式 VQA 在以往工作里常被当成“在固定候选答案集上做分类”，而 LLaDA 因缺乏 post-training（无 RL、无人类偏好对齐），不擅长把答案<strong>约束</strong>进这种 rigid 格式，倾向于给开放式长答——于是 recall 吃亏。这不是“看不懂”，而是“不肯按模板答”。</p>
+<div class="table-wrap"><table><caption><strong>表 C.</strong> 开放式对话的长度与时延（193 题）。T/Q＝每题平均生成时间（秒），W/Q＝平均词数，T/W＝每词平均时间。LLaVA-Med<sup>200</sup> 加了“至少 200 词”系统提示。LLaDA-MedV 固定 $L{=}256,B{=}64$，仅变采样步数 $Z$。</caption><thead><tr><th>模型 / 设置</th><th>T/Q (s)</th><th>W/Q (词)</th><th>T/W (s)</th><th>$Z$</th><th>Overall ↑</th></tr></thead><tbody><tr><td>LLaVA-Med</td><td>1.317</td><td>36.332</td><td>0.036</td><td>—</td><td>44.750</td></tr><tr><td>LLaVA-Med<sup>200</sup></td><td>1.392</td><td>40.922</td><td>0.034</td><td>—</td><td>44.582</td></tr><tr><td><strong>LLaDA-MedV</strong></td><td>38.382</td><td>166.585</td><td>0.230</td><td>256</td><td><strong>52.605</strong></td></tr><tr><td>LLaDA-MedV</td><td>30.874</td><td>170.399</td><td>0.181</td><td>128</td><td>44.276</td></tr><tr><td>LLaDA-MedV</td><td>21.234</td><td>172.839</td><td>0.123</td><td>64</td><td>28.523</td></tr><tr><td>LLaDA-MedV</td><td>13.945</td><td>182.596</td><td>0.076</td><td>32</td><td>18.581</td></tr><tr><td>LLaDA-MedV</td><td>8.595</td><td>192.090</td><td>0.045</td><td>16</td><td>13.525</td></tr></tbody></table></div>
+<p>表 C 同时讲了好消息与坏消息。好消息：LLaDA-MedV 平均答 <strong>166 词</strong>，是 LLaVA-Med（36 词）的 4.6 倍，且加 system prompt 也撬不动 ARM——这正是第 5 节“长度可控”的实测落地。坏消息：它<strong>慢</strong>，每词 0.230 s（ARM 0.036 s，约 6 倍）；而且<strong>降 $Z$ 提速会让质量断崖式下跌</strong>——$Z$ 从 256 降到 16，T/W 快 5 倍，但 Overall 从 52.605 崩到 13.525，同时 W/Q 不降反升（166→192），多出来的词大多是重复占位。下一节把这个 $Z$–重复的因果讲透。</p>
+<div class="socratic"><p class="question">问：开放式对话的高分，会不会只是“答得长”骗过了 GPT 裁判？</p><p class="answer">答：作者对此设了控制——所有模型都被要求产出<strong>固定长度</strong>（$L{=}256$；对 ARM 用 max token 256 强制）。在同一长度预算下，ARM 因 EOS 早停常常答不满、信息稀薄，而 LLaDA-MedV 的掩码预测天然填满并塞进上下文（病因、类型、建议）。所以高分来自“同长度下信息更密”，而非“单纯更长”。当然，GPT-as-judge 本身非完美评估器，这点作者也承认（见局限）。</p><p class="takeaway"><strong>Takeaway：</strong>赢在“同长度信息更密 + 闭合式准”，输在“开放式 recall + 速度”——这是一组清晰、可解释的取舍，而非全面碾压。</p></div></section>
+
+<section id="ablations"><h2>8. 消融：推理期 L、B、Z 各自怎么影响质量？</h2><p>除训练期初始化（第 6 节表 E）外，推理期的三个旋钮被逐一扫过：生成长度 $L$、block 长度 $B$、采样步数 $Z$。半自回归生成把长度 $L$ 切成 $L/B$ 个 block，从左到右、每 block 做 $Z\cdot B/L$ 步；并用 low-confidence remasking（MaskGIT 式，只重掩置信度最低的 token）。</p>
+<div class="table-wrap"><table><caption><strong>表 D.</strong> 不同超参下的开放式对话 Overall Score。$L$＝生成长度，$B$＝block 长度，$Z$＝总采样步数，$Z\cdot B/L$＝每 block 步数。灰底行（$L{=}256,B{=}64,Z{=}256$）为表 A 的主设置。</caption><thead><tr><th>组</th><th>$L$</th><th>$B$</th><th>$Z$</th><th>$Z\cdot B/L$</th><th>Overall ↑</th></tr></thead><tbody><tr><td rowspan="4">A：变 $L$</td><td>32</td><td>32</td><td>32</td><td>32</td><td>37.057</td></tr><tr><td>64</td><td>32</td><td>64</td><td>32</td><td>39.135</td></tr><tr><td>128</td><td>32</td><td>128</td><td>32</td><td>33.222</td></tr><tr><td>256</td><td>32</td><td>256</td><td>32</td><td>51.215</td></tr><tr><td rowspan="4">B：变 $Z$</td><td>256</td><td>256</td><td>32</td><td>32</td><td>20.165</td></tr><tr><td>256</td><td>256</td><td>64</td><td>64</td><td>31.774</td></tr><tr><td>256</td><td>256</td><td>128</td><td>128</td><td>44.020</td></tr><tr><td>256</td><td>256</td><td>256</td><td>256</td><td>51.470</td></tr><tr><td rowspan="4">C：变 $B$</td><td>256</td><td>32</td><td>256</td><td>32</td><td>51.215</td></tr><tr><td>256</td><td>64</td><td>256</td><td>64</td><td><strong>52.605</strong></td></tr><tr><td>256</td><td>128</td><td>256</td><td>128</td><td>51.641</td></tr><tr><td>256</td><td>256</td><td>256</td><td>256</td><td>51.470</td></tr></tbody></table></div>
+<p><strong>组 A（变 $L$）</strong>：分数随 $L$ 起伏（37→39→33→51），<em>不像</em> LLaDA 原文报告的“对长度敏感”那样单调。作者强调这是在“所有模型固定同长度”的受控评测下得到的，掩码预测在同样长度约束下更易产出完整、信息密的回答。<strong>组 B（变 $Z$）</strong>最干净：$L,B$ 固定，$Z$ 从 32 升到 256，分数从 20.165 单调升到 51.470——<strong>采样步数就是质量的硬通货</strong>。<strong>组 C（变 $B$）</strong>：增大 $B$（从而增大每 block 步数 $Z\cdot B/L$）并不单调更好，$B{=}64$（52.605）反而优于 $B{=}256$（51.470），说明半自回归的 block 配置需要折中。</p>
+<div class="socratic"><p class="question">问：为什么 $Z$ 不足会让模型狂吐“the the the”？给我两条独立解释。</p><p class="answer"><strong>路径 A（去噪/信息论，论文原话）：</strong>反向是一步步去噪，总步数 $Z$ 决定每步要承担多少“去噪量”。$Z$ 小 ⇒ 每步要去的噪声多 ⇒ 单步近似误差大、噪声被注入反向轨迹（论文：“fewer steps introduce more noise into the reverse generative process”）。<br><br><strong>路径 B（纠错动力学）：</strong>low-confidence remasking 是一个迭代修复回路，修复轮数 ∝ $Z$，且硬上界 $Z\le L$。当 $L$ 大而 $Z$ 小，单位长度的精炼机会 $Z/L$ 太少——早期填错或填了高频占位词（“the”）的位置<strong>没机会被重掩纠回</strong>。更糟的是：重复 token 这种“自洽但错误”的模式，每个“the”在局部语言模型下置信度并不低，于是 remask 偏偏<em>不</em>选它们去修——错误被冻结、一路复制到填满 $L$。这恰好解释了为何重复在“$L$ 大、$Z$ 小”时最严重（图 5 的 Q2/Q3），也解释了表 C 里降 $Z$ 时 W/Q 不降反升的怪象。两条路径都指向同一结论：$Z$ 是质量与重复的共同闸门。</p><p class="takeaway"><strong>Takeaway：</strong>$Z$ 越大越好但越慢，$Z\le L$ 是硬上界——长答场景里 $L$–$Z$ 的平衡是 LLaDA-MedV 最该被工程优化的地方。</p></div></section>
+
+<section id="limitations"><h2>9. 局限与复现门槛：什么时候要谨慎？</h2><div class="table-wrap"><table><caption><strong>表 F.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/方法信息</th><th>读者应如何理解</th></tr></thead><tbody><tr><td>token 重复</td><td>$Z$ 小、$L$ 大时尤甚（图 5）</td><td>核心副作用；纠错回路轮数不足，重复被冻结进输出</td></tr><tr><td>open-form VQA 弱</td><td>VQA-RAD Open 仅 45.60</td><td>缺 post-training，不擅长把答案约束进固定候选集</td></tr><tr><td>推理慢</td><td>每词 0.230 s（ARM ≈0.036 s）</td><td>实现未优化；提速（降 $Z$）会换来质量断崖</td></tr><tr><td>初始化敏感</td><td>通用域 LLaDA-V 初始化退化到 31</td><td>需 domain-appropriate 初始化，迁移别想当然</td></tr><tr><td>评测依赖 GPT 裁判</td><td>GPT-4.1 mini 评分、参考答案固定</td><td>LLM-as-judge 非完美；原 GPT-4-0314 不可用故全部重测</td></tr><tr><td>训练成本未全披露</td><td>4×A100 80G；总时长/steps 论文未说明</td><td>无法据此精确估 GPU-hours</td></tr></tbody></table></div><div class="formula-note"><p class="note-title">关于算力</p><p>论文仅披露“4×NVIDIA A100 80GB”，<strong>总训练时长、steps/epochs、完整 LR schedule 等论文未说明</strong>。任何 GPU-hours 数字只能<em>按论文披露数字粗略估算，不等同于实际账单</em>。</p></div><div class="socratic"><p class="question">问：这篇最容易被过度宣传成什么？</p><p class="answer">答：容易被说成“扩散模型全面超越自回归医学 VLM”。更严谨的说法是：<strong>在开放式医学对话与闭合式 VQA 上，掩码扩散 VLM 首次被证明能与最强 ARM 基线竞争甚至领先，并天然带来长度可控；但它在 open-form VQA、推理速度、token 重复上仍有明确短板，且强依赖采样步数与领域适配的初始化。</strong>它打开的是一个方向，不是一个终点。</p><p class="takeaway"><strong>Takeaway：</strong>强项是“长度可控 + 影像类对话 + 闭合式 VQA 夺冠”；边界是“重复、慢、open-form 弱、初始化敏感”。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>LLaDA-MedV 把生物医学 VLM 的生成范式从“自回归逐 token、EOS 早停”换成“固定长度画布、掩码迭代填空”——长度因此从“涌现软约束”变成“输入硬设定”，在同等长度预算下答得更密、闭合式 VQA 夺冠；代价是 token 重复、推理偏慢与 open-form 偏弱。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li>“显式长度控制”不是技巧而是定义：全 $M$ 画布在采样前就钉死了 $L$，训练目标（式 3）只学补全、不学何时停——两条独立推导都指向这一点。</li><li>采样步数 $Z$ 是质量与重复的共同闸门（$Z\le L$）：步数不足 ⇒ 去噪误差大 + 纠错回路轮数不够 ⇒ 重复被冻结；表 C/D 实测单调印证。</li><li>更强的通用先验 ≠ 更好的医学起点：通用域 LLaDA-V 初始化把分数从 52.6 拽到 31，domain-appropriate 初始化是前提而非点缀。</li></ol></div></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Xuanzhao Dong, Wenhui Zhu, Xiwen Chen, Zhipeng Wang, Peijie Qiu, Shao Tang, Xin Li, Yalin Wang. <em>LLaDA-MedV: Exploring Large Language Diffusion Models for Biomedical Image Understanding</em>. CVPR 2026（CVF pp. 22773–22783）/ arXiv:2508.01617（Arizona State University · Clemson University 等）。代码：<code>github.com/LLM-VLM-GSL/LLaDA-MedV</code>。</li><li>本文公式（式 1–3）、表格（表 A–F）与全部实验数字以 arXiv PDF 为准；掩码扩散前向/反向与条件掩码交叉熵的写法对照原文 §3–4。“显式长度控制”“$Z$–重复因果”的双路径论证为本文按 <code>kexue:su</code> 方法（动机先行、假设显式、≥2 路径交叉验证）重新推导——苏剑林语料库本次检索未返回与“吸收态掩码扩散语言模型 / 长度可控”直接对应的卡片，故<strong>仅应用方法论，未作 [archives/XXXX] 归因</strong>。</li><li>图像说明：图 1 为本地 PNG，由 <code>extract_figures.py</code> 从 arXiv PDF 第 1 页 caption 锚定裁切，路径 <code>assets/figures/lladamedv/</code>。论文其余图（图 2–5）为定性回答对照与重复示例的文本面板，分辨率不适合缩略呈现，已在正文以 HTML 表格/转述方式给出更清晰的等价证据。</li></ol></section>
+</main><footer class="article-footer">CVPR 2026 Best Papers Digest · Medical AI · LLaDA-MedV 深读。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与配置</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法 / 长度可控</a></li><li><a href="#training">训练期初始化</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融 L/B/Z</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>LLaDA-MedV: Exploring Large Language Diffusion Models for Biomedical Image Understanding</dd><dt>Venue</dt><dd>CVPR 2026 · Medical AI（已核验 pp.22773–22783）</dd><dt>Backbone</dt><dd>LLaDA-8B-Instruct + SigLIP2 + MLP</dd><dt>arXiv</dt><dd>2508.01617</dd><dt>Topic</dt><dd>Masked Diffusion LM / Biomedical VLM</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：6 VLM 雷达对比</li><li>式 3：条件掩码交叉熵</li><li>表 A：开放式对话</li><li>表 B：VQA（开/闭）</li><li>表 C/D：长度与 L/B/Z 消融</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> LLaDA-MedV 深读</p><p><span class="status-good">figures</span> 1 张 PNG（teaser）+ 6 表转写</p><p><span class="status-good">formula</span> MathJax 预检通过</p><p><span class="status-warn">scope</span> token 重复 / open-form VQA 偏弱</p></div></section></aside></div></body></html>

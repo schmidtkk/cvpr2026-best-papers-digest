@@ -1,1045 +1,1095 @@
 {
-  "site": "CVPR 2026 Best Papers Digest",
-  "generated_date": "2026-06-09",
-  "policy": "All figures used in completed pages are local PNG files extracted from paper PDF, supplementary PDF, or official project pages. Pending cards use traceable PDF/project figure crops, not decorative placeholders.",
-  "figures": [
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_fig1_teaser.png",
-      "exists": true,
-      "width": 1040,
-      "height": 1100,
-      "order_in_page": 1,
-      "caption_or_role": "图 1 · D4RT teaser。 注意右侧不同颜色/符号并不是装饰：它们对应 point cloud、point tracks、camera parameters 等输出，说明 D4RT 试图用一个接口覆盖多类 4D 几何输出。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_table2_capabilities.png",
-      "exists": true,
-      "width": 985,
-      "height": 680,
-      "order_in_page": 2,
-      "caption_or_role": "图 2 · Model capabilities 表。 这张表不是单纯列 baseline，而是在说明 D4RT 的新意：动态 correspondence、flexible reference frames、sparse decoding、global context、single decoder 同时成立。读者应看最右侧 D4RT 与 VGGT/π3/STv2 的功能差异。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_fig2_model_overview.png",
-      "exists": true,
-      "width": 2090,
-      "height": 715,
-      "order_in_page": 3,
-      "caption_or_role": "图 3 · 方法总览。 左侧视频进入 global self-attention encoder，形成 Global Scene Representation；右侧 query decoder 接收 $(u,v,t_{src},t_{tgt},t_{cam})$ 和 local frame patch，然后输出 3D position $P$。注意图中红色 dotted box：这是 D4RT 把任务统一起来的接口。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_project_method_left.png",
-      "exists": true,
-      "width": 1854,
-      "height": 679,
-      "order_in_page": 4,
-      "caption_or_role": "图 4a · 项目页方法图：encoder 形成全局场景表示。 这张图比论文总览更适合建立直觉：模型先压缩整段视频，而不是逐帧做局部 depth。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_project_method_right.png",
-      "exists": true,
-      "width": 1013,
-      "height": 679,
-      "order_in_page": 5,
-      "caption_or_role": "图 4b · 项目页方法图：query decoder 逐点回答。 关键在于每个 query 可独立处理，因此点数增加时可以并行扩展。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_table1_unified_decoding.png",
-      "exists": true,
-      "width": 1000,
-      "height": 440,
-      "order_in_page": 6,
-      "caption_or_role": "图 5 · Unified decoding。 表中每一行是一个任务，每一列是 query 的一个维度。Point Track 固定像素与 source time、遍历 target time；Point Cloud/Depth 遍历空间像素；Extrinsics/Intrinsics 则用粗网格估计相机参数。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_algorithm1_all_pixels.png",
-      "exists": true,
-      "width": 995,
-      "height": 715,
-      "order_in_page": 7,
-      "caption_or_role": "图 6 · Efficient Dense Tracking of All Pixels。 算法维护一个 occupancy grid $G$：每次只从未访问点启动 track；一条 track 覆盖到的可见像素会被标记为 visited。这样不是机械枚举所有 source-target 像素对，而是利用轨迹自身覆盖冗余。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_supp_training_loss_formula.png",
-      "exists": true,
-      "width": 1750,
-      "height": 280,
-      "order_in_page": 8,
-      "caption_or_role": "图 7 · Supplement 中的 composite loss。 读这张公式图时不要只看符号：3D point 是主任务，2D position / visibility / displacement / confidence / normal 是让 query decoder 保持投影、可见性、运动与局部几何一致的辅助约束。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_fig3_speed_accuracy.png",
-      "exists": true,
-      "width": 990,
-      "height": 670,
-      "order_in_page": 9,
-      "caption_or_role": "图 8a · Pose accuracy vs speed。 D4RT 在 A100 上 pose estimation 超过 200 FPS，并位于右上区域；这张图证明“快”不是牺牲精度换来的。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_table3_tracking_throughput.png",
-      "exists": true,
-      "width": 965,
-      "height": 400,
-      "order_in_page": 10,
-      "caption_or_role": "图 8b · 3D tracking throughput。 D4RT 在 60/24/10/1 FPS 下可处理的 full-video tracks 明显更多；读者应看 60 FPS 下 550 vs SpatialTrackerV2 的 29，以及 1 FPS 下 40,180。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_fig4_reconstruction_results.png",
-      "exists": true,
-      "width": 2050,
-      "height": 1155,
-      "order_in_page": 11,
-      "caption_or_role": "图 9 · Reconstruction results across methods。 论文特意选了 swan、train 等动态样例：MegaSaM/π3 等重建方法会产生动态对象重复或失败；SpatialTrackerV2 能抓动态但只跟踪部分区域；D4RT 输出更完整的 4D 表示。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_table4_tracking_results.png",
-      "exists": true,
-      "width": 2080,
-      "height": 760,
-      "order_in_page": 12,
-      "caption_or_role": "图 10 · TAPVid-3D tracking 主结果。 左半是 camera-coordinate 3D tracking，右半是 world-coordinate 3D tracking。关键是 D4RT 在 world coordinate 任务上仍能保持强表现，说明它不只是局部相机坐标下的 tracker。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_table5_depth_pointmap.png",
-      "exists": true,
-      "width": 2070,
-      "height": 535,
-      "order_in_page": 13,
-      "caption_or_role": "图 11 · Video depth / point map estimation。 Sintel point cloud L1 从 π3 的 1.139 降到 D4RT 的 0.768；ScanNet point cloud L1 也达到 0.028。深度方面，D4RT 在 Sintel/ScanNet/KITTI 上 top-tier，但 Bonn 上不是所有列都最优。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_table6_pose_estimation.png",
-      "exists": true,
-      "width": 980,
-      "height": 370,
-      "order_in_page": 14,
-      "caption_or_role": "图 12 · Camera pose estimation。 D4RT 在 Sintel ATE/RPE-T 与 Re10K Pose AUC 上表现突出；ScanNet RPE-R 并非最优，说明“全面 SOTA”要按指标细读。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_fig6_local_patch_ablation.png",
-      "exists": true,
-      "width": 990,
-      "height": 790,
-      "order_in_page": 15,
-      "caption_or_role": "图 13a · local patch 视觉消融。 没有 local patch 时边界更糊；加入 local patch 后 depth map 的低层细节和 object boundary 更清晰。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_table7_local_rgb_patch.png",
-      "exists": true,
-      "width": 990,
-      "height": 400,
-      "order_in_page": 16,
-      "caption_or_role": "图 13b · local RGB patch 数值消融。 ViT-L 上 AbsRel(S) 从 0.366 降到 0.302，ATE 从 0.173 降到 0.091，是一个大幅收益。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_table8_backbone_size.png",
-      "exists": true,
-      "width": 990,
-      "height": 410,
-      "order_in_page": 17,
-      "caption_or_role": "图 14a · backbone size 消融。 ViT-B→L→H→g 主要改善 depth 与 RPE-R；但 ATE 并非单调最优，说明 scaling 不是所有 pose 指标的万能解。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_table9_aux_losses.png",
-      "exists": true,
-      "width": 990,
-      "height": 480,
-      "order_in_page": 18,
-      "caption_or_role": "图 14b · auxiliary losses 消融。 2D position / normal 对 depth 更关键，confidence 对 pose 尤其关键；辅助损失的收益不是同质的。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_supp_table11_initialization.png",
-      "exists": true,
-      "width": 1080,
-      "height": 280,
-      "order_in_page": 19,
-      "caption_or_role": "图 15a · initialization 消融。 随机初始化 vs VideoMAE 初始化差距巨大，说明 D4RT 不是只靠 query trick；视频表征预训练是关键底座。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_supp_table12_public_training.png",
-      "exists": true,
-      "width": 1730,
-      "height": 405,
-      "order_in_page": 20,
-      "caption_or_role": "图 15b · public-only training data。 仅用公开数据训练的 D4RT 仍强于多个对比方法；这缓解了“只是 internal data 堆出来”的质疑，但不等于完全复现。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_supp_table10_subpixel.png",
-      "exists": true,
-      "width": 1495,
-      "height": 345,
-      "order_in_page": 21,
-      "caption_or_role": "图 16a · query density / patch fidelity 消融。 高分辨率视频 patch 输入 decoder 可改善 PDBE 等边界指标，说明子像素细节主要来自 query 层的局部信息。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_supp_fig9_subpixel_detail.png",
-      "exists": true,
-      "width": 1730,
-      "height": 880,
-      "order_in_page": 22,
-      "caption_or_role": "图 16b · sub-pixel detail recovery。 注意底行头发等细结构：Config 4 的边缘更锐，而整体计算/内存没有随全局输入分辨率同步增加。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_pdf_fig5_in_the_wild.png",
-      "exists": true,
-      "width": 2080,
-      "height": 800,
-      "order_in_page": 23,
-      "caption_or_role": "图 17a · in-the-wild videos。 静态场景看几何一致性，动态场景看轨迹是否连续。它证明 D4RT 不只是 benchmark 上的点表格。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_project_capabilities_frames.png",
-      "exists": true,
-      "width": 1687,
-      "height": 276,
-      "order_in_page": 24,
-      "caption_or_role": "图 17b · 项目页 capabilities GIF 关键帧。 这里把动图转成 PNG contact sheet，避免正文依赖低清动图；读者可看同一视频下 tracking 和 point cloud 输出的关系。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_supp_fig12_reconstruction_comparison.png",
-      "exists": true,
-      "width": 1730,
-      "height": 1025,
-      "order_in_page": 25,
-      "caption_or_role": "图 18 · Supplement reconstruction comparison。 补充图继续强调动态对象与完整点云的差异：D4RT 的优势主要来自能从任意 frame 启动/查询轨迹，而非后处理补洞。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "d4rt",
-      "relative_path": "assets/figures/d4rt_supp_fig13_depth_comparison.png",
-      "exists": true,
-      "width": 1730,
-      "height": 810,
-      "order_in_page": 26,
-      "caption_or_role": "图 19 · Supplement depth comparison。 这张图帮助校验 local patch 与全局 encoder 的组合：D4RT 深度边界更锐，但极端细结构仍可能受输入分辨率和 patch 设计限制。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_fig1_teaser.png",
-      "exists": true,
-      "width": 1945,
-      "height": 550,
-      "order_in_page": 1,
-      "caption_or_role": "图 1 · 论文 teaser。 SAM 3D 把一张真实图像拆成可组合的 3D objects：上方展示室内与街景，底部展示为单个物体恢复出的 3D assets。读者应看黄框标注的目标物体如何被还原成独立 3D 资产。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_fig2_architecture.png",
-      "exists": true,
-      "width": 1950,
-      "height": 710,
-      "order_in_page": 2,
-      "caption_or_role": "图 2 · SAM 3D architecture。 上半部分 Geometry model 预测 coarse shape 与 layout；下半部分 Texture & Refinement model 在 coarse voxels 上细化 mesh/GS 输出。右侧 Mixture-of-Transformers 说明 shape token 与 layout token 共享信息但有 attention mask 约束。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_fig3_data_examples.png",
-      "exists": true,
-      "width": 1960,
-      "height": 1150,
-      "order_in_page": 3,
-      "caption_or_role": "图 3 · SAM 3D data examples。 四行分别对应 Isolated 3D Objects、Render-Paste 3D Objects、MITL 3D Objects、Artist 3D Objects。它说明训练数据逐步从干净合成走向真实遮挡/杂乱场景。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_supp_fig10_category_distribution.png",
-      "exists": true,
-      "width": 1670,
-      "height": 875,
-      "order_in_page": 4,
-      "caption_or_role": "图 6 · Supplement Fig. 10 类别分布。 top-80 类别呈长尾分布。读者应关注尾部类别：真实图像 3D 重建不仅是常见家具/车辆，还要处理稀有小物体。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_fig4_training_paradigm_table1.png",
-      "exists": true,
-      "width": 2110,
-      "height": 600,
-      "order_in_page": 5,
-      "caption_or_role": "图 4 · 训练范式与阶段表。 左侧是 synthetic pre-training → semi-synthetic mid-training → real-world SFT/post-training → preference optimization 的闭环；右侧 Table 1 把每个阶段对应的数据和输入条件列出。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_fig5_data_collection_pipeline.png",
-      "exists": true,
-      "width": 2105,
-      "height": 515,
-      "order_in_page": 6,
-      "caption_or_role": "图 5 · 数据收集 pipeline。 Stage 1 选目标与 mask，Stage 2 选择 shape/texture 候选，Stage 2.5 把困难样本交给 3D artists，Stage 3 做 2.5D scene alignment。该图是理解 SAM 3D 数据闭环的核心。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_supp_algorithm1_alignment.png",
-      "exists": true,
-      "width": 1705,
-      "height": 805,
-      "order_in_page": 7,
-      "caption_or_role": "图 7 · Algorithm 1: SAM 3D Basic Alignment。 该算法把候选生成、人类排序、质量阈值过滤、SFT 与 DPO 串成循环。它证明 post-training 不是一次性人工标注，而是模型与数据共同进化。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_supp_fig13_fig14_data_engine_reward.png",
-      "exists": true,
-      "width": 1705,
-      "height": 590,
-      "order_in_page": 8,
-      "caption_or_role": "图 8 · 数据引擎改进与 reward recovery。 左图说明模型成功率在常见类别先提升，再逐步覆盖尾部；右图显示用 VLM/reward model 做 best-of-N 搜索以提高困难样本通过率。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_fig6_qualitative_comparison.png",
-      "exists": true,
-      "width": 2110,
-      "height": 635,
-      "order_in_page": 9,
-      "caption_or_role": "图 9 · qualitative comparison。 左侧比较单物体 shape，右侧比较场景重建。要看遮挡物体和复杂场景里，SAM 3D 是否能恢复完整物体并放回正确位置。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_table2_shape_quantitative.png",
-      "exists": true,
-      "width": 1040,
-      "height": 510,
-      "order_in_page": 10,
-      "caption_or_role": "表 5 · Shape quantitative comparison。 SAM 3D 在 SA-3DAO 的 F1、vIoU、Chamfer、EMD 上明显优于基线；但 ULIP 并非最高，提示视觉语义相似度和几何精度不是完全同一个指标。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_table3_layout_quantitative.png",
-      "exists": true,
-      "width": 2110,
-      "height": 585,
-      "order_in_page": 11,
-      "caption_or_role": "表 6 · Layout quantitative comparison。 SAM 3D joint model 在 SA-3DAO 与 Aria Digital Twin 上均显著超过 pipeline 组合，支持“shape 与 layout 应联合建模”的观点。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_fig7_fig8_preferences.png",
-      "exists": true,
-      "width": 2110,
-      "height": 540,
-      "order_in_page": 12,
-      "caption_or_role": "图 10 · Preference comparison。 左侧是 scene/object reconstruction 的偏好率，右侧是 texture 偏好率。读者应把它看作感知质量证据，而不是替代几何指标。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_fig9_data_engine.png",
-      "exists": true,
-      "width": 1030,
-      "height": 520,
-      "order_in_page": 13,
-      "caption_or_role": "图 11 · Data engine iterations。 Elo 随迭代上升，但单纯扩展 training data 的收益逐渐递减，说明数据质量与阶段设计同样关键。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_table4_multistage_ablation.png",
-      "exists": true,
-      "width": 1015,
-      "height": 465,
-      "order_in_page": 14,
-      "caption_or_role": "表 7 · Multi-stage training ablation。 从 pre-training 到 mid-training、SFT、DPO、Art-3DO，每一步都带来累计收益，是论文最重要的因果证据之一。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_supp_fig20_additional_qualitative.png",
-      "exists": true,
-      "width": 1520,
-      "height": 2110,
-      "order_in_page": 15,
-      "caption_or_role": "图 12 · Additional qualitative shape and texture。 Supplement 中的大量例子展示了自然图像、zoom-in、SAM 3D 与多个基线的对比；它补充说明主文 Figure 6 不是孤例。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "sam3d",
-      "relative_path": "assets/figures/sam3d/sam3d_supp_fig21_scene_reconstruction.png",
-      "exists": true,
-      "width": 1540,
-      "height": 2045,
-      "order_in_page": 16,
-      "caption_or_role": "图 13 · Scene reconstruction qualitative examples。 多房间、商店、农场等场景中，SAM 3D 输出可组合 objects；读者应同时看成功的布局恢复和仍然可能出现的对象缺失/尺度不稳。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "nitrogen",
-      "relative_path": "assets/figures/nitrogen/nitrogen_fig1_overview_pdf_crop.png",
-      "exists": true,
-      "width": 1470,
-      "height": 590,
-      "order_in_page": 1,
-      "caption_or_role": "图 1 · NitroGen 总览。 左边是 universal simulator，中间是 multi-game foundation agent，右边是 internet-scale video-action dataset。读者应重点看这三块的闭环：没有动作标签，就无法行为克隆；没有统一 harness，就无法评测跨游戏泛化。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "nitrogen",
-      "relative_path": "assets/figures/nitrogen/nitrogen_fig2_action_pipeline_pdf_crop.png",
-      "exists": true,
-      "width": 1460,
-      "height": 965,
-      "order_in_page": 2,
-      "caption_or_role": "图 2 · Video-action dataset pipeline。 左侧展示不同 gamepad overlays 的多样性；右侧展示从视频定位 controller 区域、裁剪、再用 hybrid classification-segmentation network 解析 joystick 与 buttons 的流程。它证明 NitroGen 的数据不是人工日志，而是从图像中的控制器叠层恢复 action。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "nitrogen",
-      "relative_path": "assets/figures/nitrogen/nitrogen_fig3_dataset_distribution_pdf_crop.png",
-      "exists": true,
-      "width": 1410,
-      "height": 495,
-      "order_in_page": 3,
-      "caption_or_role": "图 3 · 数据分布。 左图显示 846 个游戏超过 1 小时、91 个超过 100 小时、15 个超过 1,000 小时；右图显示 Action-RPG 占 34.9%，Platformer 占 18.4%，Action-Adventure 占 9.2%。这既证明规模，也暴露数据偏向。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "nitrogen",
-      "relative_path": "assets/figures/nitrogen/nitrogen_overview_project.png",
-      "exists": true,
-      "width": 1920,
-      "height": 835,
-      "order_in_page": 4,
-      "caption_or_role": "图 4a · 项目页 overview。 项目图用更干净的方式展示三件套：dataset、foundation agent 和 simulator。它适合在读完整论文 pipeline 后回看整体闭环。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "nitrogen",
-      "relative_path": "assets/figures/nitrogen/nitrogen_fig4_rollouts_pdf_crop.png",
-      "exists": true,
-      "width": 1460,
-      "height": 913,
-      "order_in_page": 5,
-      "caption_or_role": "图 4b · In-game rollouts。 不同游戏画面说明评测并非单一环境。读者应看画面风格、视角和任务类型差异：这正是论文要测试“generalist gaming agent”的原因。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "nitrogen",
-      "relative_path": "assets/figures/nitrogen/nitrogen_appendix_formula_crop.png",
-      "exists": true,
-      "width": 810,
-      "height": 410,
-      "order_in_page": 6,
-      "caption_or_role": "图 5 · Supplement 中的 flow matching 公式原图。 正文公式已重写为 MathJax-safe TeX；这张图用于核对符号与论文原意，避免从 PDF 文本抽取时出现反斜杠或上标错误。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "nitrogen",
-      "relative_path": "assets/figures/nitrogen/nitrogen_action_quality_project.png",
-      "exists": true,
-      "width": 6359,
-      "height": 2200,
-      "order_in_page": 7,
-      "caption_or_role": "图 6 · Action quality / parsing 结果。 这张图对应“标签能不能信”的基础问题：如果 joystick 和 buttons 解析错误，下游 BC 不可能稳定。读者应关注不同 controller family 的差异，而不是只看平均数。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "nitrogen",
-      "relative_path": "assets/figures/nitrogen/nitrogen_fig5_pretraining_results_pdf_crop.png",
-      "exists": true,
-      "width": 1295,
-      "height": 440,
-      "order_in_page": 8,
-      "caption_or_role": "图 7 · 500M pre-training results。 它想证明单一模型能在 3D、2D side-scrolling、top-down 等不同游戏类型中产生有效控制。关键不是每个柱子多高，而是多个任务族均非零，说明统一 policy 不是只记住单一游戏。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "nitrogen",
-      "relative_path": "assets/figures/nitrogen/nitrogen_fig7_post_training_pdf_crop.png",
-      "exists": true,
-      "width": 1340,
-      "height": 465,
-      "order_in_page": 9,
-      "caption_or_role": "图 8 · Post-training transfer。 左图看数据量变化，右图看任务类型差异。读者应重点看 combat/navigation 与 game-specific 的分化：这正是“预训练学到通用控制，但不等于理解所有新规则”的证据。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "nitrogen",
-      "relative_path": "assets/figures/nitrogen/nitrogen_results_finetune_project.png",
-      "exists": true,
-      "width": 6361,
-      "height": 2002,
-      "order_in_page": 10,
-      "caption_or_role": "图 9 · 项目页 fine-tuning / self-imitation 结果。 项目页图更清晰地把 post-training 与 self-imitation 放在一起。它证明预训练权重有助于低数据迁移，也暴露了仍需 task-specific adaptation。",
-      "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_fig1_teaser.png",
-      "file": "native_fig1_teaser.png",
-      "role": "Figure 1 teaser: reconstruction/generation/compactness comparison",
-      "source_note": "CVPR 2026 paper PDF Fig. 1",
-      "page": 1,
-      "dpi": 260,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_fig2_pipeline.png",
-      "file": "native_fig2_pipeline.png",
-      "role": "Figure 2 overview pipeline: 3D assets → O-Voxel → SC-VAE → SLat → flow",
-      "source_note": "CVPR 2026 paper PDF Fig. 2",
-      "page": 3,
-      "dpi": 260,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_fig3_ovoxel.png",
-      "file": "native_fig3_ovoxel.png",
-      "role": "Figure 3 O-Voxel representation and bidirectional conversion",
-      "source_note": "CVPR 2026 paper PDF Fig. 3",
-      "page": 3,
-      "dpi": 260,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_fig4_scvae.png",
-      "file": "native_fig4_scvae.png",
-      "role": "Figure 4 SC-VAE architecture",
-      "source_note": "CVPR 2026 paper PDF Fig. 4",
-      "page": 5,
-      "dpi": 260,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_fig5_generation_gallery.png",
-      "file": "native_fig5_generation_gallery.png",
-      "role": "Figure 5 generation gallery: geometry and PBR materials",
-      "source_note": "CVPR 2026 paper PDF Fig. 5",
-      "page": 7,
-      "dpi": 250,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_fig6_visual_comparison.png",
-      "file": "native_fig6_visual_comparison.png",
-      "role": "Figure 6 visual comparison with other image-to-3D methods",
-      "source_note": "CVPR 2026 paper PDF Fig. 6",
-      "page": 7,
-      "dpi": 250,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_fig7_pbr_texture.png",
-      "file": "native_fig7_pbr_texture.png",
-      "role": "Figure 7 shape-conditioned PBR texture generation comparison",
-      "source_note": "CVPR 2026 paper PDF Fig. 7",
-      "page": 7,
-      "dpi": 250,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_table1_reconstruction.png",
-      "file": "native_table1_reconstruction.png",
-      "role": "Table 1 reconstruction efficiency and fidelity",
-      "source_note": "CVPR 2026 paper PDF Table 1",
-      "page": 8,
-      "dpi": 260,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_table2_generation.png",
-      "file": "native_table2_generation.png",
-      "role": "Table 2 image-to-3D generation metrics and user study",
-      "source_note": "CVPR 2026 paper PDF Table 2",
-      "page": 8,
-      "dpi": 260,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_table3_ablation.png",
-      "file": "native_table3_ablation.png",
-      "role": "Table 3 SC-VAE ablation",
-      "source_note": "CVPR 2026 paper PDF Table 3",
-      "page": 8,
-      "dpi": 260,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_fig8_test_time_scaling.png",
-      "file": "native_fig8_test_time_scaling.png",
-      "role": "Figure 8 test-time resolution and compute scaling",
-      "source_note": "CVPR 2026 paper PDF Fig. 8",
-      "page": 8,
-      "dpi": 260,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_supp_fig1_flexgemm_speed.png",
-      "file": "native_supp_fig1_flexgemm_speed.png",
-      "role": "Supplement Figure 1 FlexGEMM speed comparison",
-      "source_note": "CVPR 2026 supplementary PDF Fig. 1",
-      "page": 5,
-      "dpi": 240,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_supp_table3_dataset.png",
-      "file": "native_supp_table3_dataset.png",
-      "role": "Supplement Table 3 training/evaluation dataset composition",
-      "source_note": "CVPR 2026 supplementary PDF Table 3",
-      "page": 5,
-      "dpi": 260,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_supp_fig2_user_study.png",
-      "file": "native_supp_fig2_user_study.png",
-      "role": "Supplement Figure 2 user study interface",
-      "source_note": "CVPR 2026 supplementary PDF Fig. 2",
-      "page": 7,
-      "dpi": 230,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_supp_table4_user_study.png",
-      "file": "native_supp_table4_user_study.png",
-      "role": "Supplement Table 4 user study statistics",
-      "source_note": "CVPR 2026 supplementary PDF Table 4",
-      "page": 8,
-      "dpi": 260,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_supp_fig3_reconstruction.png",
-      "file": "native_supp_fig3_reconstruction.png",
-      "role": "Supplement Figure 3 additional reconstruction results",
-      "source_note": "CVPR 2026 supplementary PDF Fig. 3",
-      "page": 10,
-      "dpi": 230,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_supp_fig4_shape_fidelity.png",
-      "file": "native_supp_fig4_shape_fidelity.png",
-      "role": "Supplement Figure 4 shape reconstruction qualitative comparison",
-      "source_note": "CVPR 2026 supplementary PDF Fig. 4",
-      "page": 11,
-      "dpi": 230,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_supp_fig5_more_generation.png",
-      "file": "native_supp_fig5_more_generation.png",
-      "role": "Supplement Figure 5 additional image-to-3D generation results",
-      "source_note": "CVPR 2026 supplementary PDF Fig. 5",
-      "page": 12,
-      "dpi": 230,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_supp_fig6_more_comparison.png",
-      "file": "native_supp_fig6_more_comparison.png",
-      "role": "Supplement Figure 6 more generation comparisons",
-      "source_note": "CVPR 2026 supplementary PDF Fig. 6",
-      "page": 13,
-      "dpi": 230,
-      "exists": true
-    },
-    {
-      "paper": "native",
-      "relative_path": "assets/figures/native/native_thumb.png",
-      "file": "native_thumb.png",
-      "role": "thumbnail",
-      "source_note": "Derived from Native Figure 1 teaser",
-      "page": 1,
-      "dpi": null,
-      "exists": true
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_fig1_teaser_thumb.png",
-      "exists": true,
-      "width": 680,
-      "height": 386,
-      "order_in_page": 1,
-      "caption_or_role": "Homepage thumbnail：从 teaser 制作的首页缩略图。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_algorithm1.png",
-      "exists": true,
-      "width": 1264,
-      "height": 541,
-      "order_in_page": 2,
-      "caption_or_role": "图 4 · Algorithm 1：默认单噪声 ChordEdit 伪代码，包含 chord field、transport 和 optional prox。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig10_noise_samples.png",
-      "exists": true,
-      "width": 1050,
-      "height": 659,
-      "order_in_page": 3,
-      "caption_or_role": "图 11a · Noise sample qualitative ablation：展示 n=1 到 n=4 的边际收益很小。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig11_pareto_seed.png",
-      "exists": true,
-      "width": 1066,
-      "height": 591,
-      "order_in_page": 4,
-      "caption_or_role": "图 11b · Seed robustness：LPIPS-CLIP 前沿与 seed 直方图。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig1_teaser.png",
-      "exists": true,
-      "width": 2234,
-      "height": 1267,
-      "order_in_page": 5,
-      "caption_or_role": "图 1 · ChordEdit teaser：展示 source image、语义变更标签与 edited image，说明方法连接 SD-Turbo / SwiftBrush-v2 并保持非编辑区域。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig2_fig3_intro.png",
-      "exists": true,
-      "width": 992,
-      "height": 1050,
-      "order_in_page": 6,
-      "caption_or_role": "Intro composite crop：包含 Figure 2/3，用于素材库。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig2_runtime_quality.png",
-      "exists": true,
-      "width": 975,
-      "height": 683,
-      "order_in_page": 7,
-      "caption_or_role": "图 2a · Runtime-quality scatter：比较 ChordEdit 与 one/few/multi-step 编辑器在 PSNR、CLIP 与 runtime 上的折中。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig3_simple_drift_failure.png",
-      "exists": true,
-      "width": 958,
-      "height": 883,
-      "order_in_page": 8,
-      "caption_or_role": "图 2b · naive simple drift failure：展示 one-step drift difference 导致主体变形与背景破坏。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig4_field_stability.png",
-      "exists": true,
-      "width": 2191,
-      "height": 841,
-      "order_in_page": 9,
-      "caption_or_role": "Paper Figure 4 field stability：PDF 原图版本的 field stability 三栏对比。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig5_toy_transport.png",
-      "exists": true,
-      "width": 1250,
-      "height": 700,
-      "order_in_page": 10,
-      "caption_or_role": "图 6 · 2D toy transport：直观解释低能量 chord field 相比 naive residual field 更稳定。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig6_proximal_refinement.png",
-      "exists": true,
-      "width": 1083,
-      "height": 425,
-      "order_in_page": 11,
-      "caption_or_role": "图 5 · Proximal refinement：展示可选目标语义增强步骤。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig7_comparison.png",
-      "exists": true,
-      "width": 2142,
-      "height": 1666,
-      "order_in_page": 12,
-      "caption_or_role": "ChordEdit figure extracted from PDF/Supp/project page for academic commentary.",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig8_energy.png",
-      "exists": true,
-      "width": 2175,
-      "height": 1217,
-      "order_in_page": 13,
-      "caption_or_role": "ChordEdit figure extracted from PDF/Supp/project page for academic commentary.",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_fig9_stability_pareto.png",
-      "exists": true,
-      "width": 1034,
-      "height": 1067,
-      "order_in_page": 14,
-      "caption_or_role": "图 10a · Integration-step stability and Pareto front：主文稳定性/权衡曲线。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_table1_main_results.png",
-      "exists": true,
-      "width": 2175,
-      "height": 633,
-      "order_in_page": 15,
-      "caption_or_role": "图 7 · PIE-Bench main result table：主实验表，比较一致性、CLIP 语义、训练/反演属性、NFE、runtime 与 VRAM。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_pdf_table2_table3_ablation.png",
-      "exists": true,
-      "width": 900,
-      "height": 842,
-      "order_in_page": 16,
-      "caption_or_role": "图 12 · Transport/prox and model-agnostic ablations：表 2 和表 3，解释保持/语义拆分及跨 backbone 改善。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_project_ablation.png",
-      "exists": true,
-      "width": 1570,
-      "height": 792,
-      "order_in_page": 17,
-      "caption_or_role": "Project ablation high-resolution image：项目页消融原图。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_project_comparison.png",
-      "exists": true,
-      "width": 1530,
-      "height": 1028,
-      "order_in_page": 18,
-      "caption_or_role": "Project comparison high-resolution image：项目页定性比较原图。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_project_method.png",
-      "exists": true,
-      "width": 1556,
-      "height": 636,
-      "order_in_page": 19,
-      "caption_or_role": "图 3 · Project method diagram：三栏对比 multi-step simple drift、one-step simple drift 和 ChordEdit 低能量控制场。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_project_teaser_frames.png",
-      "exists": true,
-      "width": 1080,
-      "height": 1050,
-      "order_in_page": 20,
-      "caption_or_role": "Project teaser GIF frame sheet：从项目页 GIF 抽取的 PNG 帧表，用于知识库。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_supp_algorithm_multi_noise.png",
-      "exists": true,
-      "width": 917,
-      "height": 892,
-      "order_in_page": 21,
-      "caption_or_role": "Supplement multi-noise algorithm：多噪声版本伪代码，用于说明 n>1 扩展。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_supp_fig1_fig2_hyperparam_pareto.png",
-      "exists": true,
-      "width": 2091,
-      "height": 1450,
-      "order_in_page": 22,
-      "caption_or_role": "图 10b · Supplement hyperparameter Pareto：补充材料中 MSE/PSNR/SSIM 与 CLIP 的 Pareto 前沿。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_supp_fig3_fig4_noise_hyperparam.png",
-      "exists": true,
-      "width": 2091,
-      "height": 1341,
-      "order_in_page": 23,
-      "caption_or_role": "Supplement noise/hyperparameter plots：补充材料中的噪声样本和 temporal hyperparameter 分析。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_supp_qualitative_more1.png",
-      "exists": true,
-      "width": 2308,
-      "height": 2442,
-      "order_in_page": 24,
-      "caption_or_role": "图 14b · More qualitative examples I：补充材料更多比较样例。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_supp_qualitative_more2.png",
-      "exists": true,
-      "width": 2308,
-      "height": 2442,
-      "order_in_page": 25,
-      "caption_or_role": "More qualitative examples II：补充材料更多比较样例。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_supp_table1_extended_metrics.png",
-      "exists": true,
-      "width": 2141,
-      "height": 908,
-      "order_in_page": 26,
-      "caption_or_role": "图 13 · Extended metrics table：补充材料中包含 Struct. Dist、SSIM、LPIPS 的扩展结果。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "chordedit",
-      "relative_path": "assets/figures/chordedit/chordedit_supp_user_study_results.png",
-      "exists": true,
-      "width": 934,
-      "height": 784,
-      "order_in_page": 27,
-      "caption_or_role": "图 14a · User study results：语义对齐与保持质量偏好率。",
-      "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
-    },
-    {
-      "paper": "sam3dbody",
-      "relative_path": "assets/figures/sam3dbody/sam3dbody_fig1.png",
-      "exists": true,
-      "order_in_page": 1,
-      "caption_or_role": "图 1 · 全身网格恢复 teaser：跨视角跨难度的身体+手部统一估计；顶部为开源入口。",
-      "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
-    },
-    {
-      "paper": "sam3dbody",
-      "relative_path": "assets/figures/sam3dbody/sam3dbody_fig3.png",
-      "exists": true,
-      "order_in_page": 2,
-      "caption_or_role": "图 2 · 标注工具 GUI + 稠密(595)/稀疏关键点对比，密集检测器吃稀疏人工标注作引导。",
-      "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
-    },
-    {
-      "paper": "sam3dbody",
-      "relative_path": "assets/figures/sam3dbody/sam3dbody_fig5.png",
-      "exists": true,
-      "order_in_page": 3,
-      "caption_or_role": "图 3 · 网格拟合示例：(a) 多视角(EgoExo4D) (b) 基于扫描(Re:Interhand)，多视角保真更高。",
-      "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
-    },
-    {
-      "paper": "sam3dbody",
-      "relative_path": "assets/figures/sam3dbody/sam3dbody_fig2.png",
-      "exists": true,
-      "order_in_page": 4,
-      "caption_or_role": "图 4 · 3DB 架构：共享编码器 + 身体/手部双解码器，输出 MHR 的 Pose/Shape/Skeleton/Camera。",
-      "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
-    },
-    {
-      "paper": "sam3dbody",
-      "relative_path": "assets/figures/sam3dbody/sam3dbody_fig8.png",
-      "exists": true,
-      "order_in_page": 5,
-      "caption_or_role": "图 5 · 人类偏好胜率(Figure 8)：7800 人盲评，对最强基线 NLF 胜率 83.8%。",
-      "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
-    },
-    {
-      "paper": "sam3dbody",
-      "relative_path": "assets/figures/sam3dbody/sam3dbody_fig6.png",
-      "exists": true,
-      "order_in_page": 6,
-      "caption_or_role": "图 6 · 与六个 SOTA 的定性对比(SA-1B)：复杂姿态/体型/遮挡下肢体与手部细节更准。",
-      "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
-    }
-  ]
+ "site": "CVPR 2026 Best Papers Digest",
+ "generated_date": "2026-06-09",
+ "policy": "All figures used in completed pages are local PNG files extracted from paper PDF, supplementary PDF, or official project pages. Pending cards use traceable PDF/project figure crops, not decorative placeholders.",
+ "figures": [
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_fig1_teaser.png",
+   "exists": true,
+   "width": 1040,
+   "height": 1100,
+   "order_in_page": 1,
+   "caption_or_role": "图 1 · D4RT teaser。 注意右侧不同颜色/符号并不是装饰：它们对应 point cloud、point tracks、camera parameters 等输出，说明 D4RT 试图用一个接口覆盖多类 4D 几何输出。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_table2_capabilities.png",
+   "exists": true,
+   "width": 985,
+   "height": 680,
+   "order_in_page": 2,
+   "caption_or_role": "图 2 · Model capabilities 表。 这张表不是单纯列 baseline，而是在说明 D4RT 的新意：动态 correspondence、flexible reference frames、sparse decoding、global context、single decoder 同时成立。读者应看最右侧 D4RT 与 VGGT/π3/STv2 的功能差异。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_fig2_model_overview.png",
+   "exists": true,
+   "width": 2090,
+   "height": 715,
+   "order_in_page": 3,
+   "caption_or_role": "图 3 · 方法总览。 左侧视频进入 global self-attention encoder，形成 Global Scene Representation；右侧 query decoder 接收 $(u,v,t_{src},t_{tgt},t_{cam})$ 和 local frame patch，然后输出 3D position $P$。注意图中红色 dotted box：这是 D4RT 把任务统一起来的接口。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_project_method_left.png",
+   "exists": true,
+   "width": 1854,
+   "height": 679,
+   "order_in_page": 4,
+   "caption_or_role": "图 4a · 项目页方法图：encoder 形成全局场景表示。 这张图比论文总览更适合建立直觉：模型先压缩整段视频，而不是逐帧做局部 depth。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_project_method_right.png",
+   "exists": true,
+   "width": 1013,
+   "height": 679,
+   "order_in_page": 5,
+   "caption_or_role": "图 4b · 项目页方法图：query decoder 逐点回答。 关键在于每个 query 可独立处理，因此点数增加时可以并行扩展。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_table1_unified_decoding.png",
+   "exists": true,
+   "width": 1000,
+   "height": 440,
+   "order_in_page": 6,
+   "caption_or_role": "图 5 · Unified decoding。 表中每一行是一个任务，每一列是 query 的一个维度。Point Track 固定像素与 source time、遍历 target time；Point Cloud/Depth 遍历空间像素；Extrinsics/Intrinsics 则用粗网格估计相机参数。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_algorithm1_all_pixels.png",
+   "exists": true,
+   "width": 995,
+   "height": 715,
+   "order_in_page": 7,
+   "caption_or_role": "图 6 · Efficient Dense Tracking of All Pixels。 算法维护一个 occupancy grid $G$：每次只从未访问点启动 track；一条 track 覆盖到的可见像素会被标记为 visited。这样不是机械枚举所有 source-target 像素对，而是利用轨迹自身覆盖冗余。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_supp_training_loss_formula.png",
+   "exists": true,
+   "width": 1750,
+   "height": 280,
+   "order_in_page": 8,
+   "caption_or_role": "图 7 · Supplement 中的 composite loss。 读这张公式图时不要只看符号：3D point 是主任务，2D position / visibility / displacement / confidence / normal 是让 query decoder 保持投影、可见性、运动与局部几何一致的辅助约束。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_fig3_speed_accuracy.png",
+   "exists": true,
+   "width": 990,
+   "height": 670,
+   "order_in_page": 9,
+   "caption_or_role": "图 8a · Pose accuracy vs speed。 D4RT 在 A100 上 pose estimation 超过 200 FPS，并位于右上区域；这张图证明“快”不是牺牲精度换来的。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_table3_tracking_throughput.png",
+   "exists": true,
+   "width": 965,
+   "height": 400,
+   "order_in_page": 10,
+   "caption_or_role": "图 8b · 3D tracking throughput。 D4RT 在 60/24/10/1 FPS 下可处理的 full-video tracks 明显更多；读者应看 60 FPS 下 550 vs SpatialTrackerV2 的 29，以及 1 FPS 下 40,180。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_fig4_reconstruction_results.png",
+   "exists": true,
+   "width": 2050,
+   "height": 1155,
+   "order_in_page": 11,
+   "caption_or_role": "图 9 · Reconstruction results across methods。 论文特意选了 swan、train 等动态样例：MegaSaM/π3 等重建方法会产生动态对象重复或失败；SpatialTrackerV2 能抓动态但只跟踪部分区域；D4RT 输出更完整的 4D 表示。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_table4_tracking_results.png",
+   "exists": true,
+   "width": 2080,
+   "height": 760,
+   "order_in_page": 12,
+   "caption_or_role": "图 10 · TAPVid-3D tracking 主结果。 左半是 camera-coordinate 3D tracking，右半是 world-coordinate 3D tracking。关键是 D4RT 在 world coordinate 任务上仍能保持强表现，说明它不只是局部相机坐标下的 tracker。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_table5_depth_pointmap.png",
+   "exists": true,
+   "width": 2070,
+   "height": 535,
+   "order_in_page": 13,
+   "caption_or_role": "图 11 · Video depth / point map estimation。 Sintel point cloud L1 从 π3 的 1.139 降到 D4RT 的 0.768；ScanNet point cloud L1 也达到 0.028。深度方面，D4RT 在 Sintel/ScanNet/KITTI 上 top-tier，但 Bonn 上不是所有列都最优。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_table6_pose_estimation.png",
+   "exists": true,
+   "width": 980,
+   "height": 370,
+   "order_in_page": 14,
+   "caption_or_role": "图 12 · Camera pose estimation。 D4RT 在 Sintel ATE/RPE-T 与 Re10K Pose AUC 上表现突出；ScanNet RPE-R 并非最优，说明“全面 SOTA”要按指标细读。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_fig6_local_patch_ablation.png",
+   "exists": true,
+   "width": 990,
+   "height": 790,
+   "order_in_page": 15,
+   "caption_or_role": "图 13a · local patch 视觉消融。 没有 local patch 时边界更糊；加入 local patch 后 depth map 的低层细节和 object boundary 更清晰。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_table7_local_rgb_patch.png",
+   "exists": true,
+   "width": 990,
+   "height": 400,
+   "order_in_page": 16,
+   "caption_or_role": "图 13b · local RGB patch 数值消融。 ViT-L 上 AbsRel(S) 从 0.366 降到 0.302，ATE 从 0.173 降到 0.091，是一个大幅收益。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_table8_backbone_size.png",
+   "exists": true,
+   "width": 990,
+   "height": 410,
+   "order_in_page": 17,
+   "caption_or_role": "图 14a · backbone size 消融。 ViT-B→L→H→g 主要改善 depth 与 RPE-R；但 ATE 并非单调最优，说明 scaling 不是所有 pose 指标的万能解。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_table9_aux_losses.png",
+   "exists": true,
+   "width": 990,
+   "height": 480,
+   "order_in_page": 18,
+   "caption_or_role": "图 14b · auxiliary losses 消融。 2D position / normal 对 depth 更关键，confidence 对 pose 尤其关键；辅助损失的收益不是同质的。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_supp_table11_initialization.png",
+   "exists": true,
+   "width": 1080,
+   "height": 280,
+   "order_in_page": 19,
+   "caption_or_role": "图 15a · initialization 消融。 随机初始化 vs VideoMAE 初始化差距巨大，说明 D4RT 不是只靠 query trick；视频表征预训练是关键底座。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_supp_table12_public_training.png",
+   "exists": true,
+   "width": 1730,
+   "height": 405,
+   "order_in_page": 20,
+   "caption_or_role": "图 15b · public-only training data。 仅用公开数据训练的 D4RT 仍强于多个对比方法；这缓解了“只是 internal data 堆出来”的质疑，但不等于完全复现。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_supp_table10_subpixel.png",
+   "exists": true,
+   "width": 1495,
+   "height": 345,
+   "order_in_page": 21,
+   "caption_or_role": "图 16a · query density / patch fidelity 消融。 高分辨率视频 patch 输入 decoder 可改善 PDBE 等边界指标，说明子像素细节主要来自 query 层的局部信息。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_supp_fig9_subpixel_detail.png",
+   "exists": true,
+   "width": 1730,
+   "height": 880,
+   "order_in_page": 22,
+   "caption_or_role": "图 16b · sub-pixel detail recovery。 注意底行头发等细结构：Config 4 的边缘更锐，而整体计算/内存没有随全局输入分辨率同步增加。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_pdf_fig5_in_the_wild.png",
+   "exists": true,
+   "width": 2080,
+   "height": 800,
+   "order_in_page": 23,
+   "caption_or_role": "图 17a · in-the-wild videos。 静态场景看几何一致性，动态场景看轨迹是否连续。它证明 D4RT 不只是 benchmark 上的点表格。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_project_capabilities_frames.png",
+   "exists": true,
+   "width": 1687,
+   "height": 276,
+   "order_in_page": 24,
+   "caption_or_role": "图 17b · 项目页 capabilities GIF 关键帧。 这里把动图转成 PNG contact sheet，避免正文依赖低清动图；读者可看同一视频下 tracking 和 point cloud 输出的关系。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_supp_fig12_reconstruction_comparison.png",
+   "exists": true,
+   "width": 1730,
+   "height": 1025,
+   "order_in_page": 25,
+   "caption_or_role": "图 18 · Supplement reconstruction comparison。 补充图继续强调动态对象与完整点云的差异：D4RT 的优势主要来自能从任意 frame 启动/查询轨迹，而非后处理补洞。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "d4rt",
+   "relative_path": "assets/figures/d4rt_supp_fig13_depth_comparison.png",
+   "exists": true,
+   "width": 1730,
+   "height": 810,
+   "order_in_page": 26,
+   "caption_or_role": "图 19 · Supplement depth comparison。 这张图帮助校验 local patch 与全局 encoder 的组合：D4RT 深度边界更锐，但极端细结构仍可能受输入分辨率和 patch 设计限制。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_fig1_teaser.png",
+   "exists": true,
+   "width": 1945,
+   "height": 550,
+   "order_in_page": 1,
+   "caption_or_role": "图 1 · 论文 teaser。 SAM 3D 把一张真实图像拆成可组合的 3D objects：上方展示室内与街景，底部展示为单个物体恢复出的 3D assets。读者应看黄框标注的目标物体如何被还原成独立 3D 资产。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_fig2_architecture.png",
+   "exists": true,
+   "width": 1950,
+   "height": 710,
+   "order_in_page": 2,
+   "caption_or_role": "图 2 · SAM 3D architecture。 上半部分 Geometry model 预测 coarse shape 与 layout；下半部分 Texture & Refinement model 在 coarse voxels 上细化 mesh/GS 输出。右侧 Mixture-of-Transformers 说明 shape token 与 layout token 共享信息但有 attention mask 约束。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_fig3_data_examples.png",
+   "exists": true,
+   "width": 1960,
+   "height": 1150,
+   "order_in_page": 3,
+   "caption_or_role": "图 3 · SAM 3D data examples。 四行分别对应 Isolated 3D Objects、Render-Paste 3D Objects、MITL 3D Objects、Artist 3D Objects。它说明训练数据逐步从干净合成走向真实遮挡/杂乱场景。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_supp_fig10_category_distribution.png",
+   "exists": true,
+   "width": 1670,
+   "height": 875,
+   "order_in_page": 4,
+   "caption_or_role": "图 6 · Supplement Fig. 10 类别分布。 top-80 类别呈长尾分布。读者应关注尾部类别：真实图像 3D 重建不仅是常见家具/车辆，还要处理稀有小物体。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_fig4_training_paradigm_table1.png",
+   "exists": true,
+   "width": 2110,
+   "height": 600,
+   "order_in_page": 5,
+   "caption_or_role": "图 4 · 训练范式与阶段表。 左侧是 synthetic pre-training → semi-synthetic mid-training → real-world SFT/post-training → preference optimization 的闭环；右侧 Table 1 把每个阶段对应的数据和输入条件列出。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_fig5_data_collection_pipeline.png",
+   "exists": true,
+   "width": 2105,
+   "height": 515,
+   "order_in_page": 6,
+   "caption_or_role": "图 5 · 数据收集 pipeline。 Stage 1 选目标与 mask，Stage 2 选择 shape/texture 候选，Stage 2.5 把困难样本交给 3D artists，Stage 3 做 2.5D scene alignment。该图是理解 SAM 3D 数据闭环的核心。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_supp_algorithm1_alignment.png",
+   "exists": true,
+   "width": 1705,
+   "height": 805,
+   "order_in_page": 7,
+   "caption_or_role": "图 7 · Algorithm 1: SAM 3D Basic Alignment。 该算法把候选生成、人类排序、质量阈值过滤、SFT 与 DPO 串成循环。它证明 post-training 不是一次性人工标注，而是模型与数据共同进化。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_supp_fig13_fig14_data_engine_reward.png",
+   "exists": true,
+   "width": 1705,
+   "height": 590,
+   "order_in_page": 8,
+   "caption_or_role": "图 8 · 数据引擎改进与 reward recovery。 左图说明模型成功率在常见类别先提升，再逐步覆盖尾部；右图显示用 VLM/reward model 做 best-of-N 搜索以提高困难样本通过率。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_fig6_qualitative_comparison.png",
+   "exists": true,
+   "width": 2110,
+   "height": 635,
+   "order_in_page": 9,
+   "caption_or_role": "图 9 · qualitative comparison。 左侧比较单物体 shape，右侧比较场景重建。要看遮挡物体和复杂场景里，SAM 3D 是否能恢复完整物体并放回正确位置。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_table2_shape_quantitative.png",
+   "exists": true,
+   "width": 1040,
+   "height": 510,
+   "order_in_page": 10,
+   "caption_or_role": "表 5 · Shape quantitative comparison。 SAM 3D 在 SA-3DAO 的 F1、vIoU、Chamfer、EMD 上明显优于基线；但 ULIP 并非最高，提示视觉语义相似度和几何精度不是完全同一个指标。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_table3_layout_quantitative.png",
+   "exists": true,
+   "width": 2110,
+   "height": 585,
+   "order_in_page": 11,
+   "caption_or_role": "表 6 · Layout quantitative comparison。 SAM 3D joint model 在 SA-3DAO 与 Aria Digital Twin 上均显著超过 pipeline 组合，支持“shape 与 layout 应联合建模”的观点。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_fig7_fig8_preferences.png",
+   "exists": true,
+   "width": 2110,
+   "height": 540,
+   "order_in_page": 12,
+   "caption_or_role": "图 10 · Preference comparison。 左侧是 scene/object reconstruction 的偏好率，右侧是 texture 偏好率。读者应把它看作感知质量证据，而不是替代几何指标。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_fig9_data_engine.png",
+   "exists": true,
+   "width": 1030,
+   "height": 520,
+   "order_in_page": 13,
+   "caption_or_role": "图 11 · Data engine iterations。 Elo 随迭代上升，但单纯扩展 training data 的收益逐渐递减，说明数据质量与阶段设计同样关键。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_table4_multistage_ablation.png",
+   "exists": true,
+   "width": 1015,
+   "height": 465,
+   "order_in_page": 14,
+   "caption_or_role": "表 7 · Multi-stage training ablation。 从 pre-training 到 mid-training、SFT、DPO、Art-3DO，每一步都带来累计收益，是论文最重要的因果证据之一。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_supp_fig20_additional_qualitative.png",
+   "exists": true,
+   "width": 1520,
+   "height": 2110,
+   "order_in_page": 15,
+   "caption_or_role": "图 12 · Additional qualitative shape and texture。 Supplement 中的大量例子展示了自然图像、zoom-in、SAM 3D 与多个基线的对比；它补充说明主文 Figure 6 不是孤例。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "sam3d",
+   "relative_path": "assets/figures/sam3d/sam3d_supp_fig21_scene_reconstruction.png",
+   "exists": true,
+   "width": 1540,
+   "height": 2045,
+   "order_in_page": 16,
+   "caption_or_role": "图 13 · Scene reconstruction qualitative examples。 多房间、商店、农场等场景中，SAM 3D 输出可组合 objects；读者应同时看成功的布局恢复和仍然可能出现的对象缺失/尺度不稳。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "nitrogen",
+   "relative_path": "assets/figures/nitrogen/nitrogen_fig1_overview_pdf_crop.png",
+   "exists": true,
+   "width": 1470,
+   "height": 590,
+   "order_in_page": 1,
+   "caption_or_role": "图 1 · NitroGen 总览。 左边是 universal simulator，中间是 multi-game foundation agent，右边是 internet-scale video-action dataset。读者应重点看这三块的闭环：没有动作标签，就无法行为克隆；没有统一 harness，就无法评测跨游戏泛化。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "nitrogen",
+   "relative_path": "assets/figures/nitrogen/nitrogen_fig2_action_pipeline_pdf_crop.png",
+   "exists": true,
+   "width": 1460,
+   "height": 965,
+   "order_in_page": 2,
+   "caption_or_role": "图 2 · Video-action dataset pipeline。 左侧展示不同 gamepad overlays 的多样性；右侧展示从视频定位 controller 区域、裁剪、再用 hybrid classification-segmentation network 解析 joystick 与 buttons 的流程。它证明 NitroGen 的数据不是人工日志，而是从图像中的控制器叠层恢复 action。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "nitrogen",
+   "relative_path": "assets/figures/nitrogen/nitrogen_fig3_dataset_distribution_pdf_crop.png",
+   "exists": true,
+   "width": 1410,
+   "height": 495,
+   "order_in_page": 3,
+   "caption_or_role": "图 3 · 数据分布。 左图显示 846 个游戏超过 1 小时、91 个超过 100 小时、15 个超过 1,000 小时；右图显示 Action-RPG 占 34.9%，Platformer 占 18.4%，Action-Adventure 占 9.2%。这既证明规模，也暴露数据偏向。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "nitrogen",
+   "relative_path": "assets/figures/nitrogen/nitrogen_overview_project.png",
+   "exists": true,
+   "width": 1920,
+   "height": 835,
+   "order_in_page": 4,
+   "caption_or_role": "图 4a · 项目页 overview。 项目图用更干净的方式展示三件套：dataset、foundation agent 和 simulator。它适合在读完整论文 pipeline 后回看整体闭环。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "nitrogen",
+   "relative_path": "assets/figures/nitrogen/nitrogen_fig4_rollouts_pdf_crop.png",
+   "exists": true,
+   "width": 1460,
+   "height": 913,
+   "order_in_page": 5,
+   "caption_or_role": "图 4b · In-game rollouts。 不同游戏画面说明评测并非单一环境。读者应看画面风格、视角和任务类型差异：这正是论文要测试“generalist gaming agent”的原因。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "nitrogen",
+   "relative_path": "assets/figures/nitrogen/nitrogen_appendix_formula_crop.png",
+   "exists": true,
+   "width": 810,
+   "height": 410,
+   "order_in_page": 6,
+   "caption_or_role": "图 5 · Supplement 中的 flow matching 公式原图。 正文公式已重写为 MathJax-safe TeX；这张图用于核对符号与论文原意，避免从 PDF 文本抽取时出现反斜杠或上标错误。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "nitrogen",
+   "relative_path": "assets/figures/nitrogen/nitrogen_action_quality_project.png",
+   "exists": true,
+   "width": 6359,
+   "height": 2200,
+   "order_in_page": 7,
+   "caption_or_role": "图 6 · Action quality / parsing 结果。 这张图对应“标签能不能信”的基础问题：如果 joystick 和 buttons 解析错误，下游 BC 不可能稳定。读者应关注不同 controller family 的差异，而不是只看平均数。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "nitrogen",
+   "relative_path": "assets/figures/nitrogen/nitrogen_fig5_pretraining_results_pdf_crop.png",
+   "exists": true,
+   "width": 1295,
+   "height": 440,
+   "order_in_page": 8,
+   "caption_or_role": "图 7 · 500M pre-training results。 它想证明单一模型能在 3D、2D side-scrolling、top-down 等不同游戏类型中产生有效控制。关键不是每个柱子多高，而是多个任务族均非零，说明统一 policy 不是只记住单一游戏。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "nitrogen",
+   "relative_path": "assets/figures/nitrogen/nitrogen_fig7_post_training_pdf_crop.png",
+   "exists": true,
+   "width": 1340,
+   "height": 465,
+   "order_in_page": 9,
+   "caption_or_role": "图 8 · Post-training transfer。 左图看数据量变化，右图看任务类型差异。读者应重点看 combat/navigation 与 game-specific 的分化：这正是“预训练学到通用控制，但不等于理解所有新规则”的证据。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "nitrogen",
+   "relative_path": "assets/figures/nitrogen/nitrogen_results_finetune_project.png",
+   "exists": true,
+   "width": 6361,
+   "height": 2002,
+   "order_in_page": 10,
+   "caption_or_role": "图 9 · 项目页 fine-tuning / self-imitation 结果。 项目页图更清晰地把 post-training 与 self-imitation 放在一起。它证明预训练权重有助于低数据迁移，也暴露了仍需 task-specific adaptation。",
+   "source_note": "Local PNG extracted from PDF/Supplement/project page for academic commentary."
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_fig1_teaser.png",
+   "file": "native_fig1_teaser.png",
+   "role": "Figure 1 teaser: reconstruction/generation/compactness comparison",
+   "source_note": "CVPR 2026 paper PDF Fig. 1",
+   "page": 1,
+   "dpi": 260,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_fig2_pipeline.png",
+   "file": "native_fig2_pipeline.png",
+   "role": "Figure 2 overview pipeline: 3D assets → O-Voxel → SC-VAE → SLat → flow",
+   "source_note": "CVPR 2026 paper PDF Fig. 2",
+   "page": 3,
+   "dpi": 260,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_fig3_ovoxel.png",
+   "file": "native_fig3_ovoxel.png",
+   "role": "Figure 3 O-Voxel representation and bidirectional conversion",
+   "source_note": "CVPR 2026 paper PDF Fig. 3",
+   "page": 3,
+   "dpi": 260,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_fig4_scvae.png",
+   "file": "native_fig4_scvae.png",
+   "role": "Figure 4 SC-VAE architecture",
+   "source_note": "CVPR 2026 paper PDF Fig. 4",
+   "page": 5,
+   "dpi": 260,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_fig5_generation_gallery.png",
+   "file": "native_fig5_generation_gallery.png",
+   "role": "Figure 5 generation gallery: geometry and PBR materials",
+   "source_note": "CVPR 2026 paper PDF Fig. 5",
+   "page": 7,
+   "dpi": 250,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_fig6_visual_comparison.png",
+   "file": "native_fig6_visual_comparison.png",
+   "role": "Figure 6 visual comparison with other image-to-3D methods",
+   "source_note": "CVPR 2026 paper PDF Fig. 6",
+   "page": 7,
+   "dpi": 250,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_fig7_pbr_texture.png",
+   "file": "native_fig7_pbr_texture.png",
+   "role": "Figure 7 shape-conditioned PBR texture generation comparison",
+   "source_note": "CVPR 2026 paper PDF Fig. 7",
+   "page": 7,
+   "dpi": 250,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_table1_reconstruction.png",
+   "file": "native_table1_reconstruction.png",
+   "role": "Table 1 reconstruction efficiency and fidelity",
+   "source_note": "CVPR 2026 paper PDF Table 1",
+   "page": 8,
+   "dpi": 260,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_table2_generation.png",
+   "file": "native_table2_generation.png",
+   "role": "Table 2 image-to-3D generation metrics and user study",
+   "source_note": "CVPR 2026 paper PDF Table 2",
+   "page": 8,
+   "dpi": 260,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_table3_ablation.png",
+   "file": "native_table3_ablation.png",
+   "role": "Table 3 SC-VAE ablation",
+   "source_note": "CVPR 2026 paper PDF Table 3",
+   "page": 8,
+   "dpi": 260,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_fig8_test_time_scaling.png",
+   "file": "native_fig8_test_time_scaling.png",
+   "role": "Figure 8 test-time resolution and compute scaling",
+   "source_note": "CVPR 2026 paper PDF Fig. 8",
+   "page": 8,
+   "dpi": 260,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_supp_fig1_flexgemm_speed.png",
+   "file": "native_supp_fig1_flexgemm_speed.png",
+   "role": "Supplement Figure 1 FlexGEMM speed comparison",
+   "source_note": "CVPR 2026 supplementary PDF Fig. 1",
+   "page": 5,
+   "dpi": 240,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_supp_table3_dataset.png",
+   "file": "native_supp_table3_dataset.png",
+   "role": "Supplement Table 3 training/evaluation dataset composition",
+   "source_note": "CVPR 2026 supplementary PDF Table 3",
+   "page": 5,
+   "dpi": 260,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_supp_fig2_user_study.png",
+   "file": "native_supp_fig2_user_study.png",
+   "role": "Supplement Figure 2 user study interface",
+   "source_note": "CVPR 2026 supplementary PDF Fig. 2",
+   "page": 7,
+   "dpi": 230,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_supp_table4_user_study.png",
+   "file": "native_supp_table4_user_study.png",
+   "role": "Supplement Table 4 user study statistics",
+   "source_note": "CVPR 2026 supplementary PDF Table 4",
+   "page": 8,
+   "dpi": 260,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_supp_fig3_reconstruction.png",
+   "file": "native_supp_fig3_reconstruction.png",
+   "role": "Supplement Figure 3 additional reconstruction results",
+   "source_note": "CVPR 2026 supplementary PDF Fig. 3",
+   "page": 10,
+   "dpi": 230,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_supp_fig4_shape_fidelity.png",
+   "file": "native_supp_fig4_shape_fidelity.png",
+   "role": "Supplement Figure 4 shape reconstruction qualitative comparison",
+   "source_note": "CVPR 2026 supplementary PDF Fig. 4",
+   "page": 11,
+   "dpi": 230,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_supp_fig5_more_generation.png",
+   "file": "native_supp_fig5_more_generation.png",
+   "role": "Supplement Figure 5 additional image-to-3D generation results",
+   "source_note": "CVPR 2026 supplementary PDF Fig. 5",
+   "page": 12,
+   "dpi": 230,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_supp_fig6_more_comparison.png",
+   "file": "native_supp_fig6_more_comparison.png",
+   "role": "Supplement Figure 6 more generation comparisons",
+   "source_note": "CVPR 2026 supplementary PDF Fig. 6",
+   "page": 13,
+   "dpi": 230,
+   "exists": true
+  },
+  {
+   "paper": "native",
+   "relative_path": "assets/figures/native/native_thumb.png",
+   "file": "native_thumb.png",
+   "role": "thumbnail",
+   "source_note": "Derived from Native Figure 1 teaser",
+   "page": 1,
+   "dpi": null,
+   "exists": true
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_fig1_teaser_thumb.png",
+   "exists": true,
+   "width": 680,
+   "height": 386,
+   "order_in_page": 1,
+   "caption_or_role": "Homepage thumbnail：从 teaser 制作的首页缩略图。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_algorithm1.png",
+   "exists": true,
+   "width": 1264,
+   "height": 541,
+   "order_in_page": 2,
+   "caption_or_role": "图 4 · Algorithm 1：默认单噪声 ChordEdit 伪代码，包含 chord field、transport 和 optional prox。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig10_noise_samples.png",
+   "exists": true,
+   "width": 1050,
+   "height": 659,
+   "order_in_page": 3,
+   "caption_or_role": "图 11a · Noise sample qualitative ablation：展示 n=1 到 n=4 的边际收益很小。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig11_pareto_seed.png",
+   "exists": true,
+   "width": 1066,
+   "height": 591,
+   "order_in_page": 4,
+   "caption_or_role": "图 11b · Seed robustness：LPIPS-CLIP 前沿与 seed 直方图。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig1_teaser.png",
+   "exists": true,
+   "width": 2234,
+   "height": 1267,
+   "order_in_page": 5,
+   "caption_or_role": "图 1 · ChordEdit teaser：展示 source image、语义变更标签与 edited image，说明方法连接 SD-Turbo / SwiftBrush-v2 并保持非编辑区域。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig2_fig3_intro.png",
+   "exists": true,
+   "width": 992,
+   "height": 1050,
+   "order_in_page": 6,
+   "caption_or_role": "Intro composite crop：包含 Figure 2/3，用于素材库。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig2_runtime_quality.png",
+   "exists": true,
+   "width": 975,
+   "height": 683,
+   "order_in_page": 7,
+   "caption_or_role": "图 2a · Runtime-quality scatter：比较 ChordEdit 与 one/few/multi-step 编辑器在 PSNR、CLIP 与 runtime 上的折中。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig3_simple_drift_failure.png",
+   "exists": true,
+   "width": 958,
+   "height": 883,
+   "order_in_page": 8,
+   "caption_or_role": "图 2b · naive simple drift failure：展示 one-step drift difference 导致主体变形与背景破坏。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig4_field_stability.png",
+   "exists": true,
+   "width": 2191,
+   "height": 841,
+   "order_in_page": 9,
+   "caption_or_role": "Paper Figure 4 field stability：PDF 原图版本的 field stability 三栏对比。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig5_toy_transport.png",
+   "exists": true,
+   "width": 1250,
+   "height": 700,
+   "order_in_page": 10,
+   "caption_or_role": "图 6 · 2D toy transport：直观解释低能量 chord field 相比 naive residual field 更稳定。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig6_proximal_refinement.png",
+   "exists": true,
+   "width": 1083,
+   "height": 425,
+   "order_in_page": 11,
+   "caption_or_role": "图 5 · Proximal refinement：展示可选目标语义增强步骤。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig7_comparison.png",
+   "exists": true,
+   "width": 2142,
+   "height": 1666,
+   "order_in_page": 12,
+   "caption_or_role": "ChordEdit figure extracted from PDF/Supp/project page for academic commentary.",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig8_energy.png",
+   "exists": true,
+   "width": 2175,
+   "height": 1217,
+   "order_in_page": 13,
+   "caption_or_role": "ChordEdit figure extracted from PDF/Supp/project page for academic commentary.",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_fig9_stability_pareto.png",
+   "exists": true,
+   "width": 1034,
+   "height": 1067,
+   "order_in_page": 14,
+   "caption_or_role": "图 10a · Integration-step stability and Pareto front：主文稳定性/权衡曲线。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_table1_main_results.png",
+   "exists": true,
+   "width": 2175,
+   "height": 633,
+   "order_in_page": 15,
+   "caption_or_role": "图 7 · PIE-Bench main result table：主实验表，比较一致性、CLIP 语义、训练/反演属性、NFE、runtime 与 VRAM。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_pdf_table2_table3_ablation.png",
+   "exists": true,
+   "width": 900,
+   "height": 842,
+   "order_in_page": 16,
+   "caption_or_role": "图 12 · Transport/prox and model-agnostic ablations：表 2 和表 3，解释保持/语义拆分及跨 backbone 改善。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_project_ablation.png",
+   "exists": true,
+   "width": 1570,
+   "height": 792,
+   "order_in_page": 17,
+   "caption_or_role": "Project ablation high-resolution image：项目页消融原图。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_project_comparison.png",
+   "exists": true,
+   "width": 1530,
+   "height": 1028,
+   "order_in_page": 18,
+   "caption_or_role": "Project comparison high-resolution image：项目页定性比较原图。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_project_method.png",
+   "exists": true,
+   "width": 1556,
+   "height": 636,
+   "order_in_page": 19,
+   "caption_or_role": "图 3 · Project method diagram：三栏对比 multi-step simple drift、one-step simple drift 和 ChordEdit 低能量控制场。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_project_teaser_frames.png",
+   "exists": true,
+   "width": 1080,
+   "height": 1050,
+   "order_in_page": 20,
+   "caption_or_role": "Project teaser GIF frame sheet：从项目页 GIF 抽取的 PNG 帧表，用于知识库。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_supp_algorithm_multi_noise.png",
+   "exists": true,
+   "width": 917,
+   "height": 892,
+   "order_in_page": 21,
+   "caption_or_role": "Supplement multi-noise algorithm：多噪声版本伪代码，用于说明 n>1 扩展。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_supp_fig1_fig2_hyperparam_pareto.png",
+   "exists": true,
+   "width": 2091,
+   "height": 1450,
+   "order_in_page": 22,
+   "caption_or_role": "图 10b · Supplement hyperparameter Pareto：补充材料中 MSE/PSNR/SSIM 与 CLIP 的 Pareto 前沿。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_supp_fig3_fig4_noise_hyperparam.png",
+   "exists": true,
+   "width": 2091,
+   "height": 1341,
+   "order_in_page": 23,
+   "caption_or_role": "Supplement noise/hyperparameter plots：补充材料中的噪声样本和 temporal hyperparameter 分析。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_supp_qualitative_more1.png",
+   "exists": true,
+   "width": 2308,
+   "height": 2442,
+   "order_in_page": 24,
+   "caption_or_role": "图 14b · More qualitative examples I：补充材料更多比较样例。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_supp_qualitative_more2.png",
+   "exists": true,
+   "width": 2308,
+   "height": 2442,
+   "order_in_page": 25,
+   "caption_or_role": "More qualitative examples II：补充材料更多比较样例。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_supp_table1_extended_metrics.png",
+   "exists": true,
+   "width": 2141,
+   "height": 908,
+   "order_in_page": 26,
+   "caption_or_role": "图 13 · Extended metrics table：补充材料中包含 Struct. Dist、SSIM、LPIPS 的扩展结果。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "chordedit",
+   "relative_path": "assets/figures/chordedit/chordedit_supp_user_study_results.png",
+   "exists": true,
+   "width": 934,
+   "height": 784,
+   "order_in_page": 27,
+   "caption_or_role": "图 14a · User study results：语义对齐与保持质量偏好率。",
+   "source_note": "Local PNG extracted from CVF PDF, supplementary PDF, or official project page; used for academic commentary."
+  },
+  {
+   "paper": "sam3dbody",
+   "relative_path": "assets/figures/sam3dbody/sam3dbody_fig1.png",
+   "exists": true,
+   "order_in_page": 1,
+   "caption_or_role": "图 1 · 全身网格恢复 teaser：跨视角跨难度的身体+手部统一估计；顶部为开源入口。",
+   "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
+  },
+  {
+   "paper": "sam3dbody",
+   "relative_path": "assets/figures/sam3dbody/sam3dbody_fig3.png",
+   "exists": true,
+   "order_in_page": 2,
+   "caption_or_role": "图 2 · 标注工具 GUI + 稠密(595)/稀疏关键点对比，密集检测器吃稀疏人工标注作引导。",
+   "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
+  },
+  {
+   "paper": "sam3dbody",
+   "relative_path": "assets/figures/sam3dbody/sam3dbody_fig5.png",
+   "exists": true,
+   "order_in_page": 3,
+   "caption_or_role": "图 3 · 网格拟合示例：(a) 多视角(EgoExo4D) (b) 基于扫描(Re:Interhand)，多视角保真更高。",
+   "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
+  },
+  {
+   "paper": "sam3dbody",
+   "relative_path": "assets/figures/sam3dbody/sam3dbody_fig2.png",
+   "exists": true,
+   "order_in_page": 4,
+   "caption_or_role": "图 4 · 3DB 架构：共享编码器 + 身体/手部双解码器，输出 MHR 的 Pose/Shape/Skeleton/Camera。",
+   "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
+  },
+  {
+   "paper": "sam3dbody",
+   "relative_path": "assets/figures/sam3dbody/sam3dbody_fig8.png",
+   "exists": true,
+   "order_in_page": 5,
+   "caption_or_role": "图 5 · 人类偏好胜率(Figure 8)：7800 人盲评，对最强基线 NLF 胜率 83.8%。",
+   "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
+  },
+  {
+   "paper": "sam3dbody",
+   "relative_path": "assets/figures/sam3dbody/sam3dbody_fig6.png",
+   "exists": true,
+   "order_in_page": 6,
+   "caption_or_role": "图 6 · 与六个 SOTA 的定性对比(SA-1B)：复杂姿态/体型/遮挡下肢体与手部细节更准。",
+   "source_note": "Local PNG caption-anchored from arXiv:2602.15989 PDF via extract_figures.py."
+  },
+  {
+   "paper": "voxtell",
+   "relative_path": "assets/figures/voxtell/voxtell_fig1.png",
+   "exists": true,
+   "width": 2128,
+   "height": 739,
+   "order_in_page": 1,
+   "caption_or_role": "图 1 · 四级难度能力阶梯（teaser）。从已知结构→跨模态→未见概念→真实报告整句，右侧条形图为留出放疗队列报告提示下 VoxTell 50.18 vs SAT 0.00。",
+   "source_note": "Local PNG extracted from arXiv PDF (caption-anchored, extract_figures.py) for academic commentary. Fig.2 architecture is vector-only and transcribed as HTML."
+  },
+  {
+   "paper": "voxtell",
+   "relative_path": "assets/figures/voxtell/voxtell_fig6.png",
+   "exists": true,
+   "width": 2250,
+   "height": 2267,
+   "order_in_page": 2,
+   "caption_or_role": "图 6（附录）· 1087 个统一概念的旭日图，按身体大区组织，外圈细化到子结构与病灶——为相关未见概念的插值泛化提供邻域。",
+   "source_note": "Local PNG extracted from arXiv PDF (caption-anchored, extract_figures.py) for academic commentary. Fig.2 architecture is vector-only and transcribed as HTML."
+  },
+  {
+   "paper": "voxtell",
+   "relative_path": "assets/figures/voxtell/voxtell_fig3.png",
+   "exists": true,
+   "width": 1018,
+   "height": 578,
+   "order_in_page": 3,
+   "caption_or_role": "图 3 · Prompt 稳定性箱线图：同结构多写法（含拼写错误）下，竞品箱体长而低、VoxTell 高而窄，对措辞不敏感。",
+   "source_note": "Local PNG extracted from arXiv PDF (caption-anchored, extract_figures.py) for academic commentary. Fig.2 architecture is vector-only and transcribed as HTML."
+  },
+  {
+   "paper": "voxtell",
+   "relative_path": "assets/figures/voxtell/voxtell_fig4.png",
+   "exists": true,
+   "width": 1018,
+   "height": 209,
+   "order_in_page": 4,
+   "caption_or_role": "图 4 · ReXGroundingCT 验证集：VoxTell 28.2 Dice / 67.8 HIT@5% vs SAT 13.1 / 49.8；同数据微调，差距来自多尺度 vs 单次融合。",
+   "source_note": "Local PNG extracted from arXiv PDF (caption-anchored, extract_figures.py) for academic commentary. Fig.2 architecture is vector-only and transcribed as HTML."
+  },
+  {
+   "paper": "voxtell",
+   "relative_path": "assets/figures/voxtell/voxtell_fig5.png",
+   "exists": true,
+   "width": 2129,
+   "height": 771,
+   "order_in_page": 5,
+   "caption_or_role": "图 5 · 定性对比（已知/未见/整句临床语言）：仅 VoxTell 在三类 prompt 上都给出准确掩码，并把病灶正确落在“右上叶”。",
+   "source_note": "Local PNG extracted from arXiv PDF (caption-anchored, extract_figures.py) for academic commentary. Fig.2 architecture is vector-only and transcribed as HTML."
+  }
+ ]
 }

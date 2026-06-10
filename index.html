@@ -358,7 +358,7 @@ body.lb-lock{overflow:hidden}
 </section>
 <section id="papers" class="home-panel" style="margin-top:18px">
   <h2>按话题浏览</h2>
-  <div class="filterbar"><button class="active" data-filter="all">All</button><button data-filter="Best Paper">Best Paper</button><button data-filter="Honorable">Honorable Mention</button><button data-filter="Student">Student Paper</button><button data-filter="3D">3D & Geometry</button><button data-filter="Embodied">Embodied AI</button><button data-filter="Editing">Image Editing</button></div>
+  <div class="filterbar"><button class="active" data-filter="all">All</button><button data-filter="Best Paper">Best Paper</button><button data-filter="Honorable">Honorable Mention</button><button data-filter="Student">Student Paper</button><button data-filter="3D">3D & Geometry</button><button data-filter="Embodied">Embodied AI</button><button data-filter="Editing">Image Editing</button><button data-filter="Medical">Medical AI</button></div>
   <input id="search" class="search" type="search" placeholder="搜索标题、作者、关键词，例如 D4RT / SAM 3D / Native / NitroGen / ChordEdit">
   <!-- PAPERS:START -->
   <h2 style="margin-top:26px">3D &amp; Geometry</h2>
@@ -439,6 +439,17 @@ body.lb-lock{overflow:hidden}
       <div><h3>SAM 3D Body: Robust Full-Body Human Mesh Recovery</h3><p><strong>Top Paper (candidate).</strong> 共享编码器 + 身体/手部双解码器拆解优化冲突，用手腕+肘部 re-prompt 缝回一致全身；配 VLM 数据引擎与多阶段网格拟合标注（700 万图），成为首个身手两端同时立住的单模型。</p><p class="mini">领域：Human Mesh Recovery · Promptable Enc–Dec</p><div class="card-links"><a href="https://ai.meta.com/sam3d">Project</a><a href="https://github.com/facebookresearch/sam-3d-body">Code</a><a href="papers/sam3dbody.html">Blog Digest</a></div></div>
     </article>
   </div>
+  <h2 style="margin-top:26px">Medical AI (CVPR 2026)</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Medical Medical AI biomedical VLM masked diffusion LLaDA visual instruction tuning VQA length control closed-form SOTA ASU lladamedv completed">
+      <img src="assets/figures/lladamedv/lladamedv_thumb.png" alt="LLaDA-MedV thumbnail" loading="lazy">
+      <div><h3>LLaDA-MedV: Exploring Large Language Diffusion Models for Biomedical Image Understanding</h3><p><strong>Medical AI (CVPR 2026).</strong> 首个生物医学掩码扩散 VLM：从固定长度全掩码画布迭代填空，长度成为输入超参而非 EOS 早停；开放式对话领先 ARM、闭合式 VQA 三连 SOTA（84.93/92.31/95.15）。</p><p class="mini">领域：Medical AI · 掩码扩散语言 VLM</p><div class="card-links"><a href="https://github.com/LLM-VLM-GSL/LLaDA-MedV">Code</a><a href="https://arxiv.org/abs/2508.01617">arXiv</a><a href="papers/lladamedv.html">Blog Digest</a></div></div>
+    </article>
+    <article class="paper-card" data-tags="Medical Medical AI text-promptable segmentation 3D CT MRI PET vision-language fusion multi-scale deep supervision UNet ResEncL Qwen3-Embedding open-vocabulary zero-shot DKFZ nnU-Net voxtell completed">
+      <img src="assets/figures/voxtell/voxtell_fig1.png" alt="VoxTell thumbnail" loading="lazy">
+      <div><h3>VoxTell: Free-Text Promptable Universal 3D Medical Image Segmentation</h3><p><strong>Medical AI (CVPR 2026).</strong> 把文本融合从 MaskFormer 的“末端一次点积”改成“每个解码尺度都融一次 + 深监督”：62K+ CT/MRI/PET、1087 概念上训练，11 个未见数据集零样本平均 Dice 70.85（次优 SAT 51.23），真实放射报告整句提示下 50.2 而 SAT 仅 0.0。</p><p class="mini">领域：Medical AI · 文本提示 3D 医学分割 / 多尺度视觉-语言融合</p><div class="card-links"><a href="https://github.com/MIC-DKFZ/VoxTell">Code</a><a href="https://arxiv.org/abs/2511.11450">arXiv</a><a href="papers/voxtell.html">Blog Digest</a></div></div>
+    </article>
+  </div>
 <!-- PAPERS:END -->
 </section>
 <section class="home-panel" style="margin-top:18px">
@@ -457,6 +468,8 @@ body.lb-lock{overflow:hidden}
   <tr><td>Delta Tokens</td><td>Top Paper (candidate)</td><td>World Model / Video</td><td>完成</td><td>6 图 · 3 表 · 公式passed</td><td><a href="papers/deltatok.html">Blog Digest</a></td></tr>
   <tr><td>MSPT</td><td>Top Paper (candidate)</td><td>Neural PDE / Physics</td><td>完成</td><td>6 图 · 5 表 · 公式passed</td><td><a href="papers/mspt.html">Blog Digest</a></td></tr>
   <tr><td>SAM 3D Body</td><td>Top Paper (candidate)</td><td>Human Mesh Recovery / Pose Estimation</td><td>完成</td><td>6 图 · 7 表 · 公式passed</td><td><a href="papers/sam3dbody.html">Blog Digest</a></td></tr>
+  <tr><td>LLaDA-MedV</td><td>Medical AI (CVPR 2026)</td><td>Medical AI (CVPR 2026)</td><td>完成</td><td>1 图 · 6 表 · 公式passed</td><td><a href="papers/lladamedv.html">Blog Digest</a></td></tr>
+  <tr><td>VoxTell</td><td>Medical AI (CVPR 2026)</td><td>Medical AI (CVPR 2026)</td><td>完成</td><td>5 图 · 4 表 · 公式passed</td><td><a href="papers/voxtell.html">Blog Digest</a></td></tr>
 <!-- STATUS:END -->
   </tbody></table></div>
 </section>
