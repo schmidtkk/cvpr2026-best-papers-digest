@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OctoMed 深读：医学多模态推理不靠新架构、不靠更大模型，凭一套"数据配方"把 7B 喂到 SOTA——多条推理轨迹为什么比多训几个 epoch 更值？</title>
+<meta name="description" content="CVPR 2026 Medical AI · OctoMed: Data Recipes for State-of-the-Art Multimodal Medical Reasoning 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Medical AI · 医学多模态推理的"数据配方"：SFT 蒸馏 + 多轨迹 + 任务感知长度自校准</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Medical AI &gt; OctoMed</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">11</span><span class="month">Jun</span></div><h1 id="paper-title">OctoMed 深读：医学多模态推理不靠新架构、不靠更大模型，凭一套"数据配方"把 7B 喂到 SOTA——多条推理轨迹为什么比多训几个 epoch 更值？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-11</span><span>CVPR 2026 · Medical AI · UW–Madison / Microsoft Research</span><span>来源：arXiv:2511.23269 PDF</span></div><div class="tags"><span class="tag orange">Medical AI</span><span class="tag">多模态推理</span><span class="tag">SFT 蒸馏</span><span class="tag green">数据配方 Data Recipe</span><span class="tag">拒绝采样多轨迹</span><span class="tag">任务感知长度自校准</span><span class="tag">8M / 6.8B tokens</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>这篇论文的立场很反潮流：当大家忙着发明新损失、堆 RL、做更大 backbone 时，OctoMed 把赌注全压在<strong>"喂什么数据"</strong>上。作者用一个被冻结的配方——<strong>从强 teacher（DeepSeek-R1 / GPT-4o）蒸馏带推理轨迹的样本 + 拒绝采样筛掉答错的轨迹</strong>——把规模一路推到 <strong>800 万样本、68 亿响应 token</strong>，只做监督微调（SFT），就把一个 7B 学生（Qwen2.5-VL-7B）在一大批<strong>分布外</strong>医学基准上调到开源 SOTA，多模态分类上甚至反超它的 teacher GPT-4o（67.29 vs 53.96），整体压过比它大 4 倍的 MedGemma-27B。立题问题因此很具体：<strong>给定"只做 SFT"这个约束，到底该如何<em>构造、平衡、放大</em>多模态推理数据，才能最有效地提升医学推理？</strong>三条主线贯穿全文：(1) <strong>每题保留多条</strong>有效推理轨迹（1→4→16 条）比单纯多训 epoch 更能抬高峰值（MedQA 75.16→85.01）；(2) <strong>CoT 还是 direct</strong> 取决于任务是"要推理"还是"要感知"；(3) 把不同长度的轨迹混在一起训，模型会<strong>涌现出"按题目难度自动调节推理长度"</strong>的能力——难题写长、易题写短，全程<strong>没有任何显式监督</strong>。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>OctoMed 把"数据配方"摆到医学推理模型的正中央：用拒绝采样保证轨迹正确、用多轨迹+多模态覆盖换泛化，<strong>纯 SFT</strong> 把 7B 学生调到跨分布开源 SOTA，并构建了目前<strong>最大</strong>的医学多模态推理数据集（8M 样本 / 6.8B token）。</div><div class="kv"><b>关键机制</b>知识蒸馏：teacher $\mathcal{T}$ 对每题采样 16 条推理轨迹，打分函数 $S$ 只保留<strong>最终答案正确</strong>的轨迹组成 $\mathcal{R}^+$，学生 $\sigma$ 在 $\mathcal{R}^+$ 上 SFT。多条正确轨迹 = 同一题的多种"想法"，充当<strong>正则化</strong>。</div><div class="kv"><b>核心证据</b>多轨迹消融（图 5）：1→16 条把 MedQA 峰值从 75.16 抬到 85.01；主表（表 2）OctoMed-7B 三类任务全面领先同档开源、反超 27B/GPT-4o；任务感知长度（图 8）：难题 token 数翻几倍、易题反而最省。</div><div class="kv"><b>复现门槛</b>8M 轨迹 × 3 epoch 全参微调、有效 batch 512，用 llama-factory + vllm。<strong>无公开代码仓库</strong>（仅放出 HF 模型权重）；teacher 调用与 8M 蒸馏的算力账本论文未披露。</div></div></div><figure class="hero-card"><a href="../assets/figures/octomed/octomed_fig1.png"><img src="../assets/figures/octomed/octomed_fig1.png" alt="左：三类任务下不同 SFT 数据集微调学生模型的平均表现曲线；右：MedQA 随时间的进展，OctoMed-7B 超过众多大模型"></a><figcaption><strong>图 1 · 全文"核心断言可视化"。</strong>左三联图：把同一个 Qwen2.5-VL-7B 学生分别用不同 SFT 数据集（OctoMed / LLaVA-Med / PubMedVision / MedVLThinker）微调，看三类任务（多模态推理 / 纯文本 / 多模态分类）的平均表现随训练数据比例的变化，虚线是<strong>微调前</strong>的学生基线。橙色 OctoMed 在三类上都明显抬升，且<strong>16% 训练量就已大幅超基线</strong>，而其它数据集在推理类任务上甚至压不过基线。右图：MedQA（USMLE 风格）准确率的时间线，<strong>7B 的 OctoMed</strong> 落在一众更大的开源与专有系统之上。这张图回答的不是"某个任务多强"，而是"<em>同一个学生、同一个起点，换数据配方能差出多少</em>"——这正是全文要论证的单一变量。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：医学推理的健壮性，到底卡在架构还是卡在数据？</h2><p>开篇作者给出一个被很多人忽略的判断：<strong>医学推理的健壮性，关键设计点不在架构新颖度、也不在更大的 backbone，而在"教模型怎么推理"的那批数据怎么挑</strong>。理由是医学场景和开放域有本质差别——它要在<strong>巨大的分布漂移</strong>下工作（放射、病理、眼底、皮肤、化验值、临床笔记各成一个世界），要跨多种高风险模态整合证据，还要在"答错代价极高"的前提下保持保真。一个窄而失衡的训练混合，很容易调出一个在分布内漂亮、一到分布外就崩的过拟合模型。</p>
+<ul><li><strong>分布外才是主战场。</strong>论文的评测刻意压在 OOD 上：多模态推理基准（MMMU-PRO、MedXpertQA）大多<em>没有训练划分</em>，模型在测试时见到的题型与训练分布并不一致。这逼着配方去换"泛化"，而不是"刷分布内"。</li><li><strong>RL 多半只是在精修 SFT 已有的行为。</strong>作者引近期发现 [54]：当前 RL 范式很大程度上是在<em>refine</em> SFT 阶段已经习得的行为，而非引入根本性的新推理模式。这条判断直接把重心拉回 SFT——既然 RL 是精修，那把 SFT 的数据先做对、做大，回报更直接。</li><li><strong>"数据成分"被研究得太少。</strong>过去的工作要么发明新训练目标、要么堆大数据集，<strong>很少有人系统研究"训练混合本身的成分"</strong>——哪些题源、哪些模态、哪种轨迹长度该占多少比例。OctoMed 把这件事当成主菜。</li></ul>
+<div class="socratic"><p class="question">问：既然只做 SFT、不发明新损失、不堆 RL，凭什么相信"调数据"能调出 SOTA？这不就是"大力出奇迹"换个说法吗？</p><p class="guide">引导：盯住作者的两个前提——其一，RL 只是精修 SFT 行为，所以 SFT 的天花板决定了最终天花板；其二，医学的难点是分布漂移，而分布漂移要靠<strong>覆盖与多样性</strong>来抗，覆盖与多样性恰恰是"数据成分"问题，不是"模型容量"问题。</p><p class="answer">答：这不是"大力出奇迹"，而是把"大力"用在<strong>正确的维度</strong>上。作者全文反复验证的不是"数据越多越好"，而是"<strong>在同样的数据预算下，怎么<em>构造</em>数据回报最高</strong>"——多轨迹比多 epoch 值（图 5）、混合题源比单一题源稳（图 3）、CoT 与 direct 各有适用面（表 1）、过滤只省早期不抬峰值（图 4）。每一条都是"成分"层面的控制变量实验，而不是单纯扩规模。规模（8M）只是把已经验证有效的成分<em>放大</em>到能拿 SOTA 的量级。</p><p class="takeaway"><strong>Takeaway：</strong>真问题不是"要不要换架构"，而是"<strong>在只做 SFT 的约束下，数据的成分怎么配</strong>"。OctoMed 的全部贡献都长在这个问题上：先把"什么成分有效"逐个做成消融，再把有效成分放大到 8M。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献（论文 §1 列出的三条 + 数据集）：</strong></p>
+<ul><li><strong>State-of-the-Art：</strong>用所提配方训出 OctoMed，在多样的医学推理基准上拿到开源 SOTA（图 1 / 表 2），并且在<strong>推理密集的纯文本任务</strong>上也有竞争力——这是很多多模态模型的短板。</li><li><strong>放大并多样化推理轨迹：</strong>明确给出"<strong>每题多条有效轨迹 + 扩大模态覆盖</strong>，比单纯多训 epoch 更有效"这一发现，并据此把配方放大到"目前最大的医学推理数据集"。</li><li><strong>涌现的任务感知推理：</strong>在"不同长度轨迹混合"上训练，会让模型<strong>按任务复杂度动态调节推理深度</strong>——难题/OOD 上写更长更细，无需显式监督。这一长度信号可被未来的 post-training / 数据过滤复用。</li><li><strong>数据集本身：</strong>构造了 8,095,571 个样本、约 68 亿响应 token 的医学多模态推理数据集（图 2），每条轨迹经拒绝采样筛过。</li></ul>
+<div class="formula-note"><p class="note-title">读数提醒：这篇的"评测姿态"要先标清楚</p><p>OctoMed 是把一个通用 VLM（Qwen2.5-VL-7B-Instruct）当<strong>学生</strong>、用蒸馏数据 SFT 出来的，对比对象既有同档开源小模型（&lt;10B），也有 GPT-4o、DeepSeek-R1 这类大/专有系统。所以"反超 GPT-4o"要理解成<strong>"在医学多模态分类这一类任务上、用 GPT-4o 当 teacher 蒸出的学生反超了 teacher"</strong>，而不是"7B 全面碾压 GPT-4o"。论文也诚实写明：DeepSeek-R1 那一列是文本-only，多模态格子为空（"-"）。</p></div>
+<p><strong>读者能进一步推断的是</strong>：这篇真正推进的<em>单一变量</em>是"<strong>训练混合的成分设计</strong>"。它没有新架构、没有新损失、没有 RL，方法论的"新"全在数据侧——把"多轨迹=正则化""轨迹长度多样=难度自校准的种子""题源混合=互补知识"这几条做成可验证的消融，再放大。它也把代价摆得很清楚：偏多选题、依赖 teacher 质量、算力账本未公开、无代码仓库。</p></section>
+
+<section id="datasets"><h2>3. 数据：8M 样本 / 6.8B token，怎么"配"出来的</h2><p>OctoMed 的数据集是全文的产物，也是它的主张本身。图 2 把它拆成三块看：<strong>左</strong>是成像模态与解剖部位的分布，<strong>中</strong>是任务类型与源数据集，<strong>右</strong>是关键统计。</p>
+<figure class="fig-wide"><a href="../assets/figures/octomed/octomed_fig2.png"><img src="../assets/figures/octomed/octomed_fig2.png" alt="SFT 数据集总览：左为模态/解剖分布饼图，中为任务类型与源数据集旭日图，右为统计表"></a><figcaption><strong>图 2 · SFT 数据集总览。</strong>左：成像模态与解剖部位分布——<strong>胸部 44.77%</strong>、眼 18.59%、腹 17.85% 占大头，覆盖 CT/MRI/X-ray/超声/眼底/皮肤/病理/显微等。对 PMC-VQA 这类缺标注的大数据集，模态/部位元数据是用 GPT-4.1-mini 补标的（因此百分比不凑满 100%）。中：任务类型（VQA / 问答 / 自由作答 / 分类）与源数据集（PMC、MIMIC-CXR、SLAKE、VQA-RAD、MedQA、MedMCQA、HeadQA、各类分类数据集…），以及两个 teacher（Qwen3、DS-R1）的来源标注。右：关键统计——<strong>总样本 8,095,571</strong>（图文 3,687,105 + 纯文本 4,408,466），唯一图像 494,328、唯一问题 1,808,981，平均问题长 71 token、<strong>平均 CoT 长 840 token</strong>。这张图要支撑的结论是：配方刻意追求"模态广、题型杂、轨迹长度有跨度"，而不是把某一类堆到极致。</figcaption></figure>
+<div class="table-wrap"><table><caption><strong>表（图 2 右栏转写）.</strong> OctoMed SFT 数据集关键统计（转自图 2 右侧统计表，非论文编号表）。</caption><thead><tr><th>统计量</th><th>数值</th></tr></thead><tbody>
+<tr><td>Total instances（总样本）</td><td><b>8,095,571</b></td></tr>
+<tr><td>Vision-Language instances（图文样本）</td><td>3,687,105</td></tr>
+<tr><td>Text-Only instances（纯文本样本）</td><td>4,408,466</td></tr>
+<tr><td>Unique images（唯一图像）</td><td>494,328</td></tr>
+<tr><td>Unique questions（唯一问题）</td><td>1,808,981</td></tr>
+<tr><td>Average question length（平均问题长，token）</td><td>71</td></tr>
+<tr><td>Average CoT length（平均推理链长，token）</td><td>840</td></tr>
+</tbody></table></div>
+<h3>3.1 防数据污染：16-gram 去重 + 图像字节哈希去重</h3><p>因为评测压在 OOD、且很多基准与训练源同宗（都来自 USMLE / PMC 等），<strong>测试集泄漏</strong>是这类工作最容易翻车的地方。论文的做法（§3 Data Preprocessing）：(1) 纯文本侧按 S1 [29] 的流程，在所有训练问题与文本基准之间做 <strong>16-gram 去重</strong>；(2) 图像侧用 <code>hashlib</code> 对所有训练/测试图的字节做哈希，删掉<strong>精确重复</strong>的图，保证训练集里没有测试图。所有图像统一 smart-resize 到最大 262,144 像素（512×512）；分类任务做<strong>分层采样</strong>平衡类别。</p>
+<p>三个"知识源"的划分（§4 与附录 B）也值得记，它是后面图 3 的实验骨架：<strong>Text-Only</strong>（MedQA / HeadQA / MedMCQA 等 USMLE 风格）、<strong>Multimodal Reasoning</strong>（MMMU-PRO / MedXpertQA 等；因这些基准缺训练划分，作者改用 PMC-VQA 训练子集蒸馏出的轨迹当题源）、<strong>Multimodal Classification</strong>（眼底 Aptos/MESSIDOR2、病理 BCSS、脑瘤 MRI 等诊断分类）。</p></section>
+
+<section id="pipeline"><h2>4. Pipeline：teacher 生成 → 拒绝采样筛对 → 学生 SFT 复刻</h2><p>整条流水线（§2 Methodology）是一个被作者刻意做"窄"的知识蒸馏闭环，目的是把变量收干净，好逐个消融。</p>
+<div class="note"><p class="note-title">三步闭环</p><ol><li><strong>题源 $\mathcal{D}$ → teacher $\mathcal{T}$ 生成轨迹。</strong>给定监督数据集 $\mathcal{D}=\{(x_i,y_i)\}$（$x$ 是临床问题/提示，$y$ 是正确答案；多选题里 $y\in\mathcal{Y}$ 是有限选项集），用强 teacher（DeepSeek-R1 / GPT-4o）对每题采样，生成中间推理步骤 $r_i=(r_i^{(1)},\dots,r_i^{(T)})$ 并落到最终答案 $\hat y_i$。</li><li><strong>拒绝采样：只留答对的轨迹。</strong>用打分函数 $S(x_i,r_i,y_i,\hat y_i)$ 判定 teacher 的最终答案对不对，正确才进"接受集" $\mathcal{R}^+$。因为几乎所有训练任务都是<strong>可验证的多选题</strong>，$S$ 只需比对 $\hat y_i$ 与 $y_i$。</li><li><strong>学生 $\sigma$ 在 $\mathcal{R}^+$ 上 SFT。</strong>学生学着复刻 teacher 的推理轨迹。"只学答对的轨迹"保证学生学到的不只是"看起来像样的认知步骤"，更是<strong>导向正确结论</strong>的步骤——这在医学里是硬要求。</li></ol></div>
+<div class="equation">$$S(x_i,r_i,y_i,\hat y_i)=\begin{cases}1,&\text{if }\hat y_i=y_i,\\[2pt]0,&\text{otherwise.}\end{cases}\qquad(1)$$<div class="eq-caption">式 1：打分函数。多选题里只需判最终答案是否等于 ground truth；开放式任务可借轨迹 $r_i$ 里的额外信息估分。</div></div>
+<div class="equation">$$\mathcal{R}^+=\big\{(x_i,y_i,r_i)\ \big|\ S(x_i,r_i,y_i,\hat y_i)=1\big\}.\qquad(2)$$<div class="eq-caption">式 2：接受集。只有"轨迹 + 最终答案都对"的样本入选，学生在 $\mathcal{R}^+$ 上微调。</div></div>
+<div class="formula-note"><p class="note-title">公式读法：拒绝采样在这里做的是"质量门"而非"难度门"</p><p>式 1–2 的核心是把"<strong>答案正确性</strong>"当成<em>唯一</em>的过滤信号。它<strong>不</strong>判断题难不难、轨迹长不长，只问"这条思路最后答对了吗"。于是同一道题可能有多条都答对的轨迹同时入选——这正是后面"多轨迹"的来源。把质量门设在<em>结论</em>而非<em>过程</em>，是因为医学里"过程看着合理但结论错"比"啰嗦但对"危险得多；而结论的对错在多选题上恰好可廉价验证。</p></div></section>
+
+<section id="method"><h2>5. 方法：把"多条正确轨迹"理解成正则化，把"长度多样"理解成自校准的种子</h2>
+<p>这一节是全文的机制核心。OctoMed 没有新公式，但它的几个数据决策背后都有可推导的道理。下面逐条用"先讲为什么需要、再讲是什么、并从两个角度交叉验证"的方式拆开。</p>
+
+<h3>5.1 多条正确轨迹 ≈ 一种数据增强 / 正则化——为什么比多训 epoch 更值？</h3>
+<p>动机：给定题量有限（医学高质量题贵），怎么把同一批题"榨"出更多有效监督？先验工作（OpenThoughts [12]、II-Medical [21]）的答案是<strong>每题留多条推理轨迹</strong>。OctoMed 在 MedQA 上把这件事做成干净的消融：每题采 16 条，按 $\mathcal{R}^+$ 分别只留 <strong>1 / 4 / 16</strong> 条，各训 3 epoch，共 9 个 checkpoint，全部在<strong>未见过的 MedQA 测试集</strong>上评。</p>
+<figure class="fig-wide"><a href="../assets/figures/octomed/octomed_fig5.png"><img src="../assets/figures/octomed/octomed_fig5.png" alt="MedQA 准确率随训练 epoch 变化，1/4/16 条拒绝采样轨迹三条曲线"></a><figcaption><strong>图 5 · 多轨迹 vs 多 epoch。</strong>横轴训练 epoch（0–3），三条曲线分别是每题留 1 / 4 / 16 条轨迹。关键读数：<strong>留 1 条训 3 epoch（75.16）≈ 留 4 条训 1 epoch（76.50）</strong>——早期阶段"加轨迹"和"加 epoch"效果相近；但<strong>峰值</strong>随轨迹数单调抬升，16 条训到 <strong>85.01</strong>，比 1 条的 75.16 高出近 10 个点。这张图要支撑的结论是：多轨迹不只是"换一种方式扩数据"，它把<em>天花板</em>抬高了，说明多样轨迹起的是正则化作用、而非简单的样本复用。</figcaption></figure>
+<div class="socratic"><p class="question">问：早期"加轨迹"和"加 epoch"效果相近，能不能就此说"多轨迹只是变相多训几遍"？为什么峰值还能再高 10 个点？给我两条独立的解释。</p><p class="answer"><strong>路径 A（梯度噪声 / 经验风险的视角，自下而上）：</strong>多训一个 epoch，是把<em>同一条</em>轨迹 $(x_i,r_i)$ 再喂一遍——它增加的是对"这一条具体推理路径"的拟合强度，梯度方向高度相关，到一定程度就开始过拟合<em>这条路径的措辞与结构</em>。而每题换一条<em>不同的</em>正确轨迹 $r_i^{(k)}$，喂的是"同一题→同一答案"下的<strong>不同中间过程</strong>：标签（最终答案）不变，但输入侧的推理序列在变。这等价于在"条件分布 $p(r\mid x,y)$"这一维上做<strong>数据增强</strong>——模型被迫学"通向正确答案的多条路都对"，而不是"背下某一条路"。增强带来的梯度是去相关的，正则化效应让它能爬到比"重复同一条"更高的峰值。这与"在标签/输出侧引入一致性约束以缓解过度自信、提升泛化"的正则化思路同源（参见 §references 的方法论说明）。<br><br><strong>路径 B（不变性 = 显式抹平虚假特征，自上而下）：</strong>从"模型该对什么不变"的角度看，一道医学题的正确性<strong>不应依赖</strong>于"用哪种措辞、哪条推理顺序"到达答案。给同一题配多条都答对的轨迹，等于显式告诉模型"<strong>这些不同的推理表面形式指向同一个正确结论</strong>"，把"推理路径的表面形式"标成一个<em>该被抹平</em>的虚假变量。只留 1 条时，模型无从区分"哪些是路径特有的偶然措辞、哪些是真正的医学逻辑"，容易把偶然当必然；留 16 条，偶然措辞在多条之间被平均掉，留下的才是跨路径稳定的逻辑骨架。两条路径殊途同归：一条从梯度去相关说"增强抬峰值"，一条从不变性说"抹平虚假特征抬泛化"。</p><p class="takeaway"><strong>Takeaway：</strong>多轨迹不是"多训几遍"的同义词。早期它和多 epoch 撞脸，是因为两者都在增加监督量；但它额外提供了"通向同一答案的多样过程"，这层多样性是 epoch 给不了的正则化，所以峰值能再高近 10 个点。基于此，正式配方定为<strong>每题 16 轨迹 × 3 epoch</strong>。</p></div>
+
+<h3>5.2 CoT 还是 direct？取决于任务是"要推理"还是"要感知"</h3>
+<p>动机：提示模板会显著改结果。作者假设——<strong>CoT 利于多步推理（如 MedQA），direct 利于简单感知（如糖网分级）</strong>。验证方式干净：同一个 100k 子集，只改提示风格，训两个学生。</p>
+<div class="table-wrap"><table><caption><strong>表 1（转写）.</strong> 同一 100k 子集上，仅改 CoT / direct 提示风格微调，跨任务对比（论文 Table 1 全转写；加粗为该任务更优者）。</caption><thead><tr><th>类别</th><th>任务</th><th>Direct</th><th>CoT</th></tr></thead><tbody>
+<tr><td rowspan="6">多模态分类</td><td>Brain Tumor</td><td><b>71.32</b></td><td>70.56</td></tr>
+<tr><td>CoronaHack</td><td>62.82</td><td><b>66.19</b></td></tr>
+<tr><td>Aptos</td><td><b>75.98</b></td><td>73.60</td></tr>
+<tr><td>MESSIDOR2</td><td><b>66.29</b></td><td>53.71</td></tr>
+<tr><td>BCSS</td><td>50.90</td><td><b>52.58</b></td></tr>
+<tr><td><b>Overall</b></td><td><b>65.46</b></td><td>63.33</td></tr>
+<tr><td rowspan="5">多模态推理</td><td>MMMU-PRO (H)</td><td>12.59</td><td><b>31.82</b></td></tr>
+<tr><td>NEJM</td><td>23.23</td><td><b>45.62</b></td></tr>
+<tr><td>PMC-VQA</td><td>33.85</td><td><b>49.25</b></td></tr>
+<tr><td>MedXpertQA</td><td>22.65</td><td><b>25.90</b></td></tr>
+<tr><td><b>Overall</b></td><td>23.08</td><td><b>38.15</b></td></tr>
+<tr><td rowspan="6">纯文本</td><td>MedQA</td><td>32.13</td><td><b>69.68</b></td></tr>
+<tr><td>HeadQA</td><td>47.70</td><td><b>72.61</b></td></tr>
+<tr><td>MedMCQA</td><td>34.47</td><td><b>53.38</b></td></tr>
+<tr><td>MedXpertQA</td><td>11.43</td><td><b>14.04</b></td></tr>
+<tr><td>MMLU-PRO (H)</td><td>20.42</td><td><b>51.22</b></td></tr>
+<tr><td><b>Overall</b></td><td>29.23</td><td><b>52.19</b></td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：为什么 CoT 在推理任务上能把 23.08 抬到 38.15（多模态推理）、29.23 抬到 52.19（纯文本），却在分类任务上反而略输（65.46 vs 63.33）？</p><p class="answer"><strong>路径 A（计算预算与任务结构匹配）：</strong>CoT 的本质是给模型<strong>更多的中间计算步</strong>——把答案拆成可串联的子推断。当任务<em>本身</em>需要多步逻辑（USMLE 题要串联病史→鉴别诊断→排除）时，这些中间步是<strong>必需的工作内存</strong>，没有它模型只能一步蒙，于是 MedQA 这种从 32.13 跳到 69.68。而糖网分级（MESSIDOR2）这类<strong>感知-分类</strong>任务，答案几乎是"看一眼分级"的单步映射，并不需要多步链；强行加一条推理链，反而<strong>引入了出错与漂移的机会</strong>（链中任一步说错就可能带偏最终判断），所以 direct 在 MESSIDOR2 上 66.29 反超 CoT 的 53.71。<br><br><strong>路径 B（监督信号的"形状"匹配）：</strong>SFT 是在学 teacher 轨迹的<em>形状</em>。推理任务的正确轨迹天然是长链，学生学长链 = 学对了该任务的解题<em>程序</em>；分类任务的正确"轨迹"其实就是一个标签，硬套 CoT 等于让 teacher 编一段"为什么是这个分级"的事后解释，这段解释可能<strong>不是该决策的真实依据</strong>，学生学到的是冗余甚至误导的中间态。两条路径一致指向：<strong>提示风格要匹配任务的内在计算深度</strong>。</p><p class="takeaway"><strong>Takeaway：</strong>CoT 不是免费的——它在"需要多步"的任务上是工作内存，在"一步到位"的感知任务上是噪声源。作者最终为 SFT 选 CoT（适用面更广、可解释），并提了一个漂亮的统一视角：<strong>direct 可看作"推理链为空"的 CoT 极限</strong>。</p></div>
+
+<h3>5.3 涌现的任务感知思考：不同长度轨迹混训，模型学会按难度自调长度</h3>
+<p>动机：既然数据混合里同时有 DeepSeek-R1（长、细）和 GPT-4o（短、简）两类 teacher 的轨迹，<strong>轨迹长度天然有跨度</strong>。这层跨度会带来什么？作者发现一个没被显式监督的能力：模型在<strong>难题/OOD 上自动写更长</strong>，易题上自动写更短。</p>
+<figure class="fig-wide"><a href="../assets/figures/octomed/octomed_fig8.png"><img src="../assets/figures/octomed/octomed_fig8.png" alt="OctoMed 与 QoQ-Med 在各基准上的平均响应 token 数与表现对比柱状/折线图"></a><figcaption><strong>图 8 · 任务感知的推理长度（全文最关键的"涌现"证据）。</strong>柱=平均响应 token 数，折线=表现；对比 OctoMed-7B 与强基线 QoQ-Med-VL-7B。看点：在<strong>难的推理任务</strong>（MedXpertQA 1855 token、MMMU-PRO 1506）上 OctoMed 写得很长，在<strong>简单任务</strong>（PMC-VQA 仅 320、Brain Tumor 297）上写得很短；而 QoQ-Med 各任务 token 数<strong>相对均匀</strong>，对难度不敏感。注意 MedXpertQA 这类基准 OctoMed <strong>训练时根本没见过对应的多模态推理训练样本</strong>，却照样在它上面自动加长——这说明长度调节是<em>涌现</em>的，不是背出来的。这张图要支撑的结论是：把不同长度轨迹混在一起训，模型学到的不是"固定写多长"，而是"<strong>按题目难度选长度</strong>"，且这个长度本身成了一个可读的"难度信号"。</figcaption></figure>
+<div class="socratic"><p class="question">问：模型从没被告诉"这题难、请写长一点"，为什么混合不同长度的轨迹就能让它学会自校准？给两条独立理由。</p><p class="answer"><strong>路径 A（条件长度分布的隐式建模，自下而上）：</strong>SFT 在最大似然意义上学的是 $p(r\mid x)$——给定问题 $x$，生成轨迹 $r$。当训练集里"难题"系统性地配长轨迹、"易题"系统性地配短轨迹时，<strong>问题的难度特征与轨迹长度在数据里就是相关的</strong>。模型为了拟合这个条件分布，必须把"$x$ 的难度线索"映射到"$r$ 的预期长度"。于是在测试时遇到一个新的难题，它的难度特征触发了"该写长"的先验——这不是被显式监督的，而是<strong>条件分布里本就编码了"难度↔长度"的统计关联</strong>，模型只是忠实地复现了这个关联。若训练集长度<em>不</em>随难度变（如 QoQ-Med 那样均匀），模型就学不到这种关联，长度自然对难度不敏感。<br><br><strong>路径 B（停止时机 = 学到的"够了没"判断，自上而下）：</strong>换个角度看推理生成：每一步模型都在隐式决策"继续推 vs 给答案"。混合长短轨迹，等于给模型看了大量"<strong>什么情况下该早停、什么情况下该多想</strong>"的范例——短轨迹示范"简单题想两步就够"，长轨迹示范"难题要反复鉴别"。模型学到的是一个<strong>与问题难度耦合的停止准则</strong>：当内部对答案的不确定性低（易题）就早停，高（难题）就继续。这正好解释了为何它在<em>没见过</em>的 OOD 难题上也会加长——停止准则是按"当前不确定性"触发的，与具体题型无关。两条路径一致：一条说"难度↔长度的统计关联被学进条件分布"，一条说"耦合难度的停止准则被学成解题习惯"。</p><p class="takeaway"><strong>Takeaway：</strong>长度自校准是"混合长短轨迹"的<strong>免费副产品</strong>：只要训练数据里难度和长度相关，模型就会把这层相关学进生成过程。反过来，这条涌现出的长度信号可以<strong>反哺</strong>——用它当难度估计去过滤题、去指导后续 RL，作者把这点列为未来方向。</p></div>
+
+<h3>5.4 题源混合：互补知识，而非相互干扰</h3>
+<p>动机：训不同知识源会不会互相打架？图 3 是一张干净的"训练源 × 评测类型"迁移矩阵。</p>
+<figure class="fig-wide"><a href="../assets/figures/octomed/octomed_fig3.png"><img src="../assets/figures/octomed/octomed_fig3.png" alt="训练问题源 × 下游任务类型的平均提升热力图"></a><figcaption><strong>图 3 · 题源迁移矩阵。</strong>行=训练用的知识源，列=下游评测类型，格子=相对基线的平均提升。读数：(1) <strong>对角线最亮</strong>——训什么类就在什么类上涨最多（如纯文本→纯文本 +12.2%、多模态分类→多模态分类 +34.5%）；(2) <strong>跨源迁移很难</strong>——多模态分类训练对纯文本是 -23.7%、对多模态推理 -13.6%（强烈的负迁移）；(3) 但<strong>"All"（全混）那一行整体最稳最高</strong>：纯文本 +10.9、多模态推理 +4.4、多模态分类 +35.2、总体 +17.7，几乎在每列都接近或达到最佳，且没有哪一列被拖垮。这张图要支撑的结论是：<strong>单一源会顾此失彼，混合源把各源的互补知识拼起来，在不牺牲分布内表现的前提下抬升泛化</strong>。</figcaption></figure>
+<div class="note"><p class="note-title">为什么"全混"能既不互相干扰、又整体最高？</p><p>关键在于这三类知识其实<strong>覆盖不同的能力维度</strong>：纯文本管医学知识与多步逻辑、多模态推理管"看图+推断"、多模态分类管"细粒度感知判别"。单训一类时，模型为了拟合该类会牺牲其它维度（所以多模态分类单训会把纯文本拉到 -23.7%——它把模型推向"少推理、直接判类"的模式，恰好毁掉文本推理）。而全混时，每个维度都有足量监督<strong>各自占住一块</strong>，模型没有被迫在维度间二选一，于是负迁移消失、互补知识叠加。这与 §5.1 的"多样性即正则化"是同一个内核：<strong>多样的、互补的监督让模型学到更宽的能力底座，而不是窄而尖的过拟合</strong>。</p></div></section>
+
+<section id="training"><h2>6. 训练账本：8M 轨迹 × 3 epoch 全参微调</h2><p>最终模型的配置（§5 Results 开头与 §3）：</p>
+<div class="table-wrap"><table><caption><strong>表（训练配置转写）.</strong> OctoMed 最终训练设置与配方实验设置（转自论文 §3 Training Setup 与 §5；非论文编号表）。</caption><thead><tr><th>项</th><th>最终模型（§5）</th><th>配方实验（§3）</th></tr></thead><tbody>
+<tr><td>学生模型</td><td colspan="2">Qwen2.5-VL-7B-Instruct（另在 InternVL3.5-8B / Qwen3-VL-8B-Instruct 上验证）</td></tr>
+<tr><td>训练数据</td><td>8M 结构化推理轨迹</td><td>各消融对应子集</td></tr>
+<tr><td>微调方式</td><td colspan="2">全参微调（full fine-tuning）</td></tr>
+<tr><td>Epochs</td><td>3</td><td>1–3（按消融）</td></tr>
+<tr><td>有效 batch size</td><td><b>512</b></td><td>128</td></tr>
+<tr><td>学习率</td><td>5e-5</td><td>5e-5</td></tr>
+<tr><td>LR schedule</td><td>Cosine，warmup ratio 0.1</td><td>Cosine，warmup ratio 0.01</td></tr>
+<tr><td>训练框架</td><td colspan="2">llama-factory [59]</td></tr>
+<tr><td>推理引擎（评测）</td><td colspan="2">vllm [23]，max 8192 token + 最多 10 张图（每图 ≤262,144 px）</td></tr>
+</tbody></table></div>
+<p>评测协议（§5 Evaluation Setup）：每个模型在 <strong>5 个不同采样种子</strong>上跑、取平均，temperature 0.6、top-p 0.95，按各模型自荐的 prompt 模板评。对"先想后答"的推理模型，若它不肯结束内部思考，就按 S1 [29] 的<strong>强制退出</strong>机制追加一个 end-of-think token、逼它基于已有思考作答。</p>
+<div class="formula-note"><p class="note-title">关于算力（论文未披露，不做估算）</p><p>OctoMed 的"贵"主要在<strong>数据生成侧</strong>：对 ~180 万唯一问题、每题采 16 条轨迹做 teacher 调用（DeepSeek-R1 / GPT-4o），再加 8M 样本 × 3 epoch 的全参微调。但论文<strong>没有给出</strong> teacher 调用的总量、GPU 卡数、墙钟时间或总成本。按非负责任原则，此处<strong>不</strong>给"按论文披露数字粗略估算"的卡时——因为论文连可估算的基数都未提供。能确认的只有：student 侧是 7B 全参微调、有效 batch 512、3 epoch，用 llama-factory，属于工程上可复现的规模；真正的门槛在 teacher 蒸馏的 API/算力账单，<strong>论文未说明</strong>。</p></div></section>
+
+<section id="experiments"><h2>7. 实验：三类任务一张主表，外加两条机制证据</h2><p><strong>判断：</strong>主表（表 2）要回答的是"OctoMed-7B 到底比同档开源强多少、离大模型差多少"，三类任务一并看；图 7 是它的散点压缩版，图 6 单独验证"换 teacher 会怎样"。</p>
+<h3>7.1 主表：三类任务全面领先同档开源，反超 27B 与 GPT-4o（部分类）</h3>
+<div class="table-wrap"><table><caption><strong>表 2（转写）.</strong> 跨纯文本 / 多模态推理 / 多模态分类的医学基准对比（论文 Table 2 全转写）。绿底=&lt;10B 开源小模型，青底=大/专有模型；DeepSeek-R1 为纯文本，多模态格子留空。†=10 样本多数投票。加粗为<strong>开源小模型</strong>列内每行最优。</caption><thead><tr><th>类别</th><th>基准</th><th>Qwen2.5-VL</th><th>HuatuoGPT</th><th>MedVLThinker</th><th>InternVL3.5</th><th>GLM-4.1V</th><th>QoQ-Med</th><th>LingShu</th><th>OctoMed</th><th>MedGemma-27B</th><th>GPT-4o</th><th>DeepSeek-R1</th></tr></thead><tbody>
+<tr><td colspan="13" style="background:#f0f7fc"><b>方法 / 规模：</b> SFT / SFT / SFT+RL / SFT+RL / SFT+RL / RL / SFT+RL / <b>SFT(7B)</b> / SFT(27B) / -(>100B) / SFT+RL(671B)</td></tr>
+<tr><td rowspan="6">纯文本</td><td>MedQA</td><td>57.99</td><td>55.40</td><td>58.56</td><td>73.37</td><td>76.83</td><td>58.30</td><td>62.09</td><td><b>90.81</b></td><td>85.17</td><td>90.72</td><td>93.16</td></tr>
+<tr><td>HeadQA</td><td>69.61</td><td>67.14</td><td>71.00</td><td>81.00</td><td>81.73</td><td>70.94</td><td>69.23</td><td><b>82.36</b></td><td>84.56</td><td>89.56</td><td>90.93</td></tr>
+<tr><td>MedMCQA</td><td>51.45</td><td>50.74</td><td>54.87</td><td>60.72</td><td>64.64</td><td>53.11</td><td>53.16</td><td><b>72.70</b></td><td>70.34</td><td>77.21</td><td>79.36</td></tr>
+<tr><td>MedXpertQA</td><td>12.16</td><td>10.85</td><td>12.91</td><td>12.82</td><td>17.67</td><td>11.72</td><td>12.54</td><td><b>24.51</b></td><td>21.89</td><td>30.31</td><td>37.30</td></tr>
+<tr><td>MMLU-PRO (H)</td><td>49.32</td><td>44.77</td><td>52.13</td><td>62.96</td><td>68.33</td><td>49.93</td><td>50.73</td><td><b>68.75</b></td><td>70.83</td><td>76.06</td><td>79.39</td></tr>
+<tr><td><b>Overall</b></td><td>48.10</td><td>45.78</td><td>49.89</td><td>58.17</td><td>61.84</td><td>48.80</td><td>49.55</td><td><b>67.83</b></td><td>66.56</td><td>72.77</td><td>76.05</td></tr>
+<tr><td rowspan="5">多模态推理</td><td>MMMU-PRO (H)</td><td>32.87</td><td>30.00</td><td>38.95</td><td>47.90</td><td><b>49.65</b></td><td>33.29</td><td>36.78</td><td>42.52</td><td>40.77</td><td>57.76</td><td>—</td></tr>
+<tr><td>NEJM</td><td>43.76</td><td>44.06</td><td>44.31</td><td>52.90</td><td>54.81</td><td>44.01</td><td>48.43</td><td><b>61.14</b></td><td>57.06</td><td>69.99</td><td>—</td></tr>
+<tr><td>PMC-VQA</td><td>49.66</td><td>51.46</td><td>49.88</td><td>59.55</td><td>57.05</td><td>49.79</td><td>58.76</td><td><b>61.13</b></td><td>46.08</td><td>60.14</td><td>—</td></tr>
+<tr><td>MedXpertQA</td><td>22.47</td><td>22.63</td><td>24.81</td><td>26.10</td><td>28.65</td><td>22.74</td><td>26.19</td><td><b>36.65</b></td><td>33.13</td><td>44.38</td><td>—</td></tr>
+<tr><td><b>Overall</b></td><td>37.19</td><td>37.04</td><td>39.49</td><td>46.61</td><td>47.54</td><td>37.46</td><td>42.54</td><td><b>50.36</b></td><td>44.25</td><td>58.07</td><td>—</td></tr>
+<tr><td rowspan="6">多模态分类</td><td>Brain Tumor</td><td>27.82</td><td>37.16</td><td>31.07</td><td>64.47</td><td>47.72</td><td>55.33</td><td>78.99</td><td><b>80.86</b></td><td>58.33</td><td>65.99</td><td>—</td></tr>
+<tr><td>CoronaHack</td><td>34.17</td><td>42.76</td><td>36.41</td><td>38.62</td><td>39.90</td><td>50.13</td><td>42.24</td><td><b>71.22</b></td><td>58.27</td><td>41.70</td><td>—</td></tr>
+<tr><td>Aptos</td><td>26.71</td><td>40.95</td><td>25.08</td><td>51.96</td><td>42.76</td><td>64.60</td><td>56.83</td><td><b>75.43</b></td><td>49.20</td><td>66.58</td><td>—</td></tr>
+<tr><td>MESSIDOR2</td><td>20.63</td><td>33.66</td><td>22.40</td><td>27.71</td><td>26.86</td><td><b>59.14</b></td><td>42.86</td><td>55.20</td><td>53.09</td><td>45.26</td><td>—</td></tr>
+<tr><td>BCSS</td><td>43.12</td><td>43.72</td><td>48.01</td><td>50.95</td><td>52.84</td><td>52.02</td><td>52.40</td><td><b>53.72</b></td><td>35.95</td><td>50.28</td><td>—</td></tr>
+<tr><td><b>Overall</b></td><td>30.49</td><td>46.39</td><td>32.59</td><td>46.39</td><td>41.76</td><td>56.24</td><td>54.66</td><td><b>67.29</b></td><td>50.97</td><td>53.96</td><td>—</td></tr>
+</tbody></table></div>
+<p>三句话读这张表：(1) <strong>开源小模型里 OctoMed-7B 几乎每行最优</strong>，纯文本总体 67.83、多模态推理 50.36、多模态分类 67.29，三类都领先同档；(2) <strong>跨档对比</strong>——多模态分类上 OctoMed 反超 GPT-4o（67.29 vs 53.96，而 GPT-4o 正是它的多模态 teacher），整体也压过 MedGemma-27B（在每个类别 Overall 上都更高），尽管只有它 1/4 大小；(3) 离真正的大模型仍有差距——多模态推理总体 50.36 vs GPT-4o 58.07，纯文本 67.83 vs DeepSeek-R1 76.05，说明"纯 SFT 蒸馏"能逼近但还没追平最强 teacher 的上限。</p>
+<figure><a href="../assets/figures/octomed/octomed_fig7.png"><img src="../assets/figures/octomed/octomed_fig7.png" alt="文本-only 与多模态平均准确率散点图，气泡大小=参数量"></a><figcaption><strong>图 7 · 表 2 的散点压缩版。</strong>横轴纯文本平均、纵轴多模态平均，气泡大小∝参数量。<strong>OctoMed（橙、7B 小气泡）</strong>落在右上角，与体量大得多的 GPT-4o、MedGemma-27B 同区甚至更靠上。要点：在"性能 × 体量"的性价比维度上，OctoMed 把 7B 推到了原本只有大模型能站的位置——印证了"高质量轨迹能以小搏大"。</figcaption></figure>
+<h3>7.2 换 teacher：推理型 teacher（DeepSeek-R1）比指令型（GPT-4o）更会教</h3>
+<figure><a href="../assets/figures/octomed/octomed_fig6.png"><img src="../assets/figures/octomed/octomed_fig6.png" alt="不同 teacher（base / GPT-4o / DeepSeek-R1）蒸馏出的学生在 5 个纯文本基准上的准确率柱状图带误差棒"></a><figcaption><strong>图 6 · teacher 选择消融（纯文本）。</strong>蓝=base 学生、绿=GPT-4o teacher 蒸出、橙=DeepSeek-R1 teacher 蒸出；星号任务表示其训练划分被用于蒸馏；误差棒为 1 万次 bootstrap。两类 teacher 都稳定超 base，但<strong>DeepSeek-R1 在每个任务上都给出更大增益</strong>（尤其 MedQA / MedMCQA / MMLU-PRO Health）。这张图要支撑的结论是：<strong>面向推理的 teacher 是更强的医学知识"老师"</strong>——它产出的轨迹更细、更接近"该怎么想"，因而蒸馏价值更高。由于 DeepSeek-R1 只支持文本，多模态侧用 GPT-4o 兜底（稳健且省成本）。</figcaption></figure></section>
+
+<section id="ablations"><h2>8. 消融：把"配方有效"逐条钉死</h2><p>这一节把 §5 的机制主张落到可证伪的消融上。前面已展开图 5（多轨迹）、表 1（CoT/direct）、图 3（题源），这里补两条：<strong>过滤</strong>与<strong>跨模型族</strong>。</p>
+<h3>8.1 题目过滤：省早期样本效率，但抬不了峰值——因为拒绝采样已在下游兜底</h3>
+<p>动机：能不能在送进 teacher 前就先挑掉"模糊/无解/误导"的题？作者试了三种过滤：(1) <strong>学生比例过滤</strong>（学生采 16 次，答对数 &lt;2 或 &gt;14 的题剔掉——太难或太易）；(2) <strong>teacher 比例过滤</strong>（同上但用 teacher 估难度）；(3) <strong>LLM-Judge 难度评分</strong>（GPT-4.1-mini 给 1–10 分，留 3–6 的中档题）。</p>
+<figure class="fig-wide"><a href="../assets/figures/octomed/octomed_fig4.png"><img src="../assets/figures/octomed/octomed_fig4.png" alt="四种过滤策略（teacher/student 比例、LLM-Judge、不过滤）在 PMC-VQA 上随训练样本数的性能曲线"></a><figcaption><strong>图 4 · 过滤策略消融。</strong>横轴训练样本数（64k→832k），四条线为三种过滤 + 不过滤。读数：<strong>所有过滤策略在早期都明显高于不过滤</strong>（同样样本数下表现更好，即样本效率更高），其中学生比例过滤最快；但<strong>不过滤的基线最终爬到与 LLM-Judge 过滤相当的峰值</strong>。这张图要支撑的结论是：过滤买的是"早期样本效率"，不是"更高天花板"。</figcaption></figure>
+<div class="socratic"><p class="question">问：过滤明明早期更省，为什么作者最终选"不过滤"？两件事不矛盾吗？</p><p class="answer">答：不矛盾，关键在<strong>过滤的收益已经被拒绝采样在下游接住了</strong>。过滤想干的是"别让低质量题污染训练"；但 OctoMed 的流水线里，每题的轨迹要过式 1–2 的<strong>答案正确性门</strong>——一道模糊/无解的题，teacher 在它上面很难稳定答对，对应轨迹大多进不了 $\mathcal{R}^+$，<strong>自然被下游降权甚至剔除</strong>。于是"前置过滤"和"后置拒绝采样"在<em>质量把控</em>上高度重叠，前置过滤的边际收益主要剩"早期收敛快"。既然峰值不受影响，作者就选<strong>不过滤以最大化数据覆盖</strong>（覆盖正是 §1 抗分布漂移的关键），把质量交给拒绝采样兜底。作者也点明：过滤对<strong>讲究样本效率的 RL post-training</strong> 仍有价值——那里没有 8M 的覆盖红利可吃。</p><p class="takeaway"><strong>Takeaway：</strong>当下游已有强质量门（拒绝采样），前置过滤就从"提质量"退化成"提早期效率"。在追求覆盖的 SFT 里，覆盖 &gt; 早期效率，故不过滤；在追求效率的 RL 里，结论可能反过来。</p></div>
+<h3>8.2 跨模型族：换 backbone 结论稳，但"已被 RL 过的底座"增益更小</h3>
+<figure class="fig-wide"><a href="../assets/figures/octomed/octomed_fig9.png"><img src="../assets/figures/octomed/octomed_fig9.png" alt="三个模型族（Qwen3-VL-8B / Qwen2.5-VL-7B / InternVL3.5-8B）在分类与推理任务上 base vs fine-tuned 的提升"></a><figcaption><strong>图 9 · 跨模型族验证。</strong>上排多模态分类、下排推理任务；每格 base→fine-tuned。<strong>分类任务上三族提升一致</strong>；但<strong>推理任务上，指令型底座（Qwen3-VL-8B-Instruct）比已被 reasoning-post-train 的底座（InternVL3.5-8B）涨得更多</strong>。这张图要支撑两件事：(1) 配方<strong>不挑 backbone</strong>，换族照样有效（排除"只对 Qwen2.5 有效/疑似数据泄漏"的质疑）；(2) <strong>SFT 更适合用在 RL 之前</strong>——底座若已被 RL 精修过推理，再 SFT 的空间就小了，呼应 §1"RL 主要精修 SFT 行为"的判断。</figcaption></figure>
+<div class="note"><p class="note-title">定性证据（附录 A，正文未给图，本页据文字转述）</p><p>论文在附录给了定性轨迹分析（图 S1–S3，本页未抽取附录图），归纳出三条特性：<strong>任务通用性</strong>（不止多选 VQA，也能做开放式/描述式作答）、<strong>模态通用性</strong>（MRI/眼底/皮肤/病理间保持连贯推理）、<strong>任务感知思考</strong>（按复杂度调推理深度，与图 8 互证）。这些属定性观察，强度弱于前述定量消融，本页据论文文字记录、不夸大。</p></div></section>
+
+<section id="limitations"><h2>9. 局限、复现门槛与风险</h2>
+<ul><li><strong>无公开代码仓库。</strong>论文只放出 HuggingFace 模型权重（<code>OctoMed/OctoMed-7B</code>），<strong>没有开源训练/数据构造代码</strong>。8M 数据集的具体混合比例、各源采样配额、teacher prompt、拒绝采样的工程细节，正文与附录只给框架，逐项复现需自行重建——这是本工作最实的复现门槛。</li><li><strong>算力账本缺失。</strong>teacher 调用总量、GPU 卡数、墙钟、API 成本均<strong>论文未说明</strong>；数据生成侧（180 万题 × 16 轨迹的 R1/4o 调用）很可能是真正的大头，但无从估算。</li><li><strong>偏多选题、偏胸部。</strong>打分函数 $S$ 之所以简单，是因为"几乎所有训练任务都是可验证的多选题"——这天然限制了对<strong>开放式临床生成</strong>（报告生成、鉴别诊断叙述）的覆盖；模态分布也偏胸部（44.77%），其它部位监督更稀。</li><li><strong>teacher 上限即学生上限。</strong>纯 SFT 蒸馏让学生<em>逼近</em>但未追平最强 teacher（多模态推理 50.36 vs GPT-4o 58.07；纯文本 67.83 vs R1 76.05）。它继承 teacher 的知识，也继承 teacher 的错误与偏见——医学里这意味着<strong>teacher 的幻觉/过时知识会被蒸进学生</strong>，拒绝采样只过滤"最终答案错"，过滤不了"答案对但推理里夹带错误事实"。</li><li><strong>"长度=难度"是相关、非因果保证。</strong>图 8 的任务感知长度是涌现现象，作者也只把它当"可能有用的难度信号"。把它直接当难度估计去过滤/指导 RL 时，需警惕"模型啰嗦≠题真难"的反例。</li><li><strong>评测是 5 seed 均值、强制退出。</strong>对"先想后答"模型用了强制退出截断推理，这对那些<em>需要更长思考</em>的对手可能略压其表现——跨模型比较时要记得这层评测设定差异。</li></ul></section>
+
+<section id="summary"><h2>10. 结语：一句话与三条带走的判断</h2>
+<p><strong>一句话：</strong>OctoMed 证明了在医学多模态推理上，<strong>"把数据配方做对、再放大"可以替代"换架构/堆 RL/上更大模型"</strong>——纯 SFT 蒸馏 + 拒绝采样 + 多轨迹多模态覆盖，就能把 7B 学生喂到跨分布开源 SOTA。</p>
+<div class="note"><p class="note-title">三条带走的判断（建议的阅读路径）</p><ol><li><strong>多样性是 epoch 买不到的正则化。</strong>每题多条<em>正确</em>轨迹把"通向答案的过程"做成增强，抬的是峰值不只是收敛速度（图 5：75.16→85.01）。读这篇先读 §5.1。</li><li><strong>提示风格要匹配任务的内在计算深度。</strong>CoT 是推理任务的工作内存、是感知任务的噪声源（表 1）；direct 是"空推理链"的 CoT 极限。</li><li><strong>长度自校准是混合长短轨迹的免费副产品。</strong>只要训练里难度和长度相关，模型就把"难写长、易写短"学进生成过程（图 8），还能反哺难度估计。</li></ol></div>
+<p>阅读路径：§1 立题（数据 &gt; 架构）→ §4 pipeline（蒸馏+拒绝采样三步）→ §5 机制（多轨迹正则化 / CoT 适用面 / 长度涌现 / 题源互补）→ §7 主表（以小搏大）→ §8 消融（过滤只省效率、跨族稳健）→ §9 局限（无代码、teacher 上限、偏多选题）。</p></section>
+
+<section id="references"><h2>11. 参考与图片出处</h2>
+<div class="references"><ol>
+<li>Timothy Ossowski, Sheng Zhang, Qianchu Liu, Guanghui Qin, Reuben Tan, Tristan Naumann, Junjie Hu, Hoifung Poon. <strong>OctoMed: Data Recipes for State-of-the-Art Multimodal Medical Reasoning.</strong> arXiv:2511.23269v1, 2025. UW–Madison / Microsoft Research. 模型权重：<code>huggingface.co/OctoMed/OctoMed-7B</code>。<strong>无公开训练/数据代码仓库。</strong></li>
+<li>论文引用的关键外部工作（按本页出现）：DeepSeek-R1 [13]、GPT-4o [20]、Qwen2.5-VL [4]、InternVL3.5 [42]、GLM-4.1V [16]、S1 强制退出/去重 [29]、CoT prompting [45]、OpenThoughts [12]、II-Medical [21]、llama-factory [59]、vllm [23]、"RL 主要精修 SFT 行为" [54]、数据混合理论/实证 [40][26]。以上均按<strong>原论文引用编号</strong>列出，不另作转引。</li>
+<li><strong>kexue:su 归因说明（红线）：</strong>本页 §5 的机制推导（多轨迹=正则化、CoT 适用面、长度自校准、题源互补）按 <code>kexue:su</code> 的方法论展开（动机→机制→假设→≥2 独立验证）。检索 <code>kexue:su</code> 语料库时<strong>未返回与本文具体主张（医学 SFT 数据配方 / 拒绝采样多轨迹 / 推理长度涌现）真正相关的卡片</strong>（返回的多为 NLP 预训练/损失设计类条目，相关度不足）。按归因红线，<strong>仅应用方法论，不臆造 苏剑林 引用</strong>。§5.1 提到的"输出侧一致性约束缓解过度自信"为正则化领域的通用思路，此处作为方法论背景陈述，<strong>不</strong>挂具体 <code>[archives/XXXX]</code>。</li>
+<li><strong>图片出处：</strong>本页所有图（图 1–9）均为从 arXiv PDF 2511.23269v1 经 caption-anchored 抽取器（<code>extract_figures.py</code>，PyMuPDF）提取的本地 PNG，用于学术评注。图 4（过滤消融）与图 8（token 用量）因 caption 紧贴正文/全宽布局未被自动抽取器命中，改用 PyMuPDF 按页面坐标裁剪同一区域获得，非盲裁页面渲染。表格均转写自论文 Table 1 / Table 2 与图 2 右栏统计表、§3/§5 训练设置；表 2 为<strong>全转写</strong>。CVF 页：<code>openaccess.thecvf.com/.../Ossowski_OctoMed_..._CVPR_2026_paper.html</code>（已验证可访问）。</li>
+</ol></div></section>
+
+</main>
+<footer class="article-footer">Paper2Html · CVPR 2026 Best Papers Digest · 本页为学术深读，所有结论以原论文 arXiv:2511.23269 为准；缺失信息已标注"论文未说明"。</footer>
+</article>
+<aside class="sidebar">
+<section class="side-card"><h2 class="side-title">目录</h2><div class="side-body"><ol>
+<li><a href="#motivation">核心问题：架构还是数据</a></li>
+<li><a href="#contribution">贡献拆解</a></li>
+<li><a href="#datasets">数据：8M / 6.8B token</a></li>
+<li><a href="#pipeline">Pipeline：蒸馏+拒绝采样</a></li>
+<li><a href="#method">方法：多轨迹=正则化 / 长度自校准</a></li>
+<li><a href="#training">训练账本</a></li>
+<li><a href="#experiments">实验：三类任务主表</a></li>
+<li><a href="#ablations">消融：过滤 / 跨模型族</a></li>
+<li><a href="#limitations">局限与复现门槛</a></li>
+<li><a href="#summary">结语</a></li>
+<li><a href="#references">参考与图片出处</a></li>
+</ol></div></section>
+<section class="side-card"><h2 class="side-title">速览</h2><div class="side-body"><dl class="meta-list">
+<dt>会议 / 主题</dt><dd>CVPR 2026 · Medical AI</dd>
+<dt>机构</dt><dd>UW–Madison / Microsoft Research</dd>
+<dt>学生模型</dt><dd>Qwen2.5-VL-7B-Instruct</dd>
+<dt>数据规模</dt><dd>8.10M 样本 / 6.8B token</dd>
+<dt>方法</dt><dd>纯 SFT 蒸馏 + 拒绝采样多轨迹</dd>
+<dt>核心结果</dt><dd>三类任务开源 SOTA；多模态分类反超 GPT-4o</dd>
+<dt>代码</dt><dd>无公开仓库（仅 HF 权重）</dd>
+</dl></div></section>
+</aside>
+</div>
+</body>
+</html>

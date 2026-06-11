@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedMO 深读：四阶段后训练如何让医学 MLLM 同时看懂与框准？</title>
+<meta name="description" content="CVPR 2026 Medical AI · MedMO: Grounding and Understanding Multimodal Large Language Model for Medical Images 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.paper-subtitle{margin:10px 0 0;color:var(--muted);font-size:16px;line-height:1.55;font-weight:600}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+.reader-map{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:20px 0 28px}
+.map-step{min-height:132px;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff;padding:14px 15px;box-shadow:var(--shadow-sm)}
+.map-step .step{display:block;margin-bottom:6px;color:var(--brand-deep);font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.map-step b{display:block;margin-bottom:5px;color:#1f2e38;line-height:1.45}
+.map-step p{margin:0;color:var(--ink-soft);font-size:14px;line-height:1.65}
+.hero-brief{border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);background:#fff;padding:16px 18px;box-shadow:var(--shadow-sm)}
+.hero-brief h2{margin:0 0 10px;padding:0;border:0;color:#1f2e38;font-size:18px;line-height:1.45}
+.hero-brief h2::after{display:none}
+.hero-brief ol{margin:0;padding-left:1.35em}
+.hero-brief li{margin:8px 0;color:var(--ink-soft);line-height:1.65}
+.evidence-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px}
+.evidence-strip .metric{border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:11px 12px}
+.metric b{display:block;color:var(--brand-deep);font-size:18px;line-height:1.25}
+.metric span{display:block;color:var(--muted);font-size:12.5px;line-height:1.45}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Medical AI · 医学多模态大模型 / 理解 + grounding 的四阶段后训练</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#reader-map">路线</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Medical AI &gt; MedMO</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">11</span><span class="month">Jun</span></div><h1 id="paper-title">MedMO 深读：四阶段后训练如何让医学 MLLM 同时看懂与框准？</h1><p class="paper-subtitle">Grounding and Understanding Multimodal Large Language Model for Medical Images</p><div class="article-meta"><span>Paper2Html</span><span>2026-06-11</span><span>CVPR 2026 · Medical AI · MBZUAI</span><span>来源：arXiv:2602.06965 PDF</span></div><div class="tags"><span class="tag orange">Medical AI</span><span class="tag">医学多模态大模型</span><span class="tag">Qwen3-VL 后训练</span><span class="tag green">GRPO + 可验证奖励</span><span class="tag">视觉 grounding</span><span class="tag">26M 开源语料</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>MedMO 要解决的是一个很实际的冲突：医学 MLLM 既要<strong>看懂影像并回答临床问题</strong>，又要<strong>把答案落到可核验的空间位置</strong>。这两类能力的数据条件相反——理解数据多而便宜，框选标注少、贵，并且依赖高分辨率。MedMO 的答案是四阶段后训练：先用 18.5M 低分辨率样本打底，再用 3M 高分辨率 grounding 数据补空间能力，随后指令微调，最后用 GRPO 和纯几何 bbox 奖励打磨定位。本文按“问题 → 配方 → 奖励 → 证据 → 边界”组织，先看为什么顺序重要，再检查实验是否真的支持这个主张。</p>
+
+<div id="reader-map" class="reader-map" aria-label="阅读路线">
+  <div class="map-step"><span class="step">01 / Problem</span><b>为什么不能一锅端？</b><p>理解监督海量，grounding 标注稀缺；低分辨率足够对齐语义，却不够框小病灶。</p></div>
+  <div class="map-step"><span class="step">02 / Recipe</span><b>四阶段怎么排？</b><p>低分辨率先学跨模态对齐，高分辨率再注入框选，指令与 RL 放在后面收口。</p></div>
+  <div class="map-step"><span class="step">03 / Reward</span><b>奖励如何可验证？</b><p>GIoU、归一化 L1、匈牙利匹配与 FP/FN 惩罚只看几何，不奖励漂亮但错的文本。</p></div>
+  <div class="map-step"><span class="step">04 / Evidence</span><b>证据强在哪里？</b><p>VQA、报告和 grounding 分开验；grounding 均分 56.8 是主战场，局限也要逐项看。</p></div>
+</div>
+
+<div class="hero-split"><div><div class="hero-brief"><h2>这篇文章的主线</h2><ol><li><strong>模型定位：</strong>MedMO 从 Qwen3-VL-8B-Instruct 出发，用公开医学数据后训练成“理解 + 报告 + grounding”统一模型。</li><li><strong>工程判断：</strong>18.5M 低分辨率数据负责语义对齐，3M 高分辨率数据专门补 grounding，避免海量理解数据淹没稀缺框选监督。</li><li><strong>方法关键：</strong>bbox 奖励只看几何匹配，不让 RL 被流利文本骗分，因此定位能力能被单独打磨。</li><li><strong>阅读边界：</strong>最强证据在 grounding；报告生成和 VQA 多数领先，但不是逐项全胜，复现门槛也很高。</li></ol></div><div class="evidence-strip" aria-label="关键数字"><div class="metric"><b>26M+</b><span>公开医学多模态样本，45 个数据集</span></div><div class="metric"><b>72.7%</b><span>MedMO-8B-Next 的 VQA 均分</span></div><div class="metric"><b>56.8</b><span>grounding 六任务平均 IoU</span></div><div class="metric"><b>64×MI210</b><span>论文披露的训练硬件规模</span></div></div></div><figure class="hero-card"><a href="../assets/figures/medmo/medmo_fig1.png"><img src="../assets/figures/medmo/medmo_fig1.png" alt="MedMO 各变体与基线在 VQA / Text QA / BBox / 报告生成上的柱状对比"></a><figcaption><strong>图 1 · 全文“核心断言可视化”。</strong>MedMO-4B/8B 的 base 与 Next 变体，对比 Lingshu-7B、Fleming-VL-8B、Qwen3VL-8B：四组任务（VQA、文本 QA、BBox grounding 的 IoU、报告生成）。要点不在“某一格多高”，而在<strong>同一个后训练配方能否同时撑住四类任务</strong>——尤其最右两组：Bacteria grounding 上 MedMO-8B-Next 的 56.1 IoU 对 Fleming-VL-8B 的 9.1（图注口径 +47.0），是“理解强的模型未必框得准、而 MedMO 两者兼得”的最直接体现。柱顶数字为论文图中读数。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：理解要“多而便宜”，框选要“少而精且高分辨率”，顺序怎么排？</h2><p>论文开篇把通用 MLLM 落到医学的障碍归成三条（§1）：<strong>(1)</strong> 多数医学模型靠<em>蒸馏</em>专有大模型的输出来造数据，缺乏结构化监督，会放大幻觉、且在细粒度临床推理上 grounding 不准；<strong>(2)</strong> 蒸馏流水线只拿生成式输出、没有可核验的监督，前后不一致；<strong>(3)</strong> 现有模型大多只盯单任务或窄模态（只放射、或只病理），做不到跨模态统一。</p>
+<div class="socratic"><p class="question">问题：为什么不能把“看懂”和“框准”一锅端，端到端一起训？</p><p class="guide">引导：注意这两件事的<em>数据经济学</em>是反的。“看懂”——captioning/VQA/QA——的监督<strong>便宜且海量</strong>（MedTrinity 一家就 18.5M）；“框准”——bounding box——的监督<strong>稀缺且贵</strong>（要专家逐框标注，且小病灶/细胞在低分辨率下根本分不清边界）。一锅端的后果是：海量的理解数据会在梯度上<em>淹没</em>稀少的框选数据，而低分辨率又让“框”这件事在物理上不可能精确——IoU 在小目标上由几像素的边界误差主导。</p><p class="answer">回答：于是 MedMO 把它拆成<strong>课程式四阶段</strong>：先用大规模、低分辨率（768²）的理解数据把跨模态对齐<em>打底</em>；再把分辨率升到 1280²、专门喂带框标注的高质量数据<em>注入 grounding</em>；再用指令数据对齐人类问答口吻；最后用 RL 打磨。分辨率升级不是装饰——它是“补 grounding”这一步在物理上的<strong>前提条件</strong>。</p></div>
+<div class="takeaway"><strong>Takeaway：</strong>核心问题不是“要不要 grounding”，而是<strong>“按什么顺序、在哪一阶段升分辨率”</strong>——便宜的先打底，贵的、需要高分辨率的后补，这正是后面图 5 在 Stage 2 出现陡升的来由。</div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献（论文 §1 列点）：</strong></p><ul><li><strong>一个开源的后训练医学多模态大模型 MedMO</strong>，面向“医学影像理解 + grounding”的统一能力。</li><li><strong>整理 26M+、来自 45 个数据集的多模态语料</strong>，并建立<strong>多阶段后训练</strong>，渐进增强跨模态对齐与推理——作者称其为“通往医学通用基础模型的可扩展路线图”。</li><li><strong>构造一个专门的 Cell 检测数据集</strong>（取自开源显微镜图像，如 DeepCell、Bacteria，含不同细胞数量与密度），用来评测 VLM 的检测能力。</li><li><strong>跨数据与方法维度的系统实验与分析</strong>，给出一个面向后续医学多模态研究的开放基准与训练配方。</li></ul>
+<p><strong>读者能进一步推断的是：</strong>真正的方法新意集中在两点——其一，<em>四阶段课程 + 分辨率升级</em>把“理解/grounding 的数据经济学冲突”工程化地解开；其二，把一个<strong>纯几何、可验证</strong>的 bbox 奖励接进 GRPO，让 RL 只动空间精度。其余更多是“规模 + 配方 + 开源”的整合，而非全新算法——这点论文自己也坦承：四个奖励项里多数“在 RL 训练中常见”，唯 bbox reward 是其引入的<em>可验证、空间锚定</em>信号。</p></section>
+
+<section id="datasets"><h2>3. 数据：26M+ / 45 个数据集，但 18.5M 压在单一 MedTrinity 上</h2><p>语料统一了放射、病理、眼科、皮肤科与外科影像，共 26M+ 样本，含图文对与纯文本，覆盖多模态成像（X-ray、CT、MRI、超声、光学、核医学）与多生物系统（胸、脑、心、肝、肾、眼、结肠、组织）。其中<strong>MedTrinity 一家贡献 18.5M 公开指令对，是 Stage 1 的全部主力</strong>；grounding 部分另用带框标注的数据集（Chest X-ray、Wrist X-ray、Cell microscopy、CT）。作者还自建了 Cell Benchmark（DeepCell、Bacteria 等显微镜图像）评测检测。</p>
+<figure><a href="../assets/figures/medmo/medmo_fig4.png"><img src="../assets/figures/medmo/medmo_fig4.png" alt="MedMO 统一多模态医学数据集的成像模态与生物系统构成 sunburst 图"></a><figcaption><strong>图 4 · 语料构成（成像模态 × 生物系统）。</strong>内圈是成像模态（X-ray / CT / MRI / 超声 / 核医学 / 病理光学等），外圈是对应的生物系统/器官（胸、脑、脊髓、肝、肾、眼、结肠……）。这张图要支撑的结论是“MedMO 的语料在<em>模态</em>和<em>解剖系统</em>两个维度都铺得很开”——这正是它敢主张“跨模态统一”的数据底气；但也要对照看：覆盖广 ≠ 分布均，18.5M 集中在 MedTrinity，放射类占比偏重（见 §9 复现门槛）。</figcaption></figure>
+<div class="note"><div class="note-title">数据的角色（按阶段）</div>Stage 1：18.5M @ 768²，学全局图文对齐（captioning + VQA + 通用多模态，记 $D_{\text{stage1}}=D_{\text{caption}}\cup D_{\text{vqa}}\cup D_{\text{general-mm}}$）；Stage 2：3M @ 1280² 高质量 + 带框标注，注入 grounding；Stage 3：4.3M 指令–响应对（captioning / 诊断问答 / 报告摘要 / 检索推理）；Stage 4：300K 用于 GRPO。<strong>论文未说明</strong>各模态在 26M 中的精确占比表。</div></section>
+
+<section id="pipeline"><h2>4. Pipeline：从 Qwen3-VL-8B 出发的四级渐进后训练</h2><p>图 2（论文 Figure 2，矢量排版，提取器跳过，此处转写其结构）给出全流程。底座是 <strong>Qwen3-VL-8B-Instruct</strong>，其三件套为：视觉编码器 $E_v$、把多层 ViT 特征经 <em>DeepStack</em> 融合投影进语言空间的视觉-语言适配器 $A$、以及语言解码器 $D$。在此之上做四个<strong>顺序</strong>后训练阶段：</p>
+<div class="table-wrap"><table><caption><strong>表（转写自图 2）.</strong> 四阶段后训练的规模、分辨率、目标与时长。训练时长按论文图 2 / §4.1 披露数字，<strong>属粗略估算，不等同于实际账单</strong>。</caption><thead><tr><th>阶段</th><th>数据量</th><th>分辨率 / 配置</th><th>目标</th><th>时长</th></tr></thead><tbody>
+<tr><td><strong>1 · 大规模通用医学 SFT</strong></td><td>18.5M（MedTrinity）</td><td>768×768；BS=10，LR=1e-5，cosine，grad accum=2</td><td>学全局图文对齐，打底医学知识</td><td>225 h</td></tr>
+<tr><td><strong>2 · 高质量医学影像 + grounding SFT</strong></td><td>3M</td><td>1280×1280；BS=2，LR=8e-6，cosine，grad accum=8</td><td>升分辨率，加入空间定位与细粒度框选</td><td>155 h</td></tr>
+<tr><td><strong>3 · 指令微调</strong></td><td>4.3M</td><td>BS=10，LR=5e-6，grad accum=2</td><td>对齐人类风格的医学指令跟随</td><td>110 h</td></tr>
+<tr><td><strong>4 · 强化学习（GRPO）</strong></td><td>300K</td><td>四路奖励：标签准确 / bbox IoU / 标签计数 / soft 超长惩罚</td><td>提升指令跟随与定位精度</td><td>98 h</td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问题：为什么 Stage 1 在 768²、到 Stage 2 才升 1280²，而不是全程高分辨率？</p><p class="guide">引导：高分辨率 token 数随边长平方膨胀，注意力又是 token 数的平方——18.5M 样本全程 1280² 会让 Stage 1 的算力账爆掉。而 Stage 1 要学的“全局图文对齐”并不依赖像素级细节，768² 足够。</p><p class="answer">回答：所以分辨率<strong>跟着任务需求走</strong>：对齐阶段省着用、grounding 阶段（3M，量小十倍）才舍得升到 1280²，把算力花在真正需要细节的地方。这是“课程 + 资源分配”的一体两面。</p></div></section>
+
+<section id="method"><h2>5. 方法：把“理解 vs grounding”的冲突拆成课程，再用可验证的几何奖励接住 RL</h2>
+<h3>5.1 SFT 目标：标准下一 token 预测</h3><p>四个 SFT 阶段都用 vision-language 的标准自回归目标。给定图像 $v$ 与文本序列 $x=\{x_1,\dots,x_n\}$，模型最大化目标响应 $y=\{y_1,\dots,y_m\}$ 的条件似然：</p>
+<div class="equation">$$\mathcal{L}_{\text{SFT}}=-\sum_{i=1}^{m}\log p_{\theta}\big(y_i \mid v,\,x,\,y_{<i}\big)\tag{1}$$<div class="eq-caption">式 1：SFT 的逐 token 交叉熵</div></div>
+<div class="formula-note"><strong>公式读法。</strong>$\theta$ 是模型参数，$y_{<i}$ 是已生成的前缀 token。这就是“看着图 $v$ 和问题 $x$，把答案 $y$ 一个字一个字预测对”。Stage 2 的区别仅在于：$y$ 里现在<em>包含框坐标</em>（如 <code>&lt;box&gt;[[156,516,231,607]]&lt;/box&gt;</code>），grounding 被当成“也是要预测的文本”塞进同一个目标——这是把“框选”统一进语言建模的关键简化，也意味着定位精度此时只受交叉熵的弱约束。</div>
+<h3>5.2 GRPO：为什么 RL 阶段要“组内相对”而不是绝对奖励</h3><p>Stage 4 用 <strong>GRPO</strong>（Group Relative Policy Optimization）。对每个输入 $(v,x)$，从当前策略 $\pi_\theta$ 采样 $G$ 个响应，逐个用奖励 $r(v,x,y)$ 打分，再把分数<strong>组内标准化</strong>成优势：</p>
+<div class="equation">$$\hat{A}_{i,t}=\frac{R_i-\operatorname{mean}(\{R_j\}_{j=1}^{G})}{\operatorname{std}(\{R_j\}_{j=1}^{G})}\tag{5}$$<div class="eq-caption">式 5：GRPO 的组内归一化优势</div></div>
+<div class="formula-note"><strong>公式读法。</strong>不需要单独的 value 网络：用<em>同一道题的 $G$ 个采样答案</em>互相做基准（减均值、除标准差），高于组内平均的答案被强化、低于的被抑制。这天然抵消了“不同题目难度不同导致奖励尺度不一”的混淆——奖励的绝对值不重要，<strong>同题内部的相对好坏</strong>才重要。目标用 clip 限制策略更新幅度（式 3–4，沿用 DAPO 的 clip-higher 与 token 级 loss），并加 KL 约束（式 6）防止策略 $\pi_\theta$ 偏离参考模型 $\pi_{\text{ref}}$ 太远：</div>
+<div class="equation">$$\mathcal{L}_{\text{KL}}=\mathbb{E}_{(v,x,y)}\big[\,D_{\text{KL}}\big(\pi_\theta(\cdot\mid v,x)\,\big\Vert\,\pi_{\text{ref}}(\cdot\mid v,x)\big)\,\big]\tag{6}$$<div class="eq-caption">式 6：对参考模型的 KL 正则</div></div>
+<h3>5.3 核心机制：Bounding Box 可验证奖励，怎么做到“分辨率无关 + 只奖励空间精度”</h3>
+<div class="socratic"><p class="question">问题：RL 要“可验证”的奖励。可验证为什么重要，几何奖励又怎么保证不被“流利但错的文本”骗过去？</p><p class="guide">引导：若奖励来自另一个模型当裁判，就可能被“说得漂亮但框错”的回答骗高分（reward hacking）。<strong>纯几何</strong>的奖励——直接拿预测框和真值框算重叠——是<em>规则可核验</em>的：框在哪、对不对，用坐标一算便知，骗不了。它也<strong>只对空间精度求导</strong>，碰不到语言流畅度，于是 RL 不会为了刷奖励去牺牲文本能力。</p><p class="answer">回答：MedMO 的 bbox 奖励分四步搭起来。</p></div>
+<p><strong>第一步 · 分辨率无关的 L1。</strong>给真值框 $G=\{g_j\}_{j=1}^{G}$ 与预测框 $P=\{p_i\}_{i=1}^{P}$（XYXY 格式），单对的 L1 误差按<strong>图像对角线</strong>归一化：</p>
+<div class="equation">$$L1_{ij}=\frac{|x_1^{p}-x_1^{g}|+|y_1^{p}-y_1^{g}|+|x_2^{p}-x_2^{g}|+|y_2^{p}-y_2^{g}|}{2\sqrt{H^2+W^2}}\tag{2}$$<div class="eq-caption">式 2：按图像对角线归一化的框坐标 L1</div></div>
+<div class="formula-note"><strong>公式读法 + 假设。</strong>分母 $\sqrt{H^2+W^2}$ 是图像对角线长度，使误差<strong>分辨率无关、且与图像尺度成正比</strong>：同样“差 10 像素”，在 1280² 上和在 512² 上被惩罚的程度一致——这正是 §1 那条“小目标边界由几像素主导”担忧的解药。<em>隐含假设</em>：坐标已是绝对像素值（Qwen 系输出绝对坐标的 JSON），否则归一化口径会错。</div>
+<p><strong>第二步 · GIoU 而非 IoU。</strong>用 $\text{GIoU}\in[-1,1]$ 与 L1 组合成代价矩阵（$w_{L1}=5,\ w_G=2$）：</p>
+<div class="equation">$$C_{ij}=w_{L1}\,L1_{ij}+w_{G}\,(1-\text{GIoU}_{ij}),\qquad w_{L1}=5,\ w_G=2\tag{3}$$<div class="eq-caption">式 3：匹配用的代价矩阵（L1 + GIoU）</div></div>
+<div class="formula-note"><strong>为什么是 GIoU 不是 IoU。</strong>当预测框与真值框<em>完全不重叠</em>时 IoU 恒为 0、没有梯度，模型不知道“往哪个方向挪框更好”；GIoU 把“包住两框的最小外接框里有多少空白”也算进去，于是即便不重叠也给出 $[-1,1]$ 的连续信号，指明靠近方向。这对医学小病灶尤为关键——一开始框常常完全偏到别处。</div>
+<p><strong>第三步 · 匈牙利匹配，解决“多框对多框”。</strong>一张图常有多个病灶/细胞，预测框与真值框需要<strong>一一对应</strong>才能打分。在代价矩阵 $C$ 上做匈牙利匹配，得到一对一指派 $M\subseteq\{1\dots P\}\times\{1\dots G\}$。对每个匹配对 $(i,j)\in M$ 定义一个综合质量分（GIoU 与 L1 的加权，再归一）：</p>
+<div class="equation">$$s_{ij}=\frac{w_{L1}\,\big(1-\operatorname{clip}_{[0,1]}(L1_{ij})\big)+w_{G}\,\frac{\text{GIoU}_{ij}+1}{2}}{w_{L1}+w_G}\tag{4}$$<div class="eq-caption">式 4：每个匹配对的质量分 $s_{ij}\in[0,1]$</div></div>
+<p><strong>第四步 · 覆盖归一 + FP/FN 惩罚，封死“刷框”漏洞。</strong>把匹配对的质量分按真值框数覆盖归一，并对<em>漏检</em>（FN：未被匹配的真值框）与<em>误检</em>（FP：多余的预测框）罚分，最后 clip 到 $[0,1]$：</p>
+<div class="equation">$$B=\frac{1}{\max(1,G)}\sum_{(i,j)\in M}s_{ij},\qquad \text{Pen}=\frac{\lambda_{\text{FN}}\,(G-|M|)+\lambda_{\text{FP}}\,(P-|M|)}{G}$$$$R_{\text{bbox}}=\operatorname{clip}_{[0,1]}\big(B-\text{Pen}\big)\tag{others}$$<div class="eq-caption">式（综合）：覆盖归一的 bbox 奖励 + FP/FN 惩罚</div></div>
+<div class="formula-note"><strong>为什么要 FP/FN 惩罚。</strong>没有它，模型可以靠“宁滥勿缺、撒一堆框”来碰运气提高重叠——这就是 reward hacking。$\lambda_{\text{FP}}$ 罚多余框、$\lambda_{\text{FN}}$ 罚漏掉的真值框，把“撒框”和“漏框”都明码标价。于是这个奖励<strong>只在“框得准、不多不少”时给高分</strong>，纯几何、可核验、与语言流畅度正交。</div>
+<div class="note"><div class="note-title">两条独立路径的交叉验证（本文按 kexue:su 方法重推，未作 [archives] 归因）</div><strong>路径一（自上而下，设计意图）：</strong>RL 要“可验证”→ 奖励必须规则可核验且与语言能力正交 → 选纯几何信号 → 但几何信号需克服三个工程缺陷：尺度依赖（→对角线归一 L1）、非重叠零梯度（→GIoU）、多目标指派（→匈牙利）、刷框漏洞（→FP/FN 惩罚）。每个组件都对应一个具体失败模式。<br><strong>路径二（自下而上，证据）：</strong>表 4 显示加入该奖励后 IoU 在 NIH/DeepLesion/Bacteria 上<em>一致</em>上升（+4.5 / +0.4 / +0.4）。增益“小但稳”恰好印证机制定位——重活已由 Stage 2 的高分辨率 grounding 做完，<strong>RL 只是打磨</strong>，所以幅度小、却跨数据集稳定为正，且 QA/VQA 没有因 RL 而塌（图 6 stage3 仍在升），说明奖励确实<em>没毒化语言能力</em>。</div></section>
+
+<section id="training"><h2>6. 训练账本：64× MI210 训 25 天，四阶段 225/155/110/98 小时</h2><p>MedMO 在 <strong>64× AMD Instinct MI210（64GB）</strong>上训练，总时长约 <strong>25 天</strong>，遵循四阶段流水线（§4.1）：Stage 1 大规模 SFT（18.5M @ 768²，225 h）→ Stage 2 高分辨率微调（3M @ 1280²，155 h）→ Stage 3 指令微调（4.3M，110 h）→ Stage 4 医学导向 RL（300K，98 h）。训练用 TRL 框架；超参见 §4.1（Stage 1：BS=10/LR=1e-5；Stage 2：BS=2/LR=8e-6/grad accum=8；Stage 3：BS=10/LR=5e-6）。</p>
+<div class="note"><div class="note-title">复现门槛提示</div>四段时长合计约 225+155+110+98 = 588 GPU·小时<em>每卡</em>口径——乘 64 卡约 3.8 万 GPU·小时，<strong>按论文披露数字粗略估算，不等同于实际账单</strong>（未含失败重跑、数据预处理、评测）。Stage 4 的 $\lambda_{\text{FP}},\lambda_{\text{FN}}$ 具体取值、各阶段 epoch 数<strong>论文未说明</strong>。底座 Qwen3-VL-8B 公开可得，配方与模型权重已开源，复现的硬门槛主要在算力与 26M 语料的拼装。</div></section>
+
+<section id="experiments"><h2>7. 实验：理解、报告生成、grounding 三场，逐表看</h2><p><strong>判断：</strong>三组证据测的是同一件事的三个侧面——“看懂”（VQA/QA）、“写对”（报告生成）、“框准”（grounding）。MedMO 提供 4 个变体：MedMO-4B、4B-Next、8B、8B-Next（“Next”为更强的指令/RL 版本）。逐表看。</p>
+<h3>7.1 医学 VQA 与文本 QA（表 1）</h3>
+<div class="table-wrap"><table><caption><strong>表 1（节选）.</strong> 医学 VQA 与文本 QA 基准。粗体=最佳、下划线口径见原文。OMVQA=OmniMedVQA，MedXQA=MedXpertQA。此处保留闭源参照与代表性开源基线 + MedMO 四变体的<strong>均分列</strong>（VQA Avg / QA Avg）；完整逐基准数值以论文表 1 为准。</caption><thead><tr><th>Model</th><th>MMMU-Med</th><th>PMC-VQA</th><th>OMVQA</th><th>MedXQA</th><th>VQA Avg.</th><th>MMLU-Med</th><th>MedQA</th><th>QA Avg.</th></tr></thead><tbody>
+<tr><td>GPT-4.1（闭源）</td><td>75.2</td><td>65.0</td><td>72.2</td><td>45.2</td><td>63.4</td><td>89.6</td><td>77.0</td><td>70.0</td></tr>
+<tr><td>Lingshu-7B</td><td>54.0</td><td>77.2/43.0</td><td>82.4/33.2</td><td>26.9</td><td>55.1</td><td>69.6</td><td>62.0/53.8</td><td>53.1</td></tr>
+<tr><td>Fleming-VL-8B</td><td>63.3</td><td>78.4/56.4</td><td>86.9/80.0</td><td>21.6</td><td>64.3</td><td>71.8</td><td>40.5/37.3</td><td>45.7</td></tr>
+<tr><td>Qwen3VL-8B（底座）</td><td>61.4</td><td>54.1/31.2</td><td>34.3/15.0</td><td>24.8</td><td>40.5</td><td>79.3</td><td>56.1/47.7</td><td>53.6</td></tr>
+<tr><td>MedMO-4B</td><td>54.6</td><td>50.9/35.0</td><td>41.0/30.0</td><td>24.8</td><td>45.4</td><td>75.7</td><td>57.5/47.7</td><td>55.1</td></tr>
+<tr><td>MedMO-4B-Next</td><td>58.7</td><td>79.7/59.6</td><td>78.0/74.0</td><td>27.0</td><td><strong>68.5</strong></td><td>74.8</td><td>57.4/47.6</td><td>55.0</td></tr>
+<tr><td>MedMO-8B</td><td>64.6</td><td>72.3/64.7</td><td>70.6/70.0</td><td>26.2</td><td>63.2</td><td>81.0</td><td>66.5/60.2</td><td><strong>61.3</strong></td></tr>
+<tr><td><strong>MedMO-8B-Next</strong></td><td><strong>69.3</strong></td><td>86.4/68.0</td><td>83.0/81.6</td><td>42.9</td><td><strong>72.7</strong></td><td>80.2</td><td>65.2/57.8</td><td>60.1</td></tr>
+</tbody></table></div>
+<p>这张表要支撑的结论是：<strong>MedMO-8B-Next 在开源阵营里 VQA 均分最高（72.7%），超 Fleming-VL-8B（64.3%）+6.6、超 Lingshu-7B +17.6</strong>；连小一号的 4B-Next（68.5%）也压过 Fleming。一个有意思的细节——<strong>MedMO-8B（base，未走 Next 的 RL）反而拿下全体最高 QA 均分 61.3%</strong>，在 MedQA(84.3)、Medbullets 上领先，提示“base 指令微调已给出很强的纯推理，RL 主要帮 VQA/grounding”。</p>
+<h3>7.2 医学报告生成（表 2）</h3>
+<div class="table-wrap"><table><caption><strong>表 2（节选）.</strong> 报告生成，CIDEr / RaTE / Semb 三项代表性指标，四数据集。绿色行为 MedMO。完整 ROUGE-L 等以论文表 2 为准；此处取每数据集的 CIDEr 列 + MIMIC-CXR 的语义指标为代表。</caption><thead><tr><th>Model</th><th>MIMIC-CXR CIDEr</th><th>MIMIC RaTE</th><th>MIMIC Semb</th><th>CheXpert CIDEr</th><th>IU-Xray CIDEr</th><th>Med-Trinity CIDEr</th></tr></thead><tbody>
+<tr><td>Lingshu-7B</td><td>109.4</td><td>52.1</td><td>30.0</td><td>79.0</td><td>180.7</td><td>74.5</td></tr>
+<tr><td>Fleming-VL-8B</td><td>132.5</td><td>56.7</td><td>33.6</td><td>82.2</td><td><strong>198.6</strong></td><td>35.8</td></tr>
+<tr><td>MedMO-4B-Next</td><td>96.7</td><td>52.0</td><td>34.3</td><td>74.5</td><td>147.8</td><td>183.8</td></tr>
+<tr><td>MedMO-8B</td><td>140.0</td><td>57.1</td><td>50.0</td><td>87.5</td><td>169.7</td><td>270.4</td></tr>
+<tr><td><strong>MedMO-8B-Next</strong></td><td><strong>143.4</strong></td><td><strong>57.7</strong></td><td><strong>51.5</strong></td><td><strong>88.3</strong></td><td>171.9</td><td><strong>272.1</strong></td></tr>
+</tbody></table></div>
+<p>MedMO-8B-Next 在 MIMIC-CXR、CheXpert、Med-Trinity 的 CIDEr 与语义指标（RaTE/Semb）多数第一；尤其 <strong>Med-Trinity CIDEr 272.1，超次优开源（Qwen2.5VL-7B 的 81.5）3 倍以上</strong>。要诚实的是：<strong>IU-Xray 上 Fleming-VL-8B 仍以 CIDEr 198.6 领先</strong>，MedMO-8B-Next 171.9 居其后——并非全面碾压。</p>
+<h3>7.3 医学 grounding（表 3）——MedMO 最硬的一场</h3>
+<div class="table-wrap"><table><caption><strong>表 3.</strong> 医学 grounding 六任务的 IoU(%)。NIH=胸片定位；DeepLesion=病灶检测；Bacteria=显微镜检测；MedSG 三子任务=多视图 / 目标跟踪 / 指代。</caption><thead><tr><th>Model</th><th>NIH</th><th>DeepLesion</th><th>Bacteria</th><th>MedSG 多视图</th><th>MedSG 跟踪</th><th>MedSG 指代</th><th>Avg.</th></tr></thead><tbody>
+<tr><td>InternVL3-8B</td><td>10.1</td><td>0.00</td><td>0.7</td><td>6.3</td><td>13.0</td><td>3.3</td><td>5.6</td></tr>
+<tr><td>Fleming-VL-8B</td><td>0.00</td><td>0.00</td><td>8.3</td><td>42.0</td><td>36.7</td><td>16.6</td><td>17.2</td></tr>
+<tr><td>Lingshu-7B</td><td>5.3</td><td>0.7</td><td>10.8</td><td>28.3</td><td>38.7</td><td>10.4</td><td>13.9</td></tr>
+<tr><td>Qwen3VL-8B（底座）</td><td><strong>16.4</strong></td><td>0.00</td><td>9.16</td><td>8.4</td><td>17.8</td><td>31.4</td><td>13.8</td></tr>
+<tr><td>MedSG-Bench（专用）</td><td>–</td><td>–</td><td>–</td><td>55.0</td><td>62.1</td><td>60.4</td><td>–</td></tr>
+<tr><td>MedMO-8B</td><td>8.83</td><td>38.5</td><td>54.6</td><td>75.8</td><td>77.2</td><td>70.1</td><td>54.2</td></tr>
+<tr><td><strong>MedMO-8B-Next</strong></td><td>15.9</td><td><strong>40.5</strong></td><td><strong>56.1</strong></td><td><strong>77.5</strong></td><td><strong>78.8</strong></td><td><strong>71.9</strong></td><td><strong>56.8</strong></td></tr>
+</tbody></table></div>
+<p>这是 MedMO 与基线<strong>差距最悬殊</strong>的一场。均分 56.8% vs 最强基线 Fleming-VL-8B 的 17.2%。两个尖锐对比值得点出：<strong>(1) DeepLesion 上 Fleming/InternVL3/Qwen3VL 全是 0.00 IoU</strong>——病灶检测是多个医学 VLM 的盲区，而 MedMO-8B-Next 达 40.5；<strong>(2) MedMO 在 MedSG 三子任务上甚至超过专用模型 MedSG-Bench</strong>（如指代 71.9 vs 60.4）。这把“四阶段 + 高分辨率 grounding + bbox 奖励”的价值落到了实处。<strong>诚实点：NIH 胸片定位上 MedMO-8B-Next 15.9，略低于底座 Qwen3VL-8B 的 16.4</strong>——并非每个 grounding 任务都赢。</p>
+<figure><a href="../assets/figures/medmo/medmo_fig5.png"><img src="../assets/figures/medmo/medmo_fig5.png" alt="放射数据集上随后训练阶段的性能曲线，Stage 2 出现陡升"></a><figcaption><strong>图 5 · 阶段消融（放射数据集）。</strong>IU-Xray / MIMIC-CXR / Chexpert / MedTrinity 及其平均，随 Initial→Stage1→Stage2→Stage3 的得分。重点要看的是<strong>平均线（紫）在 Stage 2 的陡升（46.2→56.8→72.9）</strong>——这正对应 §1 的论断：grounding/高分辨率注入发生在 Stage 2，是性能跃迁的来源。也要注意 MedTrinity（红）在 Stage1 冲到高位后 Stage2 回落——单一数据集过拟合在升分辨率、补多样数据后被“拉平”，是阶段式训练的典型副作用（见图 6 的 QA 同款现象）。</figcaption></figure></section>
+
+<section id="ablations"><h2>8. 消融：阶段曲线证明机制，bbox 奖励“小而稳”地补刀</h2><p>论文给两组消融：阶段式贡献（图 5、6）与 bbox 可验证奖励（表 4）。</p>
+<figure><a href="../assets/figures/medmo/medmo_fig6.png"><img src="../assets/figures/medmo/medmo_fig6.png" alt="QA 与 VQA 均分随后训练阶段的进展曲线"></a><figcaption><strong>图 6 · 阶段消融（QA / VQA 均分）。</strong>VQA Avg（绿）与 QA Avg（红）随阶段进展。关键现象：<strong>QA 在 Stage 1 先<em>跌</em>到 32.9（Initial 54.5）再回升到 64.5</strong>——这正是 §1 那条“理解 vs grounding/大规模对齐互相拉扯”的<em>可见证据</em>：大规模低分辨率对齐一度损害了纯文本推理（类灾难性遗忘），随后阶段又把它拉回并超过起点。这条“先抑后扬”的曲线，说明四阶段不是单调叠加，而是<strong>各阶段在不同能力上有取舍</strong>，最终被后续阶段补偿。</figcaption></figure>
+<div class="table-wrap"><table><caption><strong>表 4.</strong> 加入 bounding-box 可验证奖励后 IoU 的绝对变化（∆）。</caption><thead><tr><th>Dataset</th><th>Before (IoU)</th><th>After (IoU)</th><th>∆ (IoU)</th></tr></thead><tbody>
+<tr><td>NIH</td><td>8.8</td><td>13.3</td><td><strong>+4.5</strong></td></tr>
+<tr><td>DeepLesion</td><td>38.5</td><td>38.9</td><td>+0.4</td></tr>
+<tr><td>Bacteria</td><td>54.6</td><td>55.0</td><td>+0.4</td></tr>
+</tbody></table></div>
+<div class="takeaway"><strong>Takeaway：</strong>bbox 奖励的增益<strong>一致为正但幅度小</strong>（+4.5 / +0.4 / +0.4）。这不是缺陷，而恰好印证 §5.3 的机制定位——<em>重活在 Stage 2 已做完，RL 只是几何打磨</em>。NIH 增益最大（+4.5），因为它在 Stage 2 后的 IoU 基数最低（8.8）、最有上升空间；DeepLesion/Bacteria 基数已高，边际收益自然小。增益跨数据集恒为正、且 QA/VQA 未因 RL 而塌，共同支持“可验证奖励提升定位而不毒化语言”这一核心主张。</div></section>
+
+<section id="limitations"><h2>9. 局限与复现门槛：什么时候 MedMO 会偏、会漏？</h2>
+<div class="table-wrap"><table><caption><strong>表（综述 §5 / §9）.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文 / 方法信息</th><th>读者应如何理解</th></tr></thead><tbody>
+<tr><td>阶段间性能漂移</td><td>论文明确承认：阶段式训练带来轻微的任务级性能波动（图 5、6），属大模型常见的<em>灾难性遗忘</em>（论文引 [55]）。未来工作拟改善跨任务保持。</td><td>QA 在 Stage 1 的骤跌是这条的直接体现。四阶段是“取舍后被补偿”，不是单调变好——换语料或砍掉某阶段，结论未必平移。</td></tr>
+<tr><td>数据分布偏放射</td><td>26M 中 18.5M 来自单一 MedTrinity；grounding 标注集中在 Chest X-ray / Wrist X-ray / Cell / CT。</td><td>“覆盖广”靠图 4 撑，但<strong>分布不均</strong>：放射类样本远多于病理/皮肤；在欠覆盖模态上的 grounding 泛化论文未单独验证。</td></tr>
+<tr><td>并非全任务 SOTA</td><td>IU-Xray 报告 CIDEr 仍由 Fleming 领先；NIH 胸片定位 MedMO-8B-Next（15.9）略低于底座 Qwen3VL-8B（16.4）。</td><td>“consistently leads”是<em>均分与多数任务</em>口径，不是逐格全胜。读图 1/表时按任务看，别一刀切。</td></tr>
+<tr><td>RL 增益有限</td><td>bbox 奖励 ∆ 仅 +4.5 / +0.4 / +0.4（表 4）；$\lambda_{\text{FP}},\lambda_{\text{FN}}$ 取值、各阶段 epoch 数论文未给。</td><td>RL 是“锦上添花”而非主引擎；想复现 RL 这一档增益，缺少超参细节会成障碍。</td></tr>
+<tr><td>算力门槛</td><td>64× MI210 训 25 天；四阶段 225/155/110/98 h。</td><td>工业级硬件；学术小组难以原样复现全流程，但底座 + 配方 + 权重开源，可在更小规模上验证单阶段。</td></tr>
+</tbody></table></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>MedMO 把“医学 MLLM 又要看懂、又要框准”这对数据经济学相反的需求，拆成<strong>四阶段课程 + 分辨率从 768 升到 1280 的渐进后训练</strong>——便宜的理解数据先打底、稀缺且需高分辨率的 grounding 后注入；再用一个<strong>纯几何、可验证</strong>的 bbox 奖励（对角线归一 L1 + GIoU + 匈牙利匹配 + FP/FN 惩罚）把定位接进 GRPO，让 RL 只打磨空间精度而不碰语言流畅度。于是一个从 Qwen3-VL-8B 后训练而来、<em>仅用公开数据</em>的开源模型，能同时在 VQA、文本 QA、报告生成与 grounding 四类任务上压过同档开源基线，尤其在 grounding（均分 56.8% vs 17.2%）上拉开断层式差距。</p>
+<div class="guide"><strong>三个 takeaway：</strong><ol><li><strong>“先喂什么、何时升分辨率”是真正的设计变量</strong>：理解便宜→先大规模低分辨率打底；grounding 贵且需细节→后小批量高分辨率注入。图 5 在 Stage 2 的陡升、图 6 中 QA 的“先抑后扬”，都是这条课程逻辑的可见指纹。</li><li><strong>“可验证”是奖励设计的红线，几何信号天然满足</strong>：bbox 奖励的每个组件都对应一个失败模式——尺度依赖（对角线归一）、非重叠零梯度（GIoU）、多目标指派（匈牙利）、刷框漏洞（FP/FN 惩罚）；纯几何使它规则可核验、与语言能力正交，于是 RL 提升定位（表 4 跨集恒正）而 QA/VQA 不塌。</li><li><strong>增益的“大小”本身在讲故事</strong>：grounding 的断层式领先来自 Stage 2 的高分辨率注入，而 RL 的 ∆ 只有零点几到几个点——主引擎是课程与分辨率，RL 是打磨。把“哪一步贡献多少”分清楚，才不会把整体战绩错记到某个单一组件上。</li></ol></div>
+<p>留给后续的两条反驳/验证路径：<strong>(a)</strong> 把 18.5M 的 MedTrinity 占比降下来、补齐病理/皮肤等欠覆盖模态，验证“跨模态统一”是真泛化还是放射数据撑出来的；<strong>(b)</strong> 做“去掉 Stage 2 高分辨率 / 去掉 RL”的等算力对照，量化分辨率升级相对 RL 各自对 grounding 的净贡献——表 4 暗示 RL 边际很小，但需在控制其它阶段不变时直接对比才坐实。</p></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Ankan Deria, Komal Kumar, Adinath Madhavrao Dukre, Eran Segal, Salman Khan, Imran Razzak. <em>MedMO: Grounding and Understanding Multimodal Large Language Model for Medical Images</em>. CVPR 2026 / arXiv:2602.06965v2（Mohamed bin Zayed University of Artificial Intelligence）。代码：<code>github.com/genmilab/MedMO</code>；模型：<code>huggingface.co/collections/MBZUAI/medmo</code>；项目页：<code>genmilab.github.io/MedMO-Page</code>。</li><li>本文公式（式 1–6 及 bbox 奖励各式）、表格（表 1–4）与全部实验数字以 arXiv PDF 为准。表 1、2 为<strong>节选转写</strong>（保留代表性基线/变体与均分及关键列，完整逐基准数值见原文）；表 3、4 为<strong>完整转写</strong>。GRPO（式 3–6）、bbox 奖励（式 2–4 及综合式）写法对照原文 §3.5；DAPO 的 clip-higher / token 级 loss、GIoU [71]、匈牙利匹配为原文引用的既有方法。</li><li><strong>kexue:su 方法与归因</strong>：第 1、4、5、8 节关于“理解 vs grounding 的数据经济学冲突如何用课程 + 分辨率升级解开”“bbox 可验证奖励为何分辨率无关、为何用 GIoU 与 FP/FN 惩罚、为何不毒化语言能力”的多路径论证，按 <code>kexue:su</code> 方法（动机先行、假设显式、≥2 路径交叉验证）重新推导。<strong>检索 <code>kexue:su</code> 语料库未返回与本文主张（多阶段医学后训练、bbox-GIoU 可验证奖励）真正相关的卡片</strong>（返回结果为 GAN/扩散/长度外推等无关条目），故按归因红线<strong>仅应用方法、不作任何 [archives] 归因</strong>。</li><li>图像说明：图 1、4、5、6 为本地 PNG，由 <code>extract_figures.py</code>（PyMuPDF，caption 锚定）从 arXiv PDF 裁切，路径 <code>assets/figures/medmo/</code>。<strong>图 2（四阶段流水线总览）与图 3（定性对比）为矢量/文本排版，提取器跳过，已分别在 §4 表格与正文中转写其结构与代表性样例</strong>，未采用模糊整页截图。论文 Figure 3 的定性框选示例（如气胸、细胞、骨折）仅以正文文字引用，不单独配低质截图。</li></ol></section>
+</main>
+
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">阅读路径</h2><div class="side-body"><ol><li><a href="#reader-map">先看路线图</a></li><li><a href="#pipeline">再看四阶段配方</a></li><li><a href="#method">理解 bbox 奖励</a></li><li><a href="#experiments">用结果表验主张</a></li><li><a href="#limitations">最后看边界</a></li></ol></div></section><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline / 四阶段</a></li><li><a href="#method">方法 / 可验证奖励</a></li><li><a href="#training">训练账本</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融 / 阶段曲线</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">结语</a></li><li><a href="#references">资料来源</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>MedMO: Grounding and Understanding Multimodal Large Language Model for Medical Images</dd><dt>Venue</dt><dd>CVPR 2026 · Medical AI</dd><dt>Backbone</dt><dd>Qwen3-VL-8B-Instruct（视觉编码器 + DeepStack 适配器 + LLM 解码器）</dd><dt>后训练</dt><dd>四阶段：大规模 SFT → 高分辨率 grounding SFT → 指令微调 → GRPO；仅公开数据 26M+</dd><dt>arXiv</dt><dd>2602.06965</dd><dt>Topic</dt><dd>Medical Multimodal LLM / Grounding</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：四类任务柱状，8B-Next 领先</li><li>式 2：对角线归一化 L1（分辨率无关）</li><li>式 3–4：GIoU + 匈牙利匹配质量分</li><li>表 1：VQA 均分 72.7%</li><li>表 3：grounding 均分 56.8 vs 17.2</li><li>表 4：bbox 奖励 ∆ 小而稳</li><li>图 5/6：Stage 2 陡升、QA 先抑后扬</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> MedMO 深读</p><p><span class="status-good">figures</span> 4 张 PNG（fig1/4/5/6）</p><p><span class="status-good">formula</span> 式 1–6 + bbox 奖励预检通过</p><p><span class="status-warn">scope</span> 数据偏放射 / 非全任务 SOTA / RL 增益小</p></div></section></aside></div></body></html>

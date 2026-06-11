@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uni-Hema 深读：六个血液病理任务挤进一个模型，凭什么不互相打架、还压过单任务 SOTA？</title>
+<meta name="description" content="CVPR 2026 Medical AI · Uni-Hema: Unified Model for Digital Hematopathology 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Medical AI &gt; Uni-Hema</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">11</span><span class="month">Jun</span></div><h1 id="paper-title">Uni-Hema 深读：检测、分类、分割、形态学、VQA、掩码语言建模六个任务挤进一个模型，凭什么不互相打架、还压过逐个训练的单任务 SOTA？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-11</span><span>CVPR 2026 · Medical AI · ITU Punjab / Chughtai Lab（Lahore）</span><span>来源：arXiv:2511.13889v2 PDF</span></div><div class="tags"><span class="tag orange">Medical AI</span><span class="tag">数字血液病理 DHP</span><span class="tag">统一多任务模型</span><span class="tag green">Hema-Former</span><span class="tag">ResNet + DINO-DETR + T5</span><span class="tag">单卡 RTX 4090</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>血液病理（hematopathology）的诊断是一连串<strong>不同粒度</strong>的活：先在整张视野里<em>定位</em>细胞（检测），再判断<em>这是什么细胞</em>（分类），勾出<em>细胞边界</em>（分割），读出<em>核形/胞质空泡</em>等形态学属性，最后用语言<em>解释</em>它（VQA / 报告补全）。过去每一步都是一个单独的模型、配一个单独的数据集——疟疾检测一个网络、白细胞分类另一个网络，互不相通，既难扩展也给不出"细胞级"的统一解读。Uni-Hema 的赌注是：<strong>这六件粒度迥异的事，能不能塞进同一个模型、只联合训练一次，而且不彼此拖后腿？</strong>它的答案是 <strong>Hema-Former</strong>——一个把<em>层级化视觉特征</em>（backbone→encoder→decoder 三层）与<em>任务相关文本 query</em> 在不同粒度上对齐的融合器，用四个子模块分别接住"像素级分割 / 实例级检测 / 图像级分类 / 语言级推理"。立题问题因此很具体：<strong>当多个粒度的任务共享一套主干，你到底在哪一层、用什么 query 把信息分流，才能让它们互相<em>受益</em>而不是互相<em>稀释</em>？</strong>论文用 46 个公开数据集（≈70 万张图、≈2.2 万 QA 对）把它训起来，在单块 RTX 4090 上跑约 8 天，最后在检测/分类/分割/形态学多数基准上达到或超过逐个训练的单任务 SOTA。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>首个面向数字血液病理（DHP）的<strong>统一视觉-语言模型</strong>：一套共享 backbone（ResNet-50 + DINO-DETR 编解码 + T5 文本编解码），靠 <strong>Hema-Former</strong> 在三个层级上桥接视觉与文本，一次联合训练同时做检测、分类、分割、形态学、VQA、掩码语言建模。</div><div class="kv"><b>关键机制</b>Hema-Former 四子模块按任务粒度分流：<strong>CMF</strong> 跨模态融合（给语言任务）、<strong>TGVR</strong> 文本引导细化 top-K 实例 query（给检测/形态学）、<strong>SCFE</strong> 文本无关的单细胞特征（给分类）、<strong>QGMF</strong> 用 Einstein 求和把像素特征 ⊗ 病灶 query 生成分割 logits（给分割）。</div><div class="kv"><b>核心证据</b>表 1：单模型一次训练，检测 mean mAP50 <strong>61.1</strong>（DINO 60.4 / YOLO 59.4）、分类 mean F1 <strong>92.5</strong>（DinoBloom 91.5）、形态学 mean F1 <strong>77.2</strong>（AttriDet 62.6）；表 2：在<strong>未见数据集</strong>上单细胞分类 mean F1 <strong>90.8</strong> 仍居首。</div><div class="kv"><b>复现门槛</b>资源受限的真实账本：<strong>单块 RTX 4090、约 8 天</strong>、6 个顺序阶段冻结/训练。分割因算力限制只用简单上采样、边缘略糊；疟疾/镰刀细胞等小样本任务上联合训练反而不如单任务专精。代码承诺公开（<code>intelligentMachines-ITU/Uni-Hema</code>）。</div></div></div><figure class="hero-card"><a href="../assets/figures/unihema/unihema_fig1.png"><img src="../assets/figures/unihema/unihema_fig1.png" alt="Uni-Hema 统一架构示意：同一个模型支撑检测、掩码语言建模、分类、形态学、分割、VQA 六类任务"></a><figcaption><strong>图 1 · 全文"核心断言可视化"。</strong>同一个 Uni-Hema 节点向外辐射出六类任务：左上<strong>检测</strong>（视野里框出细胞）、右上<strong>掩码语言建模</strong>（把报告里被遮的形态学词补回来）、左下<strong>分割</strong>（二值掩码）、右下<strong>VQA</strong>（回答"胞质是什么样"）、右侧<strong>形态学</strong>（核染色质/核形/核仁/胞质等属性的 0/1 多标签）、左侧<strong>分类</strong>（如 Trichomonad）。这张图要支撑的结论不是"某个任务多强"，而是<strong>这些粒度差异极大的任务能由一个模型一次承接</strong>——这正是"统一模型"区别于"多个单任务模型拼盘"的价值。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：血液诊断是"多粒度流水线"，为什么不能继续一任务一模型？</h2>
+<p>血液病理依赖外周血涂片（PBF）来诊断疟疾、贫血、镰刀细胞病、地中海贫血、白血病等。论文开篇给的数字很硬：疟疾 2023 年约 2.63 亿病例、59.7 万死亡；镰刀细胞病 2021 年影响约 774 万人、致死约 37.6 万——而血片判读"复杂、阅片者间一致性差、且在中低收入国家受训练的血液学家与资源短缺所限"。把这件事数字化（digital hematopathology, DHP）本是出路，但落地时撞上一堵结构性的墙。</p>
+<div class="socratic"><p class="question">问题：既然每个任务都有现成模型，为什么"一任务一模型"是个真问题？</p>
+<p class="guide">引导：把诊断流程摊开看——它不是一个任务，是一串<strong>粒度递进</strong>的任务：视野级定位（检测）→实例级判别（分类）→像素级勾边（分割）→属性级读数（形态学）→语言级解释（VQA / 报告）。</p>
+<p class="answer">回答：论文点出三层困境。<strong>其一，碎片化。</strong>早期方法[2,13,33,61,72]都是单任务单病种，每个诊断目的要一个独立数据集，无法扩展。<strong>其二，现有"通用"路线都偏科。</strong>病理视觉-语言基础模型（CONCH、UNI、PFM 等）依赖成对图-文，而血液领域要的是<em>精确、细胞级、临床准确</em>的描述，这种配对数据极难构造；并且这些模型擅长图文检索，却处理不好检测/分割这类<strong>以视觉为中心</strong>的问题。<strong>其三，放大倍数与粒度不匹配。</strong>数字病理基础模型多为实体组织的全切片（WSI），在 5×、40× 低倍下优化；而血液诊断要 40×、100× 高倍下的<strong>细粒度细胞级</strong>信息。即便是 DinoBloom、RedDino 这类血液专用基础模型，也基本只做单细胞任务，无法应对一个视野里多个、还可能重叠/相连的细胞。</p>
+<div class="takeaway">Takeaway：真正的缺口不是"再多一个任务的 SOTA"，而是缺一个<strong>多任务、多模态、多病种</strong>、能在同一套表示里同时给出定位/判别/勾边/读数/解释的统一模型。Uni-Hema 把这件事的核心难点定位为——<strong>如何在一套共享主干里，按任务粒度把视觉与文本特征分流，让它们彼此受益。</strong></div></div>
+</section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出的，与读者能顺势推断的</h2>
+<h3>2.1 作者明确提出的贡献</h3>
+<ul>
+<li><strong>Uni-Hema：首个 DHP 统一视觉-语言模型。</strong>在六个病种/疾病（含白血病、疟疾、贫血、镰刀细胞病等）上，由单一模型联合完成检测、分割、分类、形态学推理。</li>
+<li><strong>Hema-Former：多模态特征融合机制。</strong>输入<strong>不同层级</strong>的文本与图像特征，用注意力为<strong>不同任务</strong>生成<strong>不同粒度</strong>的特征，由 4 个可学习子模块实现（§3.2.2）。</li>
+<li><strong>迄今最大的 DHP 多模态语料。</strong>合并 46 个数据集：11 个分割（≈221K）、18 个检测（≈85K）、17 个分类（≈320K），外加自建 22K 问答对与 7K 掩码语言建模样本。</li>
+<li><strong>统一训练的正向迁移。</strong>一次联合训练后，结果优于或可比逐个训练的单任务单数据集 SOTA，且这种趋势在<strong>未见数据集</strong>上同样成立。</li>
+</ul>
+<h3>2.2 读者能顺势推断的</h3>
+<ul>
+<li>Uni-Hema 不预训练新基础模型，而是把成熟检测器（DINO-DETR[90]）、文本模型（T5[59]）、分割范式（Mask DINO[35]）<strong>缝合</strong>到一套共享视觉主干上——它的创新点集中在<strong>Hema-Former 这层"特征分流器"</strong>，而非主干本身。这也解释了为何它能在单卡 4090 上训完。</li>
+<li>"层级化特征 + 任务相关 query"之所以能避免多任务互相稀释，关键在于<strong>不同任务从主干的不同深度取特征</strong>（backbone 取细粒度像素、encoder 取上下文、decoder 取病灶语义），而不是所有任务挤在同一层抢同一组特征——这是它和"单一 head 拼多任务"的本质区别（详见 §5 推导）。</li>
+<li>正向迁移并非无条件：在样本极少的任务（镰刀细胞、寄生虫检测）上，联合训练反而被"大语料的平均化"拖累，不如单数据集专精（见 §8 表 1 对应行）。</li>
+</ul>
+</section>
+
+<section id="datasets"><h2>3. 数据：46 个公开集如何拼成一套多任务监督</h2>
+<p>为训练统一模型，作者收集了 46 个公开血液数据集，覆盖单细胞与全视野（FoV）显微图，疾病含疟疾、白血病、贫血、镰刀细胞病及健康样本。为了让一套文本接口同时驱动视觉任务，<strong>检测/分割任务也被赋予文本 prompt</strong>，形如"This image is for the detection of &lt;type of disease&gt; of cells."；VQA 以 <code>Q:</code> 开头，掩码语言建模以 <code>mask:</code> token 开头；单细胞分类则<strong>仅靠视觉特征</strong>（不吃文本）。</p>
+<div class="table-wrap"><table>
+<caption>表 A · Uni-Hema 训练语料构成（转写自论文 §3.1 / §4.1 与贡献条目；数量为论文给出的近似值）。</caption>
+<thead><tr><th>任务</th><th>数据集数</th><th>规模（近似）</th><th>角色 / 说明</th></tr></thead>
+<tbody>
+<tr><td>检测（FoV）</td><td>18</td><td>≈85K 图，30 类细胞</td><td>全视野多细胞定位；含最大的白血病数据集 LeukemiaAttri[61]（带形态学属性）、M5[72]、TXL-PBC、BCCD、Sickle-cell、MP-IDB、Raabin 等</td></tr>
+<tr><td>分割</td><td>11</td><td>≈221K 图</td><td>二值细胞掩码；疟疾感染细胞、白细胞、贫血/红细胞等（Malaria Cell、ErythrocytesIDB、MP-IDB、NuClick、KRD-WBC、AneRBC 等）</td></tr>
+<tr><td>分类（单细胞）</td><td>17</td><td>≈320K（论文另处写 ≈350K）高分辨单细胞图</td><td>WBC/RBC，约 45 个形态学类；外周血涂片 + 骨髓（BMC[43]）</td></tr>
+<tr><td>VQA</td><td>—</td><td>≈22K 问答对</td><td>由 BioMistral-7B 在 WBCAtt[78] 形态学标注上<strong>半合成</strong>生成，做单细胞推理</td></tr>
+<tr><td>掩码语言建模（V-MLM）</td><td>—</td><td>≈7K 样本</td><td>由 Gemini 1.5 在 LeukemiaAttri[61] 全视野形态学标注上半合成，生成被遮挡/完整描述</td></tr>
+</tbody>
+</table></div>
+<div class="note"><div class="note-title">关于自建文本数据的诚实标注</div>VQA 与 V-MLM 数据集（命名为 WBCAtt-VQA、LeukemiaAttri-MLM）是<strong>半合成</strong>的：用真实的形态学 ground-truth 标注作为 prompt，引导大模型生成描述，再做基于上下文的一致性校验。论文明确写道，<strong>该数据集"仅为实验目的构造，不建议用于医疗用途"</strong>——这条边界本页原样保留。各任务图像总量论文给"≈70 万"，分类细目在不同段落分别写 320K 与 350K，本页两处都如实列出、不强行统一。</div>
+</section>
+
+<section id="pipeline"><h2>4. Pipeline：一张图看清"两条并行网络 + 一个混合器 + 多个任务头"</h2>
+<p>整体是<strong>视觉支路</strong>与<strong>文本支路</strong>两条并行网络，由中间的 Hema-Former 把信息搅在一起，再分发到各任务头。先把记号定清楚（这是后面推导的基础）：</p>
+<ul>
+<li>输入图像 $I$、文本 prompt $T$。图像 backbone $\mathcal{B}$ 抽多尺度空间特征 $\{F_i\}_{i=1}^{L}$，$F_i\in\mathbb{R}^{c_i\times m_i\times n_i}$；投影成空间嵌入 $\mathcal{E}_B^{I}\in\mathbb{R}^{V\times M_t}$。</li>
+<li>图像编码器 $\mathcal{E}_I$（六层、受 DINO 启发）把 $\mathcal{E}_B^{I}$ 编成上下文化视觉表示 $\mathcal{E}_E^{I}\in\mathbb{R}^{V\times M_t}$（$V$ 个空间 token、$M_t$ 维）。</li>
+<li>文本编码器 $\mathcal{E}_T$（基于 T5[59]）把 prompt 编成 $\mathcal{E}_E^{T}\in\mathbb{R}^{L\times N_t}$。</li>
+<li>图像解码器 $\mathcal{D}_I$（扩展 DINO-DETR）把 $\mathcal{E}_E^{I}$ 精炼成<strong>病灶相关</strong>的对象嵌入 $\mathcal{E}_D^{I}$，供检测与形态学用。</li>
+<li>文本解码器 $\mathcal{D}_T$ 自回归生成答案/补全句子。</li>
+</ul>
+<figure class="fig-wide"><a href="../assets/figures/unihema/unihema_fig2.png"><img src="../assets/figures/unihema/unihema_fig2.png" alt="Uni-Hema 整体架构：上方视觉支路 backbone→I-Encoder→I-Decoder，下方文本支路 T-Encoder→T-Decoder，中间 Hema-Former 横贯并向右分发到检测/形态学/分割/分类/答案补全各头"></a><figcaption><strong>图 2 · 整体架构（全宽重渲染）。</strong>上排是视觉支路：图像 →$\mathcal{B}$ backbone（下采样、加位置编码）→$\mathcal{E}_I$ I-Encoder→$\mathcal{D}_I$ I-Decoder，沿途分别引出 $\mathcal{F}_1,\mathcal{E}_B^{I},\mathcal{E}_E^{I},\mathcal{E}_X^{I},\mathcal{E}_D^{I}$ 五个<strong>不同层级</strong>的特征（绿色箭头向下汇入 Hema-Former）。下排是文本支路：prompt→$\mathcal{E}_T$ T-Encoder→$\mathcal{D}_T$ T-Decoder。中间灰色横条 $\mathcal{H}$ <strong>Hema-Former</strong> 同时接住上下两路的多层级特征，向右把结果分发到检测、形态学、分割、分类、答案&补全五个出口。这张图要点出的是：<strong>任务不是从同一层取特征，而是各取所需的层级</strong>——这是 Hema-Former 让多任务不打架的结构前提。</figcaption></figure>
+<div class="socratic"><p class="question">问题：为什么要从五个不同层级引出特征，而不是统一用最后一层？</p>
+<p class="guide">引导：想想各任务要的"分辨率"和"语义度"不同——分割要像素级细节（浅层 $\mathcal{F}_1$），分类要图像级摘要（中层 $\mathcal{E}_E^{I}$ 池化），检测要病灶级语义（深层 $\mathcal{E}_D^{I}$）。</p>
+<p class="answer">回答：CNN/Transformer 主干天然是<strong>由浅到深、由细到抽象</strong>的特征金字塔。浅层 backbone 特征保留边缘与纹理，适合勾边；编码器特征带全局上下文，适合判别整张图属于哪类；解码器对象嵌入已经"对齐到病灶"，适合定位与属性读数。强行让所有任务都用最后一层，等于逼分割任务在丢失了高频细节的抽象特征上重建边界——既难又会和分类抢梯度。<strong>按层级分流，本质是让每个任务从主干上"取它最该取的那一层"。</strong></p>
+<div class="takeaway">Takeaway：Pipeline 的设计哲学是"<strong>一条主干、多处抽头</strong>"。Hema-Former 不是又一个 head，而是把这些抽头按任务需要重新组织、并注入文本条件的<strong>分流与融合层</strong>。</div></div>
+</section>
+
+<section id="method"><h2>5. 方法：Hema-Former 四子模块逐个拆开（机制核心）</h2>
+<p>Hema-Former $\mathcal{H}$ 接住两路多层级特征，按任务粒度产出四种融合表示，由四个子模块实现（图 3）。本节按 kexue:su 的方式逐个推导：先讲<strong>每个子模块为什么需要</strong>，再写它的<strong>算子</strong>，并指出<strong>去掉它会坏在哪</strong>。</p>
+<figure><a href="../assets/figures/unihema/unihema_fig3.png"><img src="../assets/figures/unihema/unihema_fig3.png" alt="Hema-Former 四个子模块：(a) Cross-Modal Fusion, (b) Text-Guided Refinement, (c) Single Cell Feature Extractor, (d) Query-Guided Mask Former"></a><figcaption><strong>图 3 · Hema-Former 四子模块。</strong>(a) <strong>CMF 跨模态融合</strong>：文本特征 $\mathcal{E}_E^{T}$ 与图像 backbone 特征 $\mathcal{E}_B^{I}$ 经可学习 query $Q_1$ 两段 cross-attention 对齐，输出 $\mathcal{E}_W^{T}$（喂给文本解码器做 VQA/MLM）。(b) <strong>TGVR 文本引导细化</strong>：从 $\mathcal{E}_E^{I}$ 按 objectness 取 <strong>top-K</strong> 视觉 query，与投影后的文本 query 做 cross-attention 再拼接，得 $\mathcal{E}_X^{I}$（喂给图像解码器做检测/形态学）。(c) <strong>SCFE 单细胞特征</strong>：把 $\mathcal{E}_E^{I}$ 池化后与可学习 query $Q_2$ 拼接、投影，得图像级特征 $\mathcal{E}_Z$（<strong>不吃文本</strong>，做分类）。(d) <strong>QGMF 掩码生成</strong>：浅层 $\mathcal{F}_1$ + 投影编码器特征融合成 $G_{\text{proj}}$，病灶对象嵌入 $\mathcal{E}_D^{I}$ 过 MLP/转置/投影后与之做 <strong>Einstein 求和</strong>，输出分割 logits $Y$。读图要点：四条路对应"语言 / 实例 / 图像 / 像素"四种粒度。</figcaption></figure>
+
+<h3>5.1 CMF：跨模态融合（给语言任务）</h3>
+<p><strong>为什么需要：</strong>VQA 和掩码语言建模要让文本解码器"看着图说话"，必须先把文本 query 和图像特征对齐到同一空间。CMF 用两段 cross-attention 做这件事。设文本嵌入 $\mathcal{E}_E^{T}\in\mathbb{R}^{L\times N_t}$、视觉特征 $\mathcal{E}_B^{I}\in\mathbb{R}^{L\times M}$、可学习 query $Q_1\in\mathbb{R}^{L\times M}$。先把文本投影 $\mathcal{E}_E^{T\prime}=P(\mathcal{E}_E^{T})$，让 $Q_1$ 去 attend 文本：</p>
+<div class="equation">$$J=\operatorname{Norm}\big(Q_1+\operatorname{CrossAttn}(Q_1,\,\mathcal{E}_E^{T\prime},\,\mathcal{E}_E^{T\prime})\big)$$<div class="eq-caption">式 1：query 吸收文本语义（论文式 (1)）</div></div>
+<p>再让带文本语义的 $J$ 去 attend 视觉特征，残差归一：</p>
+<div class="equation">$$\mathcal{E}_W^{T}=\operatorname{Norm}\big(J+\operatorname{CrossAttn}(J,\,P(\mathcal{E}_B^{I}),\,P(\mathcal{E}_B^{I}))\big)$$<div class="eq-caption">式 2：再融入视觉，得到对齐的多模态嵌入 $\mathcal{E}_W^{T}$（论文式 (2)）</div></div>
+<div class="formula-note"><strong>公式读法。</strong>$\operatorname{CrossAttn}(q,k,v)$ 中 $q$ 提问、$k/v$ 是被查的内容。式 1 让"问题 query"先理解<em>文本</em>（你问的是胞质还是核形），式 2 再让它去图像里<em>找证据</em>。两段顺序不能反：先定问题、再找答案，正是 VQA 的因果方向。$\operatorname{Norm}+$ 残差是为了稳定分布、避免融合把原信号冲掉。输出 $\mathcal{E}_W^{T}$ 交给文本解码器 $\mathcal{D}_T$ 自回归生成答案/补全句子。<strong>去掉 CMF</strong>：文本解码器只能盲解码，VQA/MLM 退化成无视觉条件的语言模型。</div>
+
+<h3>5.2 TGVR：文本引导的视觉细化（给检测 / 形态学）</h3>
+<p><strong>为什么需要：</strong>不同病种的图要按疾病类型区分着看（"这是疟疾视野"还是"白血病视野"），检测/形态学需要<strong>被文本调制过的</strong>实例 query。做法是：先从编码器特征 $\mathcal{E}_E^{I}$ 里按 objectness 选出 <strong>top-K 个视觉 query</strong> $k$（与 DINO[90] 同思路——大部分 token 是背景，只留最可能是细胞的那几个）；再把文本投影 $\mathcal{E}_E^{T\prime}=P(\mathcal{E}_E^{T})$ 当 key/value，用 $k$ 当 query 做 cross-attention，结果与 $k$ 拼接、再投影：</p>
+<div class="equation">$$\mathcal{E}_X^{I}=P\big[\,k\;\|\;\operatorname{CrossAttn}(k,\,\mathcal{E}_E^{T\prime},\,\mathcal{E}_E^{T\prime})\,\big]$$<div class="eq-caption">式 3：top-K 视觉 query 被文本调制后拼接投影（论文式 (3)；$\|$ 表拼接）</div></div>
+<div class="formula-note"><strong>公式读法。</strong>$\mathcal{E}_X^{I}\in\mathbb{R}^{D\times M_t}$ 是"<strong>疾病引导的 top-K 对象 query</strong>"，喂给图像解码器 $\mathcal{D}_I$ 产出病灶对象嵌入 $\mathcal{E}_D^{I}$，再驱动检测与形态学预测。关键设计是 <strong>top-K 而非全量</strong>：把注意力预算集中到"最像细胞"的少数 query 上，既省算力又抑制背景假阳。拼接 $k\,\|\,\text{(attended)}$ 保留原始视觉证据、不让文本调制把它冲没。<strong>去掉 TGVR</strong>：检测 query 失去疾病先验，跨病种时容易混淆（疟疾原虫 vs 白细胞）。</div>
+
+<h3>5.3 SCFE：单细胞特征（给分类，故意不吃文本）</h3>
+<p><strong>为什么需要：</strong>单细胞分类是<strong>纯视觉</strong>判别——给一张白细胞图判它属于哪类，不该被文本 prompt 干扰。SCFE 因此设计成<strong>文本无关</strong>：把图像编码器特征 $\mathcal{E}_E^{I}$ 做<strong>均值池化</strong>得到图像级摘要，与一个可学习 query $Q_2$ 拼接，过投影层得到图像级特征 $\mathcal{E}_Z\in\mathbb{R}^{1\times M}$。</p>
+<div class="formula-note"><strong>读法与设计意图。</strong>均值池化把 $V$ 个空间 token 压成一个"全局描述子"，可学习 query $Q_2$ 则像一个可训练的"读出向量"，决定从池化特征里抽哪些维度对分类有用。<strong>为什么刻意切断文本</strong>：分类的 ground-truth 只有类别标签，如果让它吃 prompt，模型可能学到"prompt 里写了 leukemia 就猜白血病"的<strong>捷径</strong>，而非真正看细胞形态——切断文本是为了逼它学纯视觉判别。下游评测时直接拿 $\mathcal{E}_X$/$\mathcal{E}_Z$ 当冻结特征送 kNN/线性头，对标 DinoBloom 等特征提取器（见 §7）。</div>
+
+<h3>5.4 QGMF：查询引导的掩码生成（给分割）</h3>
+<p><strong>为什么需要：</strong>分割要<strong>像素级</strong>输出，必须把高分辨的浅层特征和"病灶在哪"的语义 query 结合。QGMF 遵循 Mask DINO[35] 的思路：对输入 $I$，backbone 浅层特征 $\mathcal{F}_1$ 与编码器图像嵌入 $\mathcal{E}_E^{I}$ 融合（当前实现用求和，论文注明可替换），过投影层得 $G_{\text{proj}}$；同时把<strong>病灶对象嵌入</strong> $\mathcal{E}_D^{I}$ 过 MLP、转置、再投影：</p>
+<div class="equation">$$\mathcal{E}_D^{I\prime}=P\big(\operatorname{MLP}(\mathcal{E}_D^{I})^{\top}\big)$$<div class="eq-caption">式 4：把病灶 query 整形成与像素特征可"相乘"的形状（论文式 (4)）</div></div>
+<p>最后用 <strong>Einstein 求和</strong> $\mathcal{S}$ 把"病灶 query"与"像素特征"沿通道维收缩，得到分割 logits：</p>
+<div class="equation">$$Y=\mathcal{S}(\mathcal{E}_D^{I\prime},\,G_{\text{proj}}),\qquad Y\in\mathbb{R}^{D_t\times m\times n}$$<div class="eq-caption">式 5：每个病灶 query 与每个像素做内积 → 该 query 的掩码热图（论文式 (5)）</div></div>
+<div class="socratic"><p class="question">问题：为什么分割要用 Einstein 求和，而不是直接上一个解码器卷积头？</p>
+<p class="guide">引导：写开 $Y[d,i,j]=\sum_{c}\mathcal{E}_D^{I\prime}[d,c]\cdot G_{\text{proj}}[c,i,j]$——这是<strong>每个病灶 query $d$ 与每个像素位置 $(i,j)$ 在通道 $c$ 上的内积</strong>。</p>
+<p class="answer">回答：内积大的地方，说明该像素的特征与"这个病灶 query 想找的东西"高度对齐——这正是 Mask-Transformer 系列（MaskFormer/Mask DINO）的核心：<strong>把分割从"逐像素分类"改写成"query 与像素的相似度匹配"</strong>。这样掩码的语义由 query 决定、空间分辨率由像素特征决定，两者解耦。它和检测共享同一组病灶 query $\mathcal{E}_D^{I}$，于是<strong>检测学到的"哪里有细胞"直接惠及分割"细胞边界在哪"</strong>——这是多任务正向迁移的一条具体通路。二值分割时，取第一个嵌入对应的掩码作为最终预测 $Y\in\mathbb{R}^{1\times m\times n}$。</p>
+<div class="takeaway">Takeaway：Einstein 求和不是花哨写法，它把分割<strong>接到检测的病灶 query 上</strong>，让两个任务复用同一套"细胞在哪"的语义——这是"统一模型互相受益"在公式层面的落点。</div></div>
+
+<div class="note"><div class="note-title">为什么"层级特征 + 任务相关 query"能让多任务不互相稀释（两路交叉验证）</div>
+<strong>路径一（结构论证）：</strong>多任务互相打架的根因是<strong>共享层的梯度冲突</strong>——若所有任务都从同一层、同一组特征求梯度，分割想要的高频细节会被分类想要的抽象不变性反向抹平。Uni-Hema 让分割取浅层 $\mathcal{F}_1$、分类取池化的中层 $\mathcal{E}_E^{I}$、检测/分割共享深层病灶 query $\mathcal{E}_D^{I}$——<strong>梯度被分散到主干的不同深度</strong>，冲突面积变小；而真正该共享的（"细胞在哪"）通过共享 query 显式复用，于是冲突的地方解耦、互补的地方共享。<br>
+<strong>路径二（实验反证）：</strong>若这套分流无效，统一模型应在每个任务上都被单任务模型压制。但表 1/表 2 显示统一模型在多数基准达到或超过单任务 SOTA，且<strong>在未见数据集上仍领先</strong>——后者尤其关键：单任务模型靠拟合单数据集分布取胜，而统一模型因跨任务共享了更通用的"细胞语义"，泛化更稳。两条独立路径（结构上的梯度解耦 + 实验上的跨域不掉点）指向同一结论。<br>
+<em>归因说明：</em>本节的分流/解耦推导按 kexue:su 方法组织（动机先行、假设显式、≥2 路交叉验证）。本次 kexue:su 语料检索<strong>未返回</strong>与"多任务梯度冲突 / 层级特征分流 / mask-transformer"相关的卡片，故按红线<strong>只应用方法、不作 [archives] 归因</strong>（唯一沾边的是 T5，见 §参考）。</div>
+</section>
+
+<section id="training"><h2>6. 训练账本：单卡 4090、约 8 天、六个顺序阶段</h2>
+<p>主干用 ResNet-50[20]；检测沿用 DINO-DETR[90]（编码器、解码器各 6 层 transformer，均用预训练权重初始化）；文本用 T5[59]（t5-base 权重初始化）。训练<strong>分六个顺序阶段</strong>，每阶段只动一部分模块、其余冻结：</p>
+<div class="table-wrap"><table>
+<caption>表 B · 六阶段渐进式训练（转写自论文 §4.2）。每阶段的"训练对象/冻结"决定了它解决哪个子问题。</caption>
+<thead><tr><th>阶段</th><th>训练对象</th><th>数据</th><th>Epoch / Batch</th><th>这一步在解决什么</th></tr></thead>
+<tbody>
+<tr><td>Step 1</td><td>图像 backbone + encoder</td><td>单细胞分类</td><td>24 ep / bs 32</td><td>先把视觉主干"看懂单个细胞"——给后续所有任务一个稳的视觉底座</td></tr>
+<tr><td>Step 2</td><td>文本 encoder + decoder</td><td>半合成 MLM + QA</td><td>论文未给具体数</td><td>先把文本支路在医学语境里预热，独立于视觉</td></tr>
+<tr><td>Step 3</td><td>视觉模块联合（含 TGVR/SCFE/QGMF）</td><td>分类+分割+检测</td><td>12 ep / 每任务每 batch 2 图，总 bs 6；冻结 $\mathcal{E}_T,\mathcal{D}_T,$CMF</td><td>让三个视觉任务的子模块一起学，建立跨任务共享的病灶语义</td></tr>
+<tr><td>Step 4</td><td>图像解码器 $\mathcal{D}_I$</td><td>全部检测 + FoV 形态学</td><td>12 ep</td><td>专门打磨"病灶对象嵌入"，让检测/形态学到位</td></tr>
+<tr><td>Step 5</td><td>QGMF</td><td>完整分割集</td><td>24 ep</td><td>单独精修分割掩码（含小上采样器）</td></tr>
+<tr><td>Step 6</td><td>CMF + 文本解码器 $\mathcal{D}_T$</td><td>VQA + V-MLM</td><td>8 ep；其余全冻结</td><td>最后接通语言任务，把已稳的视觉特征对齐到文本</td></tr>
+</tbody>
+</table></div>
+<div class="socratic"><p class="question">问题：为什么是"先视觉底座→文本预热→视觉联合→逐头精修→最后语言"这个顺序，而不是从头端到端一起练？</p>
+<p class="guide">引导：注意每个 step 训练谁、冻结谁——这是一条<strong>从稳到不稳、从共享到专用</strong>的退火路径。</p>
+<p class="answer">回答：端到端联合训练在多任务初期最危险——各 head 的梯度都还很噪，会把共享主干推向互相打架的方向。渐进式的逻辑是：<strong>先用最干净的信号（单细胞分类）把视觉底座练稳</strong>（Step 1），文本支路独立预热（Step 2）；<strong>再让视觉子模块在已稳底座上联合学共享语义</strong>（Step 3）；然后<strong>逐个 head 精修</strong>检测/形态学（Step 4）、分割（Step 5），此时底座基本冻住，精修不会反噬其它任务；<strong>最后才接语言</strong>（Step 6），因为 VQA/MLM 依赖前面所有视觉特征都已就位。每一步只解一个子问题、冻住已解的部分，正是在资源受限（单卡）下控制多任务训练不发散的工程化兜底。</p>
+<div class="takeaway">Takeaway：六阶段不是凑出来的流程，而是把"多任务训练的梯度冲突"在<strong>时间维度上</strong>错开——空间维度靠 Hema-Former 分流，时间维度靠渐进式冻结，两者合力。</div></div>
+<div class="note"><div class="note-title">复现门槛（诚实标注）</div>完整训练<strong>约 8 天、单块 NVIDIA RTX 4090</strong>（论文原话"the best available resource that we have"）。各阶段更细的配置作者放到附录（本页未取得补充材料，故 Step 2 的 epoch/batch 等标"论文未给具体数"）。<strong>GPU-小时</strong>若按"8 天 × 24 h ≈ 192 GPU-小时"估，属<em>按论文披露数字粗略估算，不等同于实际账单</em>（分阶段实际占用、是否含调参均未披露）。分割因算力限制：Step 3 用简单 mask 上采样、Step 5 才接小上采样器，作者承认这"可能略损边缘清晰度"。</div>
+</section>
+
+<section id="experiments"><h2>7. 实验：一次训练的统一模型，对上逐个训练的单任务 SOTA</h2>
+<p>评测协议很关键：<strong>每个 baseline 都在它对应的单数据集上单独训练，而 Uni-Hema 在整个语料上联合训练一次、之后不再为任何任务重训或微调</strong>。表 1 把六类任务的代表性数据集汇到一处（"–"表示该 baseline 不支持该任务；粗体/下划线为论文标注的最佳/次佳）。</p>
+<div class="table-wrap"><table>
+<caption>表 1（代表性转写）· Uni-Hema 多任务主结果（论文 Table 1）。完整含更多检测/分割数据集行，本页保留每个任务的若干代表行 + Mean，完整见原文。指标随任务而异：检测 mAP<sub>50</sub>、分类/形态学 F1、分割 Dice、VQA/MLM BLEU-4。</caption>
+<thead><tr><th>任务 · 数据集</th><th>DINO</th><th>YOLO</th><th>U-Net</th><th>NanoNet</th><th>TransNetR</th><th>DinoBloomS</th><th>AttriDet</th><th>Uni-Hema</th></tr></thead>
+<tbody>
+<tr><th colspan="9" style="text-align:left;background:#eef4f9">细胞检测 mAP<sub>50</sub></th></tr>
+<tr><td>LeukemiaAttri H-100x-C2[61]</td><td>43.7</td><td>44.2</td><td>–</td><td>–</td><td>–</td><td>–</td><td>44.4</td><td><strong>49.8</strong></td></tr>
+<tr><td>LeukemiaAttri L-100x-C2[61]</td><td>38.2</td><td>38.1</td><td>–</td><td>–</td><td>–</td><td>–</td><td>36.2</td><td><strong>45.6</strong></td></tr>
+<tr><td>Malaria H-1000x[72]</td><td>79.8</td><td>77.3</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td><strong>83.1</strong></td></tr>
+<tr><td>Sickle Cell[80]</td><td><strong>73.6</strong></td><td>68.6</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>67.0</td></tr>
+<tr><td>BCCD[70]（normal）</td><td><strong>89.5</strong></td><td>88.1</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>87.8</td></tr>
+<tr><td><strong>Mean</strong></td><td>60.4</td><td>59.4</td><td>–</td><td>–</td><td>–</td><td>–</td><td>39.1</td><td><strong>61.1</strong></td></tr>
+<tr><th colspan="9" style="text-align:left;background:#eef4f9">单细胞分类 F1</th></tr>
+<tr><td>Raabin[33]</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>98.0</td><td>–</td><td><strong>98.8</strong></td></tr>
+<tr><td>BMC[43]</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>85.0</td><td>–</td><td><strong>86.2</strong></td></tr>
+<tr><td><strong>Mean</strong></td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>91.5</td><td>–</td><td><strong>92.5</strong></td></tr>
+<tr><th colspan="9" style="text-align:left;background:#eef4f9">分割 Dice</th></tr>
+<tr><td>Elsafty[14]（anemia）</td><td>–</td><td>–</td><td>93.4</td><td>98.3</td><td>99.5</td><td>–</td><td>–</td><td><strong>99.9</strong></td></tr>
+<tr><td>AneRBC-Anemic[67]</td><td>–</td><td>–</td><td>78.3</td><td>91.2</td><td>93.6</td><td>–</td><td>–</td><td>93.4</td></tr>
+<tr><td>MD-2019[1]（malaria）</td><td>–</td><td>–</td><td>75.2</td><td>84.7</td><td><strong>86.7</strong></td><td>–</td><td>–</td><td>77.6</td></tr>
+<tr><td><strong>Mean</strong></td><td>–</td><td>–</td><td>84.5</td><td>80.8</td><td><strong>93.7</strong></td><td>–</td><td>–</td><td>91.7</td></tr>
+<tr><th colspan="9" style="text-align:left;background:#eef4f9">细胞形态学（FoV）F1</th></tr>
+<tr><td>LeukemiaAttri L-100x-C2[61]</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>61.8</td><td><strong>83.6</strong></td></tr>
+<tr><td><strong>Mean（4 设置）</strong></td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>62.6</td><td><strong>77.2</strong></td></tr>
+<tr><th colspan="9" style="text-align:left;background:#eef4f9">语言任务 BLEU-4</th></tr>
+<tr><td>WBCAtt-VQA</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td><strong>56.4</strong></td></tr>
+<tr><td>LeukemiaAttri-MLM</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td><strong>79.8</strong></td></tr>
+</tbody>
+</table></div>
+<div class="socratic"><p class="question">问题：这张表要支撑的结论是什么？哪些数字最该看？</p>
+<p class="guide">引导：盯三处——检测/分类/形态学的 <strong>Mean</strong> 行，以及 Uni-Hema <em>没</em>赢的那几行。</p>
+<p class="answer">回答：核心断言是"<strong>一次联合训练 ≥ 逐个单训</strong>"。检测 Mean 61.1 略压 DINO(60.4)/YOLO(59.4)，分类 Mean 92.5 &gt; DinoBloom(91.5)，形态学 Mean 77.2 大幅超多任务 baseline AttriDet(62.6)——形态学涨幅最大（L-100x 从 61.8 到 83.6），说明<strong>共享主干对"读属性"这种依赖丰富上下文的任务帮助最显著</strong>。但也别只看赢的：Sickle Cell(67.0 vs DINO 73.6)、BCCD(87.8 vs 89.5)、malaria 分割 MD-2019(77.6 vs TransNetR 86.7) Uni-Hema 落后。作者的解释很坦白——<strong>这些是小样本任务，在大语料里学不出数据集专属的细节；单训时复杂度低反而学得更透</strong>。分割 Mean 91.7 略低于 TransNetR(93.7)，与"为省算力用简单上采样、边缘略糊"一致。</p>
+<div class="takeaway">Takeaway：统一模型的优势在<strong>需要跨任务上下文的任务</strong>（形态学、分类）上最明显；在<strong>小样本、需数据集专精</strong>的任务上会被单训模型反超——这是"统一"的代价，论文没有藏。</div></div>
+<figure class="fig-wide"><a href="../assets/figures/unihema/unihema_fig4.png"><img src="../assets/figures/unihema/unihema_fig4.png" alt="定性结果：(a) TransNetR 与 Uni-Hema 分割对比、(b) VQA 预测与 GT 对比、(c) DinoBloom 与 Uni-Hema 特征 t-SNE"></a><figcaption><strong>图 4 · 定性证据三联。</strong>(a) <strong>分割</strong>：贫血/疟疾/白细胞图上对比 TransNetR 与 Uni-Hema（TP/FP/FN 用浅黄/蓝/红标），Uni-Hema 减少误检、定位更准（贫血、WBC 尤其明显，疟疾稳健）。(b) <strong>VQA</strong>：预测与 ground-truth 对齐（如"无可见胞质空泡""小而圆的中性粒细胞"）。(c) <strong>t-SNE</strong>：在 Acevedo(8 类)与 Raabin(5 类)上，Uni-Hema 特征的类间分离比 DinoBloom-S 更清晰——这张图要支撑的是"<strong>统一训练学到的单细胞表示判别性更强</strong>"，呼应表 2 分类领先。</figcaption></figure>
+</section>
+
+<section id="ablations"><h2>8. 消融与未见域：分流机制真的在起作用吗？</h2>
+<p>表 2 把模型放到<strong>训练时没见过的数据集</strong>上，检验"统一表示是否更泛化"；同时论文给了两组针对性消融，验证 SCFE 的特征融合与 QGMF 的上采样器各自的增益。</p>
+<div class="table-wrap"><table>
+<caption>表 2（完整转写）· 未见数据集上的跨域适应（论文 Table 2）。分类/形态学为 F1，检测 mAP<sub>50</sub>，分割 Dice。"–"表对应方法不报该任务。</caption>
+<thead><tr><th>数据集 · 任务</th><th>DinoBloomS</th><th>Dinov2S</th><th>Dinov3S</th><th>ResNet</th><th>Uni-Hema</th></tr></thead>
+<tbody>
+<tr><th colspan="6" style="text-align:left;background:#eef4f9">单细胞分类 F1</th></tr>
+<tr><td>Acevedo[2]</td><td><strong>98.2</strong></td><td>94.5</td><td>96.0</td><td>90.0</td><td>98.1</td></tr>
+<tr><td>MiniSit[87]</td><td>98.8</td><td>96.8</td><td>97.1</td><td>95.2</td><td>98.6</td></tr>
+<tr><td>C-NMC[47]</td><td>69.6</td><td>71.0</td><td>68.0</td><td>64.9</td><td><strong>72.8</strong></td></tr>
+<tr><td>RV-PBS 8[54]</td><td>92.8</td><td>90.7</td><td>90.8</td><td>86.1</td><td><strong>93.6</strong></td></tr>
+<tr><td><strong>Mean</strong></td><td>89.9</td><td>88.2</td><td>88.0</td><td>84.1</td><td><strong>90.8</strong></td></tr>
+<tr><th colspan="6" style="text-align:left;background:#eef4f9">检测 mAP<sub>50</sub></th></tr>
+<tr><td>Bio-Net[68]</td><td>–</td><td>–</td><td>–</td><td>–</td><td>54.7</td></tr>
+<tr><td>Malaria[38,68]</td><td>–</td><td>–</td><td>–</td><td>–</td><td>78.5</td></tr>
+<tr><th colspan="6" style="text-align:left;background:#eef4f9">分割 Dice</th></tr>
+<tr><td>BBBC041Seg[12,78]</td><td>–</td><td>–</td><td>–</td><td>–</td><td>86.2</td></tr>
+<tr><th colspan="6" style="text-align:left;background:#eef4f9">单细胞形态学 F1-Macro</th></tr>
+<tr><td>WBCAtt[78]</td><td>87.6</td><td>87.8</td><td>91.4</td><td>90.2</td><td><strong>91.6</strong></td></tr>
+</tbody>
+</table></div>
+<div class="note"><div class="note-title">两组针对性消融（论文 §"Ablation studies"）</div>
+<strong>SCFE 的特征融合：</strong>在单细胞分类里同时融合 backbone 与单细胞特征合成器的特征。在<strong>未见域 Acevedo[2]</strong> 上，融合把准确率从 97.9% 提到 98.1%；在 <strong>C-NMC[47]</strong> 上从 68.8% 提到 72.8%（域偏移越大、增益越明显）。<br>
+<strong>QGMF 的上采样器：</strong>把简单插值上采样换成<strong>小型可学习上采样器</strong>，分割持续提升——贫血集 91.8%→93.4%、健康集 92.8%→94.1%，其它数据集有类似增益。</div>
+<div class="socratic"><p class="question">问题：表 2 与这两组消融，分别证伪了什么"替代解释"？</p>
+<p class="guide">引导：表 2 的潜在质疑是"统一模型只是过拟合了训练分布"；消融的潜在质疑是"增益来自更多参数而非设计"。</p>
+<p class="answer">回答：表 2 在<strong>未见数据集</strong>上 Uni-Hema 分类 Mean 90.8 仍领先所有专用特征提取器（含血液专用 DinoBloom 89.9），<strong>排除了"靠记住训练分布"的解释</strong>——若是过拟合，跨域应明显掉点。两组消融则是<strong>控制变量</strong>：只改"是否融合 backbone 特征"或"插值 vs 可学习上采样器"，单一变量带来一致正向增益，<strong>把增益归到具体设计而非泛泛的参数量</strong>。C-NMC 这种域偏移大的集上增益更大（+4 点），进一步支持"融合多层级特征提升的是<strong>泛化</strong>而非拟合"。</p>
+<div class="takeaway">Takeaway：跨域不掉点 + 单变量消融一致正向，两条独立证据共同支撑 §5 的机制断言——层级特征分流提升的是可迁移的细胞表示，而非对单数据集的记忆。</div></div>
+</section>
+
+<section id="limitations"><h2>9. 局限、失败模式与复现门槛</h2>
+<ul>
+<li><strong>小样本任务被联合训练拖累。</strong>镰刀细胞、寄生虫检测、malaria 分割等样本极少的任务上，Uni-Hema 不如单数据集专精模型（表 1 中 Sickle Cell 67.0 vs DINO 73.6 等）。作者归因于大语料的平均化效应——这是"统一"的固有代价。</li>
+<li><strong>分割边缘偏糊。</strong>受单卡算力限制，未用 SOTA 上采样解码器，Step 3 简单上采样、Step 5 才接小上采样器；Dice Mean 91.7 略低于 TransNetR 93.7，论文承认"可能略损边缘清晰度"。</li>
+<li><strong>文本数据是半合成、且声明不可临床用。</strong>VQA/MLM 的问答与描述由 BioMistral-7B / Gemini 1.5 在形态学标注上生成，论文明确"仅供实验、不建议医疗用途"。BLEU-4 衡量的是文本重合度，不直接等于临床正确性。</li>
+<li><strong>训练细节依赖附录。</strong>本页未取得补充材料，故 Step 2 的 epoch/batch、各阶段学习率/优化器等标"论文未说明"；总训练时长仅给"约 8 天/单卡 4090"，GPU-小时为粗略估算。</li>
+<li><strong>表格为代表性转写。</strong>原 Table 1 含更多检测/分割数据集行，本页每任务保留若干代表行 + Mean，完整数据以原文为准；图 1/图 4 中的若干小图为定性示意，非可量化指标。</li>
+<li><strong>CVF 链接未解析。</strong>CVPR 2026 论文页尚未上线 CVF（与本站其它 CVPR 2026 条目一致），本页只提供 arXiv + 代码链接。代码仓 <code>intelligentMachines-ITU/Uni-Hema</code> HTTP 200，但论文写"code will be made publicly available"，发布完整度以仓库实际为准。</li>
+</ul>
+</section>
+
+<section id="summary"><h2>10. 总结：一条主干、按粒度分流，把六个任务接到一起</h2>
+<p class="lead" style="border-left-color:var(--green)"><strong>一句话。</strong>Uni-Hema 证明了数字血液病理的六类异粒度任务可以塞进一个模型联合训练一次——靠的是 Hema-Former 把"层级化视觉特征 + 任务相关 query"在不同粒度上分流，让该共享的（细胞病灶语义）共享、该解耦的（像素细节 vs 抽象判别）解耦，在多数基准上达到或超过逐个训练的单任务 SOTA。</p>
+<ol>
+<li><strong>机制 takeaway：</strong>多任务不打架的关键是<strong>从主干不同深度抽头 + 共享病灶 query</strong>——空间维度由四子模块分流（CMF 语言 / TGVR 实例 / SCFE 图像 / QGMF 像素），时间维度由六阶段渐进式冻结错开梯度冲突。分割用 Einstein 求和接到检测的病灶 query 上，是正向迁移最具体的落点。</li>
+<li><strong>证据 takeaway：</strong>统一模型在<strong>需要跨任务上下文</strong>的任务（形态学 +14.6、分类 +1.0）上优势最大，在<strong>未见数据集</strong>上分类 Mean 90.8 仍居首（排除过拟合）；代价是<strong>小样本任务</strong>被反超、分割边缘略糊。</li>
+<li><strong>阅读路径：</strong>核心问题（§1 碎片化 + 粒度不匹配）→ Hema-Former 四子模块（§5，机制核心，重点读式 1–5 与"层级分流为何不打架"那个 note）→ 六阶段训练（§6）→ 表 1/表 2（§7–§8，看 Mean 行与未见域）→ 局限（§9）。</li>
+</ol>
+</section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol>
+<li>Abdul Rehman, Iqra Rasool, Ayesha Imran, Mohsen Ali, Waqas Sultani. <strong>Uni-Hema: Unified Model for Digital Hematopathology.</strong> CVPR 2026（Medical AI）/ arXiv:2511.13889v2（Information Technology University of Punjab, Lahore；Chughtai Lab, Lahore）。代码（承诺公开）：github.com/intelligentMachines-ITU/Uni-Hema。</li>
+<li>本页全部数字、表格（表 1 代表性行 + 各任务 Mean、表 2 完整未见域、表 A 语料构成、表 B 六阶段训练）与公式（式 1–5）均转写自 arXiv PDF（§3–§4、Table 1–2、Fig 1–4）。Table 1 原文含更多检测/分割数据集行，本页保留覆盖广度的代表行并在表注标明"完整见原文"。分类图像总量论文分别写 320K/350K，本页两处如实保留。</li>
+<li><strong>kexue:su 方法与归因：</strong>§5"层级特征 + 任务相关 query 为何不互相稀释"、QGMF Einstein 求和为何把分割接到检测 query、§6 六阶段为何这样排——均按 kexue:su 方法（动机先行、假设显式、≥2 条独立路径交叉验证：结构上的梯度解耦 + 实验上的跨域不掉点）重新推导。本次 kexue:su 语料检索<strong>未返回</strong>与多任务梯度冲突 / 层级特征分流 / mask-transformer 相关的卡片（返回的是 DiT/U-ViT 多模态、信息抽取、CLUE baseline 等无关条目），故按红线<strong>只应用方法、不作 [archives] 归因</strong>（文本支路所用 T5 已按其原始论文标注为 [59]，不借 kexue 博客转引）。</li>
+<li><strong>图像说明：</strong>图 3、图 4 为本地 PNG，由 extract_figures.py（PyMuPDF，caption 锚定）从 arXiv PDF 裁切（fig3 970×1545、fig4 1994×693）；图 1（teaser）、图 2（整体架构）为矢量图，caption 锚定提取被跳过（"no graphics found"），改用 300dpi 页面渲染按图块精确裁切（fig1 1040×850、fig2 2260×785），未做盲裁。路径 assets/figures/unihema/。式 1–5 为论文公式的标准 TeX 转写，已对照 PDF 原式复核。</li>
+</ol></section>
+
+</main>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline / 架构</a></li><li><a href="#method">方法 / Hema-Former</a></li><li><a href="#training">六阶段训练</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融 / 未见域</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Uni-Hema: Unified Model for Digital Hematopathology</dd><dt>Venue</dt><dd>CVPR 2026 · Medical AI</dd><dt>Backbone</dt><dd>ResNet-50 + DINO-DETR（6+6 层）+ T5（文本）+ Hema-Former（4 子模块）</dd><dt>训练</dt><dd>6 阶段渐进冻结；单卡 RTX 4090 ≈ 8 天</dd><dt>语料</dt><dd>46 公开集（检测 18 / 分割 11 / 分类 17）≈70 万图 + 22K QA + 7K MLM</dd><dt>arXiv</dt><dd>2511.13889</dd><dt>Topic</dt><dd>Unified Digital Hematopathology</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 2：一主干多抽头 + Hema-Former 横贯</li><li>图 3：四子模块（语言/实例/图像/像素）</li><li>式 1–2：CMF 两段 cross-attention</li><li>式 3：TGVR top-K 文本调制</li><li>式 5：QGMF Einstein 求和出掩码</li><li>表 1：检测/分类/形态学 Mean 领先</li><li>表 2：未见域分类 90.8 居首</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> Uni-Hema 深读</p><p><span class="status-good">figures</span> 4 张 PNG（fig1/2/3/4）</p><p><span class="status-good">formula</span> 式 1–5 待 MathJax 预检</p><p><span class="status-warn">caveat</span> 小样本任务被联合训练反超；分割边缘略糊；文本数据半合成不可临床用</p></div></section></aside></div></body></html>

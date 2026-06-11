@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPECTRE 深读：一整张 CT 的注意力算不动，凭什么“局部细看 + 全局粗览”两级 ViT 既省算力又不丢上下文？</title>
+<meta name="description" content="CVPR 2026 Medical AI · SPECTRE: Scaling Self-Supervised and Cross-Modal Pretraining for Volumetric CT Transformers 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Medical AI · 体积 CT 基础模型 / 两级 3D Transformer + 视觉-语言对齐</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Medical AI &gt; SPECTRE</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">11</span><span class="month">Jun</span></div><h1 id="paper-title">SPECTRE 深读：一整张 CT 的注意力算不动，凭什么“局部 24 层细看 + 全局 4 层粗览”既省算力又不丢上下文？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-11</span><span>CVPR 2026 · Medical AI · TU Eindhoven（ARIA / AIMS Lab）</span><span>来源：arXiv:2511.17209 PDF</span></div><div class="tags"><span class="tag orange">Medical AI</span><span class="tag">Volumetric CT 基础模型</span><span class="tag">3D ViT</span><span class="tag green">DINOv3 + SigLIP</span><span class="tag">3D RoPE</span><span class="tag">全开源数据</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>把 ViT 端到端搬到 3D CT 上，第一道墙不是精度，是<strong>算力本身</strong>：朴素 3D patch 化让 token 数随分辨率近似<em>立方</em>膨胀，而自注意力又是 token 数的<em>平方</em>——一整张胸腹 CT 的全局注意力根本算不动。绕不开就只能砍：要么砍分辨率（丢细节），要么砍上下文（只在局部窗口里看，丢全局）。SPECTRE 的核心赌注是<strong>“两级都要”——局部 ViT 用 24 层在窗口内把高分辨率细节看透，全局 ViT 只用 4 层、在被压成“每窗口一个描述子”的极短序列上做全局注意力</strong>，于是 $\mathcal{O}(N^2)$ 的 3D 注意力被拆成“局部代价随窗口数线性 + 全局代价因序列极短而廉价”。立题问题因此很具体：<strong>当你被迫在一整张 CT 上“省注意力”，到底该在哪一级省、又怎么保证省掉的不是全局上下文？</strong>第二条暗线同样硬核——临床报告是“一张扫描对多句描述、且共病并存”的<strong>多对多噪声标签</strong>，CLIP 的 softmax 对比会被语义重叠的“假负样本”毒化，SPECTRE 改用 SigLIP 的 sigmoid 来接。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>SPECTRE：首个<strong>纯 transformer</strong>的体积 CT 基础模型；两级（局部 + 全局）3D ViT + 几何感知 tokenization/3D RoPE，先 DINOv3 式自监督、再 SigLIP 视觉-语言对齐，<strong>只用公开 CT 数据</strong>训练。</div><div class="kv"><b>关键机制</b>把整张扫描切成 $G$ 个窗口：局部 ViT$_\ell$（24 层、窗口内注意力）出高分辨率特征 → 每窗口“patch 均值 ⊕ [cls]”压成一个描述子 → 全局 ViT$_g$（4 层、$G{+}1$ 个 token 上做全注意力）聚合全局语义。$G\ll m$，全局注意力因此廉价。</div><div class="kv"><b>核心证据</b>6 个肿瘤生物标志物基准上冻结-kNN <strong>4/6 第一</strong>（图 1 雷达 / 图 3 柱状）；SEoMT 仅编码器分割与 nnU-Net 同档、压过所有 transformer（表 1）；CT-RATE 零样本检索 Recall@5 <strong>17.5 vs CT-CLIP 2.9</strong>（表 2）。</div><div class="kv"><b>复现门槛</b>工业级硬件：SSL 阶段 batch <strong>1536</strong>、150 epoch；VLA batch 144、100 epoch。8 个公开数据集合计 <strong>229,619</strong> 个序列，但偏胸部。代码与配方全开源（<code>cclaess/SPECTRE</code>）。</div></div></div><figure class="hero-card"><a href="../assets/figures/spectre/spectre_fig1.png"><img src="../assets/figures/spectre/spectre_fig1.png" alt="11 个 CT 基础模型在 6 个生物标志物基准上的冻结-kNN AUC 雷达图"></a><figcaption><strong>图 1 · 全文“核心断言可视化”。</strong>11 个 CT 基础模型在 6 个生物标志物分类基准上、用<strong>冻结嵌入 + kNN</strong>（不微调）比 AUC：橙=胸部诊断、绿=胸部预后、蓝=腹部预后。黑色 SPECTRE 在其中 <strong>4 个基准取得最高 AUC</strong>。这张雷达图回答的不是“某个任务多强”，而是“一个<em>冻结</em>的通用表示能否同时撑住诊断+预后、胸部+腹部”——基础模型的价值正在这种<strong>跨任务可迁移性</strong>。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：3D 注意力的“立方×平方”墙，到底该在哪一级省？</h2><p>2D 里 SSL（自监督）与 VLA（视觉-语言对齐）已经成熟，但论文开篇就指出：<strong>这些成功不会自动迁移到体积 CT</strong>。ViT 在自然图像里靠“弱归纳偏置 + 大数据 + 强目标”取胜，可一旦进入 3D 医学体积，三件事同时变坏。</p>
+<ul><li><strong>极端 token 膨胀。</strong>朴素地把 3D 体积切 patch，token 数随分辨率近似<em>立方</em>增长，而自注意力是 token 数的<em>平方</em>。论文直说：全局注意力、大 batch 这些“在规模上最有效的设计”，在 CT 上<strong>必须先做某种近似才用得起</strong>。</li><li><strong>几何异质性。</strong>CT 有各向异性体素间距、可变 FOV、不同扫描仪的重建核/降噪/剂量。任何“假设各向同性或简单平移不变”的位置编码都会<strong>错误地表示扫描间几何</strong>——模型必须显式编码体素间距与切片采样。</li><li><strong>临床监督弱、噪、且分层。</strong>自由文本报告、稀疏标签、研究级标注。更要命的是：2D 的 VLA 配方靠“巨量负样本 + 大 batch”成立，3D 在显存上根本喂不起；而放射报告常列<strong>多个共病</strong>，于是候选“负样本”经常和正样本<strong>共享临床语义</strong>——标准 CLIP 对比损失的信号被这种重叠稀释。</li></ul>
+<div class="socratic"><p class="question">问：既然全局注意力算不动，那直接学 Swin/CNN 那套“只在局部窗口里做注意力”不就完了？为什么还要费劲搞两级？</p><p class="guide">引导：盯住“纯局部窗口”丢掉了什么——窗口之间<strong>没有信息交换</strong>。一张 CT 的诊断常依赖跨器官、跨区域的<em>全局</em>关系（如“肺部病灶 + 纵隔淋巴结”）。只在窗口内看，等于把整张扫描切成互不通气的小块。</p><p class="answer">答：论文要的是“既要高分辨率局部细节、又要全局上下文，还要算得起”三者兼得。纯局部（窗口注意力）省了算力却丢了全局；纯全局（整张扫描全注意力）保了上下文却算不动。SPECTRE 的结构性回答是<strong>把这两件事分到两级、各用各的注意力</strong>：局部级在窗口内做密集注意力拿细节，全局级先把每个窗口<em>压成一个描述子</em>、再在这条极短序列上做全注意力拿上下文。关键在“压”这一步——它让全局注意力的序列长度从“几万 patch”降到“几十个窗口”，平方代价也就不再是墙。这与稀疏/局部注意力“为节约而生”的思路同源 [archives/6853, 9431]。</p><p class="takeaway"><strong>Takeaway：</strong>真问题不是“用不用注意力”，而是“<strong>在哪一级省</strong>”。SPECTRE 把答案拆成两半：局部级省在“只看窗口内”，全局级省在“只看窗口的摘要”——两处省下的都不是全局上下文本身。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献（论文 §1 第 (1)(2)(3) 条）：</strong></p><ul><li><strong>几何感知的 transformer 设计与 tokenization</strong>——显式编码各向异性与体素尺度信息（各向异性 patch + 3D RoPE）。</li><li><strong>平衡 token 复杂度与上下文保持的注意力架构</strong>——即两级（局部 + 全局）注意力，让大规模 3D 注意力在计算上可行。</li><li><strong>两阶段预训练流水线</strong>——先用 SSL 式目标 bootstrap 鲁棒的几何感知特征，再用 VLA 注入临床语义。</li><li><strong>全开源 + 仅公开数据</strong>——模型、训练代码、预训练配方全部公开；并证明“不依赖私有数据也能学到高性能、可泛化的表示”。</li></ul>
+<div class="formula-note"><p class="note-title">读数提醒：这篇的“评测姿态”值得单独标注</p><p>SPECTRE 主战场是<strong>冻结表示的可迁移性</strong>——生物标志物分类用冻结嵌入 + kNN（不微调）、检索是零样本。这意味着它报告的数字衡量的是“<strong>表示本身好不好</strong>”，而非“针对某任务调到多好”。这是基础模型该有的评测，但也要据此理解结果：分割（表 1）是把冻结编码器接一个轻量解码头，不是端到端重训一个分割 SOTA。</p></div>
+<p><strong>读者能进一步推断的是</strong>：这篇真正推进的<em>单一变量</em>是“如何让 3D 全局注意力可计算而不牺牲上下文”。它没有发明新损失、没有新数据，而是把 DINOv3 + SigLIP 这套成熟 2D 配方，<strong>用一套几何感知的两级 ViT 适配到体积 CT</strong>，并诚实地把“偏胸部、依赖报告噪声”作为代价摆出来。</p></section>
+
+<section id="datasets"><h2>3. 数据：229,619 个公开 CT 序列，且“只用公开数据”本身是主张</h2><p>SPECTRE 的一个显式立场是<strong>不碰私有数据</strong>。预训练语料来自 8 个公开 CT 数据集，经各自的排除准则后合计 <strong>229,619 个图像序列</strong>，覆盖胸、腹、盆，含造影/非造影、不同剂量。其中三个带配套放射报告/EHR 诊断码的数据集，可同时用于 SSL 和 VLA。</p>
+<div class="table-wrap"><table><caption><strong>表 4.</strong> 预训练数据集（论文附录 Tab. 4 转写）：解剖覆盖、排除后保留的重建序列数、以及各自用于自监督（SSL）/ 视觉-语言对齐（VLA）。</caption><thead><tr><th>来源数据集</th><th>部位</th><th>序列数</th><th>SSL</th><th>VLA</th></tr></thead><tbody>
+<tr><td>NLST</td><td>胸</td><td>132,985</td><td>✓</td><td>—</td></tr>
+<tr><td>CT-RATE</td><td>胸</td><td>47,149</td><td>✓</td><td>✓</td></tr>
+<tr><td>INSPECT</td><td>胸</td><td>23,226</td><td>✓</td><td>✓</td></tr>
+<tr><td>Merlin</td><td>腹</td><td>15,314</td><td>✓</td><td>✓</td></tr>
+<tr><td>AbdomenAtlas</td><td>腹</td><td>5,195</td><td>✓</td><td>—</td></tr>
+<tr><td>AMOS</td><td>腹</td><td>2,450</td><td>✓</td><td>—</td></tr>
+<tr><td>PANORAMA</td><td>腹</td><td>2,238</td><td>✓</td><td>—</td></tr>
+<tr><td>AbdomenCT-1K</td><td>腹</td><td>1,062</td><td>✓</td><td>—</td></tr>
+<tr><td><b>合计</b></td><td>—</td><td><b>229,619</b></td><td>—</td><td>—</td></tr>
+</tbody></table></div>
+<p>读这张表要抓两点。其一，<strong>数据极度偏胸部</strong>：仅 NLST 一家（132,985）就占了一多半，加上 CT-RATE、INSPECT，胸部序列约 20 万，腹部不到 3 万。第 9 节的“胸部任务普遍强于腹部”正是这条数据失衡的直接后果。其二，<strong>带报告的只有 4 家</strong>（CT-RATE / INSPECT / Merlin，以及 VLA 实际用到的子集），所以视觉-语言对齐能看到的“图-文配对”规模远小于纯图像的自监督规模——这解释了为什么 SSL 要先行、把几何先验吃饱，VLA 才在更小的配对集上补语义。</p>
+<h3>3.1 把“billing code”翻成人话：让 LLM 重写报告，但 EHR 码保真</h3><p>VLA 的文本侧处理有两个值得记的设计（论文附录 A.3）：(1) 报告按 Findings / Impressions 分段，每段用 LLM（Gemini 2 Flash）<strong>“在不改变任何医学事实的前提下”重写</strong>，每段生成 3 个语义等价的改写，训练时随机采一个（LaCLIP 的单正样本策略），由放射科医生策划的 4 个示例（2 胸 2 腹）约束改写保真度；(2) 结构化 EHR 诊断码（如 <code>J18.9</code>）<strong>不交给 LLM</strong>——因为 LLM 处理裸码容易出错——而是直接替换成 WHO 2025 的简短描述、以逗号列表附在报告末尾，<strong>在 LLM 重写之后追加</strong>，以保住计费与流行病学的准确性。</p>
+<div class="socratic"><p class="question">问：又是文本增强，这跟 §1 说的“报告噪声/多对多”有什么关系？是工程润色还是机制必需？</p><p class="answer">答：它是机制必需的一半。临床报告天然“一张扫描对应多种写法、多个共病”——这正是后面 SigLIP（而非 softmax CLIP）要对付的多对多结构。LLM 把同一段 Findings 改写成 3 个等价版本，等于<strong>显式告诉模型“这些不同措辞指向同一张图”</strong>，给图-文对齐提供“写法不变性”的监督；而 EHR 码保真则确保“共病清单”不被改写时丢失或臆造。两者合起来，是把“多对多噪声”从<em>损失端</em>（SigLIP）和<em>数据端</em>（重写+保真）两头一起处理。</p><p class="takeaway"><strong>Takeaway：</strong>“重写报告”不是数据清洗边角料，而是为多对多对齐铺的监督；保真 EHR 码则是不让重写污染共病信息的红线。</p></div></section>
+
+<section id="pipeline"><h2>4. Pipeline 与架构：局部 ViT$_\ell$ ×24、全局 ViT$_g$ ×4，在“窗口描述子”处交汇</h2><p>图 2 是全文骨架。一张 CT 体积经 3D tokenization 切成窗口，<strong>局部 ViT$_\ell$（24 层、窗口内注意力 + 3D RoPE）</strong>逐窗口抽高分辨率特征；每个窗口被压成一个描述子后，<strong>全局 ViT$_g$（4 层、在 $G{+}1$ 个 token 上做全注意力）</strong>聚合全扫描语义。文本侧（仅 VLA 阶段）用 Qwen3-0.6B Embedding + LoRA 编码报告，在共享空间里用 SigLIP 对齐。</p>
+<figure class="fig-wide"><a href="../assets/figures/spectre/spectre_fig2.png"><img src="../assets/figures/spectre/spectre_fig2.png" alt="SPECTRE 总览：窗口级局部 ViT、扫描级全局 ViT 与文本 transformer，两阶段预训练"></a><figcaption><strong>图 2 · SPECTRE 总览。</strong>左（窗口级）：3D tokenization → 局部 ViT$_\ell$ <strong>×24</strong> 层（Transformer Block + 3D RoPE）；窗口内 $N$ 个 patch 加一个 [cls]，输出经 <em>Pooling</em>（patch 均值）与 [cls] <strong>Concat</strong> 成窗口描述子，对 $G$ 个窗口各做一次。中（扫描级）：$G$ 个描述子 + 一个扫描级 [cls] 进全局 ViT$_g$ <strong>×4</strong> 层做全注意力。右（文本）：Qwen Tokenization → Qwen3-0.6B Embedding + LoRA → 文本 transformer。底部标注两阶段：<strong>Stage 1 = $\mathcal{L}_{\text{SSL}}$</strong>（仅视觉，DINOv3 式自蒸馏），<strong>Stage 2 = $\mathcal{L}_{\text{SigLIP}}$</strong>（视觉-文本对齐）。看这张图要抓的是<strong>“×24 局部 vs ×4 全局”的非对称分工</strong>：重活在窗口内（细节），全局只做轻量聚合（上下文）。</figcaption></figure>
+<div class="formula-note"><p class="note-title">为什么是“24 局部 + 4 全局”这种非对称深度？</p><p>这恰好呼应 §1 的“在哪一级省”。局部注意力的代价对窗口数 $G$ <strong>线性</strong>（每窗口 token 数 $m$ 固定），所以把深度堆到 24 层仍算得起——细节由它负责。全局注意力序列长度只有 $G{+}1$（几十），即便平方也廉价，但它的任务只是“把窗口摘要拼成全局图景”，4 层足矣。<strong>深度分配跟着“代价随什么增长”走</strong>，而不是平均铺开。</p></div></section>
+
+<section id="method"><h2>5. 方法：把“立方×平方”拆成“线性 + 廉价”，再用几何感知顶住异质性</h2>
+<h3>5.1 最小 3D tokenization：各向异性 patch 与 1.8962 的压缩因子</h3><p>给定体积 $X\in\mathbb{R}^{H\times W\times D}$，切成非重叠 3D patch 并线性投影成 token：</p>
+<div class="equation">$$T^{(0)}=\big[x_1,\dots,x_N\big]^{\top},\quad x_i=E\big(P(X)\big)\in\mathbb{R}^{d}\qquad(1)$$<div class="eq-caption">式 1：$P(X)$ 为 patch 划分，$E(\cdot)$ 为展平 patch 的线性映射，$d$ 为 token 维。</div></div>
+<p>关键在 patch 形状的选择：<strong>$16\times16\times8$ 体素</strong>——深度方向只取面内一半。理由是几何性的：CT 切片方向的体素间距通常约为轴向平面的两倍，所以 patch 深度取一半，让一个 patch 在三个物理方向上覆盖<em>相近的真实尺寸</em>。嵌入维 $d=1080$。于是<strong>压缩因子</strong>为每 patch 体素数比上嵌入维：</p>
+<div class="equation">$$\frac{16\times16\times8}{1080}=\frac{2048}{1080}\approx 1.8962\qquad(\text{压缩比})$$<div class="eq-caption">公式读法：一个 patch 含 2048 个体素，压成 1080 维 token，压缩约 1.9 倍——刻意保守，留住高分辨率信息。</div></div>
+<p>论文给了一个对照锚点：对 $H,W{=}128,D{=}64$ 的典型 crop（很多病灶分割任务的尺寸），上式得 <strong>512 个 token</strong>，正好等于一张 $256\times256$ 的 2D 图在 patch $16\times16$ 下的 token 数——<strong>把 3D 局部窗口的 token 预算压到 2D 的量级</strong>，这是局部级算得起的前提。</p>
+<h3>5.2 局部级与扫描级注意力：压成描述子，把序列长度从“万”降到“十”</h3><p>局部 ViT$_\ell$ 做标准 transformer，但注意力<strong>限制在局部窗口内</strong>。把整张扫描的 token 网格切成 $G$ 个窗口（每个对应体积的一个 3D crop），每窗口 $m$ 个 token，前置一个可学习 [cls] $c_w$。窗口内做标准多头自注意力（MHSA）：</p>
+<div class="equation">$$\mathrm{Attn}(T_w)=\mathrm{softmax}\!\Big(\tfrac{QK^{\top}}{\sqrt{d_k}}\Big)V,\quad Q{=}T_wW_Q,\;K{=}T_wW_K,\;V{=}T_wW_V\qquad(2\text{–}3)$$<div class="eq-caption">式 2–3：窗口 token 矩阵 $T_w\in\mathbb{R}^{(1+m)\times d}$ 上的常规 MHSA。</div></div>
+<p>由于每窗口 token 数 $m$ 固定，<strong>整张扫描的局部注意力代价随窗口数 $G$ 线性增长</strong>（论文式 4 的要点）：窗口内注意力是对固定 $m$ 个 token 的固定开销，$G$ 个窗口就是 $G$ 份固定开销。这是第一处“省”。</p>
+<p>第二处“省”在<strong>聚合</strong>。窗口处理完后，对 $m$ 个 patch token 取均值，再与该窗口的 [cls] 拼接，得到一个窗口描述子：</p>
+<div class="equation">$$\bar t_w=\frac{1}{m-1}\sum_{i=2}^{m}T^{(\ell)}_{w,i},\qquad u_w=\big[\,c_w \,\|\, \bar t_w\,\big]\in\mathbb{R}^{2d},\quad w=1,\dots,G\qquad(5\text{–}6)$$<div class="eq-caption">式 5–6：$\bar t_w$ 是窗口内 patch token 的均值（局部细节摘要），$c_w$ 是窗口 [cls]（窗口级上下文）；拼成 $2d$ 维描述子。</div></div>
+<p>把 $G$ 个描述子堆成 $U\in\mathbb{R}^{G\times 2d}$（式 7），线性投影回 $d$ 维得 $\tilde U$，再前置一个<strong>扫描级</strong> [cls] $c_g$，进全局编码器：</p>
+<div class="equation">$$Z=\begin{bmatrix}c_g\\[2pt]\tilde U\end{bmatrix}\in\mathbb{R}^{(G+1)\times d},\qquad T^{(g)}=\mathrm{ViT}_g(Z)\in\mathbb{R}^{(G+1)\times d}\qquad(8\text{–}9)$$<div class="eq-caption">式 8–9：全局 ViT$_g$ 在长度仅 $G{+}1$ 的序列上做<strong>全</strong>注意力。因 $G\ll m$，这一步廉价。</div></div>
+<div class="formula-note"><p class="note-title">公式读法（式 5–6 是“省而不丢”的心脏）</p><p>为什么“均值 $\bar t_w$ ⊕ [cls] $c_w$”能既压缩 token、又保住全局上下文？因为这两项各管一头：$c_w$ 是窗口内自注意力反复读过所有 patch 后<strong>主动汇总</strong>的窗口级表示（保上下文），$\bar t_w$ 是 patch 级细节的<strong>无参均值</strong>（保细节统计）。把二者拼起来，一个窗口的“是什么 + 大致长什么样”就被压进一个向量。于是全局编码器面对的不再是几万个 patch，而是 $G$ 个“窗口摘要”——序列长度塌缩到几十，平方注意力的墙就消失了。<strong>压缩发生在“窗口→描述子”，而被压掉的是 patch 间的冗余、不是全局关系</strong>：全局关系恰恰由全局 ViT$_g$ 在这些描述子之间重新建立。</p></div>
+<h3>5.3 3D RoPE：用“旋转”而非“查表”顶住分辨率/FOV 漂移</h3><p>位置编码必须显式承载几何，否则 §1 的各向异性会让模型“认错坐标”。SPECTRE 用 <strong>3D 旋转位置编码（RoPE）</strong>：通过旋转 query/key 注入连续轴向坐标，而非加一个学习好的位置向量——这<strong>避免存储大块插值位置场</strong>，又能跨分辨率保持相对位置信息。设每个头维度 $d_k$，令</p>
+<div class="equation">$$d_k\equiv 0 \pmod 6,\qquad L=d_k/6\ \text{（每轴频率槽数）}\qquad(10)$$<div class="eq-caption">式 10：3 个空间轴 × (sin, cos) = 6，故 $d_k$ 必须被 6 整除，每轴分到 $L=d_k/6$ 个频率。</div></div>
+<p>再叠一层 <strong>RoPE-box jittering</strong>（沿用 DINOv3）：对归一化坐标 $r_i\in[-1,1]^3$ 施加全局缩放 $s\sim\mathcal{U}(0.5,2.0)$ 得 $\tilde r_i$，轴向角为 $\theta^{(a)}_i=2\pi\,\tilde r_i^{(a)}/p$（$a\in\{h,w,d\}$），最后把旋转作用到 Q/K（式 11–13）。局部、全局两级 ViT 都用 RoPE。</p>
+<div class="socratic"><p class="question">问：为什么“旋转坐标 + 随机缩放”就能对体素间距、FOV 的变化鲁棒？给我两条独立的理由。</p><p class="answer"><strong>路径 A（函数式相对位置，自上而下）：</strong>RoPE 是<em>函数式</em>相对位置编码——位置信息以连续坐标的旋转角形式注入，注意力只依赖 query/key 的<strong>相对</strong>角度差。比起“为每个绝对位置查一个学习向量”，函数式编码不绑定到训练时见过的具体网格，因此换一个体素间距/FOV（等价于坐标被整体拉伸或采样变了）时，相对结构仍由同一套旋转规则给出，外推/鲁棒性更好。这正是苏剑林在“长度外推性与位置鲁棒性”里反复论证的：从位置编码的<strong>鲁棒性</strong>角度看，对位置施加扰动/缩放能让模型不过拟合到具体坐标 [archives/9444]，而函数式相对编码本身就比训练式更稳 [archives/9431]。<br><br><strong>路径 B（数据增强 = 显式不变性，自下而上）：</strong>box-jittering 把 $s\sim\mathcal{U}(0.5,2.0)$ 的全局缩放当成训练时的随机扰动，等于在<strong>坐标尺度</strong>这一维上做数据增强。模型被反复要求“同一解剖在 0.5× 到 2× 不同坐标尺度下都给一致表示”，于是学到的是对尺度<em>不变</em>的特征——这正对应 CT 真实世界里体素间距能差出两三倍的异质性。两条路径殊途同归：一条说“函数式旋转天生对坐标变换稳健”，一条说“再用随机缩放把这种稳健显式训进去”。</p><p class="takeaway"><strong>Takeaway：</strong>RoPE 让位置“可计算、可外推”，box-jittering 把“尺度不变性”当增强训进去——二者叠加，才让一个模型吃得下不同间距/FOV 的 CT，而不必为每种几何重训。</p></div>
+<h3>5.4 两阶段预训练：先 DINOv3 喂几何先验，再 SigLIP 注临床语义</h3><p><strong>Stage 1（SSL，仅视觉）：</strong>用改造版 DINOv3。学生-教师都是 ViT$_\ell$（[cls] 维 $d=1080$，接 3 层投影头），学生是带掩码的 ViT，教师是学生的 EMA。多裁剪：每个体积采 2 个全局视图 + 8 个局部视图（全局按轴 $r_g\sim\mathcal{U}(0.5,1.0)$、局部 $r_\ell\sim\mathcal{U}(0.1875,0.5)$），叠翻转/锐化/平滑/gamma/噪声/强度重缩等增强。损失为 <strong>DINO + iBOT + KoLeo，权重 1 : 1 : 0.1</strong>，并<strong>刻意去掉 DINOv3 的 Gram loss</strong>（它主要在“把模型扩到十亿参数级、优化稠密特征”时有用，而 CT 的操作谱较窄，用不上）：</p>
+<div class="equation">$$\mathcal{L}_{\text{DINO}}=-\frac{1}{D}\sum_{g\in\mathcal G}\sum_{\substack{v\in\mathcal G\cup\mathcal H\\ v\neq g}}\sum_{k=1}^{K} q_t^{(k)}(g)\,\log p_s^{(k)}(v)\qquad(15)$$<div class="eq-caption">式 15：教师在全局裁剪 $g$ 上的软目标 $q_t$ 与学生在其余视图 $v$ 上预测 $p_s$ 的交叉熵；强制跨尺度的全局一致性。</div></div>
+<div class="equation">$$\mathcal{L}_{\text{iBOT}}=-\frac{1}{|M|}\sum_{m\in M}\sum_{c=1}^{C} q_t^{(c)}(m)\,\log p_s^{(c)}(m)\qquad(16)$$<div class="eq-caption">式 16：掩码 patch 自蒸馏，$M$ 为被掩码位置集。SPECTRE 掩码 <strong>50% 的全局视图</strong>，掩码比例 $\rho\sim\mathcal{U}(0.2,0.7)$。原型数 $K{=}C{=}65{,}536$。</div></div>
+<div class="socratic"><p class="question">问：iBOT 的掩码比例 $\rho\sim\mathcal U(0.2,0.7)$ 明显高于 DINOv3/原 iBOT 的 $\mathcal U(0.1,0.5)$——这不是随手调的超参，背后是什么道理？</p><p class="answer">答：论文给的理由很 kexue——<strong>3D 里掩码重建“更容易”，所以要掩得更狠才有难度</strong>。掩码自蒸馏的学习信号来自“从可见 token 推断被掩 token”的难度；2D 里一个 patch 的空间邻居有限，3D 里每个 token 的邻居数量大得多（多了一个维度的近邻），可见上下文更冗余、重建更容易。若沿用 2D 的掩码比例，任务对 3D 来说太简单、梯度信号弱。把 $\rho$ 上限从 0.5 提到 0.7，相当于<strong>把任务难度拉回到“需要真正理解结构才能补全”的水平</strong>。这是“先讲为什么需要、再讲是什么”的典型：超参跟着“3D 邻居更多→任务更易”这条因果走。</p><p class="takeaway"><strong>Takeaway：</strong>掩码比例不是常数，是<strong>任务难度的旋钮</strong>；维度从 2D 升到 3D，冗余变多，旋钮就得往“更难”拧。</p></div>
+<p>KoLeo（式 17）做近邻正则——对 L2 归一化嵌入，鼓励它们在表示空间里<strong>均匀铺开</strong>，防止坍缩。三项合起来：DINO 管全局一致、iBOT 管局部结构、KoLeo 防坍缩。</p>
+<p><strong>Stage 2（VLA，视觉-语言对齐）：</strong>SSL 完成后，把整模型（ViT$_\ell$ + ViT$_g$）冻结/继续训练来对齐报告。每张扫描切成 $G=36$ 个 $128\times128\times64$ 的窗口，编码成 $d=1080$ 的特征；文本用 <strong>Qwen3-0.6B Embedding + LoRA（$r{=}16,\alpha{=}64$）</strong>，图文都投到共享 512 维空间、L2 归一化。对齐损失用 <strong>SigLIP</strong>（sigmoid），而非 CLIP 的 softmax InfoNCE：</p>
+<div class="equation">$$\mathcal{L}_{v\to t}=-\frac{1}{N}\sum_{i=1}^{N}\Big[\log\sigma\big(\mathrm{sim}(\tilde v_i,t_i)\big)+\frac{1}{N-1}\sum_{j\neq i}\log\big(1-\sigma(\mathrm{sim}(\tilde v_i,t_j))\big)\Big]\qquad(19)$$<div class="eq-caption">式 19：$\mathrm{sim}(v,t)=\langle v,t\rangle/\tau$，$\sigma$ 为 sigmoid。总损失 $\mathcal{L}_{\text{SigLIP}}=\tfrac12(\mathcal{L}_{v\to t}+\mathcal{L}_{t\to v})$（式 20），双向对称。</div></div>
+<div class="socratic"><p class="question">问：为什么非得把 CLIP 的 softmax 换成 SigLIP 的 sigmoid？给两条独立理由，别只说“sigmoid 更好”。</p><p class="answer"><strong>路径 A（损失结构 vs 标签结构）：</strong>softmax InfoNCE 的隐含假设是“一个 query 只有一个正样本，其余<em>全是</em>负样本”——它在一个 batch 内做归一化竞争。但临床数据违反这个假设：一张扫描可能对应多句不同粒度的描述，且报告里<strong>共病并存</strong>，所以 batch 里别的样本经常和当前样本<em>共享语义</em>（假负样本）。softmax 会强行把这些假负样本往下压，<strong>注入错误梯度</strong>。SigLIP 把每个图-文对当成<strong>独立的二分类</strong>（sigmoid + BCE），正样本拉高、负样本压低，<em>各对之间不做归一化竞争</em>——于是“某个负样本其实和正样本语义重叠”时，它的惩罚是局部的、可被其他信号平衡，不会像 softmax 那样污染整个分布。这正对应 §1 说的“候选负样本常共享临床语义”。<br><br><strong>路径 B（对 batch size 的敏感性）：</strong>softmax 对比的有效负样本数 ≈ batch size，3D 体积显存吃紧、batch 上不去（VLA batch 仅 144），softmax 的对比信号就弱。论文引文献指出 <strong>sigmoid 损失对小 batch 远没 softmax 那么敏感</strong>——因为它不靠“一个大分母里的众多负样本”来定标，每对自带 0/1 目标。再配合“文本嵌入跨设备 shuffle、图像嵌入留本地”的技巧，用上大量负样本却不付高通信代价。两条路径独立指向同一结论：<strong>临床的多对多噪声 + 3D 的小 batch，都让 sigmoid 比 softmax 更合身</strong>。</p><p class="takeaway"><strong>Takeaway：</strong>换 SigLIP 不是赶时髦——softmax 的“唯一正样本 + 大 batch”两条前提，恰好都被临床 CT 的数据与显存现实打破，而 sigmoid 把两条前提都松绑了。</p></div></section>
+
+<section id="training"><h2>6. 训练配置：SSL batch 1536、150 epoch，VLA batch 144、100 epoch</h2><p>论文附录 Tab. 5 给了两阶段的超参，差异本身就透露了两阶段的不同性格。</p>
+<div class="table-wrap"><table><caption><strong>表 5.</strong> 两阶段预训练超参（论文附录 Tab. 5 转写）。LR=学习率，LLRD=逐层学习率衰减，WD=权重衰减。</caption><thead><tr><th>超参</th><th>SSL（Stage 1）</th><th>VLA（Stage 2）</th></tr></thead><tbody>
+<tr><td>Epochs</td><td>150</td><td>100</td></tr>
+<tr><td>Steps</td><td>83,100</td><td>59,000</td></tr>
+<tr><td>Batch size</td><td><b>1,536</b></td><td>144</td></tr>
+<tr><td>LR 起 / 止</td><td>$4\times10^{-3}$ / $1\times10^{-6}$</td><td>$1\times10^{-4}$ / $1\times10^{-6}$</td></tr>
+<tr><td>LR schedule</td><td>Cosine annealing</td><td>Cosine annealing</td></tr>
+<tr><td>LR warmup</td><td>10 epoch</td><td>10 epoch</td></tr>
+<tr><td>LLRD</td><td>0.9</td><td>0.9</td></tr>
+<tr><td>WD 起 / 止</td><td>0.04 / 0.4（inverse cosine）</td><td>0.01 / 0.01（常数）</td></tr>
+<tr><td>Optimizer</td><td>AdamW $(\beta_1{=}0.9,\beta_2{=}0.999)$</td><td>AdamW $(\beta_1{=}0.9,\beta_2{=}0.95)$</td></tr>
+</tbody></table></div>
+<p>数据预处理（附录 A.2/A.3）：所有序列先重定向到 RAS 坐标系，HU 截断到 $[-1000,+1000]$、归一化到单位区间；SSL 重采样到 $0.5\times0.5\times1.0$ mm、中心裁剪到最大 $512\times512\times384$，训练时随机裁 $256\times256\times128$，且<strong>同一扫描采 4 个随机 crop 当作 4 个独立 batch 元素</strong>提高 I/O 效率；VLA 重采样到 $0.75\times0.75\times1.5$ mm。</p>
+<div class="formula-note"><p class="note-title">关于算力（粗估，不等同账单）</p><p>论文称在“工业级硬件”上训练，正文未给总 GPU 卡数与墙钟时间，只给了 batch（SSL 1536）、steps（83,100）与 epoch（150）。<strong>SSL batch 高达 1536</strong> 已经隐含了相当规模的分布式训练——这也是 §1 所说“大 batch 这种有效设计在 CT 上需要近似才用得起”的反面：作者用两级注意力把单样本代价压下来，才腾出显存把 batch 堆到 1536。具体卡时<strong>论文未披露</strong>，此处不做估算，以免给出“按论文披露数字粗略估算”都无从依据的数字。</p></div></section>
+
+<section id="experiments"><h2>7. 实验：冻结表示打三场——生物标志物、分割、跨模态检索</h2><p><strong>判断：</strong>三组证据测的是同一个东西——“<em>冻结</em>的通用 3D 表示到底有多可迁移”。生物标志物（kNN 不微调）测判别力；分割（仅编码器接轻解码头）测稠密迁移；检索（零样本）测跨模态对齐。逐一看。</p>
+<h3>7.1 肿瘤生物标志物：冻结 kNN，6 个基准里 4 个第一</h3><p>采用 Pai 等人的标准化协议，对所有对比模型一视同仁：<strong>抽冻结编码器嵌入、训一个 kNN 分类器、不微调</strong>，以隔离“表示质量”而非“任务调优”。6 个数据集横跨诊断与预后：LUNA16、DLCS（恶性预测）；NSCLC-Radiomics、NSCLC-Radiogenomics、C4KC-KiTS、Colorectal-Liver-Metastases（两年生存预测）。结果即图 1 雷达图——<strong>SPECTRE 在 4/6 取得最高 AUC</strong>。</p>
+<figure class="fig-wide"><a href="../assets/figures/spectre/spectre_fig3.png"><img src="../assets/figures/spectre/spectre_fig3.png" alt="11 个模型在 6 个生物标志物数据集上的 AUC 柱状图（含误差棒）"></a><figcaption><strong>图 3（附录）· 生物标志物 AUC 柱状图（带误差棒）。</strong>这是图 1 雷达的展开版，11 个模型按整体强弱从左到右排，<strong>SPECTRE（最左）</strong>在 LUNA16、DLCS、C4KC-KiTS 等列明显领先。<span class="img-caption-marker">读数提醒：正文未给数值表，柱高为图中读数（约 LUNA16 0.92 / DLCS 0.76 / C4KC-KiTS 0.74），仅供量级参考；“4/6 第一”以论文文字为准。</span>看误差棒会发现预后任务（生存预测）整体方差大、AUC 低于诊断任务——这是任务本身难度，不是某模型的锅。</figcaption></figure>
+<figure><a href="../assets/figures/spectre/spectre_fig4.png"><img src="../assets/figures/spectre/spectre_fig4.png" alt="6 个生物标志物数据集上 SPECTRE 的注意力/显著性图"></a><figcaption><strong>图 4（附录）· 显著性可视化。</strong>6 个数据集上，每对里左为原始 CT crop、右为叠加的模型关注热图。看点不是“热图好看”，而是<strong>高响应区与病灶位置吻合</strong>——冻结表示在没有任何分割监督的情况下，注意力已落在肿瘤/病灶上，这从定性侧佐证了 kNN 判别力的来源。</figcaption></figure>
+<h3>7.2 语义分割：SEoMT——仅用编码器，与 nnU-Net 同档</h3><p>为测稠密迁移，作者把 EoMT（Encoder-only Mask Transformer）扩到 3D，称 <strong>SEoMT</strong>：冻结/预训练的 SPECTRE 编码器出体素 token，配一组可学习 query token（每语义类一个），<strong>免去实例级匹配（无匈牙利、无动态 query 分配）</strong>，用标准体素级 CE/Dice 监督。它在 <strong>1/4 分辨率</strong>上预测掩码再三线性上采样，并作为 drop-in 替换进 nnU-Net，以保证“增益来自表示而非解码器工程”。</p>
+<figure style="max-width:420px"><a href="../assets/figures/spectre/spectre_fig5.png"><img src="../assets/figures/spectre/spectre_fig5.png" alt="SEoMT 分割架构：预训练编码器 + query token + MLP/upscale 出掩码"></a><figcaption><strong>图 5（附录）· SEoMT 架构。</strong>输入 CT 体积 → windowing/patch → 预训练 ViT（Encoder Blocks + 3D RoPE）；$C_l$ 个 query / 类别 token 与编码 token 一起过若干 Encoder Blocks，最后 MLP + Upscale 出 $C\times\frac{H}{4}\times\frac{W}{4}\times\frac{D}{4}$ 的 logits。<strong>没有重解码器</strong>——这正是“分割结果平滑、可能漏小病灶”的结构根源（见 §9）。</figcaption></figure>
+<div class="table-wrap"><table><caption><strong>表 1.</strong> 4 个分割基准上的测试 Dice（论文 Tab. 1 转写，五折平均；KiTS23 用 4 折，因 Fold 0 用于开发已剔除）。按骨干类型分卷积 / transformer 两组。</caption><thead><tr><th>方法</th><th>类型</th><th>KiTS23</th><th>LiTS</th><th>WORD</th></tr></thead><tbody>
+<tr><td>nnU-Net</td><td>卷积</td><td>85.99</td><td>79.29</td><td>83.11</td></tr>
+<tr><td>nnU-Net ResEnc L</td><td>卷积</td><td><b>88.06</b></td><td><b>81.20</b></td><td><b>85.79</b></td></tr>
+<tr><td>CoTr</td><td>卷积</td><td>84.63</td><td>78.44</td><td>83.11</td></tr>
+<tr><td>nnFormer</td><td>transformer</td><td>75.72</td><td>77.02</td><td>82.53</td></tr>
+<tr><td>SwinUNETRv2</td><td>transformer</td><td>75.07</td><td>73.27</td><td>78.99</td></tr>
+<tr><td>UNETR</td><td>transformer</td><td>76.33</td><td>70.91</td><td>70.87</td></tr>
+<tr><td>WaveFormer</td><td>transformer</td><td>80.61</td><td>—</td><td>—</td></tr>
+<tr><td>Primus-M</td><td>transformer</td><td>86.13</td><td>79.52</td><td>83.19</td></tr>
+<tr><td>Primus-L</td><td>transformer</td><td>86.04</td><td>79.90</td><td>82.99</td></tr>
+<tr><td><b>SPECTRE（本文）</b></td><td>transformer</td><td><u>86.64</u></td><td><u>80.14</u></td><td><u>83.31</u></td></tr>
+</tbody></table></div>
+<p>读这张表要分两层。<strong>在 transformer 阵营内</strong>，SPECTRE 三列全面压过 Primus-L/M、nnFormer、SwinUNETRv2、UNETR、WaveFormer——这是“纯 transformer + 好的预训练表示”能打的直接证据。<strong>跨阵营</strong>看：SPECTRE 在 KiTS23（86.64）甚至略超普通 nnU-Net（85.99），三列都与卷积系<strong>同档</strong>，但仍低于最强的 nnU-Net ResEnc L（88.06/81.20/85.79）。论文的诚实结论正是“<strong>不靠重解码器设计，仅编码器就能与 nnU-Net 竞争</strong>”，而非“分割 SOTA”。</p>
+<h3>7.3 零样本文本→图像检索：CT-RATE 碾压，Merlin 上互有胜负</h3>
+<div class="table-wrap"><table><caption><strong>表 2.</strong> CT-RATE 验证集（N=1,564）整篇报告的文本→图像检索 Recall@K（论文 Tab. 2 转写，含 Findings+Impressions）。</caption><thead><tr><th>方法</th><th>R@5</th><th>R@10</th><th>R@50</th><th>R@100</th></tr></thead><tbody>
+<tr><td>CT-CLIP</td><td>2.9</td><td>5.0</td><td>18.0</td><td>28.8</td></tr>
+<tr><td><b>SPECTRE（本文）</b></td><td><b>17.5</b></td><td><b>25.5</b></td><td><b>48.9</b></td><td><b>59.9</b></td></tr>
+<tr><td>随机</td><td>0.3</td><td>0.6</td><td>3.2</td><td>6.4</td></tr>
+</tbody></table></div>
+<p>CT-RATE 上 SPECTRE 把 Recall@5 从 CT-CLIP 的 2.9 提到 <strong>17.5</strong>（约 6 倍），Recall@100 近 60——全扫描级的图文对齐确实建立起来了。但 Merlin 上的对比更耐读：</p>
+<div class="table-wrap"><table><caption><strong>表 3.</strong> Merlin 测试集文本→图像检索（论文 Tab. 3 转写），分 Findings / Impressions / 整篇报告（FR），不同非重叠数据池规模 $N$。</caption><thead><tr><th>报告段</th><th>方法</th><th colspan="3">Recall@1（N=32/64/128）</th><th colspan="3">Recall@8（N=32/64/128）</th></tr></thead><tbody>
+<tr><td rowspan="4">Findings</td><td>OpenCLIP</td><td>3.3</td><td>1.7</td><td>0.9</td><td>25.0</td><td>12.5</td><td>6.1</td></tr>
+<tr><td>BioMedCLIP</td><td>4.4</td><td>2.1</td><td>1.2</td><td>30.6</td><td>15.6</td><td>7.9</td></tr>
+<tr><td>Merlin（域内）</td><td><b>77.6</b></td><td><b>68.7</b></td><td><b>59.4</b></td><td><b>98.8</b></td><td><b>96.5</b></td><td><b>92.0</b></td></tr>
+<tr><td>SPECTRE</td><td>55.5</td><td>43.8</td><td>33.0</td><td>93.5</td><td>86.3</td><td>76.1</td></tr>
+<tr><td rowspan="4">Impressions</td><td>OpenCLIP</td><td>3.2</td><td>1.7</td><td>0.8</td><td>25.2</td><td>12.6</td><td>6.4</td></tr>
+<tr><td>BioMedCLIP</td><td>4.6</td><td>2.4</td><td>1.2</td><td>32.2</td><td>16.9</td><td>8.1</td></tr>
+<tr><td>Merlin（域内）</td><td>38.4</td><td>27.7</td><td>19.4</td><td>85.4</td><td>70.6</td><td>56.4</td></tr>
+<tr><td><b>SPECTRE</b></td><td><b>43.2</b></td><td><b>32.9</b></td><td><b>24.0</b></td><td>83.7</td><td><b>72.8</b></td><td><b>61.5</b></td></tr>
+<tr><td>FR</td><td><b>SPECTRE</b></td><td><b>66.4</b></td><td><b>55.7</b></td><td><b>44.8</b></td><td><b>96.4</b></td><td><b>91.6</b></td><td><b>84.3</b></td></tr>
+<tr><td>—</td><td>随机</td><td>3.1</td><td>1.6</td><td>0.8</td><td>25.0</td><td>12.5</td><td>6.3</td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：Merlin 在 Findings 上把 SPECTRE 按在地上摩擦（59.4 vs 33.0 @N=128），怎么还能说 SPECTRE 的对齐好？</p><p class="answer">答：关键在“域内 vs 零样本”。<strong>Merlin 模型是在 Merlin 自家数据上训练的</strong>，对它而言这是<em>同分布</em>检索；SPECTRE 是<strong>零样本</strong>（没在 Merlin 上专门训）。所以 Findings 上 Merlin 占优是“主场优势”。真正能说明问题的是另外两处：(1) <strong>Impressions</strong> 段上 SPECTRE（43.2）反超域内的 Merlin（38.4）——Impressions 是更“解读性”、结构更松散的文本，论文归因于 SigLIP 阶段的<strong>LLM 重写/文本增强</strong>让模型对“措辞与结构的多样性”更稳；(2) <strong>整篇报告（FR）</strong>下 SPECTRE 进一步涨到 66.4，说明它能<strong>跨段整合</strong>，对报告结构不敏感。一个零样本模型在两个段上接近、在一个段上反超一个域内专训模型，这才是“通用对齐立得住”的证据。</p><p class="takeaway"><strong>Takeaway：</strong>别被 Findings 那一栏的差距骗了——把“域内 vs 零样本”摆正后，SPECTRE 在 Impressions/整篇上的表现恰恰印证了文本增强对“结构多变的临床语言”的鲁棒。</p></div>
+<figure><a href="../assets/figures/spectre/spectre_fig7.png"><img src="../assets/figures/spectre/spectre_fig7.png" alt="SPECTRE 联合嵌入空间的 UMAP，按异常数着色"></a><figcaption><strong>图 7（附录）· 联合嵌入空间 UMAP。</strong>左=图像嵌入、右=文本嵌入，按报告里的<strong>异常数</strong>（0 / 1–4 / 5–8 / 9+）着色。看左图：图像嵌入沿“疾病负担”形成了清晰的<strong>连续梯度</strong>（蓝=健康聚在一侧、红=多异常聚在另一侧）——说明冻结表示自发地把“病得多重”编码进了几何结构，这正是它在生物标志物/检索上可迁移的内在原因。文本侧梯度较弱，也对应 §9 的“报告噪声”。</figcaption></figure></section>
+
+<section id="ablations"><h2>8. 消融：对“文本被打散”的鲁棒性——随机丢字稳，整段丢就崩</h2><p>附录还提供了若干消融（报告噪声、报告长度、体素间距、其它 SigLIP 变体、UMAP）。这里挑最能说明“模型到底依赖什么文本信号”的一组：检索性能随文本 token 被丢弃的退化曲线。</p>
+<figure><a href="../assets/figures/spectre/spectre_fig8.png"><img src="../assets/figures/spectre/spectre_fig8.png" alt="检索 Recall 随丢弃文本 token 比例的退化：token dropout vs span dropout"></a><figcaption><strong>图 8（附录）· 文本鲁棒性消融。</strong>横轴=丢弃文本 token 的比例（0/10/25/50%），纵轴=检索 Recall（蓝=R@1、橙=R@8）；<strong>实线=随机 token dropout，虚线=连续 span dropout</strong>。看两种丢法的分叉：随机丢字时（实线）R@8 从 ~84 缓降到 ~63，相当抗造；但<strong>连续整段丢时（虚线）R@8 从 84 直坠到 ~9</strong>（25% 时已掉到 ~21），几乎贴随机线。</figcaption></figure>
+<div class="socratic"><p class="question">问：同样丢掉 50% 的 token，为什么“随机散着丢”几乎不影响、“整段连着丢”就崩？这告诉我们模型学到了什么？</p><p class="answer">答：这条对照精确地切出了模型依赖的<strong>信息结构</strong>。随机 dropout 把缺失<em>均匀散布</em>，报告里冗余的、分布式的语义线索（同一所见在不同句子里反复出现、被 §3.1 的多版改写进一步强化）足以让模型补回大意——所以缓降。连续 span dropout 则<strong>整块抹掉一个语义单元</strong>（比如把“right lower lobe nodule”整句删掉），这块信息没有别处冗余可借，模型就真的不知道这张图该匹配什么——所以骤崩。<br><br>这背后是一条可证伪的判断：<strong>SPECTRE 的图文对齐建立在“分布式、冗余的临床线索”上，而非死记某几个关键 token</strong>。这正是 §3.1 LLM 多版改写想要的效果（让同一语义有多个等价写法→冗余→抗随机噪声），也解释了 §7.3 为什么它对 Impressions 这种“措辞多变”的段更稳。但它的软肋也被这张图标出来了：<strong>一旦某个语义单元被整体丢失（而非打散），就没有冗余兜底</strong>。</p><p class="takeaway"><strong>Takeaway：</strong>“随机丢稳、整段丢崩”不是 bug，是“依赖分布式冗余线索”这一学习结果的指纹——文本增强买到的是抗散点噪声，买不到抗整段缺失。</p></div></section>
+
+<section id="limitations"><h2>9. 局限与复现门槛：什么时候 SPECTRE 会偏、会漏？</h2><div class="table-wrap"><table><caption><strong>表（综述 §6）.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/方法信息</th><th>读者应如何理解</th></tr></thead><tbody>
+<tr><td>语料偏胸部</td><td>NLST 一家就 132,985 序列；腹部合计 &lt;3 万</td><td>胸部任务（肺）系统性强于腹部；这是<strong>数据失衡</strong>而非方法偏好，扩腹部数据可缓解</td></tr>
+<tr><td>依赖临床报告</td><td>报告完整度/术语跨机构差异大，含固有噪声与偏倚</td><td>文本侧质量直接决定 VLA 上限；图 7 文本嵌入梯度弱、图 8 整段丢即崩，都是这条的表现</td></tr>
+<tr><td>仅编码器分割会“糊”</td><td>SEoMT 在 1/4 分辨率预测再上采样，输出平滑</td><td>大器官稳、<strong>小/弱对比病灶可能被平滑掉</strong>；需要细粒度时仍要重解码器</td></tr>
+<tr><td>算力门槛高</td><td>“工业级硬件”，SSL batch 1536、150 epoch</td><td>正文未给卡时；非大组难复现 SSL 阶段</td></tr>
+<tr><td>Merlin Findings 仍逊于域内</td><td>59.4(Merlin) vs 33.0(SPECTRE) @N=128</td><td>零样本对“结构化所见”段不及域内专训；通用性的代价</td></tr>
+<tr><td>生物标志物无数值表</td><td>正文仅给雷达/柱状图，未列 AUC 表</td><td>“4/6 第一”可据文字断言，但精确数值需以图读数/作者公开为准</td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：§7.2 说 SEoMT 仅编码器就能和 nnU-Net 同档，§9 又说它会糊掉小病灶——这两件事矛盾吗？</p><p class="answer">答：不矛盾，是<strong>同一架构选择的一体两面</strong>。SEoMT 去掉重解码器、在 1/4 分辨率出掩码再三线性上采样，换来的是“优雅、计算高效、增益可归因于编码器表示”——所以在<strong>大器官、形状先验稳</strong>的目标（肾、肝、腹部器官）上能和 nnU-Net 同档。但同一个“低分辨率预测 + 平滑上采样”的设计，碰到<strong>小、低对比的病灶</strong>时，细节在下采样里就丢了、上采样补不回来，于是“平滑”变成“漏检”。论文自己说得很直白：平滑预测“在需要时会漏掉高分辨率细节，是待改进处”。<strong>所以这不是 bug，是“用分辨率换可归因性/效率”的已知代价</strong>——要细粒度分割，仍得把重解码器加回来。</p><p class="takeaway"><strong>Takeaway：</strong>SEoMT 的“同档”和“糊掉小病灶”是同一枚硬币：它证明的是<strong>编码器表示好</strong>，不是<strong>分割管线完整</strong>；这两者别混为一谈。</p></div>
+<div class="formula-note"><p class="note-title">这篇最容易被过度宣传成什么</p><p>容易被说成“一个模型通吃所有 3D CT 任务、还全开源”。更严谨的说法是：<strong>SPECTRE 用一套几何感知的两级 ViT（局部细看 + 全局粗览）+ DINOv3/SigLIP 两阶段预训练，仅靠公开 CT 数据就训出一个<em>冻结即可用</em>的体积 CT 表示——在 6 个生物标志物基准上冻结-kNN 拿下 4/6、仅编码器分割与 nnU-Net 同档、零样本检索在 CT-RATE 上 6 倍于 CT-CLIP。但它偏胸部、依赖报告噪声、仅编码器分割会糊小病灶，且需工业级算力。</strong>它推进的核心变量是“如何让 3D 全局注意力可计算而不丢上下文”，不是宣告“通用 CT 模型已成”。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>SPECTRE 把“一整张 CT 的注意力算不动”这个算力墙，拆成“局部 ViT$_\ell$（24 层窗口内注意力，代价随窗口数线性）+ 全局 ViT$_g$（4 层、在‘每窗口压成一个描述子’的极短序列上做全注意力，因 $G\ll m$ 廉价）”，再用各向异性 patch、3D RoPE、box-jittering 顶住几何异质性，最后用 DINOv3 喂几何先验、SigLIP（而非 softmax CLIP）接住临床报告的多对多噪声——于是一个<em>冻结</em>的、仅靠公开数据训成的表示，能同时撑住生物标志物分类、分割与跨模态检索。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li><strong>“在哪一级省注意力”是真正的设计变量</strong>：局部省在“只看窗口内”、全局省在“只看窗口摘要”，被压掉的都是 patch 间冗余而非全局关系——式 5–6 的“均值 ⊕ [cls]”是“省而不丢”的支点。</li><li><strong>损失/超参要跟着 3D 的物理现实走</strong>：iBOT 掩码比例从 2D 的 0.5 提到 0.7（3D 邻居更多→任务更易→掩更狠）；换 SigLIP（多对多噪声 + 小 batch 两条都打破 softmax 的前提）；patch 深度取面内一半（切片间距约 2×）。每个数字背后都有“为什么”。</li><li><strong>泛化与软肋同源</strong>：文本增强让对齐依赖“分布式冗余线索”，于是抗随机丢字（图 8 实线）、却抗不住整段丢失（虚线骤崩）；仅编码器分割让增益可归因，却也糊掉小病灶。优点和代价是同一选择的两面。</li></ol></div><p>留给后续的两个反驳/验证路径：<strong>(a)</strong> “两级注意力 vs 朴素全局注意力”的等算力对照——论文论证了可计算性，但未在<em>同等算力预算</em>下直接比“两级”相对“全局近似（如 FlashAttention/线性注意力）”的精度-代价曲线；<strong>(b)</strong> 把腹部数据补到与胸部同量级，验证“胸强腹弱”是否纯由数据失衡导致——若补齐后差距消失，则坐实这是数据问题而非架构问题。</p></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Cris Claessens, Christiaan Viviers, Giacomo D’Amicantonio, Egor Bondarev, Fons van der Sommen. <em>Scaling Self-Supervised and Cross-Modal Pretraining for Volumetric CT Transformers (SPECTRE)</em>. CVPR 2026（CVF pp. 13636–13647）/ arXiv:2511.17209v2（Eindhoven University of Technology · ARIA Lab / AIMS Lab）。代码：<code>github.com/cclaess/SPECTRE</code>（HTTP 200）。</li><li>本文公式（式 1–20 选录）、表格（表 1–5）与全部实验数字以 arXiv PDF 为准；两级注意力（式 4–9）、3D RoPE（式 10–13）、DINO/iBOT/KoLeo（式 15–17）、SigLIP（式 19–20）写法对照原文 §3–4。生物标志物部分<strong>正文未提供数值表</strong>，图 3 柱高为图中读数（已在图注标注为量级参考），“4/6 第一”以论文文字为准。</li><li><strong>kexue:su 方法与归因</strong>：第 1、5 节“在哪一级省注意力”“RoPE+box-jittering 为何鲁棒”“SigLIP 为何胜过 softmax”的多路径论证，按 <code>kexue:su</code> 方法（动机先行、假设显式、≥2 路径交叉验证）重新推导。其中两条<em>一般原理</em>有语料支撑并据此引用：窗口/稀疏局部注意力“为节约而生”、以削减 $\mathcal{O}(N^2)$ 代价——引苏剑林《为节约而生：从标准 Attention 到稀疏 Attention》[archives/6853] 与《Transformer 升级之路：7、长度外推性与局部注意力》[archives/9431]；函数式相对位置编码（RoPE）及“对位置施加扰动以提升鲁棒性”——引《Transformer 升级之路：8、长度外推性与位置鲁棒性》[archives/9444]。检索确返回此三张卡片（BM25 命中，含标题/标签/URL），故按<strong>一般原理</strong>引用并应用于本文情形；其余因果链（两级聚合、掩码比例随维度、SigLIP 对多对多噪声）为本文推导，<strong>未作 [archives] 归因</strong>。</li><li>图像说明：图 1、3、4、5、7、8 为本地 PNG，由 <code>extract_figures.py</code>（PyMuPDF，caption 锚定）从 arXiv PDF 裁切，路径 <code>assets/figures/spectre/</code>。<strong>图 2（架构总览）含矢量文本，已直接采用提取的位图并在图注中转写其“×24 局部 / ×4 全局 / 两阶段”关键结构</strong>；提取器跳过的 fig 6（无图形）未使用。</li></ol></section>
+</main>
+
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline / 架构</a></li><li><a href="#method">方法 / 两级注意力</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融 / 文本鲁棒性</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Scaling Self-Supervised and Cross-Modal Pretraining for Volumetric CT Transformers (SPECTRE)</dd><dt>Venue</dt><dd>CVPR 2026 · Medical AI（CVF pp.13636–13647）</dd><dt>Backbone</dt><dd>局部 ViT$_\ell$ ×24 + 全局 ViT$_g$ ×4（3D RoPE）+ Qwen3-0.6B Embedding + LoRA</dd><dt>预训练</dt><dd>DINOv3 式 SSL → SigLIP VLA；仅公开数据 229,619 序列</dd><dt>arXiv</dt><dd>2511.17209</dd><dt>Topic</dt><dd>Volumetric CT Foundation Model</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：6 基准雷达，4/6 第一</li><li>式 5–6：窗口“均值 ⊕ [cls]”描述子</li><li>式 8–9：全局 $G{+}1$ 序列全注意力</li><li>表 1：分割与 nnU-Net 同档</li><li>表 2：CT-RATE 检索 17.5 vs 2.9</li><li>图 8：随机丢稳 / 整段丢崩</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> SPECTRE 深读</p><p><span class="status-good">figures</span> 6 张 PNG（fig1/2/3/4/5/7/8）</p><p><span class="status-good">formula</span> 式 1–20 选录待 MathJax 预检</p><p><span class="status-warn">scope</span> 偏胸部 / 仅编码器分割糊小病灶</p></div></section></aside></div></body></html>

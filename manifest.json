@@ -22,7 +22,7 @@
     "chordedit_author_award": "https://cnshiyang.github.io/"
   },
   "status_summary": {
-    "completed_pages": 14,
+    "completed_pages": 21,
     "pending_pages": 0,
     "completed_ids": [
       "d4rt",
@@ -38,7 +38,14 @@
       "mspt",
       "sam3dbody",
       "lladamedv",
-      "voxtell"
+      "voxtell",
+      "spectre",
+      "xpcr",
+      "surgcot",
+      "unihema",
+      "lemon",
+      "octomed",
+      "medmo"
     ],
     "pending_ids": []
   },
@@ -335,6 +342,157 @@
       "figures_count": 9,
       "formula_check": "passed",
       "missing_info": "总训练 steps/epochs、完整 LR schedule、表 1/表 3 个别数据集精确名置于附录（正文按模态行+点名数值核对）"
+    },
+    {
+      "id": "spectre",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "Scaling Self-Supervised and Cross-Modal Pretraining for Volumetric CT Transformers",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "SPECTRE",
+      "topic": "Medical AI · 体积 CT 基础模型 / 两级 3D Transformer + 视觉-语言对齐",
+      "blurb": "首个纯 transformer 的体积 CT 基础模型：把算不动的 3D 全局注意力拆成“局部 ViT 24 层窗口内细看（代价随窗口数线性）+ 全局 ViT 4 层在窗口描述子上做全注意力（G≪m 故廉价）”，配各向异性 patch / 3D RoPE，先 DINOv3 式自监督再 SigLIP 对齐放射报告。仅用公开 CT 数据 229,619 序列，6 个生物标志物基准冻结-kNN 4/6 第一，CT-RATE 零样本检索 Recall@5 17.5（CT-CLIP 仅 2.9）。",
+      "tags": "Medical Medical AI volumetric CT foundation model 3D ViT two-level attention windowed attention 3D RoPE anisotropic tokenization DINOv3 SigLIP self-supervised vision-language alignment SEoMT segmentation zero-shot retrieval open-data TU Eindhoven",
+      "authors": "Cris Claessens; Christiaan Viviers; Giacomo D'Amicantonio; Egor Bondarev; Fons van der Sommen",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2511.17209",
+        "code": "https://github.com/cclaess/SPECTRE",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Claessens_Scaling_Self-Supervised_and_Cross-Modal_Pretraining_for_Volumetric_CT_Transformers_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/spectre.html",
+      "thumbnail": "assets/figures/spectre/spectre_fig1.png",
+      "status": "completed",
+      "figures_count": 13,
+      "formula_check": "passed",
+      "missing_info": "总 GPU 卡数/墙钟时间论文未披露（仅给 batch/steps/epoch）；生物标志物 AUC 正文无数值表（图 3 柱高为图中读数）；表 1/3 个别数据集精确名以附录为准"
+    },
+    {
+      "id": "xpcr",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "X-PCR: A Benchmark for Cross-modality Progressive Clinical Reasoning in Ophthalmic Diagnosis",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "X-PCR",
+      "topic": "Medical AI · 眼科诊断推理基准 / 六阶段带依赖推理链 + 跨模态对齐评测",
+      "blurb": "把眼科诊断从“一堆独立选择题”改造成“带因果依赖的六阶段推理链（IQA→AL→LC→DD→SG→CD）+ 跨六模态对齐推理”，再叠难度分层与不确定性感知（UAS/ECE）打分：26,415 张专家核验图、177,868 VQA、52 病、51 个公开数据集。一个 Chain Completion Rate 就把缺陷逼现——21 个 MLLM 里最强的 GPT-5 单步均分 76.24%，六步全对率却仅 24.47%，无一模型超过主治医师（79.91%）。",
+      "tags": "Medical Medical AI benchmark ophthalmic diagnosis MLLM progressive clinical reasoning chain completion rate cross-modal alignment uncertainty-aware UAS ECE calibration VQA six-stage CFP OCT FFA ICGA RetCam external-photography GPT-5 difficulty-stratified Shenzhen University",
+      "authors": "Gui Wang; Zehao Zhong; YongSong Zhou; Yudong Li; Ende Wu; Wooi Ping Cheah; Rong Qu; Jianfeng Ren; Linlin Shen",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2604.20350",
+        "code": "https://github.com/CVI-SZU/X-PCR",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Wang_X-PCR_A_Benchmark_for_Cross-modality_Progressive_Clinical_Reasoning_in_Ophthalmic_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/xpcr.html",
+      "thumbnail": "assets/figures/xpcr/xpcr_fig1.png",
+      "status": "completed",
+      "figures_count": 8,
+      "formula_check": "passed",
+      "missing_info": "具体 GPU 小时数/墙钟时间论文未披露（仅给 A100 单卡/多卡分工与零样本确定性解码）；表 2/3/4 为原 21 行表的代表性节选转写（完整行见原文）"
+    },
+    {
+      "id": "surgcot",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "SurgCoT: Advancing Spatiotemporal Reasoning in Surgical Videos through a Chain-of-Thought Benchmark",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "SurgCoT",
+      "topic": "Medical AI · 手术视频时空推理 / Chain-of-Thought 评测基准",
+      "blurb": "首个跨专科手术视频 CoT 推理基准：把大时空问题拆成“视频级→片段级→帧级”三阶段（Q1→Q2→Q3，上一级 Answer 进下一级条件），每级用五元组 Question→Option→Knowledge→Clue→Answer 标注，把 reason-then-decide 显式化。7 专科 35 术式 2,841 视频、19,345 主问题 + 59,177 子问题，评 10 个 MLLM × 5 维 × 三档（BL/KE/FC）。最尖锐的发现：主问题答对、子步骤大面积答错（GPT-5 主 87.58% 但 Q3 仅 50.51%，Claude 主 87.54% / Q3 30.44%）——高准确率多是捷径而非真推理。",
+      "tags": "Medical Medical AI surgical video benchmark spatiotemporal reasoning chain-of-thought CoT MLLM evaluation five-tuple annotation progressive reasoning Knowledge Clue causal action ordering anomaly onset tracking shortcut learning Shenzhen University CVI-SZU",
+      "authors": "Gui Wang; YongSong Zhou; Kaijun Deng; Wooi Ping Cheah; Rong Qu; Jianfeng Ren; Linlin Shen",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2604.20319",
+        "code": "https://github.com/CVI-SZU/SurgCoT",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Wang_SurgCoT_Advancing_Spatiotemporal_Reasoning_in_Surgical_Videos_through_a_Chain-of-Thought_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/surgcot.html",
+      "thumbnail": "assets/figures/surgcot/surgcot_fig1_teaser_thumb.png",
+      "status": "completed",
+      "figures_count": 8,
+      "formula_check": "passed",
+      "missing_info": "评测总耗时/API 成本/数据集是否完整公开放出论文未披露；图 3 数据分布正文无数值表；正文写评测 12 模型而主表实测 10 个、开源模型命名（Intern3.5-VL-8B / InternVL-8B）不完全一致，本页以表头实测为准"
+    },
+    {
+      "id": "unihema",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "Uni-Hema: Unified Model for Digital Hematopathology",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "Uni-Hema",
+      "topic": "Medical AI · 数字血液病理 / 统一多任务多模态模型",
+      "blurb": "首个面向数字血液病理（DHP）的统一视觉-语言模型：一套共享主干（ResNet-50 + DINO-DETR 编解码 + T5 文本编解码），靠 Hema-Former 把“层级化视觉特征 + 任务相关 query”在不同粒度上分流——CMF 跨模态融合（语言）、TGVR top-K 文本调制（检测/形态学）、SCFE 文本无关单细胞特征（分类）、QGMF 用 Einstein 求和把病灶 query ⊗ 像素特征生成分割 logits（像素）。46 个公开集（≈70 万图 + 22K QA + 7K MLM）单卡 RTX 4090 约 8 天、6 阶段渐进冻结联合训练一次。检测 mean mAP50 61.1、分类 mean F1 92.5、形态学 77.2（AttriDet 62.6），未见域分类 mean F1 90.8 居首；代价是小样本任务被单训模型反超、分割边缘略糊。",
+      "tags": "Medical Medical AI digital hematopathology DHP unified model multi-task multi-modal Hema-Former cross-modal fusion text-guided refinement single-cell feature extractor query-guided mask former Einstein summation detection segmentation classification morphology VQA masked language modeling ResNet DINO-DETR T5 Mask DINO progressive training RTX 4090 ITU Punjab Chughtai Lab leukemia malaria anemia sickle cell",
+      "authors": "Abdul Rehman; Iqra Rasool; Ayesha Imran; Mohsen Ali; Waqas Sultani",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2511.13889",
+        "code": "https://github.com/intelligentMachines-ITU/Uni-Hema"
+      },
+      "page_path": "papers/unihema.html",
+      "thumbnail": "assets/figures/unihema/unihema_fig1.png",
+      "status": "completed",
+      "figures_count": 8,
+      "formula_check": "passed",
+      "missing_info": "Step 2 的 epoch/batch 与各阶段 LR/优化器等细节在附录（本页未取得补充材料，标论文未说明）；总训练仅给“约 8 天/单卡 4090”，GPU-小时为粗略估算；Table 1 含更多数据集行，本页保留代表行 + Mean；CVF 页未上线，仅 arXiv + 代码链接"
+    },
+    {
+      "id": "lemon",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "LEMON: A Large Endoscopic MONocular Dataset and Foundation Model for Perception in Surgical Settings",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "LEMON",
+      "topic": "Medical AI · 手术内窥镜大数据集 + 增强自蒸馏基础模型",
+      "blurb": "私有手术数据喂不饱基础模型，LEMON 改走纯公开路线：从 YouTube 爬约 1.8 万段视频，用一条多级 curation 流水线（视频→帧→区域逐粒度剔非手术内容）削到 4194 段/938h/85M 帧/35 术式，是目前最大的开放手术数据集。基础模型 LemonFM 在 DINO 自蒸馏上加一路“增强蒸馏”——把同术式他人最近邻帧 + 时间相邻帧也当正视图，显式训入跨病人/跨帧不变性（3× 距离阈值为质量旋钮）。线性探测+全微调双协议在 4 任务 6 数据集全面领先：相位 Jaccard 最高 +9.5pp、分割 +10.3pp mDice，且 50% 标注微调仍压过别人 100%。",
+      "tags": "Medical Medical AI surgical endoscopy dataset foundation model self-supervised DINO knowledge distillation augmented distillation nearest-neighbor mining ConvNeXt linear probing full fine-tuning phase recognition tool detection action recognition semantic segmentation YouTube curation data efficiency King's College London",
+      "authors": "Chengan Che; Chao Wang; Tom Vercauteren; Sophia Tsoka; Luis C. Garcia-Peraza-Herrera",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2503.19740",
+        "code": "https://github.com/visurg-ai/LEMON"
+      },
+      "page_path": "papers/lemon.html",
+      "thumbnail": "assets/figures/lemon/lemon_fig1_teaser_thumb.png",
+      "status": "completed",
+      "figures_count": 11,
+      "formula_check": "passed",
+      "missing_info": "预训练端到端墙钟总时长论文未披露（仅给 8×V100、batch、epoch 与 per-step 训练时间表 12）；图 1 雷达为按轴刻度的图中读数，精确数值以表 3/4 为准；LEMON 数据靠 YouTube 链接分发，原视频被删则条目失效，无法保证逐帧完全复现"
+    },
+    {
+      "id": "octomed",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "OctoMed: Data Recipes for State-of-the-Art Multimodal Medical Reasoning",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "OctoMed",
+      "topic": "Medical AI · 医学多模态推理的「数据配方」：纯 SFT 蒸馏 + 拒绝采样多轨迹",
+      "blurb": "当大家忙着发明新损失、堆 RL、上更大 backbone 时，OctoMed 把赌注全压在「喂什么数据」上：从强 teacher（DeepSeek-R1 / GPT-4o）蒸馏带推理轨迹的样本、用拒绝采样只留答对的轨迹，把规模推到 800 万样本 / 68 亿 token（目前最大医学多模态推理数据集），只做监督微调就把 7B 学生（Qwen2.5-VL）调到跨分布开源 SOTA，多模态分类反超它的 teacher GPT-4o（67.29 vs 53.96）、整体压过大它 4 倍的 MedGemma-27B。三条机制：每题多条正确轨迹（1→16）当正则化、把 MedQA 峰值从 75.16 抬到 85.01（比多训 epoch 更值）；CoT 利于推理、direct 利于感知分类；不同长度轨迹混训涌现出「按题难度自校准推理长度」——难题写长、易题写短，无显式监督。",
+      "tags": "Medical Medical AI multimodal medical reasoning data recipe SFT distillation rejection sampling reasoning traces multiple trajectories regularization CoT vs direct prompting emergent task-aware thinking reasoning length self-calibration DeepSeek-R1 GPT-4o teacher Qwen2.5-VL-7B student 8M examples 6.8B tokens OOD generalization knowledge distillation UW-Madison Microsoft Research",
+      "authors": "Timothy Ossowski; Sheng Zhang; Qianchu Liu; Guanghui Qin; Reuben Tan; Tristan Naumann; Junjie Hu; Hoifung Poon",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2511.23269",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Ossowski_OctoMed_Data_Recipes_for_State-of-the-Art_Multimodal_Medical_Reasoning_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/octomed.html",
+      "thumbnail": "assets/figures/octomed/octomed_fig1_thumb.png",
+      "status": "completed",
+      "figures_count": 13,
+      "formula_check": "passed",
+      "missing_info": "无公开训练/数据代码仓库（仅放出 HF 模型权重 OctoMed/OctoMed-7B）；teacher 调用总量、GPU 卡数、墙钟时间、API 成本论文未披露，故不做算力估算；8M 数据集的具体混合比例/采样配额/teacher prompt 仅给框架，逐项复现需自行重建；图 4/图 8 因 caption 紧贴正文未被 caption-anchored 抽取器命中，改用 PyMuPDF 按页坐标裁剪同区域（非盲裁页面渲染）；附录定性图 S1–S3 未抽取，相关三条特性据论文文字转述。"
+    },
+    {
+      "id": "medmo",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "MedMO: Grounding and Understanding Multimodal Large Language Model for Medical Images",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "MedMO",
+      "topic": "Medical AI · 医学多模态大模型 / 理解 + grounding 的四阶段后训练",
+      "blurb": "从 Qwen3-VL-8B 后训练、仅用公开数据的开源医学多模态大模型：把“看懂影像”和“框出病灶”这对数据经济学相反的需求，拆成四阶段渐进后训练——18.5M 低分辨率（768²）先打底跨模态对齐，再升到 1280² 注入 grounding，指令微调对齐问答口吻，最后 GRPO 强化。RL 阶段引入纯几何、可验证的 bounding-box 奖励（对角线归一 L1 + GIoU + 匈牙利匹配 + FP/FN 惩罚），只打磨空间精度而不毒化语言。MedMO-8B-Next 在 VQA 均分 72.7%、grounding 六任务均分 56.8（最强基线 17.2），DeepLesion 上 40.5 IoU 对多个基线的 0.00。",
+      "tags": "Medical Medical AI multimodal LLM MLLM VLM medical grounding bounding box GRPO verifiable reward GIoU Hungarian matching Qwen3-VL post-training curriculum learning resolution escalation visual question answering report generation MedTrinity DeepLesion open-source MBZUAI",
+      "authors": "Ankan Deria; Komal Kumar; Adinath Madhavrao Dukre; Eran Segal; Salman Khan; Imran Razzak",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2602.06965",
+        "code": "https://github.com/genmilab/MedMO",
+        "project": "https://genmilab.github.io/MedMO-Page"
+      },
+      "page_path": "papers/medmo.html",
+      "thumbnail": "assets/figures/medmo/medmo_fig1.png",
+      "status": "completed",
+      "figures_count": 10,
+      "formula_check": "passed",
+      "missing_info": "各模态在 26M 语料中的精确占比表、Stage 4 的 λ_FP/λ_FN 取值与各阶段 epoch 数论文未说明；表 1/2 为节选转写（完整逐基准数值见原文）；训练 GPU·小时为按披露数字粗略估算"
     }
   ]
 }
