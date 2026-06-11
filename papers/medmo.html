@@ -229,6 +229,8 @@ body.lb-lock{overflow:hidden}
   .site-title{font-size:20px}
   .paper-card{max-width:none}
   .paper-card img{height:150px}
+  .equation{font-size:14px;padding:14px 10px;text-align:left}
+  .equation .eq-caption{text-align:left}
 }
 @media print{
   #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
@@ -397,8 +399,8 @@ body.lb-lock{overflow:hidden}
 
 <section id="method"><h2>5. 方法：把“理解 vs grounding”的冲突拆成课程，再用可验证的几何奖励接住 RL</h2>
 <h3>5.1 SFT 目标：标准下一 token 预测</h3><p>四个 SFT 阶段都用 vision-language 的标准自回归目标。给定图像 $v$ 与文本序列 $x=\{x_1,\dots,x_n\}$，模型最大化目标响应 $y=\{y_1,\dots,y_m\}$ 的条件似然：</p>
-<div class="equation">$$\mathcal{L}_{\text{SFT}}=-\sum_{i=1}^{m}\log p_{\theta}\big(y_i \mid v,\,x,\,y_{<i}\big)\tag{1}$$<div class="eq-caption">式 1：SFT 的逐 token 交叉熵</div></div>
-<div class="formula-note"><strong>公式读法。</strong>$\theta$ 是模型参数，$y_{<i}$ 是已生成的前缀 token。这就是“看着图 $v$ 和问题 $x$，把答案 $y$ 一个字一个字预测对”。Stage 2 的区别仅在于：$y$ 里现在<em>包含框坐标</em>（如 <code>&lt;box&gt;[[156,516,231,607]]&lt;/box&gt;</code>），grounding 被当成“也是要预测的文本”塞进同一个目标——这是把“框选”统一进语言建模的关键简化，也意味着定位精度此时只受交叉熵的弱约束。</div>
+<div class="equation">$$\mathcal{L}_{\text{SFT}}=-\sum_{i=1}^{m}\log p_{\theta}\big(y_i \mid v,\,x,\,y_{\lt i}\big)\tag{1}$$<div class="eq-caption">式 1：SFT 的逐 token 交叉熵</div></div>
+<div class="formula-note"><strong>公式读法。</strong>$\theta$ 是模型参数，$y_{\lt i}$ 是已生成的前缀 token。这就是“看着图 $v$ 和问题 $x$，把答案 $y$ 一个字一个字预测对”。Stage 2 的区别仅在于：$y$ 里现在<em>包含框坐标</em>（如 <code>&lt;box&gt;[[156,516,231,607]]&lt;/box&gt;</code>），grounding 被当成“也是要预测的文本”塞进同一个目标——这是把“框选”统一进语言建模的关键简化，也意味着定位精度此时只受交叉熵的弱约束。</div>
 <h3>5.2 GRPO：为什么 RL 阶段要“组内相对”而不是绝对奖励</h3><p>Stage 4 用 <strong>GRPO</strong>（Group Relative Policy Optimization）。对每个输入 $(v,x)$，从当前策略 $\pi_\theta$ 采样 $G$ 个响应，逐个用奖励 $r(v,x,y)$ 打分，再把分数<strong>组内标准化</strong>成优势：</p>
 <div class="equation">$$\hat{A}_{i,t}=\frac{R_i-\operatorname{mean}(\{R_j\}_{j=1}^{G})}{\operatorname{std}(\{R_j\}_{j=1}^{G})}\tag{5}$$<div class="eq-caption">式 5：GRPO 的组内归一化优势</div></div>
 <div class="formula-note"><strong>公式读法。</strong>不需要单独的 value 网络：用<em>同一道题的 $G$ 个采样答案</em>互相做基准（减均值、除标准差），高于组内平均的答案被强化、低于的被抑制。这天然抵消了“不同题目难度不同导致奖励尺度不一”的混淆——奖励的绝对值不重要，<strong>同题内部的相对好坏</strong>才重要。目标用 clip 限制策略更新幅度（式 3–4，沿用 DAPO 的 clip-higher 与 token 级 loss），并加 KL 约束（式 6）防止策略 $\pi_\theta$ 偏离参考模型 $\pi_{\text{ref}}$ 太远：</div>
@@ -406,15 +408,38 @@ body.lb-lock{overflow:hidden}
 <h3>5.3 核心机制：Bounding Box 可验证奖励，怎么做到“分辨率无关 + 只奖励空间精度”</h3>
 <div class="socratic"><p class="question">问题：RL 要“可验证”的奖励。可验证为什么重要，几何奖励又怎么保证不被“流利但错的文本”骗过去？</p><p class="guide">引导：若奖励来自另一个模型当裁判，就可能被“说得漂亮但框错”的回答骗高分（reward hacking）。<strong>纯几何</strong>的奖励——直接拿预测框和真值框算重叠——是<em>规则可核验</em>的：框在哪、对不对，用坐标一算便知，骗不了。它也<strong>只对空间精度求导</strong>，碰不到语言流畅度，于是 RL 不会为了刷奖励去牺牲文本能力。</p><p class="answer">回答：MedMO 的 bbox 奖励分四步搭起来。</p></div>
 <p><strong>第一步 · 分辨率无关的 L1。</strong>给真值框 $G=\{g_j\}_{j=1}^{G}$ 与预测框 $P=\{p_i\}_{i=1}^{P}$（XYXY 格式），单对的 L1 误差按<strong>图像对角线</strong>归一化：</p>
-<div class="equation">$$L1_{ij}=\frac{|x_1^{p}-x_1^{g}|+|y_1^{p}-y_1^{g}|+|x_2^{p}-x_2^{g}|+|y_2^{p}-y_2^{g}|}{2\sqrt{H^2+W^2}}\tag{2}$$<div class="eq-caption">式 2：按图像对角线归一化的框坐标 L1</div></div>
+<div class="equation">$$
+\begin{aligned}
+L1_{ij}
+&=\frac{|x_1^{p}-x_1^{g}|+|y_1^{p}-y_1^{g}|}{2\sqrt{H^2+W^2}}\\
+&\quad+\frac{|x_2^{p}-x_2^{g}|+|y_2^{p}-y_2^{g}|}{2\sqrt{H^2+W^2}}
+\end{aligned}\tag{2}
+$$<div class="eq-caption">式 2：按图像对角线归一化的框坐标 L1</div></div>
 <div class="formula-note"><strong>公式读法 + 假设。</strong>分母 $\sqrt{H^2+W^2}$ 是图像对角线长度，使误差<strong>分辨率无关、且与图像尺度成正比</strong>：同样“差 10 像素”，在 1280² 上和在 512² 上被惩罚的程度一致——这正是 §1 那条“小目标边界由几像素主导”担忧的解药。<em>隐含假设</em>：坐标已是绝对像素值（Qwen 系输出绝对坐标的 JSON），否则归一化口径会错。</div>
 <p><strong>第二步 · GIoU 而非 IoU。</strong>用 $\text{GIoU}\in[-1,1]$ 与 L1 组合成代价矩阵（$w_{L1}=5,\ w_G=2$）：</p>
-<div class="equation">$$C_{ij}=w_{L1}\,L1_{ij}+w_{G}\,(1-\text{GIoU}_{ij}),\qquad w_{L1}=5,\ w_G=2\tag{3}$$<div class="eq-caption">式 3：匹配用的代价矩阵（L1 + GIoU）</div></div>
+<div class="equation">$$
+\begin{aligned}
+C_{ij}&=w_{L1}\,L1_{ij}+w_{G}\,(1-\text{GIoU}_{ij}),\\
+w_{L1}&=5,\qquad w_G=2
+\end{aligned}\tag{3}
+$$<div class="eq-caption">式 3：匹配用的代价矩阵（L1 + GIoU）</div></div>
 <div class="formula-note"><strong>为什么是 GIoU 不是 IoU。</strong>当预测框与真值框<em>完全不重叠</em>时 IoU 恒为 0、没有梯度，模型不知道“往哪个方向挪框更好”；GIoU 把“包住两框的最小外接框里有多少空白”也算进去，于是即便不重叠也给出 $[-1,1]$ 的连续信号，指明靠近方向。这对医学小病灶尤为关键——一开始框常常完全偏到别处。</div>
 <p><strong>第三步 · 匈牙利匹配，解决“多框对多框”。</strong>一张图常有多个病灶/细胞，预测框与真值框需要<strong>一一对应</strong>才能打分。在代价矩阵 $C$ 上做匈牙利匹配，得到一对一指派 $M\subseteq\{1\dots P\}\times\{1\dots G\}$。对每个匹配对 $(i,j)\in M$ 定义一个综合质量分（GIoU 与 L1 的加权，再归一）：</p>
-<div class="equation">$$s_{ij}=\frac{w_{L1}\,\big(1-\operatorname{clip}_{[0,1]}(L1_{ij})\big)+w_{G}\,\frac{\text{GIoU}_{ij}+1}{2}}{w_{L1}+w_G}\tag{4}$$<div class="eq-caption">式 4：每个匹配对的质量分 $s_{ij}\in[0,1]$</div></div>
+<div class="equation">$$
+s_{ij}=
+\frac{
+w_{L1}\,\big(1-\operatorname{clip}_{[0,1]}(L1_{ij})\big)
++w_{G}\,\frac{\text{GIoU}_{ij}+1}{2}
+}{w_{L1}+w_G}\tag{4}
+$$<div class="eq-caption">式 4：每个匹配对的质量分 $s_{ij}\in[0,1]$</div></div>
 <p><strong>第四步 · 覆盖归一 + FP/FN 惩罚，封死“刷框”漏洞。</strong>把匹配对的质量分按真值框数覆盖归一，并对<em>漏检</em>（FN：未被匹配的真值框）与<em>误检</em>（FP：多余的预测框）罚分，最后 clip 到 $[0,1]$：</p>
-<div class="equation">$$B=\frac{1}{\max(1,G)}\sum_{(i,j)\in M}s_{ij},\qquad \text{Pen}=\frac{\lambda_{\text{FN}}\,(G-|M|)+\lambda_{\text{FP}}\,(P-|M|)}{G}$$$$R_{\text{bbox}}=\operatorname{clip}_{[0,1]}\big(B-\text{Pen}\big)\tag{others}$$<div class="eq-caption">式（综合）：覆盖归一的 bbox 奖励 + FP/FN 惩罚</div></div>
+<div class="equation">$$
+\begin{aligned}
+B&=\frac{1}{\max(1,G)}\sum_{(i,j)\in M}s_{ij},\\
+\text{Pen}&=\frac{\lambda_{\text{FN}}\,(G-|M|)+\lambda_{\text{FP}}\,(P-|M|)}{G},\\
+R_{\text{bbox}}&=\operatorname{clip}_{[0,1]}\big(B-\text{Pen}\big)
+\end{aligned}\tag{7}
+$$<div class="eq-caption">式 7：覆盖归一的 bbox 奖励 + FP/FN 惩罚</div></div>
 <div class="formula-note"><strong>为什么要 FP/FN 惩罚。</strong>没有它，模型可以靠“宁滥勿缺、撒一堆框”来碰运气提高重叠——这就是 reward hacking。$\lambda_{\text{FP}}$ 罚多余框、$\lambda_{\text{FN}}$ 罚漏掉的真值框，把“撒框”和“漏框”都明码标价。于是这个奖励<strong>只在“框得准、不多不少”时给高分</strong>，纯几何、可核验、与语言流畅度正交。</div>
 <div class="note"><div class="note-title">两条独立路径的交叉验证（本文按 kexue:su 方法重推，未作 [archives] 归因）</div><strong>路径一（自上而下，设计意图）：</strong>RL 要“可验证”→ 奖励必须规则可核验且与语言能力正交 → 选纯几何信号 → 但几何信号需克服三个工程缺陷：尺度依赖（→对角线归一 L1）、非重叠零梯度（→GIoU）、多目标指派（→匈牙利）、刷框漏洞（→FP/FN 惩罚）。每个组件都对应一个具体失败模式。<br><strong>路径二（自下而上，证据）：</strong>表 4 显示加入该奖励后 IoU 在 NIH/DeepLesion/Bacteria 上<em>一致</em>上升（+4.5 / +0.4 / +0.4）。增益“小但稳”恰好印证机制定位——重活已由 Stage 2 的高分辨率 grounding 做完，<strong>RL 只是打磨</strong>，所以幅度小、却跨数据集稳定为正，且 QA/VQA 没有因 RL 而塌（图 6 stage3 仍在升），说明奖励确实<em>没毒化语言能力</em>。</div></section>
 
