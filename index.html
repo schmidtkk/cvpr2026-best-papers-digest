@@ -364,7 +364,7 @@ body.lb-lock{overflow:hidden}
 </section>
 <section id="papers" class="home-panel" style="margin-top:18px">
   <h2>按话题浏览</h2>
-  <div class="filterbar"><button class="active" data-filter="all">All</button><button data-filter="Best Paper">Best Paper</button><button data-filter="Honorable">Honorable Mention</button><button data-filter="Student">Student Paper</button><button data-filter="3D">3D & Geometry</button><button data-filter="Embodied">Embodied AI</button><button data-filter="Editing">Image Editing</button><button data-filter="Medical">Medical AI</button></div>
+  <div class="filterbar"><button class="active" data-filter="all">All</button><button data-filter="Best Paper">Best Paper</button><button data-filter="Honorable">Honorable Mention</button><button data-filter="Student">Student Paper</button><button data-filter="Top Paper">Top Paper</button><button data-filter="3D">3D & Geometry</button><button data-filter="3DGS">3DGS / Segmentation</button><button data-filter="Embodied">Embodied AI</button><button data-filter="Editing">Image Editing</button><button data-filter="Multimodal LLM">Multimodal LLM / 4D</button><button data-filter="Reconstruction">3D Reconstruction / LRM</button><button data-filter="Tokenizer">Image Tokenizer / Generation</button><button data-filter="World Model">World Model / Video</button><button data-filter="Neural PDE">Neural PDE / Physics</button><button data-filter="Human Mesh">Human Mesh / Pose</button><button data-filter="Medical">Medical AI</button><button data-filter="Vision-Language">Vision-Language Models</button><button data-filter="Video Matting">Video Matting</button></div>
   <input id="search" class="search" type="search" placeholder="搜索标题、作者、关键词，例如 D4RT / SAM 3D / Native / NitroGen / ChordEdit">
   <!-- PAPERS:START -->
   <h2 style="margin-top:26px">3D &amp; Geometry</h2>
@@ -571,7 +571,7 @@ function matches(card,q){
   const tags=card.dataset.tags||'';
   const text=(card.innerText||'').toLowerCase();
   const tagsLower=tags.toLowerCase();
-  const okFilter=current==='all'||tags.includes(current);
+  const okFilter=current==='all'||tagsLower.includes(current.toLowerCase());
   const okSearch=!q||text.includes(q)||tagsLower.includes(q);
   return okFilter&&okSearch;
 }
