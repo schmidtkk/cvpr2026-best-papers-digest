@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CARE 深读：把全切片切成“会呼吸的”自适应区域，凭什么只用 1/10 数据、还让区域分割不塌缩？</title>
+<meta name="description" content="CVPR 2026 Medical AI · CARE: A Molecular-Guided Foundation Model with Adaptive Region Modeling for Whole Slide Image Analysis 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Medical AI &gt; CARE</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">11</span><span class="month">Jun</span></div><h1 id="paper-title">CARE 深读：把全切片切成“会呼吸的”自适应区域，凭什么只用 1/10 数据、还让区域分割不塌缩？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-11</span><span>CVPR 2026 · Medical AI · 西安交大 / 剑桥 / KingMed / BGI / A*STAR</span><span>来源：arXiv:2602.21637 PDF</span></div><div class="tags"><span class="tag orange">Medical AI</span><span class="tag">病理全切片基础模型</span><span class="tag">自适应区域 ARG</span><span class="tag green">分子引导对齐</span><span class="tag">iBOT + InfoNCE</span><span class="tag">1/10 预训练数据</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>一张病理全切片（WSI）有上万个 patch，但病理医生读片不是逐格扫，而是先把一整块<strong>形态连贯的组织</strong>圈成 ROI 再判读。可现有病理基础模型继承的是自然图像 backbone：要么 patch 分块（像字符级 token，太碎、看不远），要么固定网格切区域（像定长分块，broad 却语义错位）——两种都用<strong>人为网格硬切组织</strong>，把一片连贯结构切断。CARE 的核心赌注是<strong>把“切区域”这件事本身变成可学习的：让每个 patch 软归属到若干候选子区域、再按“语义×空间”得分重新聚成形状不规则但形态连贯的自适应区域（adaptive region），像 NLP 里的 word-level token</strong>。但一旦“分区”可学，立刻冒出两道坎：<strong>(a) 所有 patch 会不会一股脑塌缩到最近的那个区域？</strong>（CARE 用 Region Structuring Loss 顶住）<strong>(b) 没有人工区域标注，凭什么相信学出来的区域“在生物学上是对的”？</strong>（CARE 用配套的 RNA / 蛋白分子谱做跨模态对齐来“盖章”）。立题问题因此很具体：<strong>当“怎么切片”从固定规则变成可学习模块，怎么保证它既不塌缩、又真的对齐了组织生物学——并且只用主流模型 1/10 的数据就把这件事做成？</strong></p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>CARE（Cross-modal Adaptive Region Encoder）：把 WSI 从“patch 集合”重构成<strong>自适应区域</strong>的 slide-level 病理基础模型；两阶段预训练——先 iBOT 自监督学形态、再用 RNA/蛋白分子谱做 CLIP 式跨模态对齐，<strong>仅约 1/10 数据</strong>在 33 个下游任务上整体领先。</div><div class="kv"><b>关键机制</b>ARG：每个 patch 按 soft inclusion 只保留 top-3 候选子区域，按“语义相似度 $\rho$ × 空间软归属 $C$”算选择得分 $w$，重指派成不规则区域；RSL 防止全塌缩到最近区域；SPF 用“覆盖先验 $\alpha$ ⊕ gated 语义权重 $\beta$”把区域特征池化成 WSI 表示，并挑最大权重区域当 ROI。</div><div class="kv"><b>核心证据</b>33 任务平均：形态分类 LR 85.7（次优 TITAN 85.4）、分子预测 LR 69.5（次优 69.1）、生存分析 C-index 58.0（次优 GigaPath 55.7）（表 1）；逻辑回归下 28 个任务里 7 项第一、15 项第二（图 4 / 图 5）。</div><div class="kv"><b>复现门槛</b>patch 编码器用冻结的 CONCH v1.5；SSL 用 DBSCAN 把 34,277 张 WSI 拆成 285,710 个 ≤360-patch 的 sub-WSI 来撑 batch；下游评测全程<strong>单卡 RTX 4090</strong>。<strong>GPU 卡数 / 墙钟时间论文未披露</strong>。代码已开源（<code>zdipath/CARE</code>）。</div></div></div><figure class="hero-card"><a href="../assets/figures/care/care_fig1.png"><img src="../assets/figures/care/care_fig1.png" alt="CARE 与传统 patch / 固定区域分块在 WSI 上的对比，以及与 NLP 分词的类比"></a><figcaption><strong>图 1 · 全文“立题图”。</strong>(a) patch chunks＝人为细网格，像字符级 token，碎而短视；(b) 规则 region chunks＝定长分块，broad 却语义错位（把不同组织硬塞进一格）；(c) CARE 的自适应区域＝<strong>word-level token</strong>，形状不规则却尊重组织边界，一块对应一个完整组织结构。右栏的 “Computer Vision” 分词类比是论文用来锚定直觉的最小例子：字符级（c-o-m-p…）、定长（Compu/ter/Vis…）、词级（Computer/Vision）——CARE 要做的就是病理图像里的“词级切分”。这张图回答的不是某个指标，而是<strong>“分区粒度”本身才是设计变量</strong>。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：分区方式被 backbone 锁死，谁来学“怎么切片”？</h2>
+<p>WSI 是 gigapixel 级，原生分辨率端到端训练不现实，所以主流做法都是：组织分割→切 $p\times p$ patch→patch 编码器抽特征→聚合成 slide 表示。问题出在<strong>“聚合”这一步默认从 patch 直接跳到 WSI</strong>：上万个 patch 之间要建长程交互，聚合器既难学、又数据饥渴。</p>
+<div class="socratic"><p class="question">问：既然病理医生读片是“先定位 ROI、再判读”，为什么基础模型普遍没有显式的 ROI 概念？</p><p class="guide">引导：看现有三类做法各自的代价。<strong>全局自注意力</strong>（TITAN 类）在所有 patch 上做 $\mathcal{O}(N^2)$ 交互，算不动也学不稳；<strong>线性注意力</strong>（ABMIL 类）省了算力但把空间结构压平；<strong>固定规则分区</strong>（HIPT 类规则 region）引入了 patch→region→WSI 的层级，本该最贴组织结构，可“切”的方式是死网格——一格里可能混了肿瘤+正常+间质，语义被搅在一起。</p><p class="answer">答：层级（patch→region→WSI）本身是对的方向——它能避免长程交互、提升数据效率、贴合组织结构；真正没做好的是<strong>“region 怎么来”</strong>。固定网格让 region 粗糙、语义弱，所以 patch–region–WSI 这条路线一直没成主流。CARE 的判断是：把“分区”从规则变成<strong>可学习模块</strong>（ARG），让区域形状随组织形态自适应，层级路线才真正立得住。</p><div class="takeaway"><strong>Takeaway：</strong>这不是“再加一个聚合器”，而是把 CPath 里一个被默认写死的环节（怎么切片）重新交还给模型。立题问题＝<em>“如何把 WSI 切成形态一致的区域”</em>，作者在结论里也是这么自我定位的。</div></div>
+</section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2>
+<p><strong>作者明确提出的贡献（论文 §1 三条）：</strong></p>
+<ul>
+<li><strong>CARE 这个病理基础模型 + 两阶段对齐配方。</strong>先自监督预训练，再把 slide 特征对齐到 RNA/蛋白分子谱，用分子信息<em>反过来</em>refine 自适应区域的划分与表示，从而把基础模型训练所需的标注/数据量压到主流的约 1/10。</li>
+<li><strong>自适应区域生成器（ARG）。</strong>把 WSI 切成“不规则却形态连贯”的区域，对齐病理医生 ROI 为中心的工作流，既支持 ROI 级分析、也支持区域聚合后的 slide 级预测。</li>
+<li><strong>33 个下游任务上的整体领先。</strong>在线性探测（linear probing）与微调（fine-tuning）两种 regime 下，CARE 的自适应区域设计 + 预训练流水线都整体优于既有方法。</li>
+</ul>
+<div class="note"><div class="note-title">读者可以进一步推断的点（非论文显式主张）</div>ARG 这套“soft inclusion → top-K 候选 → 重指派”的机制，结构上等价于一个<strong>可微的、带空间先验的软聚类/路由</strong>。RSL 防塌缩在形式上与 MoE 的负载均衡正则、聚类的反塌缩约束是同一类问题（防止所有样本被路由到一个簇）。把这条放在 §5 单独推。下游单卡 4090 即可评测，说明 CARE 真正的重量级开销集中在预训练阶段（论文未给卡数/墙钟）。</div>
+</section>
+
+<section id="datasets"><h2>3. 数据：34,277 张 WSI 学形态，13K 配对分子谱“盖章”，且 1/10 数据本身是主张</h2>
+<p>CARE 的数据组织对应两阶段训练，且全部用公开队列（TCGA + GTEx）：</p>
+<div class="table-wrap"><table><caption><strong>表（综述 §3.3）.</strong> CARE 预训练数据构成（数字按论文正文转写）。</caption><thead><tr><th>阶段</th><th>数据</th><th>规模</th><th>作用</th></tr></thead><tbody>
+<tr><td>Stage I 自监督</td><td>全部 WSI（无任何区域分割标注）</td><td><strong>34,277</strong> 张 WSI → DBSCAN 拆成 <strong>285,710</strong> 个 sub-WSI（每个 ≤360 patch）</td><td>iBOT 学形态表示，给 Stage II 一个数据高效的初始化</td></tr>
+<tr><td>来源拆分</td><td>TCGA（FFPE H&E）+ GTEx（正常组织）</td><td>TCGA 11,463 + GTEx 22,814</td><td>覆盖肿瘤与正常组织形态</td></tr>
+<tr><td>Stage II-a 跨模态</td><td>配对 WSI–RNA</td><td><strong>13,289</strong> 对</td><td>RNA 引导：广覆盖、低特异性的监督，先粗对齐</td></tr>
+<tr><td>Stage II-b 跨模态</td><td>配对 WSI–蛋白</td><td><strong>8,225</strong> 对</td><td>蛋白引导：高特异性信号，再细化区域边界</td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：为什么要先 DBSCAN 把整张 WSI 拆成 ≤360 patch 的 sub-WSI？</p><p class="guide">引导：gigapixel WSI 一张就有上万 patch，自监督预训练的 batch 被迫极小，而小 batch 会削弱 iBOT 这类对比/一致性目标（负样本/统计量不够）。</p><p class="answer">答：用 DBSCAN 按 patch 坐标聚类，把一张大 WSI 切成若干空间连贯的 sub-WSI（每个 ≤360 patch），34,277 张就变成 285,710 个训练单元——单元小了，<strong>有效 batch size 就能放大</strong>，iBOT 才训得动。这是“算力现实倒逼数据切分”，不是为了语义。</p><div class="takeaway"><strong>Takeaway：</strong>“1/10 数据做到 SOTA”里的关键不只是数据少，而是<strong>用分子谱当“免费的高质量监督”</strong>替代了海量纯图像自监督所需的规模——Stage I 给一个够好的起点，Stage II 用配对分子信号高效地把表示拉到“生物学上正确”。</div></div>
+<p><strong>分子侧 token 化（论文 §3.3.2）：</strong>RNA 端由 50 个 Hallmark gene set 选出 <strong>3,999 个基因</strong>，每个基因 token＝可学习的 RNA-ID embedding ⊕ 表达值 embedding，过 Transformer 后 mean-pool；RNA 编码器用 <strong>scGPT 预训练权重</strong>初始化。蛋白端取每样本<strong>丰度 top-10 的蛋白</strong>，同样 ID-embedding ⊕ 表达值 embedding，但用<em>表达加权平均</em>聚合，蛋白 ID-embedding 表由 <strong>ESM-2</strong> 初始化。</p>
+</section>
+
+<section id="pipeline"><h2>4. Pipeline 与架构：ARG 切区域 → ARSA 区域内自注意力 → SPF 聚合，外挂分子对齐</h2>
+<p>图 2 是全文骨架。一张 WSI 先经组织分割、切 patch、用<strong>冻结的 CONCH v1.5</strong> 抽 patch 特征；ARG 把这些 patch 重组成自适应区域；区域内做 ARSA（adaptive region self-attention）得到区域级特征；SPF 把所有区域特征池化成 WSI embedding。整套图像编码器用 iBOT 的 teacher–student 自监督训练（图 2a）；Stage II 再把 WSI embedding 与 RNA/蛋白 embedding 用 InfoNCE 对齐（图 2b）。</p>
+<figure class="fig-wide"><a href="../assets/figures/care/care_fig2.png"><img src="../assets/figures/care/care_fig2.png" alt="CARE 架构与训练流水线：iBOT teacher-student 自监督 + RNA/蛋白跨模态对齐"></a><figcaption><strong>图 2 · 架构与训练流水线。</strong>(a) iBOT 式 teacher–student 自监督：冻结的 patch 特征经随机裁剪得到 global / local 两视图，各自过 <strong>ARG（区域生成）→ AR Self-attention（区域内）→ SPF（聚合成 WSI 特征）</strong>，teacher 由 student 的 EMA 更新，用 iBOT loss 对掩码区域/掩码 patch 特征做预测。(b) 跨模态对齐：RNA 编码器（RNA-ID ⊕ 表达 embedding → Transformer → pooling）与蛋白编码器（ID ⊕ 表达 → Transformer → gated pooling）产出分子 embedding，与 CARE 的 WSI embedding 在共享空间用 InfoNCE 对齐。读这张图要抓的是<strong>三个可训练模块（ARG / ARSA / SPF）共享在 teacher 和 student 两支里，而 patch 编码器始终冻结</strong>——所以训练只在“怎么切区域、怎么聚合”上花参数。</figcaption></figure>
+<div class="socratic"><p class="question">问：为什么是“先 RNA 再蛋白”这个顺序，而不是一起对齐？</p><p class="guide">引导：RNA 表达谱覆盖广（几千个基因）但单个信号特异性弱；蛋白丰度谱条目少（top-10）但特异性高、更贴近功能表型。</p><p class="answer">答：这是一条<strong>课程（curriculum）</strong>：先用 RNA 做“广覆盖、低特异性”的粗对齐，把区域大致拉到生物学坐标系；再用蛋白做“高特异性”的细化，锐化区域边界。蛋白阶段的 WSI 编码器从 RNA 阶段接着初始化——粗到细、低特异到高特异。</p><div class="takeaway"><strong>Takeaway：</strong>分子谱在这里不是预测目标，而是<strong>区域划分的“监督信号”</strong>：SPF 做加权池化时，等价于隐式地把分子表达对齐到“与之最相关的组织区域”，于是区域边界被生物学拉着走。</div></div>
+</section>
+
+<section id="method"><h2>5. 方法：把“怎么切片”写成可微的软路由，再用 RSL 顶住塌缩</h2>
+<p>这一节按 <code>kexue:su</code> 方法推：先讲<em>为什么需要</em>每个部件、再给式子、每个近似显式标出、关键机制（soft inclusion 与 RSL）从两条独立路径交叉验证。</p>
+
+<h3>5.1 从固定子区域到软归属：soft inclusion</h3>
+<p><strong>动机先行。</strong>要让“分区”可学，得先有一个<em>可微的</em>“patch 属于哪个区域”的度量——硬指派（argmin 距离）不可导、也丢掉了“一个 patch 可能介于两区之间”的信息。CARE 先在 patch 网格上铺 $M$ 个不重叠的方形<strong>子区域</strong> $S=\{S_i\}_{i=1}^{M}$，每个 $S_i$ 覆盖以 $(x_i,y_i)$ 为左上角的 $k\times k$ 块，并算出该子区域的 CLS-聚合特征 $g_i^{\text{CLS}}$ 与 query-聚合特征 $g_i^{Q}$（图 3a）。</p>
+<div class="equation">$$\mu_{ji} = 1 - \dfrac{d_{ji}}{\max\limits_{0\le j'\le N} d_{j'i}},\qquad C=[\mu_{ji}]_{N\times M}$$<div class="eq-caption">式 1：anchor-distance soft inclusion（软归属）</div></div>
+<div class="formula-note"><strong>公式读法。</strong>$d_{ji}=\lVert t_j-s_i\rVert_2$ 是 patch $j$ 的锚点 $t_j=(u_j,v_j)$ 到子区域 $i$ 左上锚点 $s_i=(x_i,y_i)$ 的欧氏距离。除以该子区域到所有 patch 的<em>最大</em>距离做归一化，再用 $1-(\cdot)$ 翻转：离得越近，$\mu_{ji}$ 越接近 1。$C$ 是 $N\times M$ 的软归属矩阵——它<strong>只编码空间邻近</strong>，是后面“语义×空间”里的“空间”那一半。这一步把“归属”从 0/1 硬指派松弛成连续值，是整条路线可微的前提。</div>
+
+<h3>5.2 ARG：top-3 候选 + “语义×空间”得分 + 重指派</h3>
+<p>有了软归属还不够：纯按距离切，等于回到固定网格。ARG 要让<strong>语义</strong>也参与。对 patch $j$，先按 $C$ 取空间上最近的 <strong>top-K（论文 K=3）</strong>候选子区域 $I_j=\text{Top3}_{i}\,C_{ji}$，只在这 3 个候选里算语义相似度，其余 mask 掉（图 3a 的 “mask-based cosine similarity & pooling”）。对每个候选 $i\in I_j$，把 patch 的两种描述子与子区域的两种描述子两两算余弦相似度，堆成 4 维向量 $c_{ji}=[\cos(f_j^{Q},g_i^{Q}),\,\cos(f_j^{Q},g_i^{\text{CLS}}),\,\cos(f_j^{R},g_i^{Q}),\,\cos(f_j^{R},g_i^{\text{CLS}})]$。</p>
+<div class="equation">$$\tilde s_{ji}^{(m)}=\dfrac{\exp s_{ji}^{(m)}}{\sum_{i'\in I_j}\exp s_{ji'}^{(m)}},\qquad \rho_{ji}=\frac{1}{4}\sum_{m=1}^{4}\tilde s_{ji}^{(m)},\qquad w_{ji}=\rho_{ji}\cdot C_{ji}$$<div class="eq-caption">式 2–3：候选内 softmax → 语义概率 $\rho$ → 区域选择得分 $w$</div></div>
+<div class="formula-note"><strong>公式读法。</strong>对 4 个相似度分量各自在 3 个候选上做 softmax，再平均，得到“语义上 patch $j$ 该归到候选 $i$ 的概率” $\rho_{ji}$；最后 $w_{ji}=\rho_{ji}\cdot C_{ji}$ 把<strong>语义亲和（$\rho$）</strong>与<strong>空间邻近（$C$）</strong>相乘。patch $j$ 被指派给得分最高的候选 $A^\star(j)=\arg\max_{i\in I_j} w_{ji}$；同一个 $A^\star$ 的所有 patch 组成一个自适应区域 $A_i=\{j\mid A^\star(j)=i\}$。这就是“切片”：形状由<em>语义×空间</em>共同决定，所以不规则、却形态连贯。</div>
+<figure><a href="../assets/figures/care/care_fig3.png"><img src="../assets/figures/care/care_fig3.png" alt="ARG 与 SPF 模块细节：top-3 候选掩码、余弦相似度池化、覆盖先验与门控注意力"></a><figcaption><strong>图 3 · ARG（a）与 SPF（b）模块。</strong>(a) 基于 soft inclusion，每个 patch 只保留 top-3 候选子区域、其余 mask 掉，对未被 mask 的候选算余弦相似度，patch 被指派给得分最高者，于是 patch 被<strong>重新分区</strong>成自适应区域；区域内再做 Regional Self/Cross-Attention 得区域特征。(b) SPF：把覆盖先验权重（$\alpha$，区域占的 patch 比例）与门控注意力语义权重（$\beta$）按 $\lambda_{\text{SPF}}$ 加权融合，聚成 WSI 特征。要看的重点是<strong>“mask-based cosine similarity & pooling”这一步</strong>——它把全局 $N\times M$ 的指派问题收窄到“每个 patch 只在 3 个候选里竞争”，既省算力又避免远处区域抢 patch。</figcaption></figure>
+<p>区域内特征怎么来？把区域 $A_i$ 内的 patch 特征序列 $F_i^{AR}$ 前面拼一个可学习 $[\text{CLS}]_i^{AR}$，喂进 ARSA：</p>
+<div class="equation">$$\big(g_i^{AR};\,F_i^{AR,\text{cep}}\big)=\text{ARSA}\big([\text{CLS}]_i^{AR}\,\Vert\, F_i^{AR}\big)$$<div class="eq-caption">式（综述）：区域内自注意力，[CLS] 输出即区域表示 $g_i^{AR}$</div></div>
+
+<h3>5.3 RSL：为什么“可学分区”一定会塌缩，又怎么顶住</h3>
+<div class="socratic"><p class="question">问：如果只优化主任务 loss，ARG 会学成什么样？</p><p class="guide">引导：$w_{ji}=\rho_{ji}\cdot C_{ji}$ 里 $C_{ji}$ 是空间邻近。训练初期语义信号 $\rho$ 还没学好，主任务对“怎么分区”几乎没有梯度偏好——那么 $\arg\max w$ 就被 $C$ 主导，<strong>每个 patch 都倾向选空间上最近的那个候选（top-1）</strong>。久而久之所有 patch 都黏在最近区域，自适应区域退化回固定网格，甚至塌缩成单一区域。这正是软聚类/路由的经典失败模式。</p><p class="answer">答：CARE 加一个 <strong>Region Structuring Loss（RSL）</strong>，直接惩罚“总选最近候选”。对 patch $j$、候选 $i$，按 $w_{ji}$ 降序定义 0 起的<strong>候选排名</strong> $r_j(i)\in\{0,1,\dots,K-1\}$（0＝得分最大、即最常被选的那个）。</p></div>
+<div class="equation">$$E=\mathbb{E}_{j\sim\text{Unif}\{1,\dots,N\}}\,\mathbb{E}_{i\sim\pi_j}\big[r_j(i)\big]=\frac{1}{N}\sum_{j}\sum_{i\in I_j} w_{ji}\,r_j(i)$$<div class="eq-caption">式 4：全局期望排名 $E$（越小＝越爱选 top-1，越塌缩）</div></div>
+<div class="equation">$$L_{\text{RSL}}=\big(E-E^\star\big)^2,\qquad L_{\text{total}}=L_{\text{main}}+\lambda_{\text{RSL}}\,L_{\text{RSL}}$$<div class="eq-caption">式 5：把期望排名拉向目标 $E^\star$，再加权进总损失</div></div>
+<div class="formula-note"><strong>公式读法。</strong>$\pi_j$ 是 patch $j$ 的区域选择得分分布。$E$ 是“被选中候选的平均排名”——若每个 patch 都选 top-1，$r_j(i)\approx 0$、$E\to 0$（最塌缩）；若偶尔选第二、第三候选，$E$ 抬高。RSL 不是把 $E$ 推到越大越好，而是用 $(E-E^\star)^2$ 把它<strong>拉向一个目标值 $E^\star$</strong>：$E^\star$ 太小（=0，逼近固定网格）会塌缩，太大（=2，逼着选最远候选）又乱套，所以 $E^\star$ 是个需要调的“分区松紧度”旋钮（消融里最优 $E^\star=0.5$）。</div>
+<div class="note"><div class="note-title">两条独立路径验证 RSL 的必要性</div><p><strong>路径 A（机制/反塌缩视角）：</strong>把 ARG 看成软路由，$w_{ji}$ 是 patch→区域的路由权重。无约束的路由会走向“赢者通吃”——所有质量集中到少数（这里是最近的）区域。RSL 通过约束“平均排名”等价于鼓励路由分散到 top-K 而非死守 top-1，与 MoE 负载均衡正则、聚类反塌缩约束属于同一类“熵/均衡正则”机制（此为方法学类比，<strong>非论文显式主张</strong>）。</p><p><strong>路径 B（消融经验视角）：</strong>表 4 直接量化了 $E^\star$ 的作用——$E^\star=0$（强制固定区域）在 EBRAINS-fine 上 ACC 71.6→<strong>69.1</strong>、$E^\star=2$（偏最远候选）→<strong>69.0</strong>，而 $E^\star=0.5$ 取 72.5；$\lambda_{\text{RSL}}$ 也类似（0.1 最优，0.3 反而掉到 71.1）。两端都掉、中间最好，正是“塌缩 ↔ 乱套”之间存在最优松紧度的实证。两条路径结论一致：RSL 不是可有可无的正则，而是“让分区可学”这件事能成立的前提。</p></div>
+
+<h3>5.4 SPF：覆盖先验 ⊕ 门控语义，把区域聚成 WSI 表示</h3>
+<p>有了一组区域特征 $\{g_i^{AR}\}_{i=1}^{M}$，怎么聚成一个 slide embedding？简单 mean-pool 会被大区域淹没，纯注意力又可能忽视“占地大但重要”的区域。SPF 把两者融合：覆盖先验 $\alpha_i$＝区域 $i$ 占的 patch 比例（大区域权重高），语义权重 $\beta_i$ 用 gated attention 算（重要区域权重高）。</p>
+<div class="equation">$$s_i=w^{\!\top}\!\big(\tanh(V g_i^{AR})\odot\sigma(U g_i^{AR})\big),\quad \beta_i=\frac{e^{s_i}}{\sum_k e^{s_k}},\quad z_{\text{WSI}}=\sum_{i=1}^{M}\big(\lambda_{\text{SPF}}\,\alpha_i+(1-\lambda_{\text{SPF}})\,\beta_i\big)g_i^{AR}$$<div class="eq-caption">式 6–7：gated 语义权重 $\beta$ 与“覆盖先验 ⊕ 语义”加权池化</div></div>
+<div class="formula-note"><strong>公式读法。</strong>$\tanh\odot\sigma$ 是经典 gated attention（ABMIL）：$\tanh$ 提供有正负的内容打分、$\sigma$ 提供 0–1 门控，相乘后再投影。$\lambda_{\text{SPF}}\in[0,1]$ 调“占地大小（$\alpha$）”与“语义重要（$\beta$）”的权衡——消融里 $\lambda_{\text{SPF}}=0$（纯语义）或 $=1$（纯覆盖）都次优，0.5 最好（表 4）。<strong>ROI 特征</strong>＝挑融合权重 $\lambda_{\text{SPF}}\alpha_i+(1-\lambda_{\text{SPF}})\beta_i$ 最大的那个区域、用它的 $g_i^{AR}$ 当 ROI 表示，对应病理医生“先定位 ROI”的工作流。</div>
+
+<h3>5.5 跨模态对齐：InfoNCE 把区域拉到生物学坐标系</h3>
+<p>Stage II 用 CLIP 框架。WSI 编码器从 Stage I 初始化；图像侧与 RNA/蛋白侧各过轻量投影头到共享空间，$\ell_2$ 归一化后用<strong>带可学习温度的对称 InfoNCE</strong>对齐（先 RNA 再蛋白）。其本质是最大化配对（同一患者的 WSI 与其分子谱）的互信息——于是区域表示被迫携带“能预测分子表达”的生物学信息，区域边界也随之锐化。这一步是“1/10 数据”能成立的支点：分子谱提供了远比纯图像自监督密集的监督信号。</p>
+</section>
+
+<section id="training"><h2>6. 训练配置：两阶段（iBOT → InfoNCE），下游单卡 4090</h2>
+<p>论文正文给的是结构与关键设定，完整超参表在附录。把能核实的写清楚，缺的标“论文未说明”。</p>
+<div class="table-wrap"><table><caption><strong>表（综述 §3.3 + §4.1）.</strong> 训练 / 评测配置（正文披露项；附录项标注）。</caption><thead><tr><th>项</th><th>设定</th><th>备注</th></tr></thead><tbody>
+<tr><td>patch 编码器</td><td>CONCH v1.5（冻结）</td><td>20× 放大、$p\times p$ 滑窗切 patch</td></tr>
+<tr><td>Stage I 目标</td><td>iBOT（ViT teacher–student，EMA + 在线原型词表）</td><td>backbone-agnostic 改造以适配 gigapixel WSI</td></tr>
+<tr><td>Stage I 数据切分</td><td>DBSCAN → sub-WSI（≤360 patch）</td><td>34,277 WSI → 285,710 sub-WSI，撑大有效 batch</td></tr>
+<tr><td>特征增强</td><td>frozen feature augmentation</td><td>特征空间扰动：亮度缩放 / 对比度 / posterization 量化（无像素增强）</td></tr>
+<tr><td>Stage II 目标</td><td>对称 InfoNCE（可学习温度）</td><td>先 WSI–RNA、再 WSI–蛋白</td></tr>
+<tr><td>RNA 编码器</td><td>scGPT 初始化；3,999 基因（50 Hallmark gene sets）</td><td>ID ⊕ 表达 embedding → Transformer → mean-pool</td></tr>
+<tr><td>蛋白编码器</td><td>ESM-2 初始化（ID-embedding 表）；top-10 蛋白</td><td>ID ⊕ 表达 → Transformer → 表达加权平均</td></tr>
+<tr><td>下游评测硬件</td><td>单张 RTX 4090</td><td>linear probing 与 fine-tuning 两种 regime 均在 4090</td></tr>
+<tr><td>关键超参</td><td>$k=8$、$\lambda_{\text{RSL}}=0.1$、$E^\star=0.5$、$\lambda_{\text{SPF}}=0.5$</td><td>由消融选定（表 4）</td></tr>
+<tr><td>预训练卡数 / 墙钟 / epoch</td><td><strong>论文未说明</strong>（正文未披露；附录给额外超参）</td><td>因此本页不估 GPU-hours</td></tr>
+</tbody></table></div>
+<p class="note">关于“1/10 数据”：论文反复用“约主流模型 1/10 或更少的预训练数据”这一相对量来表述，<strong>未给绝对 GPU-hours</strong>。任何换算都只能是“按论文披露数字粗略估算，不等同于实际账单”，本页不做这种换算。</p>
+</section>
+
+<section id="experiments"><h2>7. 实验：33 任务三类（形态分类 / 分子预测 / 生存分析）逐表看</h2>
+<p><strong>判断：</strong>三类任务测的是同一件事——“一个学了自适应区域 + 分子对齐的表示，能不能同时撑住形态判别、分子预测、与时间-事件预后”。对手是 7 个代表性 slide-level 基础模型（Mean-pool / CHIEF / PRISM / GigaPath / TANGLE / FEATHER / TITAN），两种 regime（LR/kNN 线性探测、FT 微调）。</p>
+<div class="table-wrap"><table><caption><strong>表 1（综述，原文 Table 1）.</strong> 按任务类别的平均 ACC（生存分析为 C-index），均值±标准差，<strong>粗体＝最佳、下划线＝次佳</strong>（此处以 ★ 标最佳、† 标次佳）。“Molecular Class.<sub>V</sub>”＝分子任务中无验证集子集。</caption><thead><tr><th>任务类</th><th>Head</th><th>Mean-pool</th><th>CHIEF</th><th>PRISM</th><th>GigaPath</th><th>TANGLE</th><th>FEATHER</th><th>TITAN</th><th>CARE</th></tr></thead><tbody>
+<tr><td rowspan="3">形态分类</td><td>LR</td><td>81.2</td><td>80.2</td><td>75.6</td><td>78.3</td><td>80.9</td><td>81.1</td><td>85.4†</td><td><strong>85.7★</strong></td></tr>
+<tr><td>kNN</td><td>73.5</td><td>71.4</td><td>68.9</td><td>67.8</td><td>75.2</td><td>72.2</td><td><strong>83.1★</strong></td><td>82.3†</td></tr>
+<tr><td>FT</td><td>82.6</td><td>78.0</td><td>81.4</td><td>84.9</td><td>86.1</td><td>86.7†</td><td><strong>87.7★</strong></td><td>87.0</td></tr>
+<tr><td rowspan="3">分子预测</td><td>LR</td><td>67.1</td><td>66.3</td><td>69.1†</td><td>66.6</td><td>69.1†</td><td>67.6</td><td>67.8</td><td><strong>69.5★</strong></td></tr>
+<tr><td>kNN</td><td>64.5</td><td>62.7</td><td>65.2</td><td>62.0</td><td>65.9†</td><td>64.6</td><td>66.9</td><td><strong>68.0★</strong></td></tr>
+<tr><td>FT</td><td>70.9</td><td>73.4</td><td>73.2</td><td>73.5</td><td>74.2</td><td><strong>75.6★</strong></td><td>71.7</td><td>74.7†</td></tr>
+<tr><td rowspan="2">分子预测<sub>V</sub></td><td>LR</td><td>62.7</td><td>58.8</td><td>60.5</td><td>62.8†</td><td>60.3</td><td>59.6</td><td>62.5</td><td><strong>64.9★</strong></td></tr>
+<tr><td>kNN</td><td>55.4</td><td>55.8</td><td>54.4</td><td>55.6</td><td>57.1†</td><td>54.9</td><td>57.1†</td><td><strong>57.3★</strong></td></tr>
+<tr><td>生存分析</td><td>linear</td><td>48.5</td><td>54.3†</td><td>42.1</td><td>55.7†</td><td>49.8</td><td>53.9</td><td>47.2</td><td><strong>58.0★</strong></td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：CARE 强在哪、又在哪没赢？</p><p class="guide">引导：把表 1 按列读。</p><p class="answer">答：CARE 的优势集中在<strong>分子预测与生存分析</strong>——LR 下分子 69.5（次优 69.1）、无验证集子集 64.9（次优 62.8）、生存 C-index 58.0（次优 GigaPath 55.7，领先约 2.3）。这与“分子引导预训练”的机制自洽：表示里本就被灌进了分子信息。形态分类上 CARE 与 TITAN 几乎并列（LR 85.7 vs 85.4 略胜；kNN/FT 略负于 TITAN）——TITAN 用了远多于 CARE 的纯图像数据，CARE 用 1/10 数据打平形态、还反超分子/生存，正是论文要支撑的“数据效率 + 生物学相关性”。</p><div class="takeaway"><strong>Takeaway：</strong>CARE 不是全任务碾压，而是“以 1/10 数据，在形态上追平最强、在分子/生存上反超”。它赢的恰好是“需要生物学相关性”的那一类，输/平的是纯形态判别——证据与机制方向一致。</div></div>
+<p>图 4 是 33 个任务的逐任务 AUC/F1 热力图（LR regime，黑框＝该任务最佳）；图 5 是把所有形态+分子分类任务聚合的箱线图。逻辑回归下，作者报告 CARE 在 28 个 LR 评测里 <strong>7 项第一、15 项第二</strong>；按 AUC（多类用 F1、生存用 C-index）在 33 个基准里 <strong>12 项第一、9 项第二</strong>。</p>
+<figure class="fig-wide"><a href="../assets/figures/care/care_fig4.png"><img src="../assets/figures/care/care_fig4.png" alt="33 个下游任务在逻辑回归设置下的 AUC/F1 热力图"></a><figcaption><strong>图 4 · 33 任务逐任务热力图（LR/线性层）。</strong>行＝8 个模型，列＝33 个基准（按形态分类 / 分子分类 / 无验证集分子 / 生存分析分组），黑框标出每列最佳。要看的是<strong>CARE 行（最下）黑框的分布密度</strong>——尤其在分子与生存列上更密。这张图回答的不是单点最高，而是“跨 33 个异质任务的稳定性”：基础模型的价值在于<em>到处都不差</em>，而非个别任务夺冠。</figcaption></figure>
+<figure><a href="../assets/figures/care/care_fig5.png"><img src="../assets/figures/care/care_fig5.png" alt="所有形态+分子分类任务聚合的箱线图，逻辑回归与微调两种设置"></a><figcaption><strong>图 5 · 聚合箱线图（左 LR / 右 FT）。</strong>每个箱聚合所有形态+分子分类任务，箱内横线＝中位数、绿点＝均值。CARE（最右深红）在两种 regime 下<strong>均值与中位数都靠上、且箱体上沿较高</strong>，说明它不是靠个别任务拉高均值，而是整体分布更优。FT 下各模型差距收窄（微调会抹平表示差异），正是“线性探测更能体现表示质量”的常见现象。</figcaption></figure>
+<div class="table-wrap"><table><caption><strong>表 2（综述，原文 Table 2）.</strong> ROI 特征 vs WSI（slide）特征的线性探测对比。</caption><thead><tr><th>任务</th><th colspan="2">Slide-feature</th><th colspan="2">ROI-feature</th></tr><tr><th></th><th>ACC</th><th>AUC</th><th>ACC</th><th>AUC</th></tr></thead><tbody>
+<tr><td>CCRCC-BAP1</td><td>58.7</td><td>65.8</td><td><strong>61.0</strong></td><td><strong>69.1</strong></td></tr>
+<tr><td>HNSCC-CASP8</td><td>51.7</td><td>58.7</td><td><strong>53.7</strong></td><td><strong>61.5</strong></td></tr>
+<tr><td>Cross-LUNG-subtype</td><td>52.5</td><td>77.0</td><td><strong>56.4</strong></td><td><strong>81.2</strong></td></tr>
+</tbody></table></div>
+<p>表 2 验证 ROI 概念的价值：在这三个<strong>依赖局部信号</strong>的任务上，用“最大 SPF 权重区域”当 ROI 特征做线性探测，全面优于用整张 slide 特征。但论文也诚实标注：<strong>ROI 特征并非在所有任务上都更好</strong>——依赖全局上下文的任务，整张 slide 表示反而更强或持平（§4.2 明说）。</p>
+<figure class="fig-wide"><a href="../assets/figures/care/care_fig6.png"><img src="../assets/figures/care/care_fig6.png" alt="不同基础模型在 CPTAC-HNSCC WSI 上的注意力热力图与 CARE 各阶段对比"></a><figcaption><strong>图 6 · 注意力/区域热力图（CPTAC-HNSCC，无下游微调）。</strong>左列为 WSI，中间为各对手模型的显著图，右三列为 <strong>CARE-iBOT（仅自监督）→ CARE-RNA（加 RNA 对齐）→ CARE（全模型）</strong>。蓝色轮廓是病理医生标注的“核异型显著、核分裂频繁”区域。要看的是<strong>从 CARE-iBOT 到 CARE 的演化</strong>：iBOT-only 时区域划分与 ROI 选择偏粗，加入分子对齐后 CARE 的关注区与医生标注更吻合——这就是“分子引导让区域生物学上更正确”的可视化证据。论文也提醒：热力图能分开肿瘤/正常，但<strong>这种对比不等于临床相关性</strong>，所以才用医生标注来校验。</figcaption></figure>
+</section>
+
+<section id="ablations"><h2>8. 消融：ARG 每个部件都不能拿掉，超参两端都掉、分子两阶段各加一截</h2>
+<p>消融回答三个问题：ARG 是否必要、超参怎么选、两阶段预训练各贡献多少。</p>
+<div class="table-wrap"><table><caption><strong>表 3（综述，原文 Table 3）.</strong> ARG 部件消融（随机初始化）。“Not adaptive region”＝用固定子区域替代自适应区域。</caption><thead><tr><th>方法</th><th>EBRAINS-fine ACC</th><th>EBRAINS-fine F1</th><th>BCNB-HER2 ACC</th><th>BCNB-HER2 AUC</th></tr></thead><tbody>
+<tr><td>Not adaptive region（固定区域）</td><td>71.6</td><td>73.4</td><td>61.4</td><td>75.0</td></tr>
+<tr><td>去掉 $g_i^{\text{CLS}}$ 描述子</td><td>71.5</td><td>71.9</td><td>58.9</td><td>73.8</td></tr>
+<tr><td>去掉 $g_i^{Q}$ 描述子</td><td>71.2</td><td>71.7</td><td>61.9</td><td>74.5</td></tr>
+<tr><td>去掉 $f_i$（patch 特征）</td><td>70.1</td><td>69.9</td><td>61.6</td><td><strong>75.6</strong></td></tr>
+<tr><td>去掉 $f_i^{R}$（区域感知 patch 特征）</td><td>70.8</td><td>71.2</td><td>59.6</td><td>75.4</td></tr>
+<tr><td><strong>CARE（全）</strong></td><td><strong>72.5</strong></td><td><strong>74.2</strong></td><td><strong>64.8</strong></td><td>75.4</td></tr>
+</tbody></table></div>
+<p>表 3 的读法：把固定区域换回去（首行）就掉一截，证明“自适应”本身有用；再逐一删掉 ARG 的四种描述子/特征，几乎每项都掉——尤其 BCNB-HER2 的 ACC 从 64.8 跌到 58.9–61.9。唯一例外是 BCNB-HER2 的 AUC 在“去掉 patch 特征”时反而 75.6 略高于全模型 75.4（ACC 却低），属噪声范围内的单指标波动。</p>
+<div class="table-wrap"><table><caption><strong>表 4（综述，原文 Table 4）.</strong> 关键超参消融（随机初始化）。代表性行节选，加粗为各组最优。</caption><thead><tr><th>超参</th><th>EBRAINS-fine ACC</th><th>EBRAINS-fine F1</th><th>BCNB-HER2 ACC</th><th>BCNB-HER2 AUC</th></tr></thead><tbody>
+<tr><td>窗口 $k=6$</td><td>71.2</td><td>73.4</td><td>59.4</td><td>73.3</td></tr>
+<tr><td><strong>窗口 $k=8$</strong></td><td><strong>72.5</strong></td><td><strong>74.2</strong></td><td><strong>64.8</strong></td><td><strong>75.4</strong></td></tr>
+<tr><td>窗口 $k=10$</td><td>71.9</td><td>73.9</td><td>61.9</td><td>75.1</td></tr>
+<tr><td>$\lambda_{\text{RSL}}=0.01$</td><td>72.1</td><td>73.4</td><td>60.2</td><td>74.7</td></tr>
+<tr><td><strong>$\lambda_{\text{RSL}}=0.1$</strong></td><td><strong>72.5</strong></td><td><strong>74.2</strong></td><td><strong>64.8</strong></td><td><strong>75.4</strong></td></tr>
+<tr><td>$\lambda_{\text{RSL}}=0.3$</td><td>71.1</td><td>72.8</td><td>58.6</td><td>73.1</td></tr>
+<tr><td>$E^\star=0$（固定区域）</td><td>69.1</td><td>70.0</td><td>63.9</td><td>74.7</td></tr>
+<tr><td><strong>$E^\star=0.5$</strong></td><td><strong>72.5</strong></td><td><strong>74.2</strong></td><td><strong>64.8</strong></td><td><strong>75.4</strong></td></tr>
+<tr><td>$E^\star=2$（偏最远候选）</td><td>69.0</td><td>71.7</td><td>59.1</td><td>74.5</td></tr>
+<tr><td>$\lambda_{\text{SPF}}=0$（纯语义）</td><td>70.6</td><td>72.5</td><td>62.5</td><td>74.4</td></tr>
+<tr><td><strong>$\lambda_{\text{SPF}}=0.5$</strong></td><td><strong>72.5</strong></td><td><strong>74.2</strong></td><td><strong>64.8</strong></td><td><strong>75.4</strong></td></tr>
+<tr><td>$\lambda_{\text{SPF}}=1$（纯覆盖先验）</td><td>71.2</td><td>72.7</td><td>60.0</td><td>72.7</td></tr>
+</tbody></table></div>
+<p>表 4 把 §5 的两条机制论证落到数字上：<strong>$E^\star$ 与 $\lambda_{\text{SPF}}$ 都呈“两端掉、中间最优”</strong>。$E^\star=0$/$E^\star=2$ 双双掉到 69（对应 5.3 的“塌缩 ↔ 乱套”），$\lambda_{\text{SPF}}=0$/$=1$ 也都次优（对应 5.4 的“纯语义/纯覆盖都不够”）。这是消融对机制最干净的交叉印证。</p>
+<div class="table-wrap"><table><caption><strong>表 5（综述，原文 Table 5）.</strong> 预训练阶段消融（LR 线性探测）。CARE-iBOT(less)＝用更少 WSI（24,000）做 iBOT。</caption><thead><tr><th>阶段</th><th>EBRAINS-fine ACC</th><th>EBRAINS-fine F1</th><th>BCNB-HER2 ACC</th><th>BCNB-HER2 AUC</th></tr></thead><tbody>
+<tr><td>CARE-iBOT (less, 24K WSI)</td><td>71.5</td><td>76.5</td><td>56.9</td><td>76.8</td></tr>
+<tr><td>CARE-iBOT（全量自监督）</td><td>72.2</td><td>77.4</td><td>60.3</td><td>77.0</td></tr>
+<tr><td>CARE-RNA（+RNA 对齐）</td><td>73.7</td><td>78.5</td><td>59.7</td><td>76.9</td></tr>
+<tr><td><strong>CARE（+蛋白对齐，全）</strong></td><td><strong>74.0</strong></td><td><strong>78.7</strong></td><td>59.8</td><td><strong>77.2</strong></td></tr>
+</tbody></table></div>
+<p>表 5 把“两阶段各加一截”说清楚：自监督数据从 24K 扩到全量，EBRAINS-fine ACC 71.5→72.2（scaling 起点更高）；再叠 RNA 对齐 →73.7、叠蛋白 →74.0，逐级上抬，印证“RNA 粗对齐 + 蛋白细化”的课程是有效的。BCNB-HER2 的 ACC 在分子阶段几乎持平（56.9/60.3/59.7/59.8），说明分子引导的增益<strong>因任务而异</strong>——对脑肿瘤细分类（EBRAINS）帮助明显，对单一受体状态（HER2）帮助有限。</p>
+</section>
+
+<section id="limitations"><h2>9. 局限与复现门槛：什么时候 CARE 会偏、会漏？</h2>
+<div class="table-wrap"><table><caption><strong>表（综述 §4–5）.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/方法信息</th><th>读者应如何理解</th></tr></thead><tbody>
+<tr><td>ROI 非万能</td><td>表 2 之外，ROI 特征在依赖全局上下文的任务上不优于 slide 特征（§4.2 明说）</td><td>ROI 的增益限于“局部信号主导”的任务；不能默认 ROI 永远更好</td></tr>
+<tr><td>热力图 ≠ 临床相关</td><td>图 6：热力图能分肿瘤/正常，但作者明说“对比不保证临床相关性”，需医生标注校验</td><td>可解释性是“与医生标注吻合”的间接证据，不是临床有效性的证明</td></tr>
+<tr><td>分子增益因任务而异</td><td>表 5：分子阶段对 EBRAINS 帮助大，对 BCNB-HER2 几乎持平</td><td>分子引导不是对所有下游一致受益；受任务对生物学信号的依赖程度影响</td></tr>
+<tr><td>依赖配对分子数据</td><td>Stage II 需 WSI–RNA(13,289)/WSI–蛋白(8,225) 配对；预训练绑定 TCGA+GTEx</td><td>复现 Stage II 必须有配对分子谱；纯图像场景只能用到 Stage I 部分</td></tr>
+<tr><td>patch 编码器外置</td><td>patch 特征来自冻结的 CONCH v1.5</td><td>CARE 的表示质量上界受 CONCH 约束；换 patch 编码器需重训</td></tr>
+<tr><td>训练账本不全</td><td>预训练 GPU 卡数 / 墙钟 / epoch <strong>论文未说明</strong>（仅给下游单卡 4090）</td><td>“1/10 数据”是相对量；无法据此估真实预训练成本</td></tr>
+<tr><td>正文表为均值</td><td>表 1 是按任务类的<strong>平均</strong>，33 任务逐项数值在附录（图 4 为热力图）</td><td>个别任务可能落后；整体领先不代表逐任务领先</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>CARE 把 CPath 里一个被 backbone 写死的环节——“怎么把 WSI 切成区域”——重新做成<strong>可学习的软路由</strong>：soft inclusion 给空间软归属、top-3 候选 + “语义×空间”得分做重指派、RSL 用“期望排名拉向 $E^\star$”顶住塌缩、SPF 用“覆盖先验 ⊕ 门控语义”聚成 WSI/ROI 表示；再用一条“iBOT 自监督 → RNA 粗对齐 → 蛋白细化”的分子引导课程，把区域拉到生物学坐标系。于是一个仅用约 1/10 数据训成的模型，在 33 个任务上追平最强形态判别、反超分子预测与生存分析。</p>
+<div class="guide"><strong>三个 takeaway：</strong><ol>
+<li><strong>“分区粒度”是真正的设计变量。</strong>patch＝字符级、固定 region＝定长分块、自适应区域＝词级——把“怎么切”交给模型，层级（patch→region→WSI）路线才立得住。这是图 1 的全部主张。</li>
+<li><strong>可学分区必然要配反塌缩约束。</strong>$w=\rho\cdot C$ 在语义没学好时被空间项主导、会塌到 top-1，所以 RSL 不是装饰：式 4–5 把“平均排名”拉向 $E^\star$，表 4 的“$E^\star$ 两端掉、中间最优”正是塌缩与乱套之间存在最优松紧度的实证。SPF 的 $\lambda_{\text{SPF}}$ 同理。</li>
+<li><strong>分子谱是“免费的高质量监督”，但不是万能。</strong>它让 1/10 数据够用、让区域更贴生物学（图 6、表 5），但增益因任务而异（HER2 几乎持平），且 Stage II 复现绑定配对分子数据。优点与门槛同源。</li>
+</ol></div>
+<p>留给后续的两条反驳/验证路径：<strong>(a)</strong> RSL 的“反塌缩”与 MoE 负载均衡是否真同源——可在同一 ARG 上换成熵正则/均衡损失做等价对照，验证“期望排名约束”是否最优实现；<strong>(b)</strong> “1/10 数据”的功劳到底归分子监督还是归自适应区域——表 5 已分离出“iBOT 全量 vs RNA vs 蛋白”三截，但缺“无分子、纯放大 iBOT 数据到主流量级”的对照，补上才能坐实“是分子引导省了数据，而非架构本身就更省”。</p>
+</section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol>
+<li>Di Zhang, Zhangpeng Gong, Xiaobo Pang, Jiashuai Liu, Junbo Lu, Hao Cui, Jiusong Ge, Zhi Zeng, Kai Yi, Yinghua Li, Si Liu, Tingsong Yu, Haoran Wang, Mireia Crispin-Ortuzar, Weimiao Yu, Chen Li, Zeyu Gao. <em>CARE: A Molecular-Guided Foundation Model with Adaptive Region Modeling for Whole Slide Image Analysis</em>. CVPR 2026 / arXiv:2602.21637v3（西安交通大学 · University of Cambridge · KingMed · BGI Research · A*STAR）。代码：<code>github.com/zdipath/CARE</code>（HTTP 200，已核验）；CVF：openaccess.thecvf.com 对应页（HTTP 200，已核验）。</li>
+<li>本文公式（式 1–7 选录）、表格（表 1–5）与全部实验数字以 arXiv PDF 为准：soft inclusion（式 1）、候选 softmax 与区域选择得分（式 2–3）、RSL（式 4–5）、SPF（式 6–7）写法对照原文 §3。表 1 原文用粗体/下划线标最佳/次佳，本页改用 ★/† 标注；表 4/表 5 取代表性行并已在表注说明“完整列见原文附录”。预训练卡数/墙钟/epoch 正文未披露，已标“论文未说明”，故本页不估 GPU-hours。</li>
+<li><strong>kexue:su 方法与归因。</strong>第 1、5、8 节“分区粒度为何是设计变量”“soft inclusion 为何要软归属”“可学分区为何必然塌缩、RSL 如何顶住”“SPF 两端为何都次优”的多路径论证，按 <code>kexue:su</code> 方法（动机先行、每个近似显式标出、≥2 条独立路径交叉验证）重新推导。<strong>本次 <code>kexue:su</code> 检索未返回与 CARE 机制（自适应区域 / soft inclusion / RSL 反塌缩 / SPF / 分子引导对比预训练）topically on-point 的卡片</strong>（注入结果为 DGCNN 信息抽取、VAE 几何视角、seq2seq、信息瓶颈等，主题不符；针对“反塌缩/负载均衡/InfoNCE”的二次检索因该环境未安装 RAG 检索脚本而无法执行）。按归因红线，<strong>本页不作任何 [archives/XXXX] 苏剑林归因</strong>，仅应用其方法学；§5.3 中“RSL 与 MoE 负载均衡/聚类反塌缩同源”为方法学类比，已显式标注为<em>非论文显式主张、非苏剑林归因</em>。</li>
+<li>图像说明：图 1–6 为本地 PNG，由 <code>extract_figures.py</code>（PyMuPDF，caption 锚定）从 arXiv PDF 裁切，路径 <code>assets/figures/care/</code>，原生分辨率（fig1 1027×769、fig2 2250×1416、fig3 1027×931、fig4 2096×622、fig5 1018×456、fig6 2038×641）。图 2、图 3 含矢量文本面板，已直接采用提取的位图并在图注中转写其“ARG/ARSA/SPF、teacher–student、覆盖先验 ⊕ 门控语义”等关键结构。</li>
+</ol></section>
+
+</main>
+</article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline / 架构</a></li><li><a href="#method">方法 / ARG·RSL·SPF</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>CARE: A Molecular-Guided Foundation Model with Adaptive Region Modeling for Whole Slide Image Analysis</dd><dt>Venue</dt><dd>CVPR 2026 · Medical AI</dd><dt>Backbone</dt><dd>冻结 CONCH v1.5 patch 编码器 + ARG/ARSA/SPF（可训练）；RNA(scGPT)/蛋白(ESM-2) 编码器</dd><dt>预训练</dt><dd>iBOT 自监督 → RNA→蛋白 InfoNCE 对齐；约 1/10 数据，34,277 WSI</dd><dt>arXiv</dt><dd>2602.21637</dd><dt>Topic</dt><dd>Pathology Foundation Model · Adaptive Region</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：分区粒度 ≈ NLP 词级 token</li><li>式 1：soft inclusion 软归属</li><li>式 2–3：top-3 候选 + 语义×空间得分 $w$</li><li>式 4–5：RSL 反塌缩</li><li>式 6–7：SPF 覆盖先验 ⊕ 门控语义</li><li>表 1：分子 69.5 / 生存 58.0 领先</li><li>表 4：$E^\star$ / $\lambda_{\text{SPF}}$ 两端掉</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> CARE 深读</p><p><span class="status-good">figures</span> 6 张 PNG（fig1–6）</p><p><span class="status-good">formula</span> 式 1–7 选录待 MathJax 预检</p><p><span class="status-warn">scope</span> 预训练账本未披露 / ROI 非万能 / 依赖配对分子数据</p></div></section></aside></div></body></html>

@@ -226,6 +226,12 @@ body.lb-lock{overflow:hidden}
   @page{margin:18mm 16mm}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
 </style>
 <script defer>
 (function(){
@@ -560,4 +566,5 @@ body.lb-lock{overflow:hidden}
 </ol></section>
 
 </main>
+</article>
 <aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline / 架构</a></li><li><a href="#method">方法 / Hema-Former</a></li><li><a href="#training">六阶段训练</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融 / 未见域</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Uni-Hema: Unified Model for Digital Hematopathology</dd><dt>Venue</dt><dd>CVPR 2026 · Medical AI</dd><dt>Backbone</dt><dd>ResNet-50 + DINO-DETR（6+6 层）+ T5（文本）+ Hema-Former（4 子模块）</dd><dt>训练</dt><dd>6 阶段渐进冻结；单卡 RTX 4090 ≈ 8 天</dd><dt>语料</dt><dd>46 公开集（检测 18 / 分割 11 / 分类 17）≈70 万图 + 22K QA + 7K MLM</dd><dt>arXiv</dt><dd>2511.13889</dd><dt>Topic</dt><dd>Unified Digital Hematopathology</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 2：一主干多抽头 + Hema-Former 横贯</li><li>图 3：四子模块（语言/实例/图像/像素）</li><li>式 1–2：CMF 两段 cross-attention</li><li>式 3：TGVR top-K 文本调制</li><li>式 5：QGMF Einstein 求和出掩码</li><li>表 1：检测/分类/形态学 Mean 领先</li><li>表 2：未见域分类 90.8 居首</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> Uni-Hema 深读</p><p><span class="status-good">figures</span> 4 张 PNG（fig1/2/3/4）</p><p><span class="status-good">formula</span> 式 1–5 待 MathJax 预检</p><p><span class="status-warn">caveat</span> 小样本任务被联合训练反超；分割边缘略糊；文本数据半合成不可临床用</p></div></section></aside></div></body></html>

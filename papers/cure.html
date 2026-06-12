@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CURE 深读：不加一张新数据，凭什么把放射报告 VLM 的“一问就报异常”幻觉砍掉 18.6%、定位 IoU 翻倍？</title>
+<meta name="description" content="CVPR 2026 Medical AI · CURE: Curriculum-guided Multi-task Training for Reliable Anatomy Grounded Report Generation 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Medical AI · 可靠放射报告生成 / 误差感知课程 + 解剖级报告重构</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Medical AI &gt; CURE</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">11</span><span class="month">Jun</span></div><h1 id="paper-title">CURE 深读：不加一张新数据，凭什么把放射报告 VLM 的“一问某处就报异常”幻觉砍掉 18.6%、定位 IoU 翻倍？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-11</span><span>CVPR 2026 · Medical AI · PUC Chile / CENIA / iHEALTH / KAUST</span><span>来源：arXiv:2601.15408v2 PDF</span></div><div class="tags"><span class="tag orange">Medical AI</span><span class="tag">放射报告生成 RRG</span><span class="tag">视觉 grounding</span><span class="tag green">误差感知课程学习</span><span class="tag">MedGemma-4B + LoRA</span><span class="tag">幻觉抑制</span><span class="tag">仅公开数据</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>把通用医学 VLM 微调来写胸片报告，最危险的失败不是“写得不够全”，而是<strong>“写得太确定”</strong>：图 1 里两个模型都被要求定位左锁骨，强基线 MAIRA-2 却凭空补上一句“注意到左锁骨<em>骨折</em>”——图里根本没有骨折。这类<strong>假阳性幻觉</strong>恰恰来自主流做法的训练信号：phrase grounding（短语定位）的标注里<strong>每一条都是异常发现</strong>，于是模型被反复教成“被问到某个区域 = 那里有病”。CURE 的赌注是<strong>不引入任何新数据</strong>，只动训练方法学就把可靠性提上去：(1) 把“生成发现”重构成<strong>解剖级报告生成 AGRG</strong>——对每个解剖区域同时监督<em>正常</em>与异常描述，把异常的“先验概率”从训练里的 ≈1 拉回真实临床基率；(2) 用一个<strong>误差感知课程</strong> $p_i=e_i/\sum_j e_j$（$e_i=1-s_i$，$s_i$ 由 IoU 与 CXRFEScore 加权而成）动态把采样预算挪向<em>当前最做不好</em>的任务与类别。立题问题因此很具体：<strong>当数据和参数都不准动，可靠性的杠杆到底在“喂什么”还是“怎么喂”？</strong>结果：解剖级定位 IoU 从 0.249 翻到 0.601（+0.35），六个关键解剖区域的异常幻觉率从 26.5% 降到 8.78%（−18.6 个百分点），且全程只用三个公开胸片数据集、一块 LoRA 微调的 MedGemma-4B。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>CURE：一个<strong>误差感知课程 + 多任务训练</strong>框架，<strong>不加任何新数据</strong>，把缺乏 grounding 能力的 MedGemma-4B 调成定位准、少幻觉的可靠报告生成器；核心是“解剖级报告重构 + 按当前误差重分配采样”。</div><div class="kv"><b>关键机制</b>① 把 finding-generation 换成 <strong>AGRG</strong>：对 36/38/29 个解剖位置同时教“正常/异常”，去掉 phrase-grounding 固有的异常偏置；② 课程 $p_i=e_i/\sum e_j$ 在<strong>数据集级</strong>与<strong>类别级</strong>两层按误差重加权，自动把算力倒向短板。</div><div class="kv"><b>核心证据</b>解剖级 IoU <strong>0.601 vs MAIRA-2 0.249</strong>（翻倍，表 3）；零样本 VinDr-CXR PG IoU 0.243 vs 0.161（表 2）；六区域异常幻觉 <strong>26.50%→8.78%</strong>、矛盾率 33.22%→17.44%、蕴含 15.94%→39.50%（表 6）。</div><div class="kv"><b>复现门槛</b>底座 MedGemma-4B-IT + LoRA(r=16)、4-bit；有效 batch 25、9000 步（3000 预训练 + 6000 多任务），lr 2e-4。<strong>代码 + 权重全开源</strong>（<code>PabloMessina/CURE</code> / HF <code>pamessina/medgemma-4b-it-cure</code>，均 HTTP 200）。GPU 卡数/墙钟<strong>论文未说明</strong>。</div></div></div><figure class="hero-card"><a href="../assets/figures/cure/cure_fig1.png"><img src="../assets/figures/cure/cure_fig1.png" alt="同一张胸片，MAIRA-2 凭空报告左锁骨骨折（假阳性），CURE 给出临床正确的无异常描述"></a><figcaption><strong>图 1 · 全文“核心断言可视化”。</strong>同一张 MIMIC-CXR 测试胸片，两个模型都被要求<strong>定位+描述左锁骨</strong>。MAIRA-2（左）框对了位置，却凭空补一句“注意到左锁骨<em>骨折</em>”——图里没有骨折，这是<strong>假阳性幻觉</strong>；CURE（右）给出“无急性骨性异常”的临床正确描述。这张图回答的不是“谁框得准”，而是<strong>“被问到一个区域时，模型会不会习惯性地编出一个异常”</strong>——而这正是 phrase-grounding 训练信号埋下的偏置。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：可靠性的杠杆，在“喂什么数据”还是“怎么喂”？</h2><p>医学 VLM 写报告已经不稀奇，难的是<strong>可靠</strong>：输出要和影像证据对齐（grounding），且不能编造不存在的发现（幻觉）。论文开篇点的痛处很具体——标准微调能把医学 benchmark 刷上去，却<strong>普遍缺乏视觉 grounding</strong>，于是可解释性差、幻觉风险高。SOTA 的 MAIRA-2 已经显式加了 grounded report generation 来对齐局部证据与文字发现，但图 1 暴露了一个更隐蔽的毛病：<strong>目标视觉区域被过度绑定到“异常发现”上，导致报告里出现假阳性</strong>。</p>
+<p>顺着这条线，论文把可靠性差拆成两层不平衡，都不是“数据不够”能解释的：</p>
+<ul><li><strong>数据集之间极度不平衡。</strong>Chest ImaGenome（AGRG）一家就有超过 <strong>12.9M</strong> 条潜在实例，而 MS-CXR（PG）只有 <strong>815</strong> 条、PadChest-GR 约 1.2 万条。size-proportional（按规模采样）会让小数据集几乎被淹没。</li><li><strong>每个数据集内部也不平衡。</strong>解剖区域、语义类别的出现频率天差地别（受患者人群、采集协议、疾病自然频率影响）。模型于是<strong>过拟合高频区域、忽视罕见但临床重要的区域</strong>，并在那里幻觉。</li><li><strong>训练信号本身有异常偏置。</strong>phrase grounding 的标注<strong>逐条都是“发现”</strong>（被标注的短语必然对应一个异常 + 框）。模型见到的“被问到某区域”几乎总伴随“那里有病”，于是把“查询某区域”学成了“报告异常”的触发器——这才是图 1 假阳性的根。</li></ul>
+<div class="socratic"><p class="question">问：既然问题是数据不平衡 + 信号有偏，最直接的办法不就是<strong>多标注一些罕见区域、多补一些正常样本</strong>？为什么作者偏要约束自己“不加任何数据”？</p><p class="guide">引导：盯住“成本”和“可归因性”两件事。医学标注昂贵且需专家；更重要的是，如果靠加数据解决，你就<strong>无法判断增益来自“方法学”还是“更多数据”</strong>。论文要证的恰恰是前者。</p><p class="answer">答：CURE 把变量锁死在<strong>训练方法学</strong>这一维——同样的三个公开数据集、同样的底座，只改“怎么用”。它从两个角度同时下手：<strong>(a) 改“喂什么形式”</strong>——把 finding-generation 重构成解剖级报告生成（AGRG），让每个区域都被问到、且<em>正常也要描述</em>，从源头把异常基率拉回真实值；<strong>(b) 改“怎么分配预算”</strong>——用误差感知课程，把采样概率动态倒向当前最做不好的任务/类别，而不是按数据集大小或人工调好的 loss 权重静态分配。两者都不增加一条新标注，却分别针对“信号偏置”和“分布不平衡”两个病根。</p><p class="takeaway"><strong>Takeaway：</strong>真问题不是“数据够不够”，而是<strong>“现有数据被喂成了什么形状、按什么比例喂”</strong>。CURE 的回答是：可靠性的杠杆在训练方法学，而非数据量——这也让它的增益可被干净地归因。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献（论文 §1 三条）：</strong></p><ul><li><strong>误差感知课程框架</strong>——根据模型当前表现动态调整采样分布，无需任何额外训练数据即可增强视觉 grounding。</li><li><strong>把 grounding 能力迁移给原本没有它的医学 VLM</strong>——MedGemma-4B-IT 本身不具备视觉 grounding，CURE 的训练策略把这能力“装”了进去，并在更少训练数据下超过当前 SOTA 的定位表现。</li><li><strong>在 Chest ImaGenome 上把六个关键解剖区域的幻觉降低 18.6%</strong>，显著提升医学 VLM 输出的可靠性与可信度，刷新视觉 grounded 报告生成的 SOTA。</li></ul>
+<p>支撑这三条的<em>结构性</em>改动其实是两个，值得单列：把 finding-generation 替换成<strong>AGRG（解剖级报告生成）</strong>以吃下最细粒度的区域标注；以及把课程做成<strong>数据集级 + 类别级两层重加权</strong>。</p>
+<div class="formula-note"><p class="note-title">读数提醒：这篇的“评测姿态”值得单独标注</p><p>CURE 的主战场是<strong>grounding 的可靠性</strong>，而非刷文本指标的天花板。所以读结果时要分清两类数字：<strong>定位类</strong>（IoU、幻觉/矛盾/蕴含率）是它要赢的；<strong>纯文本类</strong>（CheXbert F1、RadGraph F1）上它常输给在<em>私有</em>数据（USMix）上专训的 MAIRA-2 或用 RL 直接优化 RadGraph F1 的 CXRMate-RRG24——论文对此是<strong>诚实承认</strong>的（见 §7）。把这两类混在一起看，会得出错误结论。</p></div>
+<p><strong>读者能进一步推断的是</strong>：CURE 真正推进的<em>单一变量</em>是“训练方法学（任务形式 + 采样调度）对可靠性的作用”。它没有改架构、没换底座、没加数据；它把“可靠性可以靠重新组织已有监督来买”这件事，用一个干净的对照（表 7 的 v1→v9 逐件消融）摆了出来。</p></section>
+
+<section id="datasets"><h2>3. 数据：三个公开胸片集，靠“一图多查”把标注撑成百万级实例</h2><p>CURE 刻意只用<strong>和基线 MAIRA-2 相同的三个公开胸片数据集</strong>，以保证可比。各自的角色不同：</p>
+<ul><li><strong>Chest ImaGenome（MIMIC-CXR 的子集，仅正位片）</strong>：提供 scene-graph，把解剖区域链接到边界框<em>和</em>对应的报告句子——这是 AGRG 的主力。一张图能拆成多条实例（每个标注位置一条），∼237k 训练图按子任务平均生成 9–36 条指令实例，合计超过 <strong>12.9M</strong> 条潜在样本。</li><li><strong>PadChest-GR</strong>：报告中的短语显式 grounding 到框，支撑 GRG 与 PG 两个任务（8,489 句、155 个细粒度临床标签）。</li><li><strong>MS-CXR</strong>：MIMIC-CXR 派生的小数据集，提供报告短语的框标注，<strong>专用于 PG</strong>。</li><li><strong>VinDr-CXR</strong>：<strong>仅用于零样本评测</strong>（训练时没见过），测泛化。</li></ul>
+<div class="table-wrap"><table><caption><strong>表 1.</strong> 数据组成与统计（论文 Tab. 1 转写）。AGRG=解剖级报告生成，PG=短语定位，GRG=grounded 报告生成。‡ 因算力限制只用了全量的一小部分：9000 步 × 有效 batch 25 ⇒ 最多处理约 <strong>225,000</strong> 条实例（≈全量的 1.74%）。</caption><thead><tr><th>数据集</th><th>任务</th><th># Train</th><th># Val</th><th># Test</th></tr></thead><tbody>
+<tr><td rowspan="3">MIMIC-CXR (Chest ImaGenome)</td><td>AGRG · Locate</td><td>8.5M‡</td><td>69.9K†</td><td rowspan="3">1,000*</td></tr>
+<tr><td>AGRG · Describe</td><td>2.3M‡</td><td>18.8K†</td></tr>
+<tr><td>AGRG · Loc.&amp;Desc.</td><td>2.1M‡</td><td>17.4K†</td></tr>
+<tr><td>MIMIC-CXR (MS-CXR)</td><td>PG</td><td>815‡</td><td>169†</td><td>176</td></tr>
+<tr><td>MIMIC-CXR (Test Split)</td><td>Report Generation</td><td>—</td><td>—</td><td>3,155</td></tr>
+<tr><td rowspan="2">PadChest-GR</td><td>GRG</td><td>3,185‡</td><td>455†</td><td>915</td></tr>
+<tr><td>PG</td><td>8,871**‡</td><td>1,297†**</td><td>1,238</td></tr>
+<tr><td rowspan="2">VinDr-CXR（零样本）</td><td>GRG</td><td>—</td><td>—</td><td>3,000</td></tr>
+<tr><td>PG</td><td>—</td><td>—</td><td>2,108</td></tr>
+</tbody></table></div>
+<p>读这张表要抓两点。其一，<strong>不平衡是结构性的</strong>：AGRG 一侧动辄百万级，PG（MS-CXR）只有 815 条——这正是后面课程要解决的“数据集级不平衡”。其二，<strong>真正喂进模型的只是冰山一角</strong>：受算力限制，9000 步最多过 22.5 万条（全量的 1.74%）。换句话说，<strong>样本预算极度稀缺</strong>，怎么把这有限的预算花在刀刃上，就成了课程机制的用武之地。</p>
+<h3>3.1 把“一句话/一个标签”都拆成训练实例：PadChest-GR 的双标注增广</h3><p>PadChest-GR 同时有“自然句子”和“规范临床标签”两套标注。CURE 对每个 (sentence, box list) 既造一条<em>句子</em>实例，又造一条<em>标签</em>实例。例如把“Minimal biapical pleural thickening”（句子）与标签“apical pleural thickening”分别配同一个框，生成两条样本——<strong>几乎让 PadChest-GR 的 PG 数据翻倍</strong>，同时教模型既能 ground 自然描述、也能 ground 规范术语。该增广<strong>只用于训练/验证，测试集保持未增广</strong>。这同样是“不加新图、只重组监督”的思路。</p></section>
+
+<section id="pipeline"><h2>4. Pipeline：训练—评测—重加权三步闭环，每 N 步把预算挪向短板</h2><p>图 2 是全文骨架。底座是预训练的 MedGemma-4B；CURE 把三个数据集统一重构成 (image, instruction, response) 三元组的<strong>细粒度指令格式</strong>，先在 Chest ImaGenome 上做一段 grounding 专项预训练，再进多任务微调。微调期间，<strong>每 N 步把模型在各任务验证子集上跑一遍，算 IoU 与 CXRFEScore，识别“任务级 + 类别级”误差，再据此更新采样器的权重</strong>，让下一段训练更偏向它最做不好的数据——如此循环。</p>
+<figure class="fig-wide"><a href="../assets/figures/cure/cure_fig2.png"><img src="../assets/figures/cure/cure_fig2.png" alt="CURE 总览：预训练 MedGemma + 误差感知课程学习 + 多任务微调，三步闭环更新采样权重"></a><figcaption><strong>图 2 · CURE 总览。</strong>左：预训练 MedGemma 作底座。中（核心）：<strong>误差感知课程</strong>——每 N 步在各任务验证子集上评测，按 IoU/CXRFEScore 算出任务级与类别级误差 $e$，更新采样器；先在 Chest ImaGenome 上做 grounding 专项预训练（“First training on Chest ImaGenome”），再进多任务微调（PadChest-GR 的 GRG/PG、MS-CXR 的 PG、Chest ImaGenome 的 AGRG）。右：在四套数据上做 grounded 报告生成评测（AGRG/PG/GRG/RG），VinDr-CXR 为零样本。看这张图要抓的是中间那条<strong>“训练→评测→重加权”的反馈回路</strong>：它不是一次性课程，而是<em>随模型表现实时调度</em>的闭环。</figcaption></figure>
+<div class="formula-note"><p class="note-title">为什么要先单独在 Chest ImaGenome 上“预训练”一段，再进多任务？</p><p>消融（表 7 v6–v8）给的理由很 kexue：MedGemma-4B-IT <strong>本身没有视觉 grounding</strong>，一上来就多任务混训，弱小的 MS-CXR PG 信号会被淹没。先用最细、最大的 Chest ImaGenome（AGRG）专门把“输出框坐标”这件事教会（grounding 启动），模型才有一个能被课程进一步打磨的<strong>初始 grounding 能力</strong>。把预训练加到 3000 步（v8），MS-CXR PG 的 IoU 才追平 MAIRA-2 的 0.495——<strong>顺序是有因果的：先装上 grounding，再用课程精修。</strong></p></div></section>
+
+<section id="method"><h2>5. 方法：误差归一化采样为什么是“自平衡控制器”，AGRG 为什么能去异常偏置</h2>
+<h3>5.1 统一的细粒度指令格式：把异质监督塞进一个模板</h3><p>CURE 把每条样本写成 (image, instruction, response) 三元组，让框、短语、解剖标签、描述句这些异质监督在一个多任务框架下学习。三类任务的 I/O 形式（论文 §3.2 转写）：</p>
+<ul><li><strong>Phrase Grounding（PG）：</strong>指令 <code>Ground the phrase: {phrase}</code>，输出短语 + 一个或多个归一化框 <code>{phrase}: [cx,cy,w,h]...</code>。</li><li><strong>Grounded Report Generation（GRG）：</strong>指令 <code>Generate a grounded report.</code>，输出整篇报告，其中有框标注的短语直接在文中附上坐标。</li><li><strong>Anatomy-Grounded Report Generation（AGRG）：</strong>分三个子任务、均匀采样以保任务平衡——<code>Locate the {location}</code>（纯定位，36 个带框位置）、<code>Describe the {location}</code>（纯描述，38 个带文位置）、<code>Locate and describe the {location}</code>（二者兼有，29 个位置）。</li></ul>
+<p>这个<strong>多 prompt 显式拆分</strong>很关键：它把“定位”和“描述”解耦成可独立训练的技能，再在 Loc.&amp;Desc. 子任务里合起来——既能单独补短板，又保留联合输出。</p>
+<h3>5.2 误差感知课程：从 IoU+CXRFEScore 到自平衡采样</h3><p>设 $k$ 个数据源 $\mathcal D=\{D_1,\dots,D_k\}$，每个对应一个数据集及其原始监督任务。标准多任务训练按数据集大小采样：</p>
+<div class="equation">$$p_i=\frac{|D_i|}{\sum_{j}|D_j|}\qquad(\text{baseline：size-proportional})$$<div class="eq-caption">公式读法：采样概率正比于数据集规模。问题在于它<strong>与模型表现无关、且静态</strong>——大数据集永远碾压小数据集。</div></div>
+<p>CURE 每个 stage 跑“训练→评测→重加权”三步。评测时对每个验证源抽固定大小子集（约 200 条 Chest ImaGenome / 150 条 PadChest-GR / 100 条 MS-CXR），用 IoU 量定位、CXRFEScore 量文本临床语义相似度，合成一个<strong>表现分</strong>：</p>
+<div class="equation">$$s_i=\alpha\cdot \mathrm{IoU}_i+(1-\alpha)\cdot \mathrm{CXRFEScore}_i\qquad(1)$$<div class="eq-caption">式 1：$\alpha$ 权衡“定位准”与“语义对”。论文附录给出 $\alpha$ 随子任务自适应：纯定位（Locate）$\alpha{=}1$、纯文本（Describe）$\alpha{=}0$、两者都评 $\alpha{=}0.8$。</div></div>
+<p>定义误差 $e_i=1-s_i$，下一 stage 的采样概率按误差归一化：</p>
+<div class="equation">$$p_i=\frac{e_i}{\sum_{j=1}^{K}e_j}\qquad(2)$$<div class="eq-caption">式 2：误差越大、采样概率越高。第一个 stage 用均匀分布 $p_i=p_j$ 起步，stage $n$ 的结果初始化 stage $n{+}1$。</div></div>
+<p><strong>类别级（intra-dataset）同理</strong>：MS-CXR 按 8 个短语类（pneumonia、consolidation…）分组；PadChest-GR 把 155 个标签归到 26 个高层组、在组级做课程；Chest ImaGenome 的 AGRG 在子任务内按<strong>解剖位置</strong>的误差重加权。唯一例外是 PadChest-GR 的 GRG——一篇报告同时含多个共病、无法干净归类，故<strong>保持均匀采样</strong>。</p>
+<div class="socratic"><p class="question">问：式 2 看着就是“哪门课考得差就多刷哪门”，凭什么说它是一个<strong>会自动收敛的控制器</strong>，而不是会越刷越偏、把算力全砸在一个永远学不好的数据集上？给我两条独立的理由。</p><p class="answer"><strong>路径 A（负反馈闭环 → 误差均衡的不动点）：</strong>把训练看成离散控制系统。某源误差 $e_i$ 高 → 式 2 给它高采样概率 $p_i$ → 下一 stage 它被训得多 → 表现分 $s_i$ 升、$e_i$ 降 → 再下一 stage $p_i$ 自动回落。这是一条标准<strong>负反馈</strong>：输出（误差）反向调制输入（采样）。它的<em>不动点</em>不是“all-in 某个数据集”，而是<strong>各源误差被拉到大致相等</strong>——因为只要某源误差明显高于others，反馈就持续把预算往它那边挪，直到它的边际改善把误差压到与其他源齐平、$p_i$ 随之回到均衡。对比 size-proportional（式 baseline）：那是<strong>开环</strong>——权重写死、与表现脱钩，所以小数据集（MS-CXR 815 条）会被永久淹没。CURE 把“按大小分”换成“按当前还差多少分”，这正是 PadChest-GR 上相对增益大于 MS-CXR 的原因（短板被优先补）。<br><br><strong>路径 B（与 SPL 的符号相反 → 它做的是难例挖掘）：</strong>自步学习 SPL 也用 loss 当难度信号，但它<strong>偏向选 loss 低（容易）的样本</strong>，于是形成“易者愈易”的正反馈，难尾被长期忽略——论文明确点了 SPL 这个毛病。CURE 把符号<em>反过来</em>：式 2 让<strong>误差高（难）的源/类获得更高采样概率</strong>，本质是在“任务/类别”这个粗粒度上做<strong>hard-example mining</strong>。两条路径独立指向同一结论：一条从控制论说“负反馈收敛到误差均衡”，一条从课程学习说“它是 anti-SPL 的难例优先”——都说明它不会发散，而是把预算<em>动态</em>压到当前最薄弱处。</p><p class="takeaway"><strong>Takeaway：</strong>式 2 不是简单的“多刷难题”，而是一个把各源/各类误差<strong>拉平</strong>的负反馈控制器；它和 size-proportional 的区别是“开环 vs 闭环”，和 SPL 的区别是“易者优先 vs 难者优先”。</p></div>
+<figure class="fig-grid"><figure><a href="../assets/figures/cure/cure_fig4.png"><img src="../assets/figures/cure/cure_fig4.png" alt="数据集级采样权重随训练步演化：PadChest-GR(GRG) 上升到约 0.36，Chest ImaGenome(AGRG) 下降到约 0.18"></a></figure><figure><a href="../assets/figures/cure/cure_fig5.png"><img src="../assets/figures/cure/cure_fig5.png" alt="MS-CXR 内部 8 个短语类的权重演化：Pneumothorax/Lung Opacity 维持高位，Cardiomegaly 迅速跌到约 0.07"></a></figure><figcaption><strong>图 4 / 图 5（附录，每 500 步更新的更频繁调度示意，非最终 3000 步配置）· 课程把“误差均衡”跑出来了。</strong><strong>左（图 4，数据集级）：</strong>四个数据源从均匀的 0.25 起步，<strong>PadChest-GR(GRG) 一路爬到 ≈0.36</strong>（它最难、误差最高，被持续加码），而<strong>Chest ImaGenome(AGRG) 落到 ≈0.18</strong>（它实例最多、最快学好，被自动让出预算）——正是路径 A 的负反馈：权重跟着“还差多少”走，而非跟着数据量走。<strong>右（图 5，MS-CXR 类别级）：</strong>8 个短语类从同一起点分化，Pneumothorax/Lung Opacity 维持高权重（难），<strong>Cardiomegaly 迅速跌到 ≈0.07</strong>（易、误差低，被让出）。两图一起把式 2 的“自平衡”从抽象公式变成可见的曲线。<span class="img-caption-marker">注：论文说明这两图取自“每 500 步更新”的实验，与最终 CURE 的 3000 步配置不同，仅用于直观展示机制的动态性。</span></figcaption></figure>
+<h3>5.3 AGRG：把“finding generation”换成“逐区域问诊”，从源头掐掉异常偏置</h3><p>这是 CURE 抑制幻觉的结构性支点。Chest ImaGenome 的 scene-graph 把<strong>每个解剖位置</strong>都链到框和描述句，于是 AGRG 可以对<em>所有</em>区域逐一发问，且<strong>正常区域也要被描述</strong>（如“无急性骨性异常”）。而 phrase grounding 的标注里，被标注的短语<strong>逐条都是异常发现</strong>。</p>
+<div class="socratic"><p class="question">问：为什么仅仅“把训练任务从 phrase grounding 换成逐区域 AGRG”，就能让模型不再像图 1 那样一被问就编出异常？给两条独立理由。</p><p class="answer"><strong>路径 A（基率/标签先验，bottom-up 概率视角）：</strong>把模型学到的看成条件分布 $P(\text{异常}\mid\text{被查询的区域})$。phrase-grounding 数据里，<em>每一条</em>样本的查询都对应一个异常短语，所以训练分布里 $P(\text{异常}\mid\text{查询})\approx 1$——模型于是把“被问到一个区域”直接映射成“那里有异常”，这就是图 1 假阳性的生成机制。AGRG 改成<strong>对每个区域都发问、且正常/异常都监督</strong>，训练分布里的异常基率被<strong>拉回真实临床prevalence</strong>（绝大多数区域在多数片子上是正常的）。$P(\text{异常}\mid\text{查询})$ 从 ≈1 降到真实值，模型的“默认输出”随之从“报异常”变成“按证据判断”。<br><br><strong>路径 B（缺失的负类 → 决策阈值，top-down 判别视角）：</strong>论文自己给的因果是“phrase grounding <em>inherently biased towards abnormal findings</em>，而 AGRG exposes the model to <strong>both normal and abnormal</strong> descriptions for each region”。从判别角度看，phrase grounding <strong>根本没有“正常”这个负类</strong>——模型从未被训练说“这里没事”，等于一个只见过正例的分类器，决策阈值被推到极端、永远输出正类。AGRG 把“正常描述”作为负类补齐，模型才学到一个<strong>校准过的决策边界</strong>，不再无脑报阳。两条路径独立汇到同一结论：一条说“异常的先验概率被错误地训成了 1”，一条说“负类从来没进过训练集”——都指向“补上正常监督 = 把异常偏置拉回”。这也解释了表 6 里骨结构（锁骨）的幻觉为何降得最猛（从 59%+ 到 1%）：锁骨绝大多数时候正常，AGRG 给了它大量“正常”监督。</p><p class="takeaway"><strong>Takeaway：</strong>AGRG 抑制幻觉<strong>不是靠任何反幻觉损失或后处理</strong>，而是把训练数据的“异常基率”从 phrase-grounding 的 ≈1 修回真实值——补上一直缺席的“正常”负类，模型的默认行为就从“报异常”回到“按证据说话”。</p></div></section>
+
+<section id="training"><h2>6. 训练配置：MedGemma-4B + LoRA(r=16)、4-bit，9000 步两段式</h2><p>训练账本（论文 §4 Datasets/Implementation 转写）：</p>
+<div class="table-wrap"><table><caption><strong>表（训练配置）.</strong> 论文正文披露的超参数。两段共享同一组超参，但<strong>优化器/调度器状态在两段之间重置</strong>，只保留模型权重。</caption><thead><tr><th>项目</th><th>取值</th></tr></thead><tbody>
+<tr><td>底座模型</td><td>MedGemma-4B-IT</td></tr>
+<tr><td>微调方式</td><td>LoRA，rank 16，4-bit 量化</td></tr>
+<tr><td>优化器</td><td>AdamW</td></tr>
+<tr><td>有效 batch size</td><td>25（per-device 5 × 梯度累积 5）</td></tr>
+<tr><td>学习率</td><td>$2\times10^{-4}$，linear scheduler，warmup ratio 0.03</td></tr>
+<tr><td>梯度裁剪</td><td>max grad norm 0.3</td></tr>
+<tr><td>训练步数</td><td>预训练 3000 步（Chest ImaGenome）+ 多任务 6000 步 = 9000 步</td></tr>
+<tr><td>课程重加权间隔</td><td>每 3000 步（最终配置，见消融 v5/v9）</td></tr>
+<tr><td>图像分辨率</td><td>448×448（Albumentations 处理）</td></tr>
+<tr><td>数据增广</td><td>CLAHE（50% 概率，clip 1.0–4.0）+ 空间变换（随机裁剪、平移/缩放±10%/旋转±15°）；<strong>禁用水平翻转</strong>（胸腔左右不对称）、禁用 color jitter/高斯噪声</td></tr>
+</tbody></table></div>
+<div class="formula-note"><p class="note-title">一个容易被忽略但很 kexue 的工程细节：box-aware 增广</p><p>整条训练管线是<strong>“边界框感知”</strong>的：空间增广时 Albumentations 同步变换框坐标，且<strong>喂给模型的 ground-truth 文本监督也动态更新成增广后的坐标</strong>，保证“图—框—文”三者始终对齐。这看似琐碎，却是 grounding 任务的命门——若增广破坏了框-文对齐，模型学到的就是错位的监督。此外 30% 的训练样本<strong>绕过空间增广、走确定性验证管线</strong>以稳住训练。</p></div>
+<div class="formula-note"><p class="note-title">关于算力（粗估，不等同账单）</p><p>论文<strong>未披露 GPU 卡数与墙钟时间</strong>，只给了“LoRA + 4-bit、有效 batch 25、9000 步”。可以确定的是<strong>复现门槛远低于全量微调</strong>：4-bit + LoRA(r=16) 让 4B 模型可在单卡（消费级/单张数据中心卡）上跑，per-device batch 仅 5。但<strong>具体卡时论文未说明，此处不做 GPU-hours 估算</strong>，以免给出连“按论文披露数字粗略估算”都无依据的数字。</p></div></section>
+
+<section id="experiments"><h2>7. 实验：定位类全面赢，文本类对私有数据/RL 模型诚实认输</h2><p><strong>判断：</strong>四组任务（PG / AGRG / GRG / RG）测的是同一件事——“CURE 的训练方法学，能不能在<em>不加数据</em>的前提下把 grounding 可靠性提上去”。先看它赢的（定位、幻觉），再看它认输的（纯文本），后者恰恰印证了 §2 的评测姿态。</p>
+<h3>7.1 短语定位（PG）：三个数据集全赢，含零样本 VinDr-CXR</h3>
+<div class="table-wrap"><table><caption><strong>表 2.</strong> Phrase Grounding 结果（论文 Tab. 2 转写），Micro/Macro 平均 IoU，越高越好。VinDr-CXR 为<strong>零样本</strong>（训练未见）。</caption><thead><tr><th rowspan="2">Model</th><th colspan="2">MS-CXR</th><th colspan="2">PadChest-GR</th><th colspan="2">VinDr-CXR（零样本）</th></tr><tr><th>IoU Mi.↑</th><th>IoU Ma.↑</th><th>IoU Mi.↑</th><th>IoU Ma.↑</th><th>IoU Mi.↑</th><th>IoU Ma.↑</th></tr></thead><tbody>
+<tr><td>MAIRA-2</td><td>0.495</td><td>0.453</td><td>0.280</td><td>0.288</td><td>0.161</td><td>0.114</td></tr>
+<tr><td><b>CURE</b></td><td><b>0.552</b></td><td><b>0.495</b></td><td><b>0.453</b></td><td><b>0.438</b></td><td><b>0.243</b></td><td><b>0.205</b></td></tr>
+</tbody></table></div>
+<p>CURE 在所有指标、所有数据集上压过 MAIRA-2，且<strong>PadChest-GR 的相对增益（0.280→0.453）明显大于 MS-CXR（0.495→0.552）</strong>——这正对应 §5.2 的预测：课程把预算优先倒向误差更高的短板（PadChest-GR）。零样本 VinDr-CXR 上 0.161→0.243 说明能力能迁移到训练未见的分布。</p>
+<h3>7.2 解剖级报告生成（AGRG）：定位 IoU 翻倍，这是全文最强证据</h3>
+<div class="table-wrap"><table><caption><strong>表 3.</strong> Chest ImaGenome 上 AGRG 结果（论文 Tab. 3 转写，1000 样本子集）。MedGemma-4B-IT 无内生 grounding，故无 IoU。</caption><thead><tr><th>Model</th><th>IoU↑</th><th>F1-Mi↑</th><th>F1-Ma↑</th><th>Cos.↑</th><th>CXRFEScore↑</th></tr></thead><tbody>
+<tr><td>MAIRA-2</td><td>0.249</td><td>0.377</td><td>0.098</td><td>0.587</td><td>0.357</td></tr>
+<tr><td>MedGemma-4B-IT</td><td>—</td><td>0.266</td><td>0.227</td><td>0.662</td><td>0.467</td></tr>
+<tr><td><b>CURE</b></td><td><b>0.601</b></td><td><b>0.529</b></td><td>0.234</td><td><b>0.691</b></td><td><b>0.549</b></td></tr>
+</tbody></table></div>
+<p>IoU <strong>0.249→0.601（+0.352，翻倍多）</strong>是摘要里“+0.35 IoU”的来源。由于底座 MedGemma 本身<strong>完全没有</strong>视觉 grounding（IoU 一栏是“—”），这条直接证明 CURE 的训练把 grounding 能力<strong>从无到有装了进去</strong>。同时 F1-Mi、Cos.、CXRFEScore 也都登顶——定位准的同时文本质量没塌。</p>
+<h3>7.3 Grounded 报告生成（GRG）：定位赢，文本对私有数据训练的 MAIRA-2 认输</h3>
+<div class="table-wrap"><table><caption><strong>表 4.</strong> PadChest-GR 与零样本 VinDr-CXR 上 GRG 结果（论文 Tab. 4 转写）。MedGemma 无 grounding 故 IoU 为“—”。</caption><thead><tr><th rowspan="2">Model</th><th colspan="5">PadChest-GR</th><th colspan="5">VinDr-CXR（零样本）</th></tr><tr><th>IoU↑</th><th>F1-Mi↑</th><th>F1-Ma↑</th><th>Cos.↑</th><th>CXRFES↑</th><th>IoU↑</th><th>F1-Mi↑</th><th>F1-Ma↑</th><th>Cos.↑</th><th>CXRFES↑</th></tr></thead><tbody>
+<tr><td>MAIRA-2</td><td>0.256</td><td><b>0.591</b></td><td><b>0.321</b></td><td><b>0.844</b></td><td><b>0.616</b></td><td>0.217</td><td><b>0.546</b></td><td><b>0.256</b></td><td>0.824</td><td>0.591</td></tr>
+<tr><td>MedGemma-4B-IT</td><td>—</td><td>0.144</td><td>0.203</td><td>0.733</td><td>0.517</td><td>—</td><td>0.209</td><td>0.212</td><td>0.779</td><td><b>0.596</b></td></tr>
+<tr><td><b>CURE</b></td><td><b>0.265</b></td><td>0.507</td><td>0.270</td><td>0.819</td><td>0.574</td><td><b>0.262</b></td><td>0.505</td><td>0.246</td><td><b>0.832</b></td><td>0.540</td></tr>
+</tbody></table></div>
+<p>这张表要分两层读。<strong>定位上 CURE 赢</strong>（PadChest-GR IoU 0.265 vs 0.256；零样本 VinDr-CXR 0.262 vs 0.217）。<strong>纯文本上 MAIRA-2 赢</strong>（F1/Cos./CXRFES），但论文坦言这是因为 MAIRA-2 额外在<strong>私有 USMix 数据（193K 纯文本 + 69K grounded 报告）</strong>上预训练过，而 PadChest-GR 的 GRG 训练实例远少于其 PG/AGRG 版本。即便如此，CURE 仍把 MedGemma 的文本指标大幅拉高。这是 §2“评测姿态”的现场印证：CURE 要赢的是 grounding，文本天花板它没去抢。</p>
+<h3>7.4 传统报告生成（RG）：CURE(AGRG+GRG) 的召回登顶</h3>
+<div class="table-wrap"><table><caption><strong>表 5.</strong> MIMIC-CXR 测试集（3,155 正位片）报告生成（论文 Tab. 5 转写，<strong>代表性列节选</strong>：保留 F1-Ma/Mi、R-Ma/Mi、Cos.、CXRFES、RaTES、RadF1，略去 P-Ma/Mi 以控宽，全表见原文）。<b>粗体</b>=最佳，<u>下划线</u>=次佳。</caption><thead><tr><th>Model</th><th>F1-Ma↑</th><th>F1-Mi↑</th><th>R-Ma↑</th><th>R-Mi↑</th><th>Cos.↑</th><th>CXRFES↑</th><th>RaTES↑</th><th>RadF1↑</th></tr></thead><tbody>
+<tr><td>CXRMate-RRG24</td><td><u>0.414</u></td><td><b>0.589</b></td><td>0.415</td><td>0.563</td><td>0.764</td><td><b>0.656</b></td><td>0.577</td><td><b>0.255</b></td></tr>
+<tr><td>MAIRA-2 (w/ grounding)</td><td>0.304</td><td>0.489</td><td>0.283</td><td>0.397</td><td>0.751</td><td>0.603</td><td>0.496</td><td>0.120</td></tr>
+<tr><td>MAIRA-2 (w/o grounding)</td><td>0.386</td><td>0.554</td><td>0.384</td><td>0.533</td><td>0.693</td><td>0.576</td><td>0.501</td><td>0.143</td></tr>
+<tr><td>MedGemma-4B-IT</td><td>0.382</td><td>0.547</td><td>0.494</td><td>0.692</td><td>0.714</td><td>0.580</td><td>0.532</td><td>0.112</td></tr>
+<tr><td>CURE (GRG)</td><td>0.314</td><td>0.463</td><td>0.290</td><td>0.376</td><td>0.725</td><td>0.526</td><td>0.447</td><td>0.077</td></tr>
+<tr><td>CURE (AGRG)</td><td><u>0.400</u></td><td><u>0.559</u></td><td><u>0.539</u></td><td><u>0.749</u></td><td><u>0.783</u></td><td><u>0.645</u></td><td><b>0.592</b></td><td><u>0.181</u></td></tr>
+<tr><td><b>CURE (AGRG+GRG)</b></td><td><b>0.415</b></td><td><u>0.562</u></td><td><b>0.582</b></td><td><b>0.781</b></td><td><b>0.792</b></td><td><u>0.655</u></td><td><b>0.597</b></td><td>0.176</td></tr>
+</tbody></table></div>
+<p>RG 是“把 AGRG/GRG 设置重新利用来写整篇报告”。<strong>CURE(AGRG) 把 29 个解剖位置的描述拼成报告</strong>，召回登顶（R-Ma 0.539 / R-Mi 0.749）；<strong>CURE(AGRG+GRG) 进一步把召回推到 0.582 / 0.781、并拿下 F1-Ma 0.415、Cos. 0.792、RaTES 0.597</strong>。最强的 CXRMate-RRG24 在 RadGraph F1 上领先（0.255）——但论文指出这与它<strong>直接用 RL 优化 RadGraph F1 当奖励</strong>有关，属预期之中。CURE 在“覆盖全（召回）+ 语义对（Cos./RaTES）”上的优势，正来自 AGRG 逐区域问诊的全面性。</p>
+<h3>7.5 幻觉与可靠性：六区域异常幻觉 26.5%→8.78%，但要诚实读懂个别反例</h3><p>论文用 Gemini 2.5 Flash Lite 做 NLI（自然语言推断），把模型对某解剖区域的生成描述与完整 ground-truth 报告比对，量化三件事：异常发现幻觉率、矛盾率、蕴含率。评测在 6 个关键解剖位置各 300 例（共 1800 张）上做。</p>
+<div class="table-wrap"><table><caption><strong>表 6.</strong> AGRG 幻觉分析（论文 Tab. 6 全转写）。Abn.=异常发现幻觉率(%)↓，Cont.=矛盾率(%)↓，Entail.=蕴含率(%)↑。每个解剖位置给出 MAIRA-2 / CURE 两行。</caption><thead><tr><th>解剖位置</th><th>Model</th><th>Abn.↓</th><th>Cont.↓</th><th>Entail.↑</th></tr></thead><tbody>
+<tr><td rowspan="2">Cardiac Silhouette</td><td>MAIRA-2</td><td><b>2.00</b></td><td>8.00</td><td>25.00</td></tr>
+<tr><td>CURE</td><td>25.67</td><td>27.67</td><td><b>47.33</b></td></tr>
+<tr><td rowspan="2">Left Clavicle</td><td>MAIRA-2</td><td>59.00</td><td>22.67</td><td>5.00</td></tr>
+<tr><td>CURE</td><td><b>1.00</b></td><td><b>7.00</b></td><td><b>32.67</b></td></tr>
+<tr><td rowspan="2">Left Lung</td><td>MAIRA-2</td><td>12.00</td><td>56.33</td><td>21.67</td></tr>
+<tr><td>CURE</td><td><b>7.00</b></td><td><b>32.33</b></td><td><b>41.67</b></td></tr>
+<tr><td rowspan="2">Right Clavicle</td><td>MAIRA-2</td><td>62.67</td><td>20.33</td><td>1.67</td></tr>
+<tr><td>CURE</td><td><b>1.00</b></td><td><b>7.33</b></td><td><b>27.67</b></td></tr>
+<tr><td rowspan="2">Right Lung</td><td>MAIRA-2</td><td><b>10.67</b></td><td>53.67</td><td>29.33</td></tr>
+<tr><td>CURE</td><td>11.67</td><td><b>27.00</b></td><td><b>46.00</b></td></tr>
+<tr><td rowspan="2">Spine</td><td>MAIRA-2</td><td>12.67</td><td>38.33</td><td>13.00</td></tr>
+<tr><td>CURE</td><td><b>6.33</b></td><td><b>3.33</b></td><td><b>41.67</b></td></tr>
+<tr><td rowspan="2"><b>Mean Anatomies</b></td><td>MAIRA-2</td><td>26.50</td><td>33.22</td><td>15.94</td></tr>
+<tr><td><b>CURE</b></td><td><b>8.78</b></td><td><b>17.44</b></td><td><b>39.50</b></td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：表 6 平均看 CURE 完胜（幻觉 26.5%→8.78%），但 Cardiac Silhouette 这一行 CURE 的异常幻觉 25.67% 反而<strong>远高于</strong> MAIRA-2 的 2.00%——这不是打脸吗？该怎么诚实地读这张表？</p><p class="answer">答：不能只看“平均赢”。两件事要分开说清楚。<strong>(1) 骨结构是 AGRG 机制最对症的地方，所以降幅最猛。</strong>左/右锁骨从 59%/62.67% 暴跌到 1.00%/1.00%——锁骨绝大多数时候正常，phrase grounding 几乎只在“有骨折”时标注它，于是 MAIRA-2 一被问就报骨折（正是图 1）；AGRG 给了锁骨大量“正常”监督，异常基率被拉回，幻觉随之崩塌。这是 §5.3 路径 A/B 的最强现场验证。<strong>(2) Cardiac Silhouette 是诚实的反例，但 CURE 的失败模式不同。</strong>看全三列：CURE 在心影上异常幻觉(25.67)和矛盾(27.67)都比 MAIRA-2 差，但<strong>蕴含率反而更高（47.33 vs 25.00）</strong>——说明 CURE 对心影<em>说得更多、更具体</em>（更多真阳描述被蕴含），代价是也更容易在这个本就难判的区域（心影大小判断依赖比例、个体差异大）误报。论文据此只敢说“<em>across almost all categories</em>”CURE 矛盾更低、蕴含更高，<strong>明确承认个别解剖（如心影）MAIRA-2 幻觉率略低</strong>。把这条放进 §5.3 的框架：AGRG 修的是“被问就报异常”的<em>系统性偏置</em>，对“本身难判、正常/异常边界模糊”的区域（心影）帮助有限，甚至因为“更敢说”而在单一指标上吃亏。</p><p class="takeaway"><strong>Takeaway：</strong>表 6 的正确读法是“<strong>系统性偏置被大幅修正（骨结构幻觉近乎归零），但非全胜</strong>”——心影这类边界模糊区域 CURE 反而幻觉更高。把它当“平均砍 18.6%”一句带过，会掩盖这个真实的失败模式。</p></div></section>
+
+<section id="ablations"><h2>8. 消融：v1→v9 逐件加，证明“课程 + 解剖预训练 + 调参”各自有功</h2><p>表 7 是这篇最 kexue 的部分——从“裸多任务”(v1) 出发，每次只加一个部件，看它对四类 grounding 任务的边际贡献。</p>
+<div class="table-wrap"><table><caption><strong>表 7.</strong> 消融研究（论文 Tab. 7 转写，<strong>代表性列节选</strong>：保留 AGRG/GRG 的 IoU 与 PG 的三数据集 IoU-Mi，略去各 CXRS 列以控宽，全表见原文）。CL(f)=每 f 步重加权，CIG(s)=Chest ImaGenome 预训练 s 步，HPS=超参搜索。<b>粗体</b>=最佳，<u>下划线</u>=次佳。</caption><thead><tr><th>配置</th><th>AGRG IoU↑</th><th>GRG(PC) IoU↑</th><th>GRG(VD) IoU↑</th><th>PG·MS↑</th><th>PG·PC↑</th><th>PG·VD↑</th></tr></thead><tbody>
+<tr><td>MAIRA-2（外部基线）</td><td>0.249</td><td>0.256</td><td>0.217</td><td>0.495</td><td>0.280</td><td>0.161</td></tr>
+<tr><td>v1: Base（无 Aug/CL/CIG）</td><td>0.380</td><td>0.171</td><td>0.207</td><td>0.388</td><td>0.356</td><td>0.191</td></tr>
+<tr><td>v2: +Aug</td><td>0.360</td><td>0.185</td><td>0.221</td><td>0.398</td><td>0.366</td><td>0.203</td></tr>
+<tr><td>v3: +Aug +CL(1.5k)</td><td>0.399</td><td>0.179</td><td>0.224</td><td>0.409</td><td>0.383</td><td>0.210</td></tr>
+<tr><td>v4: +Aug +CL(2k)</td><td>0.394</td><td>0.193</td><td>0.222</td><td>0.393</td><td>0.383</td><td>0.196</td></tr>
+<tr><td>v5: +Aug +CL(3k)</td><td>0.411</td><td>0.180</td><td>0.217</td><td>0.430</td><td>0.393</td><td>0.205</td></tr>
+<tr><td>v6: +Aug +CIG(1k) +CL(3k)</td><td>0.454</td><td>0.195</td><td><u>0.232</u></td><td>0.457</td><td>0.394</td><td>0.219</td></tr>
+<tr><td>v7: +Aug +CIG(2k) +CL(3k)</td><td>0.448</td><td>0.203</td><td>0.227</td><td>0.467</td><td>0.403</td><td>0.222</td></tr>
+<tr><td>v8: +Aug +CIG(3k) +CL(3k)</td><td><u>0.486</u></td><td><u>0.207</u></td><td><b>0.233</b></td><td><u>0.495</u></td><td><u>0.421</u></td><td><u>0.224</u></td></tr>
+<tr><td><b>v9 (CURE): +Aug +CIG(3k) +CL(3k) +HPS</b></td><td><b>0.601</b></td><td><b>0.265</b></td><td>0.262</td><td><b>0.552</b></td><td><b>0.453</b></td><td><b>0.243</b></td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：从表 7 能读出几个独立结论？哪一步贡献最大，又有没有“加了反而退步”的细节？</p><p class="answer">答：至少四条，且彼此独立可验证。<strong>(1) 仅任务重构就够强：</strong>最朴素的 v1（无任何花活）在 AGRG（0.380 vs 0.249）和零样本 VinDr PG（0.191 vs 0.161）上<strong>已经超过 MAIRA-2</strong>——这单独证明“细粒度任务重构”本身就是主要功臣，不靠后面的部件。<strong>(2) 课程的“频率”不是越勤越好：</strong>v3/v4/v5 把重加权间隔从 1.5k→2k→3k，<strong>3k(v5) 整体最好</strong>；更新太频繁会去追逐评测子集的噪声（每次只抽 100–200 条评测），3000 步的间隔让误差估计更稳——这与 §5.2“别追噪声”一致，故最终采用 3k。<strong>(3) 解剖预训练贡献最大且单调：</strong>v6→v8 把 CIG 预训练从 1k 加到 3k，AGRG IoU 0.454→0.486、MS-CXR PG 追平 MAIRA-2 的 0.495——印证 §4“先装 grounding 再精修”的顺序因果。<strong>(4) HPS 一步跳变最大：</strong>v8→v9 仅加超参搜索，AGRG IoU 就从 0.486 跳到 0.601、GRG(PC) 0.207→0.265 反超 MAIRA-2。也有<strong>诚实的局部退步</strong>：v1→v2 加 Aug 时 AGRG IoU 反而从 0.380 掉到 0.360（增广对纯解剖定位短期有扰动），但它稳住了 PG（三列都升），属可接受的权衡。</p><p class="takeaway"><strong>Takeaway：</strong>表 7 把“CURE 为什么 work”拆得很干净：<strong>任务重构是地基（v1 已超 SOTA），课程频率要选稳（3k）、解剖预训练要够久（3k）、HPS 临门一脚最关键</strong>——四个部件各司其职，没有一个是装饰。</p></div>
+<figure class="fig-wide"><a href="../assets/figures/cure/cure_fig3.png"><img src="../assets/figures/cure/cure_fig3.png" alt="VinDr-CXR 结节和 PadChest-GR 手术钉的定性定位：绿=GT，红=预测，CURE 比 MAIRA-2 更贴近真值"></a><figcaption><strong>图 3 · 定性定位（论文 Fig. 3）。</strong>绿框=ground truth，红框=模型预测。<strong>左两幅（VinDr-CXR “Nodule or mass”）：</strong>MAIRA-2 把框错放到右下肺野，CURE 准确框住左上肺的真结节。<strong>右两幅（PadChest-GR “Surgical staples”）：</strong>MAIRA-2 预测落在相关解剖区域之外，CURE 正确框住手术钉与植入装置。这两个都是<strong>难例（罕见/小目标）</strong>，定性上印证了表 2 的 IoU 优势——课程把预算倒向难类，难例定位随之改善。</figcaption></figure></section>
+
+<section id="limitations"><h2>9. 局限与复现门槛：什么时候 CURE 帮不上忙，甚至更糟？</h2><div class="table-wrap"><table><caption><strong>表（综合 §7–§9）.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文/方法信息</th><th>读者应如何理解</th></tr></thead><tbody>
+<tr><td>个别解剖反而更易幻觉</td><td>表 6：Cardiac Silhouette 异常幻觉 25.67% &gt; MAIRA-2 2.00%</td><td>AGRG 修的是“被问就报异常”的<strong>系统偏置</strong>；对心影这类边界模糊、依赖比例判断的区域帮助有限，甚至因“更敢说”而单指标吃亏</td></tr>
+<tr><td>纯文本指标输给私有/RL 模型</td><td>表 4/5：CheXbert F1、RadGraph F1 不及 MAIRA-2(USMix 私有预训练) / CXRMate-RRG24(RL 优化 RadGraph)</td><td>CURE 的目标是 grounding 可靠性，<strong>不是文本天花板</strong>；与“额外私有数据/直接优化该指标”的模型比纯文本本就不公平</td></tr>
+<tr><td>仅评测胸片（CXR）</td><td>三训练集 + 一零样本集全是胸部 X 光</td><td>方法学（课程 + AGRG 重构）原则上可迁移，但<strong>论文未在 CT/MRI/其它部位验证</strong>，跨模态泛化未知</td></tr>
+<tr><td>样本预算极小（1.74%）</td><td>9000 步最多过 22.5 万条 ≈ 全量 1.74%</td><td>课程的价值正建立在“预算稀缺”上；若预算充裕，size-proportional 与课程的差距可能收窄——论文未做此对照</td></tr>
+<tr><td>幻觉评测依赖 LLM 裁判</td><td>表 6 的 NLI 用 Gemini 2.5 Flash Lite 判定矛盾/蕴含</td><td>裁判模型本身可能有偏/噪声；绝对数值需谨慎，<strong>趋势（系统性下降）比单点更可信</strong></td></tr>
+<tr><td>算力门槛（正面）但卡时未披露</td><td>LoRA(r=16)+4-bit、batch 25、9000 步；GPU 卡数/墙钟未给</td><td>复现门槛低（可单卡），但<strong>论文未说明</strong>具体卡时，无法估 GPU-hours</td></tr>
+</tbody></table></div>
+<div class="formula-note"><p class="note-title">这篇最容易被过度宣传成什么</p><p>容易被说成“一个框架通杀幻觉、还不用加数据”。更严谨的说法是：<strong>CURE 用“解剖级报告重构（补齐正常监督、拉回异常基率）+ 误差感知课程（负反馈把预算动态倒向短板）”两个不加数据的方法学改动，把一个本无 grounding 的 MedGemma-4B 调成定位 IoU 翻倍（0.249→0.601）、六区域<em>系统性</em>异常幻觉砍掉 18.6 个百分点的可靠胸片报告器；但它只在胸片上验证、纯文本指标输给私有/RL 模型、且对心影等边界模糊区域反而可能更易幻觉。</strong>它推进的核心变量是“训练方法学对可靠性的作用”，不是宣告“医学 VLM 幻觉已解决”。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>CURE 在“不加任何新数据、不改架构”的硬约束下，靠两个方法学杠杆把医学 VLM 的可靠性撬起来——<strong>把 finding-generation 重构成逐区域、正常异常都监督的 AGRG</strong>（从源头把 phrase-grounding 的异常基率 ≈1 拉回真实值，掐掉“一问就报异常”的假阳性），以及<strong>误差感知课程 $p_i=e_i/\sum e_j$</strong>（一个把各任务/各类误差拉平的负反馈控制器，把稀缺的样本预算动态倒向当前最薄弱处）；于是一块 LoRA 微调的 MedGemma-4B，解剖级定位 IoU 翻倍、六区域异常幻觉降 18.6 个百分点。</p><div class="guide"><strong>三个 takeaway：</strong><ol><li><strong>可靠性可以靠“重组监督”来买，而非靠加数据</strong>：AGRG 不引入一张新图，只是让每个区域都被问到、正常也要描述——异常的“先验概率”被修回真实基率，假阳性幻觉随之崩塌（骨结构从 59%+ 到 1%）。这是“改数据的<em>形状</em>而非<em>数量</em>”的范例。</li><li><strong>误差归一化采样是控制器，不是简单的“多刷难题”</strong>：式 2 的不动点是“各源误差均衡”，与 size-proportional（开环、按大小）和 SPL（偏好易样本）符号相反；图 4/5 把这条负反馈跑成了可见曲线（GRG 权重升、AGRG 权重降、Cardiomegaly 迅速让出）。</li><li><strong>诚实读表，别被平均值骗</strong>：表 6 平均砍 18.6%，但心影一行 CURE 反而更易幻觉；表 4/5 纯文本输给私有/RL 模型。优点（系统偏置被修正）和软肋（边界模糊区域、纯文本天花板）来自同一组设计取舍。</li></ol></div><p>留给后续的两个反驳/验证路径：<strong>(a)</strong> “课程 vs size-proportional”的<em>等预算</em>直接对照——论文证了课程优于裸多任务，但未在<em>充裕</em>样本预算下比课程相对 size-proportional 的增益是否仍显著（§9 已点出预算稀缺是前提）；<strong>(b)</strong> 把 AGRG 重构迁到 CT/MRI 或其它部位，验证“补齐正常监督→拉回异常基率”是否是跨模态通用的去幻觉机制，还是只在“区域多数正常”的胸片骨结构上特别灵。</p></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Pablo Messina, Andrés Villa, Juan León Alcázar, Karen Sánchez, Carlos Hinojosa, Denis Parra, Álvaro Soto, Bernard Ghanem. <em>CURE: Curriculum-guided Multi-task Training for Reliable Anatomy Grounded Report Generation</em>. CVPR 2026（CVF pp. 36279–36289）/ arXiv:2601.15408v2（PUC Chile · CENIA · iHEALTH · KAUST）。<strong>代码：<code>github.com/PabloMessina/CURE</code>（HTTP 200）；模型权重：<code>huggingface.co/pamessina/medgemma-4b-it-cure</code>（HTTP 200）；CVF PDF（HTTP 200）。</strong></li><li>本文公式（式 1–2、自适应 $\alpha$、size-proportional baseline）、表格（表 1–7）与全部实验数字以 arXiv PDF 为准。表 5（RG）与表 7（消融）原表列数较多，本页<strong>节选代表性列并已在表题注明“全表见原文”</strong>（表 5 略去 P-Ma/Mi，表 7 略去各 CXRS 列）；表 6（幻觉）为全转写。所有 ± 标准差源自论文的 1000 次 bootstrap。</li><li><strong>kexue:su 方法与归因（红线说明）：</strong>第 1、5、7、8 节的机制推导——“误差归一化采样为何是自平衡负反馈控制器（不动点=误差均衡）vs size-proportional 开环 vs SPL 易样本偏好”、“AGRG 为何从异常基率/缺失负类两路结构性去幻觉”——均按 <code>kexue:su</code> 方法（动机先行、假设显式、≥2 条独立路径交叉验证）<strong>重新推导</strong>。本次 <code>kexue:su</code> 语料检索<strong>未返回任何与课程学习/自步学习/类别不平衡重加权/采样调度相关的卡片</strong>（注入检索仅返回宇宙学、植物学、恒星色彩、数学随笔等明显离题条目；本地 CLI 检索在本环境不可用）。因此本文<strong>不作任何 [archives/XXXX] 苏剑林归因</strong>——按红线，仅应用方法学、不虚构引用。文中 MedGemma/MAIRA-2/GRPO-RL(CXRMate-RRG24)/CXRFEScore/RadGraph 等均按各自原始论文归属，未借 kexue 转引。</li><li>图像说明：图 1（teaser，p1）、图 2（总览，p4）、图 3（定性，p8）为本地 PNG，由 <code>extract_figures.py</code>（PyMuPDF，caption 锚定）从 arXiv PDF 裁切；<strong>图 4/图 5（附录 p13 的课程权重演化）为矢量绘图，原 caption 锚定提取会截断顶部图例，故改用 PyMuPDF 按页坐标重裁（clip 至完整坐标轴+图例）后采用</strong>，路径 <code>assets/figures/cure/</code>。提取器跳过的附录文本面板（fig 5/6/7 的另一些 caption 命中处，含纯表格/无图形）未使用，相关内容已在正文转写为 HTML 表格/文字。</li></ol></section>
+</main>
+
+</article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline / 闭环</a></li><li><a href="#method">方法 / 课程 + AGRG</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融 / 定性</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>CURE: Curriculum-guided Multi-task Training for Reliable Anatomy Grounded Report Generation</dd><dt>Venue</dt><dd>CVPR 2026 · Medical AI（CVF pp.36279–36289）</dd><dt>底座</dt><dd>MedGemma-4B-IT + LoRA(r=16)、4-bit</dd><dt>核心</dt><dd>误差感知课程 $p_i=e_i/\sum e_j$ + 解剖级报告重构 AGRG；仅公开数据、不加新数据</dd><dt>arXiv</dt><dd>2601.15408</dd><dt>Topic</dt><dd>Grounded Radiology Report Generation</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：MAIRA-2 编出锁骨骨折 vs CURE 正确</li><li>式 2：误差归一化采样 $p_i=e_i/\sum e_j$</li><li>图 4/5：采样权重自平衡曲线</li><li>表 3：AGRG IoU 0.601 vs 0.249（翻倍）</li><li>表 6：六区域异常幻觉 26.5%→8.78%</li><li>表 7：v1 已超 SOTA，HPS 临门一脚</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> CURE 深读</p><p><span class="status-good">figures</span> 5 张 PNG（fig1/2/3/4/5）</p><p><span class="status-good">code</span> 开源 repo + HF 权重（均 200）</p><p><span class="status-warn">scope</span> 仅胸片 / 心影反而更易幻觉 / 纯文本输私有模型</p></div></section></aside></div></body></html>

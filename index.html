@@ -226,6 +226,12 @@ body.lb-lock{overflow:hidden}
   @page{margin:18mm 16mm}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
 </style>
 <script defer>
 (function(){
@@ -343,7 +349,7 @@ body.lb-lock{overflow:hidden}
 })();
 </script>
 </head><body>
-<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>按研究领域浏览获奖论文 · Best Paper first</small></p></div><nav class="top-nav"><a href="#papers">论文</a><a href="manifest.json">manifest</a><a href="assets/figures_manifest.json">figures manifest</a></nav></div></header>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>按研究领域浏览获奖论文 · Best Paper first</small></p></div><nav class="top-nav"><a href="#papers">论文</a></nav></div></header>
 <main class="home">
 <section class="home-panel">
   <div class="home-hero">
@@ -477,6 +483,40 @@ body.lb-lock{overflow:hidden}
       <img src="assets/figures/medmo/medmo_fig1.png" alt="MedMO thumbnail" loading="lazy">
       <div><h3>MedMO: Grounding and Understanding Multimodal Large Language Model for Medical Images</h3><p><strong>Medical AI (CVPR 2026).</strong> 从 Qwen3-VL-8B 后训练、仅用公开数据的开源医学多模态大模型：把“看懂影像”和“框出病灶”这对数据经济学相反的需求，拆成四阶段渐进后训练——18.5M 低分辨率（768²）先打底跨模态对齐，再升到 1280² 注入 grounding，指令微调对齐问答口吻，最后 GRPO 强化。RL 阶段引入纯几何、可验证的 bounding-box 奖励（对角线归一 L1 + GIoU + 匈牙利匹配 + FP/FN 惩罚），只打磨空间精度而不毒化语言。MedMO-8B-Next 在 VQA 均分 72.7%、grounding 六任务均分 56.8（最强基线 17.2），DeepLesion 上 40.5 IoU 对多个基线的 0.00。</p><p class="mini">领域：Medical AI · 医学多模态大模型 / 理解 + grounding 的四阶段后训练</p><div class="card-links"><a href="https://genmilab.github.io/MedMO-Page">Project</a><a href="https://github.com/genmilab/MedMO">Code</a><a href="papers/medmo.html">Blog Digest</a></div></div>
     </article>
+    <article class="paper-card" data-tags="Medical Medical AI medical multimodal benchmark MLLM evaluation complex reasoning fine-grained capability decomposition seven dimensions VQA MCQ open-ended LLM-as-Judge long-tail generalization GPT-5 Qwen3-VL clinical reasoning small-object detection causal reasoning temporal prediction multi-source integration NUS Nanjing-University TUM medcmr completed">
+      <img src="assets/figures/medcmr/medcmr_fig1.png" alt="Med-CMR thumbnail" loading="lazy">
+      <div><h3>Med-CMR: A Fine-Grained Benchmark Integrating Visual Evidence and Clinical Logic for Medical Complex Multimodal Reasoning</h3><p><strong>Medical AI (CVPR 2026).</strong> 首个对临床复杂推理做细粒度（七维）能力分解的医学多模态基准：把“医学多模态推理”这一个总分拆成 3 视觉（小目标检测/细节判别/空间理解）+ 4 推理（时序预测/因果推理/长尾泛化/多源整合）共七维，配 MCQ 正确率 + 开放题四维加权 LLM 打分（视觉准确性/真值正确性各权 4、一致性/连贯性各权 1）的双轨协议。20,653 道题源自真实期刊病例，覆盖 11 系统 × 12 模态，经专家+模型两阶段审查。18 个模型评测：GPT-5 居首（MCQ 57.81/开放 48.70），但医学微调模型并不稳定优于通用模型、长尾泛化全场最难。</p><p class="mini">领域：Medical AI · 医学复杂多模态推理评测基准 / 七维能力分解 + 双轨打分</p><div class="card-links"><a href="https://github.com/LsmnBmnc/Med-CMR">Project</a><a href="https://arxiv.org/abs/2512.00818">arXiv</a><a href="papers/medcmr.html">Blog Digest</a></div></div>
+    </article>
+    <article class="paper-card" data-tags="Medical Medical AI radiology report generation RRG GRPO DPO direct preference optimization reinforcement learning RL-only FactScore reward zero-reward rate data-efficient chest X-ray CheXpert-Plus MIMIC-CXR Qwen2.5-VL recall clinical effectiveness Oracle-Health University-of-Queensland orapo completed">
+      <img src="assets/figures/orapo/orapo_fig1.png" alt="OraPO thumbnail" loading="lazy">
+      <div><h3>OraPO: Oracle-educated Reinforcement Learning for Data-efficient and Factual Radiology Report Generation</h3><p><strong>Medical AI (CVPR 2026).</strong> 首个把 DPO 耦合进 GRPO 的 RL 算法：GRPO 在 RRG 上一上来约 30% 的 group 全 0 奖励、advantage≈0、梯度近乎消失，OraPO 把这些“失败 rollout”当现成负例、以 ground-truth 为正例做轻量 DPO，正好补上 GRPO 缺的梯度；按 per-prompt 的 Zero-Reward Rate 自适应退火在 GRPO/DPO 间切换（“先教育后探索”飞轮），配偏 recall 的 FactScore 事实级稠密奖励。单阶段纯 RL、3B Qwen2.5-VL、1K 样本、4×A10，CheXpert Plus F1 0.341 / Recall 0.832、MIMIC-CXR F1 0.357，较前 SOTA 数据少 2–3 个数量级。</p><p class="mini">领域：Medical AI · 数据高效放射报告生成 / Oracle 教育式 GRPO + 事实级奖励</p><div class="card-links"><a href="https://arxiv.org/abs/2509.18600">arXiv</a><a href="papers/orapo.html">Blog Digest</a></div></div>
+    </article>
+    <article class="paper-card" data-tags="Medical Medical AI radiology report generation RRG visual grounding anatomy-grounded AGRG error-aware curriculum learning self-paced learning hallucination MedGemma-4B LoRA MAIRA-2 Chest ImaGenome MS-CXR PadChest-GR VinDr-CXR public-data-only cure completed">
+      <img src="assets/figures/cure/cure_fig1.png" alt="CURE thumbnail" loading="lazy">
+      <div><h3>CURE: Curriculum-guided Multi-task Training for Reliable Anatomy Grounded Report Generation</h3><p><strong>Medical AI (CVPR 2026).</strong> 不加任何新数据，只动训练方法学：把 finding-generation 重构成逐区域、正常异常都监督的 AGRG（把异常基率从 phrase-grounding 的 ≈1 拉回真实值），再用误差归一化课程 p_i=e_i/∑e_j 把稀缺采样预算动态倒向短板。一块 LoRA 微调的 MedGemma-4B：解剖级定位 IoU 0.249→0.601（翻倍），六区域异常幻觉 26.5%→8.78%（−18.6pt）。</p><p class="mini">领域：Medical AI · 可靠放射报告生成 / 误差感知课程 + 解剖级报告重构</p><div class="card-links"><a href="https://github.com/PabloMessina/CURE">Code</a><a href="https://arxiv.org/abs/2601.15408">arXiv</a><a href="papers/cure.html">Blog Digest</a></div></div>
+    </article>
+    <article class="paper-card" data-tags="Medical Medical AI agentic MLLM pixel-level visual reasoning biomedical segmentation referring segmentation reasoning segmentation mask refinement Markov decision process MDP cold-start SFT GRPO reinforcement learning fine-grained rule reward region-based click placement progressive IoU reward MedSAM2 tool-augmented Qwen2.5-VL BiomedParseData decoupled reasoning cross-domain generalization Zhejiang University Shanghai AI Lab ibisagent completed">
+      <img src="assets/figures/ibisagent/ibisagent_fig1.png" alt="IBISAgent thumbnail" loading="lazy">
+      <div><h3>IBISAgent: Reinforcing Pixel-Level Visual Reasoning in MLLMs for Universal Biomedical Object Referring and Segmentation</h3><p><strong>Medical AI (CVPR 2026).</strong> 不改 MLLM 架构、不引入隐式 &lt;SEG&gt; token：把生物医学分割重写成多步 Markov 决策——模型交替吐 &lt;think&gt; 推理与 &lt;action&gt; 文本点击坐标(Target,±1,Coordinate2d)，调用冻结的 MedSAM2 把点击变 mask、半透明叠回原图当观测，一点一看迭代精修。两段训练：冷启动 SFT(456K 自动模拟点击轨迹) + GRPO(无 KL) RL 配五类细粒度规则奖励(格式/答案/区域点击放置 正点落FN负点落FP/渐进IoU单调不降/轨迹长度)。基座 Qwen2.5-VL-7B、16×A100。三测试集 IoU 全面领先(域内 85.58、域外 80.63、外院 72.09，对手最高仅 50.74)，去掉细粒度奖励 IoU 崩到 11.77；代价是 ~3× 推理延迟。</p><p class="mini">领域：Medical AI · 像素级视觉推理智能体 / 把分割重写成多步 MDP</p><div class="card-links"><a href="https://github.com/Yankai96/IBISAgent">Code</a><a href="https://arxiv.org/abs/2601.03054">arXiv</a><a href="papers/ibisagent.html">Blog Digest</a></div></div>
+    </article>
+    <article class="paper-card" data-tags="Medical Medical AI pathology whole slide image WSI foundation model adaptive region ARG soft inclusion region structuring loss RSL SPF molecular guided RNA protein cross-modal alignment iBOT InfoNCE CONCH scGPT ESM-2 ROI linear probing TCGA GTEx data-efficient XJTU Cambridge care completed">
+      <img src="assets/figures/care/care_fig1.png" alt="CARE thumbnail" loading="lazy">
+      <div><h3>CARE: A Molecular-Guided Foundation Model with Adaptive Region Modeling for Whole Slide Image Analysis</h3><p><strong>Medical AI (CVPR 2026).</strong> 把 WSI 的“怎么切区域”从固定网格改成可学习的软路由：soft inclusion 软归属 + top-3 候选 + “语义×空间”得分重指派出形态连贯的自适应区域（像 NLP 的词级 token），Region Structuring Loss 把“期望排名”拉向 E*=0.5 顶住塌缩，SPF 用“覆盖先验⊕门控语义”聚成 WSI/ROI 表示；再用 iBOT 自监督→RNA→蛋白 InfoNCE 的分子引导课程。仅约 1/10 数据、34,277 WSI，33 任务平均分子预测 LR 69.5、生存 C-index 58.0 双双领先，形态分类追平最强 TITAN。</p><p class="mini">领域：Medical AI · 病理全切片基础模型 / 自适应区域 + 分子引导对齐</p><div class="card-links"><a href="https://github.com/zdipath/CARE">Code</a><a href="https://arxiv.org/abs/2602.21637">arXiv</a><a href="papers/care.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+  <h2 style="margin-top:26px">Vision-Language Models</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Top Paper candidate Vision-Language Model video understanding grounding pointing tracking open weights open data no distillation packing message-tree token weighting AllenAI molmo2 completed">
+      <img src="assets/figures/molmo2/molmo2_teaser.png" alt="Molmo2 thumbnail" loading="lazy">
+      <div><h3>Molmo2: Open Weights and Data for Vision-Language Models with Video Understanding and Grounding</h3><p><strong>Top Paper (candidate).</strong> 权重、数据、代码全开且不蒸馏闭源模型的 SoTA 视频-语言模型族：9 个新数据集 + packing/message-tree（×15 训练）+ token 加权，把 2D pointing 延拓到时空，视频指点/追踪压过 Gemini 3 Pro。</p><p class="mini">领域：Open Video-Language Model · Pointing / Grounding</p><div class="card-links"><a href="https://github.com/allenai/molmo2">Code</a><a href="https://arxiv.org/abs/2601.10611">arXiv</a><a href="papers/molmo2.html">Blog Digest</a></div></div>
+    </article>
+  </div>
+  <h2 style="margin-top:26px">Video Matting / Segmentation</h2>
+  <div class="card-grid">
+    <article class="paper-card" data-tags="Top Paper candidate Video Matting learned quality evaluator MQE memory propagation reference frame real-world dataset VMReal DINOv3 alpha matting NTU SenseTime matanyone2 completed">
+      <img src="assets/figures/matanyone2/matanyone2_fig1.png" alt="MatAnyone 2 thumbnail" loading="lazy">
+      <div><h3>MatAnyone 2: Scaling Video Matting via a Learned Quality Evaluator</h3><p><strong>Top Paper (candidate).</strong> 用一个无需真值 alpha 的 Matting Quality Evaluator（MQE）逐像素判可靠/错误，既当训练在线监督、又当离线数据仲裁器，融合视频抠像（语义稳）与图像抠像（边界利）造出 28K 片段 / 2.4M 帧的真实数据集 VMReal；再配 reference-frame 策略治长视频外观突变。纯 CNN、仅需首帧 mask，合成与真实基准全指标第一。</p><p class="mini">领域：Video Matting · Learned Quality Evaluator</p><div class="card-links"><a href="https://pq-yang.github.io/projects/MatAnyone2/">Project</a><a href="https://github.com/pq-yang/MatAnyone2">Code</a><a href="papers/matanyone2.html">Blog Digest</a></div></div>
+    </article>
   </div>
 <!-- PAPERS:END -->
 </section>
@@ -505,12 +545,47 @@ body.lb-lock{overflow:hidden}
   <tr><td>LEMON</td><td>Medical AI (CVPR 2026)</td><td>Medical AI (CVPR 2026)</td><td>完成</td><td>5 图 · 6 表 · 公式passed</td><td><a href="papers/lemon.html">Blog Digest</a></td></tr>
   <tr><td>OctoMed</td><td>Medical AI (CVPR 2026)</td><td>Medical AI (CVPR 2026)</td><td>完成</td><td>9 图 · 4 表 · 公式passed</td><td><a href="papers/octomed.html">Blog Digest</a></td></tr>
   <tr><td>MedMO</td><td>Medical AI (CVPR 2026)</td><td>Medical AI (CVPR 2026)</td><td>完成</td><td>4 图 · 6 表 · 公式passed</td><td><a href="papers/medmo.html">Blog Digest</a></td></tr>
+  <tr><td>Med-CMR</td><td>Medical AI (CVPR 2026)</td><td>Medical AI (CVPR 2026)</td><td>完成</td><td>3 图 · 3 表 · 公式passed</td><td><a href="papers/medcmr.html">Blog Digest</a></td></tr>
+  <tr><td>OraPO</td><td>Medical AI (CVPR 2026)</td><td>Medical AI (CVPR 2026)</td><td>完成</td><td>2 图 · 7 表 · 公式passed</td><td><a href="papers/orapo.html">Blog Digest</a></td></tr>
+  <tr><td>CURE</td><td>Medical AI (CVPR 2026)</td><td>Medical AI (CVPR 2026)</td><td>完成</td><td>5 图 · 9 表 · 公式passed</td><td><a href="papers/cure.html">Blog Digest</a></td></tr>
+  <tr><td>IBISAgent</td><td>Medical AI (CVPR 2026)</td><td>Medical AI (CVPR 2026)</td><td>完成</td><td>7 图 · 6 表 · 公式passed</td><td><a href="papers/ibisagent.html">Blog Digest</a></td></tr>
+  <tr><td>CARE</td><td>Medical AI (CVPR 2026)</td><td>Medical AI (CVPR 2026)</td><td>完成</td><td>6 图 · 8 表 · 公式passed</td><td><a href="papers/care.html">Blog Digest</a></td></tr>
+  <tr><td>Molmo2</td><td>Top Paper (candidate)</td><td>Vision-Language Models</td><td>完成</td><td>3 图 · 6 表 · 公式passed</td><td><a href="papers/molmo2.html">Blog Digest</a></td></tr>
+  <tr><td>MatAnyone 2</td><td>Top Paper (candidate)</td><td>Video Matting / Segmentation</td><td>完成</td><td>11 图 · 6 表 · 公式passed</td><td><a href="papers/matanyone2.html">Blog Digest</a></td></tr>
 <!-- STATUS:END -->
   </tbody></table></div>
 </section>
 <footer class="home-panel" style="margin-top:18px"><p class="source-note">数据来源：CVPR/CVF 公开入口、CVF OpenAccess、论文 PDF / Supplement、项目主页、作者/机构页面。生成日期：2026-06-09。本地 manifest：<a href="manifest.json">manifest.json</a>；图表 manifest：<a href="assets/figures_manifest.json">assets/figures_manifest.json</a>。</p></footer>
 </main>
 <script>
-const buttons=[...document.querySelectorAll('.filterbar button')];const cards=[...document.querySelectorAll('.paper-card')];const search=document.getElementById('search');let current='all';function apply(){const q=(search.value||'').toLowerCase();cards.forEach(c=>{const tags=c.dataset.tags;const text=c.innerText.toLowerCase();const okFilter=current==='all'||tags.includes(current);const okSearch=!q||text.includes(q)||tags.toLowerCase().includes(q);c.style.display=(okFilter&&okSearch)?'grid':'none';})}buttons.forEach(b=>b.onclick=()=>{buttons.forEach(x=>x.classList.remove('active'));b.classList.add('active');current=b.dataset.filter;apply();});search.addEventListener('input',apply);
+const buttons=[...document.querySelectorAll('.filterbar button')];
+const cards=[...document.querySelectorAll('.paper-card')];
+const groups=[...document.querySelectorAll('#papers .card-grid')].map(grid=>({
+  grid,
+  title:grid.previousElementSibling&&grid.previousElementSibling.tagName==='H2'?grid.previousElementSibling:null,
+  cards:[...grid.querySelectorAll('.paper-card')]
+}));
+const search=document.getElementById('search');
+let current='all';
+function matches(card,q){
+  const tags=card.dataset.tags||'';
+  const text=(card.innerText||'').toLowerCase();
+  const tagsLower=tags.toLowerCase();
+  const okFilter=current==='all'||tags.includes(current);
+  const okSearch=!q||text.includes(q)||tagsLower.includes(q);
+  return okFilter&&okSearch;
+}
+function apply(){
+  const q=(search.value||'').toLowerCase();
+  cards.forEach(card=>{card.style.display=matches(card,q)?'':'none';});
+  groups.forEach(group=>{
+    const visible=group.cards.some(card=>card.style.display!=='none');
+    group.grid.style.display=visible?'':'none';
+    if(group.title)group.title.style.display=visible?'':'none';
+  });
+}
+buttons.forEach(b=>b.onclick=()=>{buttons.forEach(x=>x.classList.remove('active'));b.classList.add('active');current=b.dataset.filter;apply();});
+search.addEventListener('input',apply);
+apply();
 </script>
 </body></html>
