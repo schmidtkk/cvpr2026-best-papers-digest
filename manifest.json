@@ -22,7 +22,7 @@
     "chordedit_author_award": "https://cnshiyang.github.io/"
   },
   "status_summary": {
-    "completed_pages": 21,
+    "completed_pages": 28,
     "pending_pages": 0,
     "completed_ids": [
       "d4rt",
@@ -45,7 +45,14 @@
       "unihema",
       "lemon",
       "octomed",
-      "medmo"
+      "medmo",
+      "medcmr",
+      "orapo",
+      "cure",
+      "ibisagent",
+      "care",
+      "molmo2",
+      "matanyone2"
     ],
     "pending_ids": []
   },
@@ -493,6 +500,155 @@
       "figures_count": 10,
       "formula_check": "passed",
       "missing_info": "各模态在 26M 语料中的精确占比表、Stage 4 的 λ_FP/λ_FN 取值与各阶段 epoch 数论文未说明；表 1/2 为节选转写（完整逐基准数值见原文）；训练 GPU·小时为按披露数字粗略估算"
+    },
+    {
+      "id": "medcmr",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "Med-CMR: A Fine-Grained Benchmark Integrating Visual Evidence and Clinical Logic for Medical Complex Multimodal Reasoning",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "Med-CMR",
+      "topic": "Medical AI · 医学复杂多模态推理评测基准 / 七维能力分解 + 双轨打分",
+      "blurb": "首个对临床复杂推理做细粒度（七维）能力分解的医学多模态基准：把“医学多模态推理”这一个总分拆成 3 视觉（小目标检测/细节判别/空间理解）+ 4 推理（时序预测/因果推理/长尾泛化/多源整合）共七维，配 MCQ 正确率 + 开放题四维加权 LLM 打分（视觉准确性/真值正确性各权 4、一致性/连贯性各权 1）的双轨协议。20,653 道题源自真实期刊病例，覆盖 11 系统 × 12 模态，经专家+模型两阶段审查。18 个模型评测：GPT-5 居首（MCQ 57.81/开放 48.70），但医学微调模型并不稳定优于通用模型、长尾泛化全场最难。",
+      "tags": "Medical Medical AI medical multimodal benchmark MLLM evaluation complex reasoning fine-grained capability decomposition seven dimensions VQA MCQ open-ended LLM-as-Judge long-tail generalization GPT-5 Qwen3-VL clinical reasoning small-object detection causal reasoning temporal prediction multi-source integration NUS Nanjing-University TUM",
+      "authors": "Haozhen Gong; Xiaozhong Ji; Yuansen Liu; Wenbin Wu; Xiaoxiao Yan; Jingjing Liu; Kai Wu; Jiazhen Pan; Bailiang Jian; Jiangning Zhang; Xiaobin Hu; Hongwei Bran Li",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2512.00818",
+        "project": "https://github.com/LsmnBmnc/Med-CMR"
+      },
+      "page_path": "papers/medcmr.html",
+      "thumbnail": "assets/figures/medcmr/medcmr_fig1.png",
+      "status": "completed",
+      "figures_count": 6,
+      "formula_check": "passed",
+      "missing_info": "评测 GPU 卡数/墙钟时间论文未披露（纯评测无训练，不做 GPU-hours 估算）；无可运行的独立代码仓/数据下载（仅核到项目主页 github.com/LsmnBmnc/Med-CMR）；表 2/3 为完整 18 行转写，图 3 的 r/p 取自图内标注，无独立病灶级 mask/bbox 视觉接地核验"
+    },
+    {
+      "id": "orapo",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "OraPO: Oracle-educated Reinforcement Learning for Data-efficient and Factual Radiology Report Generation",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "OraPO",
+      "topic": "Medical AI · 数据高效放射报告生成 / Oracle 教育式 GRPO + 事实级奖励",
+      "blurb": "首个把 DPO 耦合进 GRPO 的 RL 算法：GRPO 在 RRG 上一上来约 30% 的 group 全 0 奖励、advantage≈0、梯度近乎消失，OraPO 把这些“失败 rollout”当现成负例、以 ground-truth 为正例做轻量 DPO，正好补上 GRPO 缺的梯度；按 per-prompt 的 Zero-Reward Rate 自适应退火在 GRPO/DPO 间切换（“先教育后探索”飞轮），配偏 recall 的 FactScore 事实级稠密奖励。单阶段纯 RL、3B Qwen2.5-VL、1K 样本、4×A10，CheXpert Plus F1 0.341 / Recall 0.832、MIMIC-CXR F1 0.357，较前 SOTA 数据少 2–3 个数量级。",
+      "tags": "Medical Medical AI radiology report generation RRG GRPO DPO direct preference optimization reinforcement learning RL-only FactScore reward zero-reward rate data-efficient chest X-ray CheXpert-Plus MIMIC-CXR Qwen2.5-VL recall clinical effectiveness Oracle-Health University-of-Queensland",
+      "authors": "Zhuoxiao Chen; Hongyang Yu; Ying Xu; Yadan Luo; Long Duong; Yuan-Fang Li",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2509.18600"
+      },
+      "page_path": "papers/orapo.html",
+      "thumbnail": "assets/figures/orapo/orapo_fig1.png",
+      "status": "completed",
+      "figures_count": 9,
+      "formula_check": "passed",
+      "missing_info": "无公开代码仓（已核查 arXiv/GitHub，仅 awesome-RRG 列表收录，无官方实现）；CVF 2026 proceedings 页尚未上线（核查 403）；完整超参/LR/优化器/步数论文称见 Supplementary，正文未全列；训练总 GPU 卡时/墙钟时间与 FactS 的 GPT-4.1 调用成本论文未披露，不做 GPU-hours 估算；表 1/表 2 为代表性节选转写（原文 20+/16 行），表 3/4/5 为完整转写；附录图 3 定性例为整页文本对照表，按惯例转写为表格而非贴图"
+    },
+    {
+      "id": "cure",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "CURE: Curriculum-guided Multi-task Training for Reliable Anatomy Grounded Report Generation",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "CURE",
+      "topic": "Medical AI · 可靠放射报告生成 / 误差感知课程 + 解剖级报告重构",
+      "blurb": "不加任何新数据，只动训练方法学：把 finding-generation 重构成逐区域、正常异常都监督的 AGRG（把异常基率从 phrase-grounding 的 ≈1 拉回真实值），再用误差归一化课程 p_i=e_i/∑e_j 把稀缺采样预算动态倒向短板。一块 LoRA 微调的 MedGemma-4B：解剖级定位 IoU 0.249→0.601（翻倍），六区域异常幻觉 26.5%→8.78%（−18.6pt）。",
+      "tags": "Medical Medical AI radiology report generation RRG visual grounding anatomy-grounded AGRG error-aware curriculum learning self-paced learning hallucination MedGemma-4B LoRA MAIRA-2 Chest ImaGenome MS-CXR PadChest-GR VinDr-CXR public-data-only",
+      "authors": "Pablo Messina; Andrés Villa; Juan León Alcázar; Karen Sánchez; Carlos Hinojosa; Denis Parra; Álvaro Soto; Bernard Ghanem",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2601.15408",
+        "code": "https://github.com/PabloMessina/CURE",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Messina_CURE_Curriculum-guided_Multi-task_Training_for_Reliable_Anatomy_Grounded_Report_Generation_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/cure.html",
+      "thumbnail": "assets/figures/cure/cure_fig1.png",
+      "status": "completed",
+      "figures_count": 14,
+      "formula_check": "passed",
+      "missing_info": "GPU 卡数与墙钟时间论文未披露（仅给 LoRA r16/4-bit、有效 batch 25、9000 步）；自适应 α 取值、表 5/表 7 完整列置于附录（正文节选代表性列并注明全表见原文）"
+    },
+    {
+      "id": "ibisagent",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "IBISAgent: Reinforcing Pixel-Level Visual Reasoning in MLLMs for Universal Biomedical Object Referring and Segmentation",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "IBISAgent",
+      "topic": "Medical AI · 像素级视觉推理智能体 / 把分割重写成多步 MDP",
+      "blurb": "不改 MLLM 架构、不引入隐式 <SEG> token：把生物医学分割重写成多步 Markov 决策——模型交替吐 <think> 推理与 <action> 文本点击坐标(Target,±1,Coordinate2d)，调用冻结的 MedSAM2 把点击变 mask、半透明叠回原图当观测，一点一看迭代精修。两段训练：冷启动 SFT(456K 自动模拟点击轨迹) + GRPO(无 KL) RL 配五类细粒度规则奖励(格式/答案/区域点击放置 正点落FN负点落FP/渐进IoU单调不降/轨迹长度)。基座 Qwen2.5-VL-7B、16×A100。三测试集 IoU 全面领先(域内 85.58、域外 80.63、外院 72.09，对手最高仅 50.74)，去掉细粒度奖励 IoU 崩到 11.77；代价是 ~3× 推理延迟。",
+      "tags": "Medical Medical AI agentic MLLM pixel-level visual reasoning biomedical segmentation referring segmentation reasoning segmentation mask refinement Markov decision process MDP cold-start SFT GRPO reinforcement learning fine-grained rule reward region-based click placement progressive IoU reward MedSAM2 tool-augmented Qwen2.5-VL BiomedParseData decoupled reasoning cross-domain generalization Zhejiang University Shanghai AI Lab",
+      "authors": "Yankai Jiang; Qiaoru Li; Binlu Xu; Haoran Sun; Chao Ding; Junting Dong; Yuxiang Cai; Xuhong Zhang; Jianwei Yin",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2601.03054",
+        "code": "https://github.com/Yankai96/IBISAgent",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Jiang_IBISAgent_Reinforcing_Pixel-Level_Visual_Reasoning_in_MLLMs_for_Universal_Biomedical_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/ibisagent.html",
+      "thumbnail": "assets/figures/ibisagent/ibisagent_fig1.png",
+      "status": "completed",
+      "figures_count": 13,
+      "formula_check": "passed",
+      "missing_info": "总 GPU 小时/墙钟时间论文未披露（仅给 16×A100、SFT 10ep/RL 12ep、batch 256）；正文未列完整 VQA 数值表（未臆造）；外院 held-out 数据为三家医疗中心私有不公开，该项结果第三方无法直接复现；代码仓库存在但 README releases 标 TODO/部分，端到端复现门槛偏高"
+    },
+    {
+      "id": "care",
+      "award": "Medical AI (CVPR 2026)",
+      "title": "CARE: A Molecular-Guided Foundation Model with Adaptive Region Modeling for Whole Slide Image Analysis",
+      "category": "Medical AI (CVPR 2026)",
+      "short": "CARE",
+      "topic": "Medical AI · 病理全切片基础模型 / 自适应区域 + 分子引导对齐",
+      "blurb": "把 WSI 的“怎么切区域”从固定网格改成可学习的软路由：soft inclusion 软归属 + top-3 候选 + “语义×空间”得分重指派出形态连贯的自适应区域（像 NLP 的词级 token），Region Structuring Loss 把“期望排名”拉向 E*=0.5 顶住塌缩，SPF 用“覆盖先验⊕门控语义”聚成 WSI/ROI 表示；再用 iBOT 自监督→RNA→蛋白 InfoNCE 的分子引导课程。仅约 1/10 数据、34,277 WSI，33 任务平均分子预测 LR 69.5、生存 C-index 58.0 双双领先，形态分类追平最强 TITAN。",
+      "tags": "Medical Medical AI pathology whole slide image WSI foundation model adaptive region ARG soft inclusion region structuring loss RSL SPF molecular guided RNA protein cross-modal alignment iBOT InfoNCE CONCH scGPT ESM-2 ROI linear probing TCGA GTEx data-efficient XJTU Cambridge",
+      "authors": "Di Zhang; Zhangpeng Gong; Xiaobo Pang; Jiashuai Liu; Junbo Lu; Hao Cui; Jiusong Ge; Zhi Zeng; Kai Yi; Yinghua Li; Si Liu; Tingsong Yu; Haoran Wang; Mireia Crispin-Ortuzar; Weimiao Yu; Chen Li; Zeyu Gao",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2602.21637",
+        "code": "https://github.com/zdipath/CARE",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Zhang_CARE_A_Molecular-Guided_Foundation_Model_with_Adaptive_Region_Modeling_for_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/care.html",
+      "thumbnail": "assets/figures/care/care_fig1.png",
+      "status": "completed",
+      "figures_count": 14,
+      "formula_check": "passed",
+      "missing_info": "预训练 GPU 卡数/墙钟/epoch 论文未披露（仅给下游单卡 RTX 4090、关键超参 k=8/λRSL=0.1/E*=0.5/λSPF=0.5）；表 1 为按任务类的平均，33 任务逐项数值在附录（图 4 为热力图）；表 4/表 5 取代表性行并注明完整列见原文"
+    },
+    {
+      "id": "molmo2",
+      "award": "Top Paper (candidate)",
+      "title": "Molmo2: Open Weights and Data for Vision-Language Models with Video Understanding and Grounding",
+      "category": "Vision-Language Models",
+      "short": "Molmo2",
+      "topic": "Open Video-Language Model · Pointing / Grounding",
+      "blurb": "权重、数据、代码全开且不蒸馏闭源模型的 SoTA 视频-语言模型族：9 个新数据集 + packing/message-tree（×15 训练）+ token 加权，把 2D pointing 延拓到时空，视频指点/追踪压过 Gemini 3 Pro。",
+      "tags": "Top Paper candidate Vision-Language Model video understanding grounding pointing tracking open weights open data no distillation packing message-tree token weighting AllenAI",
+      "authors": "Christopher Clark; Jieyu Zhang; Zixian Ma; Jae Sung Park; Mohammadreza Salehi; Rohun Tripathi; Sangho Lee; Ali Farhadi; Ranjay Krishna",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2601.10611",
+        "code": "https://github.com/allenai/molmo2"
+      },
+      "page_path": "papers/molmo2.html",
+      "thumbnail": "assets/figures/molmo2/molmo2_teaser.png",
+      "status": "completed",
+      "figures_count": 9,
+      "formula_check": "passed"
+    },
+    {
+      "id": "matanyone2",
+      "award": "Top Paper (candidate)",
+      "title": "MatAnyone 2: Scaling Video Matting via a Learned Quality Evaluator",
+      "category": "Video Matting / Segmentation",
+      "short": "MatAnyone 2",
+      "topic": "Video Matting · Learned Quality Evaluator",
+      "blurb": "用一个无需真值 alpha 的 Matting Quality Evaluator（MQE）逐像素判可靠/错误，既当训练在线监督、又当离线数据仲裁器，融合视频抠像（语义稳）与图像抠像（边界利）造出 28K 片段 / 2.4M 帧的真实数据集 VMReal；再配 reference-frame 策略治长视频外观突变。纯 CNN、仅需首帧 mask，合成与真实基准全指标第一。",
+      "tags": "Top Paper candidate Video Matting learned quality evaluator MQE memory propagation reference frame real-world dataset VMReal DINOv3 alpha matting NTU SenseTime",
+      "authors": "Peiqing Yang; Shangchen Zhou; Kai Hao; Qingyi Tao",
+      "links": {
+        "project": "https://pq-yang.github.io/projects/MatAnyone2/",
+        "arxiv": "https://arxiv.org/abs/2512.11782",
+        "code": "https://github.com/pq-yang/MatAnyone2",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Yang_MatAnyone_2_Scaling_Video_Matting_via_a_Learned_Quality_Evaluator_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/matanyone2.html",
+      "thumbnail": "assets/figures/matanyone2/matanyone2_fig1.png",
+      "status": "completed",
+      "figures_count": 17,
+      "formula_check": "passed"
     }
   ]
 }

@@ -1,137 +1,490 @@
 <!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Med-CMR 深读：把"医学多模态推理"这一个分数拆成 7 个维度，到底想逼出 MLLM 的什么短板？</title>
+<title>Med-CMR 深读：把“医学多模态推理”从一个总分拆成七维，到底拆出了什么医学大模型还做不到的事？</title>
 <meta name="description" content="CVPR 2026 Medical AI · Med-CMR: A Fine-Grained Benchmark Integrating Visual Evidence and Clinical Logic for Medical Complex Multimodal Reasoning 学术深读">
 <script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
 </head>
 <body>
-<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Medical AI · 医学复杂多模态推理 benchmark / 细粒度能力拆解 + LLM-as-Judge</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Medical AI · 医学复杂多模态推理评测基准 / 七维能力分解 + 双轨打分</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
 <div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Medical AI &gt; Med-CMR</div>
-<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">11</span><span class="month">Jun</span></div><h1 id="paper-title">Med-CMR 深读：把"医学多模态推理"这一个分数拆成 7 个维度，到底想逼出 MLLM 的什么短板？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-11</span><span>CVPR 2026 · Medical AI · NUS / 南大 / 同济 / 瑞金医院 / TUM / 浙大</span><span>来源：arXiv:2512.00818v2 PDF</span></div><div class="tags"><span class="tag orange">Medical AI</span><span class="tag">医学多模态 benchmark</span><span class="tag">MLLM 评测</span><span class="tag green">细粒度能力拆解</span><span class="tag">LLM-as-Judge</span><span class="tag">20,653 VQA</span><span class="tag">MathJax checked</span></div></header>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">11</span><span class="month">Jun</span></div><h1 id="paper-title">Med-CMR 深读：把“医学多模态推理”从一个总分拆成七维，到底拆出了什么医学大模型还做不到的事？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-11</span><span>CVPR 2026 · Medical AI · NUS / 南京大学 / 同济 / 瑞金医院 / TUM / 浙大</span><span>来源：arXiv:2512.00818v2 PDF</span></div><div class="tags"><span class="tag orange">Medical AI</span><span class="tag">医学多模态推理基准</span><span class="tag">MLLM 评测</span><span class="tag green">七维能力分解</span><span class="tag">LLM-as-Judge</span><span class="tag">长尾泛化</span><span class="tag">MathJax checked</span></div></header>
 <main class="content">
 
-<p id="abstract" class="lead"><strong>导读。</strong>当一个医学多模态大模型（MLLM）在某个评测上拿到 50 分，这个数字几乎什么都没告诉你——它是"看不清小病灶"丢的分，还是"看清了但推不出结论"丢的分？是常见病做不好，还是罕见病做不好？现有医学 VQA benchmark 多半停在"描述图像 / 检索一个显而易见的事实"，把这些<strong>异质的失败原因压成一个标量</strong>，于是模型的真实短板被平均掉了。Med-CMR 的核心赌注是<strong>"先拆维度，再评分"</strong>：把"医学复杂推理"显式拆成 <strong>3 个视觉维度</strong>（小目标检测、细节判别、空间理解）+ <strong>4 个推理维度</strong>（时序预测、因果推理、长尾泛化、多源整合），每个维度配一类专门设计、强视觉依赖的题，让"哪种能力差"变得<em>可定位</em>。立题问题因此很具体：<strong>当你想知道一个 MLLM"离专家级临床推理还差多远"，到底该把这道题拆成几个可独立诊断的能力轴、又怎么保证拆出来的每一轴都真的吃图而不是吃文字？</strong>在 20,653 道经过"人审 + 模型筛"两阶段把关的题上评了 18 个 SOTA MLLM，结论是 GPT-5 居首（MCQ 57.81 / 开放式 48.70），但<strong>专科医学微调模型并不稳定优于通用强模型</strong>，而<strong>长尾泛化是所有模型共同的主导失败模式</strong>。</p>
+<p id="abstract" class="lead"><strong>导读。</strong>多模态大模型（MLLM）正在挤进临床工作流，但现有医学评测多停在“描述图像 / 取一个显而易见的事实”这种感知级 VQA 上，<strong>把“会不会做复杂临床推理”整个藏了起来</strong>。Med-CMR 的立题很具体：<strong>当你不再用一个总分、而是把“医学多模态推理”拆成可单独诊断的七个能力维度，今天最强的模型到底卡在哪一维？</strong>它把复杂度分成<strong>三个视觉维度</strong>（小目标检测、细节判别、空间理解）+ <strong>四个推理维度</strong>（时序预测、因果推理、长尾泛化、多源整合），用真实期刊病例报告（JMCR / NEJM 等）造出 <strong>20,653 道</strong>题（16,655 道五选一 MCQ + 3,998 道开放题），横跨 11 个身体系统、12 种成像模态，并经“专家 + 模型”两阶段审查。在 18 个 SOTA 模型上跑下来，结论扎得很紧：<strong>GPT-5 总分最高（MCQ 57.81 / 开放题 48.70）</strong>，但<strong>专门微调的医学模型并不稳定优于通用大模型</strong>，而<strong>长尾泛化是所有模型一致最难、得分最低的维度</strong>。换句话说，Med-CMR 不是又一个排行榜，而是一台<strong>把“整合视觉证据 + 临床逻辑”的能力短板照出来的应力测试机</strong>。</p>
 
-<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>Med-CMR：首个把<strong>临床复杂推理拆成 7 个细粒度维度</strong>的医学多模态 benchmark；统一的 MCQ + 开放式双协议，开放式由外部 LLM 按四准则打分；20,653 道 VQA、覆盖 11 个器官系统 / 12 种成像模态，两阶段（人审 + 模型）质控。</div><div class="kv"><b>关键机制</b>不把"医学推理"当一个分数：视觉侧（小目标 / 细节 / 空间）× 推理侧（时序 / 因果 / 长尾 / 多源）= 7 条可独立诊断的能力轴；题目用模板保证"强视觉依赖 + 干扰项不与正解语义重叠"，并用三个 7B 模型"全做对就剔除"卡住难度下限。</div><div class="kv"><b>核心证据</b>GPT-5 七维全面第一、MCQ 57.81（图 1 雷达 / 表 2）；长尾泛化全场最难（最高仅 55.19，开源全部 &lt; 46，表 2）；MCQ 准确率与模型规模强相关（$r$≈0.77–0.85），但开放式的<strong>视觉 grounding 与 GT 正确性</strong>对规模最不敏感（$r$=0.59 / 0.70，图 3）。</div><div class="kv"><b>复现门槛</b>纯评测、无训练账本：18 个模型经官方 API / VLLM 推理，开放式打分用 DeepSeek-V3.2-Exp 当 judge（与人审 Spearman $\rho$&gt;0.78，最大 win-ratio 差 0.0449）。数据与 prompt 模板见项目页 <code>LsmnBmnc/Med-CMR</code>。</div></div></div><figure class="hero-card"><a href="../assets/figures/medcmr/medcmr_fig1.png"><img src="../assets/figures/medcmr/medcmr_fig1.png" alt="Med-CMR 总览：7 个复杂度维度的示例题与中心模型对比雷达图"></a><figcaption><strong>图 1 · 全文"评测姿态可视化"。</strong>外圈是 7 个复杂度维度各自的<strong>真实病例样题</strong>（每题强视觉依赖、四个干扰项都临床合理）：视觉侧——小目标检测、细节判别、空间理解；推理侧——时序预测、因果推理、长尾泛化、多源整合。中心雷达图把几个代表模型（GPT-5 / Gemini-2.5-Pro / Qwen2.5-VL-72B / Qwen3-VL-32B / Lingshu-32B）在这 7 轴上一字摊开。这张图回答的不是"谁总分高"，而是"<em>同一个模型</em>在哪一轴塌、哪一轴稳"——benchmark 的价值正在这种<strong>把失败原因拆开看</strong>的能力。</figcaption></figure></div>
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>首个对临床复杂推理做<strong>细粒度（七维）能力分解</strong>的医学多模态基准 Med-CMR：把“医学多模态推理”这个单一分数拆成 3 视觉 + 4 推理共七个可单独诊断的维度，配 MCQ 正确率 + 开放题四维加权 LLM 打分的双轨协议。</div><div class="kv"><b>数据规模</b>20,653 道 VQA（16,655 MCQ × 五选一 + 3,998 开放题），源自真实期刊病例报告，覆盖 <strong>11 个身体系统 × 12 种成像模态</strong>；两阶段（专家 + 模型）审查，剔除约 8% 可疑合成内容。</div><div class="kv"><b>核心发现</b>GPT-5 居首（MCQ 57.81 / 开放 48.70）&gt; Gemini-2.5-Pro（49.87 / 45.98）&gt; 最强开源 Qwen3-VL-235B（49.34 / 42.62）；<strong>医学微调模型在 MCQ 上反而掉点</strong>；<strong>长尾泛化全场最难</strong>（最高仅 55.19，开源全 &lt;46）。</div><div class="kv"><b>复现门槛</b>纯评测、<strong>无模型训练</strong>：开源模型用 vLLM 本地推理、闭源走官方 API，正则抽答案；开放题由 DeepSeek-V3.2-Exp 做独立评委。数据/代码见 Project page，本文交付时未核到独立代码仓。</div></div></div><figure class="hero-card"><a href="../assets/figures/medcmr/medcmr_fig1.png"><img src="../assets/figures/medcmr/medcmr_fig1.png" alt="Med-CMR 七个推理维度的概览与示例题，中心是雷达坐标轴"></a><figcaption><strong>图 1 · 全文“能力坐标系”。</strong>Med-CMR 把医学多模态推理复杂度拆成<strong>视觉复杂度</strong>（小目标检测 / 细节判别 / 空间理解）与<strong>推理复杂度</strong>（时序预测 / 因果推理 / 长尾泛化 / 多源整合）。每个维度配一道真实病例改写的题——例如“因果推理”问“哪一特征提示植入物固定不牢”，“小目标检测”问“哪一发现支持把这个微小结构判为真实病灶（Dieulafoy 样出血源）”。这张图回答的不是“某模型多强”，而是<strong>“复杂推理可以沿哪几条互相独立的轴被拆开来量”</strong>——这是全篇实验设计的骨架。</figcaption></figure></div>
 
-<section id="motivation"><h2>1. 核心问题：一个标量分数，藏起了所有真正难的临床场景</h2><p>MLLM 正在从 demo 走向临床工作流。但论文开篇就点出一个评测层面的尴尬：要信任它们，光知道"答对的频率"不够，还得知道它们<strong>怎么得出结论</strong>——能不能发现细微病灶、整合多张图、追踪疾病演变、对罕见但要命的情形做推理？而绝大多数现有医学多模态 benchmark 只回答了这个问题的一小角：它们被<strong>感知层 VQA</strong> 主导——让模型描述一张图、或从一段短上下文里检索一个显而易见的事实。</p>
-<ul><li><strong>难的临床情形被"描述题"挡在门外。</strong>真正塑造临床决策的，是那些 setup 里藏起来的硬骨头：微小、低对比的病灶；跨模态比较；时序变化；连接"症状—影像—结局"的因果链；以及教科书里长尾分布的罕见病。感知层 VQA 看不到这些。</li><li><strong>一个分数 = 把异质的失败原因平均掉。</strong>把"医学多模态推理"当成单一标量去打分，等于默认所有错都是同一种错。可"看不清"和"看清了但推错"是两类完全不同的短板——前者要更强的视觉编码器，后者要更强的临床知识与多步推理。混在一个数字里，你<strong>既不知道病根、也无法对症</strong>。</li><li><strong>覆盖面与"是否吃图"没保证。</strong>很多题其实光读文字就能蒙对（视觉依赖弱），或只覆盖少数器官/模态。这样的分数对"真实工作流里的复杂推理能力"几乎没有可见度。</li></ul>
-<p>论文据此给出"做对这件事需要三样东西"：<strong>(1) 系统的能力拆解</strong>——不把"医学多模态推理"当一个分数，而是先把"细粒度视觉理解"与"下游推理"分开，再各自细分成临床上有意义的子维度；<strong>(2) 临床对齐且刻意做难的任务</strong>——题目围绕真实病例，显式瞄准时序、因果、长尾、多源这些难设定；<strong>(3) 广而精挑的覆盖</strong>——跨器官、模态、病程，且经专家审核保证题目真实可解释。</p>
-<div class="socratic"><p class="question">问：既然要评"复杂推理"，直接出一批难题、报一个总准确率不就行了？为什么非要先把能力拆成 7 个维度？</p><p class="guide">引导：盯住"总准确率"这个标量丢掉了什么——它把"为什么错"压没了。两个模型同样考 50 分，可能一个全栽在小目标、一个全栽在长尾，临床含义天差地别，但分数一样。</p><p class="answer">答：拆维度的本质，是把一个<strong>不可诊断的标量</strong>换成一组<strong>可独立归因的能力轴</strong>。这正是"先讲为什么需要、再讲是什么"的评测版本：先确认"我们到底想测什么能力、它会以哪几种方式失败"，再为每种失败造一类专门的题。一旦视觉侧（小目标 / 细节 / 空间）和推理侧（时序 / 因果 / 长尾 / 多源）被分开，"看不清"和"推不出"就不再互相掩盖——图 3 才能进一步揭示"MCQ 准确率随规模涨，但视觉 grounding 对规模几乎不涨"，图 4 才能把"医学微调到底改善了什么、又破坏了什么"讲清楚。拆维度不是为了好看，是<strong>为了让后续每一个诊断性结论有处落脚</strong>。</p><p class="takeaway"><strong>Takeaway：</strong>真问题不是"出多难的题"，而是"<strong>把分数拆成几条能独立归因的轴</strong>"。Med-CMR 的答案是 3 视觉 × 4 推理，配上"题必须吃图"的硬约束——拆得开、归得了因，才谈得上诊断模型短板。</p></div></section>
+<section id="motivation"><h2>1. 核心问题：一个总分，为什么量不出“会不会做临床推理”？</h2><p>论文开篇把现状说得很直白：现有医学多模态基准<strong>绝大多数停在感知级 VQA</strong>——模型描述一张图，或从一小段上下文里取一个明显的事实。这种设定恰好把临床里真正难的部分<strong>遮住了</strong>：微小低对比病灶、跨模态比较、随时间的演变、把症状-影像-结局串起来的因果链、教科书里都罕见的长尾分布。于是今天的排行榜对“复杂临床推理”几乎是盲的。</p>
+<p>作者据此提出：要把这种能力量出来，缺的是三样东西——</p>
+<ul><li><strong>系统的能力分解。</strong>不该把“医学多模态推理”当成<em>一个</em>分数，而要先把“细粒度视觉理解”和“下游推理”分开，再各自拆成临床上有意义的子维度。</li><li><strong>临床对齐且刻意难的任务。</strong>题目要建立在真实病例上，并显式瞄准时序预测、因果推理、长尾泛化、多源整合这些难设定。</li><li><strong>覆盖广而经过策划的数据。</strong>跨器官、跨模态、跨疾病过程，且有专家审查保证题目真实、可临床解读。</li></ul>
+<div class="socratic"><p class="question">问：把一个总分拆成七维，听起来像“多报几个指标”。这跟“堆指标”有什么本质区别？为什么说它是<strong>实验设计</strong>而不是装饰？</p><p class="guide">引导：盯住“一个标量能携带多少诊断信息”。一个总分把模型的能力压成一维——一个“感知强、因果弱”的模型和一个“感知弱、因果强”的模型可能拿到<em>同样</em>的总分，于是从分数上完全分不开。要定位短板，就必须让每个维度只受<em>一种</em>能力支配。</p><p class="answer">答：这是一次<strong>控制变量</strong>式的设计，可以从两条独立路径看出它的必要性。<br><strong>路径 A（信息角度，自上而下）：</strong>真实的“能力”是一个多维向量（七个轴各有强弱）。用一个总分汇报，等于把这个向量投影到一维——投影必然<strong>丢掉维度间的可分辨信息</strong>，两个能力画像迥异的模型可以落到同一个总分上。把七维分开报告，就是不做这次有损投影，让“强在哪、弱在哪”重新可读。<br><strong>路径 B（实验角度，自下而上）：</strong>这套分解直接<strong>兑现成了一个本来看不见的结论</strong>——“长尾泛化是所有模型一致最难的维度”。这个判断<em>只有</em>在维度被拆开、每维单独计分时才浮得出来；若只报总分，长尾的塌陷会被其它维度的高分平均掉、彻底隐形。一个分解能让新结论显形，就证明它携带了总分没有的信息，而非冗余的指标堆叠。</p><p class="takeaway"><strong>Takeaway：</strong>七维不是“多报指标”，是把“能力”这个<strong>多维向量</strong>从一次有损的“总分投影”里救回来——每一维只受一种能力支配，失败才可被诊断、可被定位。</p></div></section>
 
-<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献（论文 §1 三条）：</strong></p>
-<ul><li><strong>首个支持临床复杂推理细粒度评测的 benchmark。</strong>Med-CMR 把推理拆成 7 个任务，每个捕捉一种不同的医学复杂度来源，提供结构化、临床落地的能力评估。</li><li><strong>统一的双协议评测。</strong>MCQ 测事实正确性，开放式测推理与生成质量；后者由一个外部、标准对齐的 LLM 沿 <em>一致性 / 连贯性 / 视觉准确性 / GT 正确性</em> 四准则打分，给出"答案对不对 + 推理好不好"的整体视图。</li><li><strong>18 个模型的横评 + 误差/消融分析。</strong>含医学专科 MLLM 与通用 MLLM；并实证给出"医学微调模型不稳定优于通用强模型"的具体失败模式与方向。</li></ul>
-<div class="formula-note"><p class="note-title">读数提醒：这篇是 benchmark 论文，不是方法论文</p><p>Med-CMR <strong>不提出新模型、不训练任何网络</strong>，它的"方法"是<em>benchmark 的构造与评测协议</em>本身——维度定义、出题/造干扰项的流水线、双协议打分、judge 的可信度论证。所以本页的 <code>#method</code> 讲的是"怎么把临床复杂度拆成可评测的题"，<code>#training</code> 对应的是"评测设置而非训练账本"。把它当成一把<strong>诊断尺</strong>来读，而不是一个 SOTA。</p></div>
-<p><strong>读者能进一步推断的是</strong>：这篇真正推进的<em>单一变量</em>是"评测的分辨率"——它没换数据源（仍是病例报告 + 期刊文章）、没发明新打分函数（加权求和 + LLM-judge 都是现成思路），而是把"医学多模态推理"这一个分数，沿临床上有意义的 7 条轴<strong>切开</strong>，并诚实地把"长尾最难、医学微调有代价"作为结论摆出来。其价值不在"造了多难的题"，而在"<strong>让模型的短板第一次变得可定位</strong>"。</p></section>
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献（论文 §2 末“three-fold”）：</strong></p>
+<ul><li><strong>Med-CMR：首个对临床复杂推理做细粒度评测的基准。</strong>把推理分解成七个任务，各自对应一种独立的医学复杂度来源，给出结构化、临床落地的能力评估。</li><li><strong>统一的双轨评测协议。</strong>MCQ 量“事实正确性”，开放题量“推理与生成质量”——后者由一个外部、标准对齐的 LLM 沿<em>一致性 / 连贯性 / 视觉准确性 / 真值正确性</em>四维打分，给出“答案对不对 + 推理好不好”的整体视图。</li><li><strong>18 个模型的系统评测 + 误差/消融分析。</strong>含医学专用与通用 MLLM，并明确给出“医学微调模型在复杂临床推理上并不稳定优于通用模型”这一反直觉发现，及其失败模式。</li></ul>
+<div class="formula-note"><p class="note-title">读数提醒：这是一篇“基准 + 诊断”论文，不是“新模型”论文</p><p>Med-CMR 没有提出新模型、没有训练，它产出的是一套<strong>题目 + 协议 + 对 18 个现成模型的诊断</strong>。因此本页的 #pipeline 指的是<strong>基准构建流水线</strong>（采图→出题→造干扰项→过滤→质检），#method 指的是<strong>能力分解的定义 + 开放题打分公式</strong>，而 #training 一节按惯例标注“不适用（无训练）”，转而记录评测的算力姿态。</p></div>
+<p><strong>读者能进一步推断的是</strong>：这篇真正推进的<em>单一变量</em>是“<strong>评测的粒度</strong>”——从“一个总分”升级到“七维 + 双轨”。它的价值不在某个模型分数，而在于把“医学微调到底买到了什么、又赔掉了什么”这个长期含糊的问题，第一次摆到了可分维、可对照的台面上。</p></section>
 
-<section id="datasets"><h2>3. 数据：20,653 道题、11 器官系统 × 12 模态，源自真实病例报告</h2><p>Med-CMR 的题目<strong>不是合成图、不是检索题</strong>，而是从公认生物医学期刊（如 JMCR、NEJM）的真实病例报告与研究文章里采集医学图像，连同人工标注的 caption 和元数据一起拿来。基于这些数据构造 7 类题，覆盖 <strong>11 个器官系统、12 种成像模态</strong>（影像之外还扩展到病理、眼科、内镜等）。器官系统分类遵循 Liachovitzky 的标准，模态分类遵循 DICOM 与 RSNA RadLex Playbook。</p>
-<div class="table-wrap"><table><caption><strong>表 1.</strong> Med-CMR 与既有医学多模态 benchmark 的对比（论文 Table 1 转写）。三栏勾叉分别为：广覆盖、挑战性任务、细粒度评测。Med-CMR 是表中<strong>唯一三项全 ✓</strong> 的。</caption><thead><tr><th>Benchmark</th><th># Images</th><th># Size</th><th>QA 类型</th><th>标注方式</th><th>广覆盖</th><th>挑战性</th><th>细粒度</th></tr></thead><tbody>
-<tr><td>VQA-RAD</td><td>204</td><td>451</td><td>Open-ended</td><td>Human</td><td>×</td><td>×</td><td>×</td></tr>
-<tr><td>VQA-Med</td><td>500</td><td>500</td><td>Open-ended</td><td>Auto + Human</td><td>×</td><td>×</td><td>×</td></tr>
-<tr><td>Path-VQA</td><td>858</td><td>6,719</td><td>Open-ended</td><td>Auto + Human</td><td>×</td><td>×</td><td>×</td></tr>
-<tr><td>Slake-En</td><td>96</td><td>1,061</td><td>Open-ended</td><td>Auto + Human</td><td>×</td><td>×</td><td>×</td></tr>
-<tr><td>PMC-VQA</td><td>29,021</td><td>33,430</td><td>Open-ended</td><td>Automatic</td><td>✓</td><td>×</td><td>×</td></tr>
-<tr><td>OmniMedVQA</td><td>118,010</td><td>127,995</td><td>MCQ</td><td>Automatic</td><td>✓</td><td>×</td><td>×</td></tr>
-<tr><td>GMAI-MMBench</td><td>21,180</td><td>21,281</td><td>MCQ + MRQ</td><td>Automatic</td><td>✓</td><td>×</td><td>×</td></tr>
-<tr><td>MedXpertQA MM</td><td>2,852</td><td>2,000</td><td>MCQ</td><td>Human</td><td>✓</td><td>✓</td><td>×</td></tr>
-<tr><td>HIE-Reasoning</td><td>133</td><td>749</td><td>MCQ + Open</td><td>Human</td><td>×</td><td>✓</td><td>×</td></tr>
-<tr><td><b>Med-CMR</b></td><td><b>20,653</b></td><td><b>20,653</b></td><td><b>MCQ + Open</b></td><td><b>Auto + Human</b></td><td><b>✓</b></td><td><b>✓</b></td><td><b>✓</b></td></tr>
+<section id="datasets"><h2>3. 数据：20,653 道题，源自真实病例，11 系统 × 12 模态</h2><p>Med-CMR 不造合成图，而是从 <strong>JMCR、NEJM 等权威生物医学期刊</strong>的真实病例报告与研究论文里采集影像，连同人类标注的图注与元数据一起取下，再据此构造题目。最终规模：</p>
+<ul><li><strong>总量 20,653 道 VQA</strong>：16,655 道<strong>五选一 MCQ</strong> + 3,998 道<strong>开放题</strong>。</li><li><strong>七个一级类目</strong>（即七维），每个类目下再分 <strong>5 个子类型</strong>，做更细粒度的题型分类。</li><li><strong>覆盖 11 个身体系统、12 种成像模态</strong>：身体系统分类按 Liachovitzky 的标准；成像模态分类遵循 DICOM 与 RSNA RadLex Playbook，并扩展到放射学之外（病理、眼科、内镜等）。</li></ul>
+<figure class="fig-wide"><a href="../assets/figures/medcmr/medcmr_fig2.png"><img src="../assets/figures/medcmr/medcmr_fig2.png" alt="Med-CMR 基准统计：左为七类推理与临床智能能力的对应，右为成像模态与身体系统的占比饼图"></a><figcaption><strong>图 2 · 基准统计与“临床智能”映射。</strong>左：七个推理类型（小目标检测、多源整合、因果推理、空间理解 / 细节判别、时序预测、长尾泛化）连向六类<strong>临床智能</strong>能力——临床决策支持（CDS）、诊断（DX）、病理生理分析（PA）、操作风险评估（PRA）、分期与范围评估（SEE）、治疗反应评估（TRE）；连线粗细=该推理类型下评估这种临床能力的题量。右：上为成像<strong>模态</strong>占比（CT / X-ray / MRI / 超声 / 病理 / 内镜 / 眼科 / 核医学…），下为<strong>身体系统</strong>占比（消化、皮肤、肌骨、呼吸、神经…）。这张图要支撑的结论是<strong>“覆盖够广，七维不是各盯一个器官凑出来的”</strong>——每一维都横跨多模态、多系统，能力轴与器官轴是解耦的。</figcaption></figure>
+<h3>3.1 七维到底各测什么</h3><p>论文 §2.1 把七维逐条定义清楚，前三维属“视觉复杂度”、后四维属“推理复杂度”：</p>
+<div class="table-wrap"><table><caption><strong>表（据论文 §2.1 转写）.</strong> Med-CMR 七个复杂度维度的定义。前三为感知侧（视觉复杂度），后四为推理侧（推理复杂度）。</caption><thead><tr><th>维度（缩写）</th><th>侧</th><th>测的是什么</th></tr></thead><tbody>
+<tr><td>小目标检测 SOD</td><td>视觉</td><td>识别微小、低对比、难以察觉的目标</td></tr>
+<tr><td>细节判别 FDD</td><td>视觉</td><td>区分“看着像、临床含义却不同”的相似发现</td></tr>
+<tr><td>空间理解 SU</td><td>视觉</td><td>整合并对齐多模态信息以维持空间一致性</td></tr>
+<tr><td>时序预测 TP</td><td>推理</td><td>对疾病随时间的进展与预后做推断</td></tr>
+<tr><td>因果推理 CR</td><td>推理</td><td>用多步因果链把症状、发现、结局串起来</td></tr>
+<tr><td>长尾泛化 LTG</td><td>推理</td><td>样本极少的罕见病例下的决策</td></tr>
+<tr><td>多源整合 MSI</td><td>推理</td><td>从多个并存异常中抽取关键诊断线索</td></tr>
 </tbody></table></div>
-<p>读这张表要抓两点。其一，规模并非最大（OmniMedVQA 的图像量是它的近 6 倍），但 Med-CMR 是<strong>唯一同时勾上"挑战性任务 + 细粒度评测"</strong>的——前者靠真实病例 + 难设定，后者靠 7 维拆解，正是 §1 三样东西的落地。其二，标注是 <strong>Auto + Human 混合</strong>：模型负责"按模板批量生成、保证视觉依赖"，人负责"卡难度、剔歧义、确认临床正确"，两者各补对方的短。</p>
-<h3>3.1 题量构成：16,655 MCQ（五选一）+ 3,998 开放式</h3><p>20,653 道题里，<strong>16,655 道是五选一 MCQ</strong>、<strong>3,998 道是开放式</strong>。所有题归到 7 个主类别，每个主类别下再分 <strong>5 个子类型</strong>做更细的题型分类。MCQ 测"选对没"，开放式测"推理过程 + 最终结论"——两者合起来才覆盖"事实正确性"和"推理质量"两个面。</p>
-<figure class="fig-wide"><a href="../assets/figures/medcmr/medcmr_fig2.png"><img src="../assets/figures/medcmr/medcmr_fig2.png" alt="Med-CMR 统计：7 维推理类型与医学智能映射、12 模态与 11 器官系统分布"></a><figcaption><strong>图 2 · benchmark 统计。</strong>左：7 类推理题与它们对应的"医学智能"能力（临床决策支持 CDS、诊断 DX、心理生理分析 PA、操作风险评估 PRA、分期与范围评估 SEE、治疗反应评估 TRE）的映射——线的粗细代表该推理类型下覆盖的题量。右：上为 12 种成像模态的分布（CT、放射、内镜、病理/显微、超声、眼科…），下为 11 个器官系统的分布（消化、心血管、骨骼肌肉、神经、泌尿…）。这张图要支撑的结论是 Med-CMR <strong>不是某个器官/模态的专题集</strong>，而是横跨临床全谱的覆盖——这是表 3"按医学智能维度"二次切分的基础。</figcaption></figure></section>
+<div class="socratic"><p class="question">问：“源自真实病例报告 + 人工图注”跟“强视觉依赖”有什么关系？这是数据来源的工程选择，还是基准有效性的机制必需？</p><p class="answer">答：是机制必需。一个评“视觉推理”的基准，最怕的是题目<strong>不看图也能蒙对</strong>（靠文本先验或常识）。论文用两道闸把这件事顶住：(1) 出题用 GPT-5-mini 从<em>人类标注的图注</em>里抽正确答案、按模板生成，保证答案确实来自这张图的临床事实而非凭空；(2) 造干扰项时显式要求“<strong>视觉依赖</strong>”——题目必须依赖对视觉信息的解读、而非仅靠文本即可作答。真实病例报告之所以关键，是因为它自带“图-注”配对的临床事实，比合成图更能撑起“答案锚在影像上”这个前提。</p><p class="takeaway"><strong>Takeaway：</strong>用真实病例 + 人工图注，不是为了“看起来权威”，而是为了让每道题的答案<strong>真的锚在影像证据上</strong>——否则七维量出来的就不是视觉推理，而是语言先验。</p></div></section>
 
-<section id="pipeline"><h2>4. 构造流水线：从"采图"到"四道关卡"，每一步在卡什么？</h2><p>Med-CMR 的整条 curation pipeline 围绕一个目标：<strong>让每道题都难、都吃图、都临床真实</strong>。它分五段，每段都在堵一个特定漏洞。</p>
-<div class="table-wrap"><table><caption><strong>表（§2.2 转写）.</strong> Med-CMR 五段构造流水线：每一步的输入、做法、与它要堵的漏洞。</caption><thead><tr><th>阶段</th><th>做法</th><th>要堵的漏洞 / 为什么需要</th></tr></thead><tbody>
-<tr><td><b>① 维度引导采图</b></td><td>按 §2.1 的 7 个复杂度维度，从 JMCR / NEJM 等期刊的病例报告与研究文章采图，连人工 caption + 元数据一起取。</td><td>保证"临床落地 + 多样性"，且每张图天然对应某个复杂度维度——不是先有图再硬凑题。</td></tr>
-<tr><td><b>② 出题（含人/模型双筛）</b></td><td>医学背景标注者为每类题设计 10–20 个模板（强视觉 grounding、瞄准对应维度、逼出多步推理）；GPT-5-mini 按图选模板、从 caption 抽正解自动生成。出题<em>前</em>由医生先剔掉 caption 不足 / 与目标维度不符的图。</td><td>模板保证"题真的考那一维 + 必须看图"；自动生成保证正解来自人工 caption（正确）；事前人审保证"垃圾图不进场"。</td></tr>
-<tr><td><b>③ 造干扰项</b></td><td>用 GPT-5-Mini / Qwen3-VL-Plus / Claude-Sonnet-4 各生成 4 个干扰项 → 12 个候选池 → 3 名医学标注者选 4 个最终干扰项。</td><td>四准则卡死干扰项质量：① 足够难、② 一定为假且<strong>不与正解语义重叠</strong>、③ 视觉依赖（不能光读文字排除）、④ 临床合理。这条直接决定"MCQ 是否真的难且吃图"。</td></tr>
-<tr><td><b>④ 数据过滤</b></td><td>人审：出题前医生过一遍所有图。模型筛：出题后用 Lingshu-7B / Qwen2.5-VL-7B / LLaVA-Med-7B 三个模型做，<strong>三个全做对的题剔除</strong>。</td><td>三模型全对 = 太简单 → 剔除，给 MLLM 卡住<strong>难度下限</strong>。人审堵图质量，模型筛堵"送分题"。</td></tr>
-<tr><td><b>⑤ 质量保证</b></td><td>全科医生参与、专盯 LLM 生成内容，<strong>最终剔除 8% 可疑合成内容</strong>；人审阶段两名标注者联审 + 独立审计一致性，未达共识者删；四名标注者确认每题<strong>唯一无歧义正解</strong>；最后持照医师做医学正确性总审。</td><td>多重把关堵"合成噪声 / 歧义题 / 多正解 / 医学错误"——benchmark 的可信度全靠这一关兜底。</td></tr>
-</tbody></table></div>
-<div class="socratic"><p class="question">问：用三个 7B 模型"全做对就剔除"来卡难度，这听起来像随手定的规则——它到底在控制什么变量？又有什么风险？</p><p class="answer">答：它控制的是"难度下限"这个混淆变量。如果题集里混了一堆送分题，模型间的差异会被"大家都对"稀释，benchmark 的<strong>分辨力</strong>下降——你想测的是"复杂推理"，结果一半分来自"认得出这是 CT"。用三个独立 7B 模型当筛子、"全对才剔"，等于给每道题设了一道"至少有一个弱模型答不出"的难度闸，把平凡题挡在外面。<br><br>但这一步也带进一个需要显式标出的<strong>风险假设</strong>：用模型当难度裁判，可能系统性偏向"对这三个模型难、但对人类未必难"的题，或反过来漏掉"三模型恰好都蒙对、其实很难"的题。论文用"只剔三个<em>都</em>对的"（而非"任一对就剔"）把这个偏置压到最小——保留了"至少一个模型不会"的题，难度闸是<em>宽松下限</em>而非严格筛选。这是"每个假设显式标出"的典型：难度由模型定，就得交代这个裁判可能引入什么偏。</p><p class="takeaway"><strong>Takeaway：</strong>"三模型全对则剔"不是凑数规则，是给 benchmark 设难度下限、提分辨力的控制手段；代价是难度裁判由模型担任，可能轻微偏向"模型觉得难"的题——论文用"全对才剔"这个宽松阈值把偏置压到最小。</p></div></section>
+<section id="pipeline"><h2>4. 基准构建流水线：采图 → 出题 → 造干扰项 → 双重过滤 → 质检</h2><p>Med-CMR 的“pipeline”不是模型前向，而是<strong>一条把原始病例报告变成可信题库的数据流水线</strong>（论文 §2.2）。每一步都在回答“怎么让题既难、又对、又非看图不可”。</p>
+<h3>4.1 维度引导的数据采集</h3><p>先按七维去权威期刊（JMCR / NEJM 等）采集影像 + 人工图注 + 元数据，据此构造七个题型类目，保证临床锚定与多样性。</p>
+<h3>4.2 出题（半自动）</h3><p>请有医学背景的标注者为每个类目设计 <strong>10–20 个模板</strong>，每个模板都要求“强视觉锚定 + 对应该维度的能力 + 鼓励超出直接识别的多步诊断推断”。再用 <strong>GPT-5-mini-2025-08-07</strong> 辅助：对每张图，模型选一个合适模板、从对应人工图注里抽出正确答案。这一步保证生成的题“正确、多样、且聚焦目标推理类型”。</p>
+<h3>4.3 干扰项标注（人在环）</h3><p>MCQ 的难度主要由干扰项决定。用 <strong>GPT-5-Mini / Qwen3-VL-Plus / Claude-Sonnet-4</strong> 三个大模型各生成 4 个干扰项候选，凑成 <strong>12 个候选池</strong>，再由三名医学背景标注者选出 <strong>4 个最终干扰项</strong>，且必须同时满足四条：(1) <strong>足够难</strong>——对备考充分者仍有挑战；(2) <strong>排除正确性</strong>——干扰项必为假、且不与正确答案语义重叠；(3) <strong>视觉依赖</strong>——必须依赖看图、而非仅靠文本；(4) <strong>临床合理</strong>——每个选项都现实、符合语境。</p>
+<h3>4.4 双重过滤 + 质检</h3><p>过滤分模型侧与人工侧：</p>
+<ul><li><strong>人工过滤（出题前）：</strong>医护人员先人工审所有图，剔除图注不足、或与目标维度不匹配的图。</li><li><strong>模型过滤（出题后）：</strong>用 <strong>Lingshu-7B、Qwen2.5-VL-7B、Llava-Med-v1.5-Mistral-7B</strong> 三个模型作答，<strong>三个都答对的题被剔除</strong>——保证留下的题对 MLLM 有适当难度。</li><li><strong>质量保证：</strong>全科医生重点过滤 LLM 生成内容，最终从原始合成集里<strong>剔除约 8% 的可疑内容</strong>；人在环阶段两名标注者联合复审、独立审计员校验判断一致性、未达共识的题剔除；模型过滤之后再由四名标注者确认每题有<strong>唯一无歧义的正确答案</strong>（有其它可能正确选项的整题删除）；最后由<strong>持照医师</strong>做整体医学准确性复核。</li></ul>
+<div class="formula-note"><p class="note-title">为什么“三模型都答对就删”这一步是流水线的关键阀门？</p><p>这一步把基准的<strong>难度下限</strong>钉死了。若不剔除“小模型都会”的题，题库会被大量感知级简单题稀释，七维分数就退化回“谁刷分多”而非“谁能做复杂推理”——正是 §1 批评现有基准的那个毛病。用三个 7B 量级模型当“地板探测器”，等于显式声明：<strong>留下的题，至少不是现成小模型一眼能蒙对的</strong>。它和“人工先删劣质图”一前一后，把难度从数据源和题面两头同时抬起来。</p></div></section>
 
-<section id="method"><h2>5. 评测协议：把"临床复杂度"拆成 7 维，再用四准则加权打分</h2>
-<h3>5.1 七个维度：视觉 × 推理的二维分解</h3><p>论文先论证一个前提：临床里<strong>感知与推理紧密耦合</strong>——医生在不确定证据、信息不全、需跨时间/上下文整合多模态证据的约束下做诊断。要系统地捕捉这些挑战，就把医学复杂度沿"视觉"和"推理"两个来源拆成 7 维：</p>
-<ul><li><strong>视觉侧（感知复杂度，源于图像的模糊与可变）：</strong>(1) <em>小目标检测</em>——识别难以察觉的小/淡目标；(2) <em>细节判别</em>——区分视觉相似但临床含义不同的发现；(3) <em>空间理解</em>——整合并对齐多模态信息以保持空间一致。</li><li><strong>推理侧（高阶推断与不确定下的决策）：</strong>(4) <em>时序预测</em>——对疾病进展/预后随时间推理；(5) <em>因果推理</em>——用多步因果链连接症状、发现、结局；(6) <em>长尾泛化</em>——罕见病样本极少时的决策；(7) <em>多源整合</em>——从一个复杂病例里多个并存异常中抽取关键诊断线索。</li></ul>
-<p>这 7 维"反映医学复杂度的双重本质（感知 + 推理）"，并作为<strong>数据选择、出题、评测的概念骨架</strong>——前文流水线的每一步都挂在这 7 维上。</p>
-<figure class="fig-wide"><a href="../assets/figures/medcmr/medcmr_fig3.png"><img src="../assets/figures/medcmr/medcmr_fig3.png" alt="模型规模与各维度分数的相关性散点：MCQ 各维度 r 高，开放式视觉准确性 r 最低"></a><figcaption><strong>图 3 · 规模 vs 能力的相关性（核心诊断图）。</strong>横轴是模型规模（B，对数刻度），每个小图一个能力轴，散点按模型族着色，虚线为拟合趋势，标题给出 Pearson $r$ 与 $p$。<strong>上两行（MCQ 各维度）$r$ 普遍高（0.77–0.85）</strong>：小目标 0.85、时序 0.85、细节 0.82、因果 0.82、长尾 0.83、空间 0.79、多源 0.77——规模一大，MCQ 准确率稳涨。<strong>下一行（开放式四准则）则分化</strong>：连贯性 $r$=0.79 仍跟规模走，但<strong>视觉准确性 $r$=0.59（最低）、GT 正确性 $r$=0.70</strong>——这两个"吃视觉证据"的维度对规模最不敏感。这张图要支撑的结论是：<strong>堆参数能买到"说得通顺、选得对"，却几乎买不到"看得准、答得实"</strong>，开放式推理的瓶颈不在规模。</figcaption></figure>
-<h3>5.2 双协议：MCQ 测"选对没"，开放式测"推得好不好"</h3><p>评测同时用两种题。<strong>MCQ</strong> 直接按正确率算。<strong>开放式</strong>则用一个基于准则的打分方案，同时评推理过程与最终结论——每个开放式回答沿四个预定义维度打分，最终分 $S$ 是四维的加权和：</p>
-<div class="equation">$$S=\frac{\sum_{i\in\{\text{cons},\text{coh},\text{vis},\text{gt}\}} w_i\,s_i}{\sum_{i\in\{\text{cons},\text{coh},\text{vis},\text{gt}\}} w_i},\qquad w_{\text{cons}}{=}1,\ w_{\text{coh}}{=}1,\ w_{\text{vis}}{=}4,\ w_{\text{gt}}{=}4$$<div class="eq-caption">式：开放式总分 $S$ 为四维度分 $s_i$ 的加权平均；权重把"视觉准确性 vis"与"GT 正确性 gt"各设为 4，"一致性 cons / 连贯性 coh"各设为 1。</div></div>
-<p>四个维度各管一面：<strong>一致性</strong>（表述清晰、内部自洽）、<strong>连贯性</strong>（推理步骤间的因果衔接）、<strong>视觉准确性</strong>（识别/描述图像视觉特征的准确度）、<strong>GT 正确性</strong>（最终答案与 ground truth 的对齐）。所有开放式分数归一到 0–100 便于比较。</p>
-<div class="socratic"><p class="question">问：为什么把 vis 和 gt 的权重各设成 4、cons 和 coh 各设成 1？这 4:1 不是拍脑袋吗？给两条独立理由。</p><p class="answer"><strong>路径 A（权重对齐"真正难的能力"，自上而下）：</strong>§1 的整个立题，是要测"看得准 + 推得对"，而不是"说得漂亮"。一致性和连贯性衡量的是<em>语言质量</em>——回答读起来顺不顺、自不自洽；视觉准确性和 GT 正确性衡量的是<em>临床实质</em>——有没有看准图、最终答案对不对。如果四维等权，一个"满嘴流利但看错图、答错病"的回答会被语言分托起来，掩盖真正的失败。把 vis/gt 加权到 4，等于<strong>让总分主要由"实质"主导、语言只做次要调节</strong>，这正对应"先讲为什么需要"——权重跟着"我们到底想奖励什么能力"走。<br><br><strong>路径 B（用数据自证这个权重不是空设，自下而上）：</strong>图 3 下行给了独立佐证：连贯性 $r$=0.79（随规模涨），而视觉准确性 $r$=0.59、GT 正确性 $r$=0.70（对规模最不敏感）。也就是说，cons/coh 这类语言维度<strong>已经相对成熟、容易随规模饱和</strong>，区分力弱；vis/gt 这类视觉-实质维度才是<strong>当前真正拉开差距、且堆参数也补不上</strong>的瓶颈。把高权重压在区分力强、最难的维度上，benchmark 的分辨力最高。两条路径殊途同归：一条说"我们想奖励实质而非辞藻"，一条说"实质维度本来就更难、更能区分模型"——4:1 因此不是拍脑袋，而是把分数的重心放到"难且重要"的能力上。</p><p class="takeaway"><strong>Takeaway：</strong>4:1 的权重把开放式总分锚到"看得准 + 答得实"，而非"说得顺"。图 3 进一步印证：语言维度易随规模饱和、区分力弱，视觉-实质维度才是真瓶颈——高权重压在真瓶颈上，分辨力最高。</p></div>
-<h3>5.3 LLM-as-Judge：用 DeepSeek-V3.2-Exp 当独立裁判，并自证可信</h3><p>开放式由谁打分？论文用 <strong>DeepSeek-V3.2-Exp 作为独立评估者</strong>，在受控协议下打分，刻意<strong>避开被测模型自己当裁判</strong>（防"自我偏好"偏置）。这一步是 benchmark 可信度的命门：如果 judge 不可靠，所有开放式分数都站不住。论文因此专门做了一轮人-AI 对齐验证（见 §8）。</p>
-<div class="formula-note"><p class="note-title">为什么"judge ≠ 被测模型"是机制必需，而非礼貌</p><p>LLM-as-Judge 的已知风险是<strong>自我偏好（self-preference）</strong>：模型倾向给"风格像自己"的回答打高分。若让被测的某个模型同时当裁判，它对自己/同族回答的打分会被系统性抬高，注入与"质量"无关的偏置。用一个<em>不在被测列表里</em>的独立模型（DeepSeek-V3.2-Exp）当裁判，等于把"裁判偏好"这个混淆变量从被测维度里剥出去。这与 §4 造干扰项时"换多个不同来源模型生成候选"是同一思路——<strong>用模型来源的多样性/独立性，抵消单一模型的系统偏置</strong>。</p></div></section>
+<section id="method"><h2>5. 方法：能力分解的定义 + 开放题的四维加权打分</h2><p>Med-CMR 的“方法”核心有两块：一是 §2.1 把复杂度拆成七维的<strong>定义体系</strong>（已在 #datasets 表中给出），二是开放题的<strong>评分公式</strong>——这条公式的权重选择本身就是一个被精心设计的实验决定。</p>
+<h3>5.1 双轨评测：MCQ 量正确性，开放题量推理质量</h3><p>MCQ 直接按正确率计分。开放题不能只看“最后答案对不对”，因为它还要量“推理过程好不好、有没有真的看图”。论文用一个<strong>四维加权和</strong>给开放题打分（§2.4）：</p>
+<div class="equation">$$S=\frac{\sum_{i\in\{\text{cons},\text{coh},\text{vis},\text{gt}\}} w_i\,s_i}{\sum_{i\in\{\text{cons},\text{coh},\text{vis},\text{gt}\}} w_i},\qquad w_{\text{cons}}=1,\ w_{\text{coh}}=1,\ w_{\text{vis}}=4,\ w_{\text{gt}}=4$$<div class="eq-caption">式 1：开放题总分 $S$ 是四维分数 $s_i$ 的加权平均。$\text{cons}$=一致性，$\text{coh}$=连贯性，$\text{vis}$=视觉准确性，$\text{gt}$=真值正确性。分母 $\sum w_i=10$。</div></div>
+<p>四维各测一面：<strong>一致性（Consistency）</strong>=表述清晰、内部不自相矛盾；<strong>连贯性（Coherence）</strong>=推理各步之间的因果连接；<strong>视觉准确性（Visual accuracy）</strong>=对图中视觉特征的识别与描述是否准确；<strong>真值正确性（Ground-truth correctness）</strong>=最终答案与标准答案是否一致。打分由<strong>独立评委 DeepSeek-V3.2-Exp</strong> 在受控协议下完成（用一个不在被测列表里的模型当评委，减少对被测模型的偏向），所有开放题分归一化到 0–100。</p>
+<div class="socratic"><p class="question">问：为什么把 Visual accuracy / GT correctness 的权重设成 Consistency / Coherence 的<strong>四倍</strong>？这个 4:1 不是拍脑袋，它背后的假设是什么？</p><p class="guide">引导：一个打分维度有没有用，要看它<strong>还能不能把模型区分开</strong>。如果几乎所有模型在某一维上都接近满分，那这一维就饱和了、没有判别力，给它高权重只会稀释总分里真正有信息的部分。</p><p class="answer">答：4:1 是把分数的方差，<strong>压到“还能区分模型”的那两条轴上</strong>。这个判断可以从两条独立路径验证。<br><strong>路径 A（判别力 / 饱和度，自上而下）：</strong>隐含假设是“一致性、连贯性属于语言流畅度，对今天的大模型已基本是<em>已解决</em>问题（接近天花板），而视觉准确性、真值正确性才是临床真正的<em>目标</em>、且远未解决”。一个评分维度的价值正比于它的判别力≈跨模型的方差；饱和维度方差小、判别力低。把目标维度加权到 4 倍，等于让总分主要由“还分得开模型”的轴决定。<br><strong>路径 B（用本文数据反推，自下而上）：</strong>表 2 的开放题四列恰好坐实了这个假设——很多模型 <strong>Consistency 接近天花板</strong>（多数 90+，GPT-5 97.77、Gemini 98.11），<strong>Coherence 也普遍很强</strong>（Qwen3-VL-30B-A3B 高达 79.84），<em>却同时</em>在 <strong>Visual accuracy / GT correctness 上普遍低于 30~40</strong>（Qwen3-VL-30B-A3B 两项都 &lt;30）。也就是说：低权重的两维已经饱和、几乎人人拿高分，高权重的两维才把模型拉开档次。如果四维等权，开放题总分会被两列“人人高分”的维度顶起来、彼此趋同，反而看不出谁强；4:1 让总分跟着<strong>没饱和、有判别力</strong>的两维走。两条路径殊途同归：<strong>权重该压在“尚未解决、还能区分”的能力上，而不是均摊给已经解决的流畅度</strong>。</p><p class="takeaway"><strong>Takeaway：</strong>4:1 不是偏好，是判别力的再分配——把开放题总分的方差从“已饱和的流畅度”移到“未解决的视觉接地与正确性”上，这恰好是临床真正在意的两件事。</p></div>
+<h3>5.2 临床智能映射：七维之外的第二张投影</h3><p>除七维外，论文还把题目映射到六类<strong>临床智能</strong>能力（图 2 左 / 表 3）：临床决策支持 CDS、诊断 DX、病理生理分析 PA、操作风险评估 PRA、分期与范围评估 SEE、治疗反应评估 TRE。这是对同一题库的<strong>另一种切法</strong>——七维是“按推理/感知复杂度来源”切，临床智能是“按临床任务类型”切。两套投影互相印证：无论沿哪条轴看，DX（诊断）这种要求精确视觉接地的任务，都是各模型相对薄弱的一档。</p></section>
 
-<section id="training"><h2>6. 评测设置（无训练账本）：18 个模型、官方 API / VLLM 推理</h2><p>Med-CMR 不训练任何模型，所以这一节是<strong>评测设置</strong>而非训练账本。共评 18 个 MLLM：</p>
-<ul><li><strong>闭源（2）：</strong>GPT-5、Gemini-2.5-Pro。</li><li><strong>开源（16）：</strong>Gemma3-4B/27B、Medgemma-4B/27B、Qwen2.5-VL-7B/32B/72B、InternVL3.5-8B/38B/241B-A28B、Lingshu-7B/32B、Qwen3-VL-8B/32B/30B-A3B/235B-A22B。其中 Medgemma 与 Lingshu 系是<strong>医学专科微调</strong>模型，其余为通用 MLLM。</li></ul>
-<p><strong>推理实现：</strong>开源模型用 VLLM 部署，闭源模型走官方 API。论文设计 prompt 模板约束各模型的输出格式，再用正则匹配抽答案；完整 prompt 模板在补充材料。开放式打分的 judge 是 DeepSeek-V3.2-Exp。</p>
-<p class="mini">说明：本文是纯评测工作，<strong>不涉及 GPU 卡数 / 墙钟时间 / 学习率等训练超参</strong>——这些在原文中本就不存在，故此处不"论文未说明"地强行留空，而是指明工作性质决定了无训练账本。</p></section>
+<section id="training"><h2>6. 评测配置：无训练，靠 vLLM 推理 + 独立 LLM 评委</h2><p>Med-CMR 是纯评测基准，<strong>本身不训练任何模型</strong>，所以传统意义的“训练账本（优化器 / LR / GPU-hours）”在这里<strong>不适用</strong>。论文记录的是评测侧设置（§3.1）：</p>
+<ul><li><strong>被测模型 18 个：</strong>闭源 GPT-5、Gemini-2.5-Pro；开源含 Gemma3-4B/27B、Medgemma-4B/27B、Qwen2.5-VL-7B/32B/72B、InternVL3.5-8B/38B/241B-A28B、Lingshu-7B/32B、Qwen3-VL-8B/32B/30B-A3B/235B-A22B。</li><li><strong>部署：</strong>开源模型用 <strong>vLLM</strong> 本地推理，闭源模型走<strong>官方 API</strong>。</li><li><strong>答案抽取：</strong>设计 prompt 模板约束输出格式，再用<strong>正则匹配</strong>抽答案（完整 prompt 见附录）。</li><li><strong>开放题评委：</strong><strong>DeepSeek-V3.2-Exp</strong> 作为独立外部评委按式 1 打分；评委不在被测列表内，以降低对被测模型的偏向。</li></ul>
+<div class="formula-note"><p class="note-title">关于算力（粗估，不等同账单）</p><p>论文未披露评测的总 GPU 卡数与墙钟时间，仅说明开源模型用 vLLM 推理、闭源走 API。考虑被测模型最大到 235B（且含 241B-A28B MoE），加上 20,653 道题 × 18 个模型的一轮全量推理 + 开放题逐条 LLM 评分，整体推理量不小，但<strong>论文未给出可据以估算的数字</strong>，此处不做 GPU-hours 估算，以免给出连“按论文披露数字粗略估算”都无从依据的数字。</p></div></section>
 
-<section id="experiments"><h2>7. 主结果：GPT-5 居首、长尾全场最难、医学微调无稳定优势</h2><p>表 2 是全文主表，给出 2 个闭源 + 16 个开源模型在 7 个推理维度上的成绩，以及开放式四准则的分维分数。<strong>由于模型多、列多，下表完整转写闭源两行与各规模档的代表/极值行，并保留全部 7 维 + 开放式四维 + 两个 All Score 列；为可读性，10B–100B 与 &gt;100B 档各保留若干代表行（已注明"节选"），完整 18 行见原文 Table 2。</strong></p>
-<div class="table-wrap"><table><caption><strong>表 2（节选转写）.</strong> 各模型在 Med-CMR 的成绩。7 维：小目标 SOD、细节 FDD、空间 SU、时序 TP、因果 CR、长尾 LTG、多源 MSI。"All"列为 MCQ 总准确率；开放式四维：一致性 Con、连贯性 Coh、视觉准确性 VA、GT 正确性 GT，"Score"为开放式加权总分。粗体=该档最佳。</caption><thead><tr><th>Model</th><th>SOD</th><th>FDD</th><th>SU</th><th>TP</th><th>CR</th><th>LTG</th><th>MSI</th><th>All(MCQ)</th><th>Con</th><th>Coh</th><th>VA</th><th>GT</th><th>Score</th></tr></thead><tbody>
-<tr><td colspan="14"><b>闭源</b></td></tr>
-<tr><td><b>GPT-5</b></td><td><b>66.08</b></td><td><b>71.45</b></td><td><b>62.06</b></td><td><b>58.33</b></td><td><b>60.30</b></td><td><b>55.19</b></td><td><b>69.00</b></td><td><b>57.81</b></td><td>97.77</td><td>88.86</td><td><b>40.45</b></td><td><b>34.65</b></td><td><b>48.70</b></td></tr>
-<tr><td>Gemini-2.5-Pro</td><td>58.75</td><td>68.07</td><td>56.70</td><td>52.08</td><td>53.54</td><td>46.42</td><td>64.42</td><td>49.87</td><td>98.11</td><td>89.36</td><td>35.77</td><td>32.07</td><td>45.98</td></tr>
-<tr><td colspan="14"><b>开源 1B–10B（节选）</b></td></tr>
-<tr><td>Medgemma-4B（医学）</td><td>16.13</td><td>17.72</td><td>13.12</td><td>14.58</td><td>17.64</td><td>14.00</td><td>23.45</td><td>14.90</td><td>86.98</td><td>57.17</td><td>26.65</td><td>17.57</td><td>32.10</td></tr>
-<tr><td>Lingshu-7B（医学）</td><td>32.84</td><td>47.12</td><td>31.17</td><td>38.99</td><td>31.53</td><td>23.86</td><td>39.62</td><td>27.26</td><td>96.19</td><td>73.96</td><td>33.47</td><td>26.26</td><td>40.91</td></tr>
+<section id="experiments"><h2>7. 实验：18 个模型，两张主表把短板照出来</h2><p><strong>判断：</strong>主结果（表 2）测“七维 × 双轨”的总体格局，临床智能表（表 3）从第二条轴交叉验证，图 3 看“规模到底买到了什么”。逐一看。</p>
+<h3>7.1 主表：GPT-5 居首，但医学微调不占优、长尾全场最难</h3><p>表 2 是全文最重的一张表。MCQ 侧闭源明显领先：<strong>GPT-5 总分 57.81、每个子类目都第一</strong>；Gemini-2.5-Pro 总分 49.87 居次。开源最强是 <strong>Qwen3-VL-235B-A22B（49.34）</strong>，与 GPT-5 仍差 <strong>8.47 分</strong>。<strong>长尾泛化（LTG）一致最难</strong>：最高分仅 55.19（GPT-5），所有开源模型都 &lt;46。同尺寸下，<strong>医学微调的 Medgemma / Lingshu 系并未显出优势</strong>。</p>
+<div class="table-wrap"><table><caption><strong>表 2（论文转写，完整 18 行）.</strong> 18 个 MLLM 在 Med-CMR 上的成绩。左半 MCQ 正确率（七维 SOD/FDD/SU/TP/CR/LTG/MSI + All）；右半开放题四维（Con/Coh/VA/GT）+ 开放题 All Score。闭源与不同尺寸开源<strong>分组排名</strong>，<b>加粗=组内最佳</b>。</caption><thead><tr><th>模型</th><th>SOD</th><th>FDD</th><th>SU</th><th>TP</th><th>CR</th><th>LTG</th><th>MSI</th><th>MCQ All</th><th>Con</th><th>Coh</th><th>VA</th><th>GT</th><th>开放 All</th></tr></thead><tbody>
+<tr><td colspan="14" style="background:#eef4fa;font-weight:700">闭源模型</td></tr>
+<tr><td>GPT-5</td><td><b>66.08</b></td><td><b>71.45</b></td><td><b>62.06</b></td><td><b>58.33</b></td><td><b>60.30</b></td><td><b>55.19</b></td><td><b>69.00</b></td><td><b>57.81</b></td><td>97.77</td><td>88.86</td><td><b>40.45</b></td><td><b>34.65</b></td><td><b>48.70</b></td></tr>
+<tr><td>Gemini-2.5-Pro</td><td>58.75</td><td>68.07</td><td>56.70</td><td>52.08</td><td>53.54</td><td>46.42</td><td>64.42</td><td>49.87</td><td><b>98.11</b></td><td><b>89.36</b></td><td>35.77</td><td>32.07</td><td>45.98</td></tr>
+<tr><td colspan="14" style="background:#eef4fa;font-weight:700">开源模型 1B~10B</td></tr>
+<tr><td>Medgemma-4B</td><td>16.13</td><td>17.72</td><td>13.12</td><td>14.58</td><td>17.64</td><td>14.00</td><td>23.45</td><td>14.90</td><td>86.98</td><td>57.17</td><td>26.65</td><td>17.57</td><td>32.10</td></tr>
+<tr><td>Lingshu-7B</td><td>32.84</td><td>47.12</td><td>31.17</td><td>38.99</td><td>31.53</td><td>23.86</td><td>39.62</td><td>27.26</td><td>96.19</td><td>73.96</td><td>33.47</td><td>26.26</td><td>40.91</td></tr>
+<tr><td>Gemma3-4B</td><td>31.57</td><td>38.68</td><td>31.59</td><td>25.00</td><td>28.10</td><td>23.74</td><td>35.04</td><td>25.98</td><td>90.05</td><td>64.26</td><td>18.53</td><td>13.14</td><td>28.10</td></tr>
 <tr><td>Qwen2.5-VL-7B</td><td>37.83</td><td>48.10</td><td>33.29</td><td>32.74</td><td>35.22</td><td>28.15</td><td>43.13</td><td>31.06</td><td>92.35</td><td>65.83</td><td>26.21</td><td>19.15</td><td>33.96</td></tr>
-<tr><td><b>Qwen3-VL-8B</b></td><td><b>46.63</b></td><td><b>53.87</b></td><td><b>45.84</b></td><td><b>42.86</b></td><td><b>43.50</b></td><td><b>34.48</b></td><td><b>53.64</b></td><td><b>38.18</b></td><td>88.46</td><td>72.99</td><td>28.72</td><td>23.54</td><td>37.05</td></tr>
-<tr><td colspan="14"><b>开源 10B–100B（节选）</b></td></tr>
-<tr><td>Medgemma-27B（医学）</td><td>37.44</td><td>47.54</td><td>37.24</td><td>29.46</td><td>30.80</td><td>25.92</td><td>36.93</td><td>28.91</td><td>89.82</td><td>72.21</td><td>20.64</td><td>17.58</td><td>31.49</td></tr>
-<tr><td>Lingshu-32B（医学）</td><td>37.83</td><td>48.95</td><td>31.88</td><td>38.99</td><td>36.21</td><td>27.08</td><td>40.70</td><td>30.47</td><td>96.89</td><td>76.36</td><td>35.76</td><td>28.48</td><td>43.02</td></tr>
+<tr><td>InternVL3.5-8B</td><td>29.52</td><td>36.01</td><td>25.95</td><td>30.95</td><td>29.71</td><td>21.53</td><td>31.00</td><td>24.17</td><td>95.20</td><td>71.10</td><td><b>35.38</b></td><td>26.65</td><td><b>41.44</b></td></tr>
+<tr><td>Qwen3-VL-8B</td><td><b>46.63</b></td><td><b>53.87</b></td><td><b>45.84</b></td><td><b>42.86</b></td><td><b>43.50</b></td><td><b>34.48</b></td><td><b>53.64</b></td><td><b>38.18</b></td><td>88.46</td><td>72.99</td><td>28.72</td><td>23.54</td><td>37.05</td></tr>
+<tr><td colspan="14" style="background:#eef4fa;font-weight:700">开源模型 10B~100B</td></tr>
+<tr><td>Medgemma-27B</td><td>37.44</td><td>47.54</td><td>37.24</td><td>29.46</td><td>30.80</td><td>25.92</td><td>36.93</td><td>28.91</td><td>89.82</td><td>72.21</td><td>20.64</td><td>17.58</td><td>31.49</td></tr>
+<tr><td>Lingshu-32B</td><td>37.83</td><td>48.95</td><td>31.88</td><td>38.99</td><td>36.21</td><td>27.08</td><td>40.70</td><td>30.47</td><td><b>96.89</b></td><td>76.36</td><td><b>35.76</b></td><td><b>28.48</b></td><td><b>43.02</b></td></tr>
+<tr><td>Gemma3-27B</td><td>45.94</td><td>52.74</td><td>45.98</td><td>37.80</td><td>42.35</td><td>33.62</td><td>45.28</td><td>37.07</td><td>93.72</td><td>76.23</td><td>25.96</td><td>19.96</td><td>35.36</td></tr>
+<tr><td>Qwen2.5-VL-32B</td><td>42.82</td><td>52.60</td><td>36.25</td><td>38.99</td><td>39.39</td><td>29.60</td><td>45.82</td><td>33.36</td><td>95.54</td><td>75.81</td><td>33.55</td><td>26.66</td><td>41.22</td></tr>
 <tr><td>Qwen2.5-VL-72B</td><td>52.10</td><td>61.32</td><td>47.39</td><td>51.19</td><td>46.36</td><td>38.46</td><td>54.18</td><td>42.17</td><td>96.31</td><td>75.11</td><td>33.29</td><td>25.68</td><td>40.73</td></tr>
-<tr><td><b>Qwen3-VL-32B</b></td><td><b>49.66</b></td><td><b>60.90</b></td><td><b>49.22</b></td><td>46.43</td><td><b>47.45</b></td><td><b>41.58</b></td><td>53.91</td><td><b>44.28</b></td><td>96.00</td><td>79.31</td><td>31.09</td><td>25.65</td><td>39.37</td></tr>
-<tr><td colspan="14"><b>开源 &gt;100B</b></td></tr>
+<tr><td>InternVL3.5-38B</td><td>42.13</td><td>48.10</td><td>37.80</td><td>44.05</td><td>38.35</td><td>32.48</td><td>40.97</td><td>35.07</td><td>97.20</td><td>76.48</td><td>36.83</td><td><b>29.03</b></td><td>43.71</td></tr>
+<tr><td>Qwen3-VL-30B-A3B</td><td>44.57</td><td>51.20</td><td>41.18</td><td>39.88</td><td>38.14</td><td>32.86</td><td>47.17</td><td>35.79</td><td>94.37</td><td><b>79.84</b></td><td>29.73</td><td>25.15</td><td>39.37</td></tr>
+<tr><td>Qwen3-VL-32B</td><td><b>49.66</b></td><td><b>60.90</b></td><td><b>49.22</b></td><td><b>46.43</b></td><td><b>47.45</b></td><td><b>41.58</b></td><td><b>53.91</b></td><td><b>44.28</b></td><td>96.00</td><td>79.31</td><td>31.09</td><td>25.65</td><td>39.37</td></tr>
+<tr><td colspan="14" style="background:#eef4fa;font-weight:700">开源模型 &gt;100B</td></tr>
 <tr><td>InternVL3.5-241B-A28B</td><td>55.91</td><td>65.68</td><td>52.47</td><td>54.17</td><td>48.80</td><td>42.73</td><td>56.33</td><td>46.17</td><td>96.87</td><td>76.33</td><td><b>42.74</b></td><td><b>33.66</b></td><td><b>47.88</b></td></tr>
-<tr><td><b>Qwen3-VL-235B-A22B</b></td><td><b>57.48</b></td><td><b>66.95</b></td><td><b>55.99</b></td><td><b>55.06</b></td><td><b>53.33</b></td><td><b>45.86</b></td><td><b>63.07</b></td><td><b>49.34</b></td><td>97.10</td><td>85.21</td><td>33.02</td><td>27.95</td><td>42.62</td></tr>
+<tr><td>Qwen3-VL-235B-A22B</td><td><b>57.48</b></td><td><b>66.95</b></td><td><b>55.99</b></td><td><b>55.06</b></td><td><b>53.33</b></td><td><b>45.86</b></td><td><b>63.07</b></td><td><b>49.34</b></td><td><b>97.10</b></td><td><b>85.21</b></td><td>33.02</td><td>27.95</td><td>42.62</td></tr>
 </tbody></table></div>
-<p>这张表要回答三个问题。<strong>其一，谁最强？</strong>GPT-5 七维全面第一、MCQ 总分 57.81、开放式 48.70；Gemini-2.5-Pro 各项第二。开源最强是 Qwen3-VL-235B-A22B（MCQ 49.34），<strong>与 GPT-5 仍差 8.47 分</strong>——规模能帮开源逼近，但没填平闭源的沟。<strong>其二，哪一维最难？</strong>长尾泛化（LTG）<strong>始终是最难的一类</strong>：最高分仅 55.19（GPT-5），所有开源模型 LTG 都 &lt; 46。相对易的是细节判别（FDD）与多源整合（MSI）。<strong>其三，医学微调有用吗？</strong>同规模下，Medgemma / Lingshu 这些医学微调模型<strong>没有显著优势</strong>——Medgemma-4B 的 MCQ 仅 14.90（同档 Qwen3-VL-8B 38.18），Medgemma-27B 的开放式 VA/GT（20.64/17.58）甚至低于同源通用基线。</p>
-<div class="socratic"><p class="question">问：开放式分里出现一个怪现象——Qwen3-VL-30B-A3B 连贯性高达 79.84，但 VA/GT 都不到 30。这说明什么？</p><p class="answer">答：它精确印证了 §5.2 设 4:1 权重的动机。论文点名这个例子：很多模型<strong>一致性接近天花板、连贯性也强，却在视觉 grounding 上落后</strong>——也就是"话说得又顺又自洽，但没看准图、最终答案也不对"。如果四维等权，这种回答会被语言分托到中游，掩盖真正的失败。把 VA/GT 加权到 4，正好把这类"流利但空洞"的回答压回它该在的低位。论文的总结很直接：<strong>流利、内部自洽的推理已相对成熟，而"抽出正确视觉证据、收敛到正确答案"才是主要瓶颈</strong>。</p><p class="takeaway"><strong>Takeaway：</strong>开放式的真正难点不在语言（cons/coh 已近饱和），而在视觉证据的抽取与收敛（vis/gt 普遍低）。4:1 权重让总分如实反映这道沟。</p></div>
-<h3>7.1 按"医学智能"二次切分（表 3）</h3><p>除 7 维外，论文还按图 2 的"医学智能"能力对成绩二次切分：临床决策支持 CDS、诊断 DX、心理生理分析 PA、操作风险评估 PRA、分期与范围评估 SEE、治疗反应评估 TRE。下表转写代表行。</p>
-<div class="table-wrap"><table><caption><strong>表 3（节选转写）.</strong> 按医学智能维度的成绩。粗体=该档最佳。完整 18 行见原文 Table 3。</caption><thead><tr><th>Model</th><th>CDS</th><th>DX</th><th>PA</th><th>PRA</th><th>SEE</th><th>TRE</th></tr></thead><tbody>
-<tr><td><b>GPT-5</b></td><td><b>65.42</b></td><td><b>53.44</b></td><td><b>63.66</b></td><td><b>61.11</b></td><td><b>64.61</b></td><td><b>57.39</b></td></tr>
+<p>这张表里有两处反直觉、又最值得记的细节：</p>
+<ul><li><strong>开放题 All 与 MCQ All 排序不一致。</strong>例如 InternVL3.5-8B 的 MCQ All 仅 24.17（组内不高），开放题 All 却到 41.44（组内最高）；Qwen3-VL-8B 反过来——MCQ 组内第一（38.18）、开放题却只 37.05。原因正是式 1 的 4:1 权重：开放题分由“视觉准确性 + 真值正确性”主导，与“能否在五选一里排掉干扰项”是两种不同能力。</li><li><strong>“流畅度饱和、视觉接地塌陷”普遍存在。</strong>几乎所有模型 Consistency 90+ / Coherence 70~89，但 VA / GT 普遍 &lt;40——这正是 §5.1 给 VA/GT 加权 4 倍的实证依据：流畅度这条轴已经分不开模型了。</li></ul>
+<h3>7.2 临床智能表：第二条轴上，诊断（DX）一致偏弱</h3><p>表 3 把同一题库按六类临床智能重切。这张表要支撑的结论是<strong>“无论沿哪条轴看，要求精确视觉接地的任务都最弱”</strong>——所有模型的 <strong>DX（诊断）列普遍低于其它列</strong>，与七维里 SU/MSI 偏弱一致，互为佐证。</p>
+<div class="table-wrap"><table><caption><strong>表 3（论文转写，完整 18 行）.</strong> 按“临床智能”重切的成绩：CDS 临床决策支持、DX 诊断、PA 病理生理分析、PRA 操作风险评估、SEE 分期与范围评估、TRE 治疗反应评估。</caption><thead><tr><th>模型</th><th>CDS</th><th>DX</th><th>PA</th><th>PRA</th><th>SEE</th><th>TRE</th></tr></thead><tbody>
+<tr><td>GPT-5</td><td>65.42</td><td>53.44</td><td>63.66</td><td>61.11</td><td>64.61</td><td>57.39</td></tr>
 <tr><td>Gemini-2.5-Pro</td><td>54.47</td><td>45.85</td><td>55.53</td><td>56.94</td><td>59.07</td><td>48.20</td></tr>
-<tr><td>Medgemma-4B（医学）</td><td>19.25</td><td>13.39</td><td>15.81</td><td>22.22</td><td>22.91</td><td>12.80</td></tr>
+<tr><td>Medgemma-4B</td><td>19.25</td><td>13.39</td><td>15.81</td><td>22.22</td><td>22.91</td><td>12.80</td></tr>
+<tr><td>Lingshu-7B</td><td>32.21</td><td>22.93</td><td>31.74</td><td>36.11</td><td>37.45</td><td>34.16</td></tr>
+<tr><td>Gemma3-4B</td><td>29.93</td><td>22.74</td><td>30.14</td><td>38.89</td><td>37.58</td><td>21.74</td></tr>
+<tr><td>Qwen2.5-VL-7B</td><td>38.14</td><td>27.06</td><td>35.56</td><td>38.89</td><td>41.06</td><td>31.43</td></tr>
+<tr><td>InternVL3.5-8B</td><td>32.39</td><td>21.23</td><td>26.24</td><td>31.94</td><td>33.98</td><td>24.97</td></tr>
+<tr><td>Qwen3-VL-8B</td><td>46.53</td><td>33.16</td><td>44.23</td><td>45.83</td><td>48.78</td><td>39.13</td></tr>
+<tr><td>Medgemma-27B</td><td>34.85</td><td>24.24</td><td>35.26</td><td>31.94</td><td>41.31</td><td>26.21</td></tr>
+<tr><td>Lingshu-32B</td><td>38.59</td><td>26.92</td><td>33.37</td><td>40.28</td><td>41.83</td><td>32.05</td></tr>
+<tr><td>Gemma3-27B</td><td>43.80</td><td>32.72</td><td>42.58</td><td>48.61</td><td>49.94</td><td>33.17</td></tr>
+<tr><td>Qwen2.5-VL-32B</td><td>42.34</td><td>28.84</td><td>37.92</td><td>47.22</td><td>46.33</td><td>33.29</td></tr>
 <tr><td>Qwen2.5-VL-72B</td><td>52.28</td><td>37.09</td><td>48.07</td><td>50.00</td><td>51.87</td><td>43.23</td></tr>
+<tr><td>InternVL3.5-38B</td><td>43.25</td><td>31.76</td><td>37.51</td><td>33.33</td><td>44.79</td><td>38.88</td></tr>
+<tr><td>Qwen3-VL-30B-A3B</td><td>42.70</td><td>32.31</td><td>39.68</td><td>41.67</td><td>46.33</td><td>33.54</td></tr>
+<tr><td>Qwen3-VL-32B</td><td>50.91</td><td>40.33</td><td>49.54</td><td>52.78</td><td>53.93</td><td>40.62</td></tr>
 <tr><td>InternVL3.5-241B-A28B</td><td>56.11</td><td>41.26</td><td>50.93</td><td>47.22</td><td>57.40</td><td>51.06</td></tr>
-<tr><td><b>Qwen3-VL-235B-A22B</b></td><td>58.21</td><td>44.62</td><td>54.44</td><td>59.72</td><td>59.07</td><td>52.17</td></tr>
-</tbody></table></table></div>
-<p>这张表里 <strong>诊断（DX）普遍是最低的一列</strong>（GPT-5 仅 53.44、开源多在 20–45），与"长尾最难"一致——诊断最吃罕见病知识与细粒度判别。</p></section>
-
-<section id="ablations"><h2>8. 误差分析与消融：长尾为何主导失败？医学微调到底改了什么？</h2>
-<h3>8.1 GPT-5 的三类失败（§4.1）</h3><p>论文对上界模型 GPT-5 做细致误差分析：每个维度抽 100 个错例、手工归为五类（识别 / 推理 / 医学知识 / 题意误解 / 格式）。主导错因是<strong>图像识别、推理、医学知识不足</strong>三类，题意误解与格式问题罕见。三条观察：</p>
-<ul><li><strong>观察 1（识别错主导视觉密集维度）：</strong>GPT-5 常关注整体外观、忽略推理必需的细微细节，导致漏掉小特征、混淆重叠结构、跨切片追踪不一致。多见于小目标、多源整合、细节判别、空间理解。论文据此推断：<strong>当前视觉编码器缺乏鲁棒的多尺度特征与跨帧一致性</strong>，模型于是依赖粗糙的全局线索而非细粒度局部证据。</li><li><strong>观察 2（推理错源于"接不上证据"）：</strong>多数推理失败来自模型<strong>无法跨视图、跨时间、跨临床上下文连接证据</strong>，于是只盯部分信息、形成有偏的推理路径——即便部分观察是对的，结论仍错。最严重于空间理解、多源整合、时序预测、因果推理。</li><li><strong>观察 3（知识错卡在专科与罕见）：</strong>最先进模型仍栽在<strong>需要专科医学知识</strong>的题上，最明显于时序预测、因果推理、长尾泛化——正解依赖对疾病机制与罕见病的理解，而这些是模型训练时极少见的。</li></ul>
-<div class="socratic"><p class="question">问：为什么"长尾泛化"会成为<em>所有</em>模型共同的主导失败模式，而不是某个模型的偶然短板？给两条独立理由。</p><p class="answer"><strong>路径 A（数据分布的必然，自下而上）：</strong>长尾的定义就是"罕见病样本极少"。无论预训练语料多大，罕见病在其中的占比天然极低——这是分布问题，不是规模问题。模型学到的是高频模式，遇到长尾就只能外推，而医学罕见病恰恰<strong>不能靠"长得像常见病"来蒙</strong>（图 1 长尾样题：CD117 染色模式里只有"弥漫强核染色提示异常定位"才指向罕见病，其余选项都是常见的合理干扰）。所以长尾难，难在<em>训练分布里本就没有足够信号</em>。<br><br><strong>路径 B（与规模相关性的实证，自上而下）：</strong>图 3 显示长尾 MCQ 的 $r$=0.83，看似随规模涨；但表 2 的<em>绝对值</em>给出另一面：即便最大的 GPT-5，长尾也只有 55.19，开源全 &lt; 46——<strong>规模能把长尾抬一点，却抬不过"勉强及格"</strong>。这与观察 3"知识错卡在长尾/罕见"一致：罕见病要的是专科知识的<em>覆盖</em>，而堆参数主要增强的是高频模式的拟合，对长尾的边际收益递减。两条路径殊途同归：一条说"训练分布里长尾信号本就稀薄"，一条说"实测里规模对长尾的提升撑不到及格线"——所以长尾是结构性的、跨模型的瓶颈。</p><p class="takeaway"><strong>Takeaway：</strong>长尾主导失败不是偶然，是"罕见病在任何训练分布里都稀薄"叠加"规模对长尾边际收益递减"的必然——这正是 Med-CMR 把长尾单列一维的价值：它逼出了一个堆参数解决不了的问题。</p></div>
-<h3>8.2 医学微调：MCQ 退化、开放式略胜（§4.2）</h3><p>图 4(b) 给出一个跨所有医学微调模型的一致现象：相比各自的通用基线，它们在 <strong>MCQ 上退化</strong>（Sign/Wilcoxon $p$&lt;0.001，差异显著），而在<strong>开放式上差距收窄、有时甚至反超</strong>（Sign $p$=0.45，差异不显著）。论文做了定向误差分析（采 150 个"Qwen2.5-VL-32B 对、Lingshu-32B 错"的 MCQ、150 个"Gemma-27B 对、Medgemma-27B 错"的 MCQ，及 50 个"Lingshu-32B 开放式胜 Qwen2.5-VL-32B"的题），找到两类 MCQ 错因：</p>
-<ul><li><strong>(1) 方向对、细节漏：</strong>医学模型常走对了诊断大方向，却忽略关键的细微视觉线索，最终选错。</li><li><strong>(2) 模式匹配过度：</strong>把少数显著特征直接连到典型诊断，不整合其他上下文信息。</li></ul>
-<p>两者合起来指向同一退化：<strong>医学微调让模型更依赖领域内的关联模式、更少做跨模态证据整合</strong>——通用多模态推理能力被磨损了。但开放式里，医学模型常产出<em>医学语义更丰富</em>的回答，即便漏了细粒度细节，也更可能生成"匹配整体视觉语义或合理诊断描述"的文本，于是在不那么吃精确性的开放式上略占便宜（Medgemma-27B 是例外，开放式全维下滑）。论文还把 500 道原本偏向通用模型的 MCQ <strong>改写成开放式</strong>重评：Lingshu-32B 的开放式分<strong>反超</strong>其基线，而 Medgemma-27B 相对 Gemma-27B 仍下滑——印证"医学微调换来医学语义、却折损通用推理"这一权衡。</p>
-<div class="formula-note"><p class="note-title">这个消融为什么能"归因"，而不只是"观察到现象"</p><p>关键在它的<strong>受控对照</strong>：每对都是"同源基线 vs 其医学微调版"（Gemma↔Medgemma、Qwen2.5-VL↔Lingshu），<strong>只改"是否医学微调"这一个变量</strong>，其余架构/规模尽量配平。再用"采基线对、微调错的题"做定向分析，把"退化具体退在哪"指出来。这正是"每次只改一个变量 + 主指标（MCQ 退化）+ 辅助指标（开放式收窄）双向验证"的设计——所以它能说"是医学微调<em>导致</em>了 MCQ 退化"，而非泛泛地"医学模型不如通用模型"。</p></div>
-<h3>8.3 judge 可信度：与人审强对齐（§4.3）</h3><p>开放式既然靠 LLM-as-Judge，论文专门验证它可信。随机取 200 个开放式样本，收三个代表模型（Qwen3-8B、Qwen3-32B、MedGemma-27B）的回答，两名标注者按与 judge<strong>相同的准则</strong>独立排名、协商至一致；对每个模型对算 win-ratio（胜/平/负=1/0.5/0），再用 Spearman $\rho$ 量化人-LLM 排名一致性。结果（图 4(d)）：<strong>各维度 win-ratio 的最大差异仅 0.0449</strong>（出现在 MedGemma-27B 的连贯性维度）；一致性与视觉准确性的 $\rho$&gt;0.8，连贯性与 GT 正确性的 $\rho$&gt;0.78。论文据此判定：<strong>自动评测框架可作为专家评分的可靠替代</strong>。</p>
-<div class="socratic"><p class="question">问：用一个 LLM 给另一些 LLM 打分，凭什么不是"AI 自说自话"？这套验证哪一步真正堵住了循环论证？</p><p class="answer">答：堵点有三层。<strong>第一，裁判独立</strong>——DeepSeek-V3.2-Exp 不在被测 18 个模型里，从源头切断"自我偏好"。<strong>第二，人审用同一把尺</strong>——人类标注者按<em>与 judge 完全相同的四准则</em>排名，于是"人和 AI 是否一致"问的是"同一标准下结论是否一致"，而非两套互不相干的偏好碰巧重合。<strong>第三，双指标交叉</strong>——既看 win-ratio 的绝对差（≤0.0449，量"打分高低是否吻合"），又看 Spearman $\rho$（>0.78，量"排序是否吻合"）；一个查"分数对齐"、一个查"排序对齐"，两者都高才算可信。这三层合起来，把"AI 自说自话"的两个漏洞——裁判有私心、标准不可比——都显式堵上了。</p><p class="takeaway"><strong>Takeaway：</strong>LLM-as-Judge 的可信度不靠"信它"，靠"裁判独立 + 人审同尺 + win-ratio/Spearman 双指标交叉"三层验证把循环论证堵死——这是把"judge 可靠"当假设、再去证它的标准做法。</p></div></section>
-
-<section id="limitations"><h2>9. 局限与复现门槛：这把诊断尺能量到哪、量不到哪？</h2>
-<div class="table-wrap"><table><caption><strong>表（§读者评估）.</strong> Med-CMR 的局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文 / 方法信息</th><th>读者应如何理解</th></tr></thead><tbody>
-<tr><td><b>数据来源偏置</b></td><td>题目源自 JMCR / NEJM 等病例报告与研究文章。</td><td>病例报告天然偏向"值得报告"的罕见/典型病例，与真实临床的常见病分布不同——长尾占比可能被结构性放大，benchmark 测的更接近"疑难病诊断力"而非"日常工作流通量"。</td></tr>
-<tr><td><b>难度裁判是模型</b></td><td>"三个 7B 模型全做对则剔除"卡难度下限。</td><td>难度由模型定义，可能轻微偏向"模型觉得难"的题；论文用"全对才剔"的宽松阈值把偏置压到最小，但未做"模型难度 vs 人类难度"的直接对照。</td></tr>
-<tr><td><b>自动生成的残留噪声</b></td><td>GPT-5-mini 生成题、多模型造干扰项，人审最终剔 8% 可疑合成内容。</td><td>剔了 8% 意味着<strong>承认合成有噪声</strong>；剩余 92% 经多重人审，但 LLM 生成的题/干扰项是否引入系统性风格偏置，论文未量化。</td></tr>
-<tr><td><b>judge 单一模型</b></td><td>开放式打分仅用 DeepSeek-V3.2-Exp 一个 judge。</td><td>虽与人审强对齐（$\rho$>0.78），但单 judge 仍可能有自身盲区；多 judge 投票会更稳，论文未做。</td></tr>
-<tr><td><b>"医学微调有代价"的范围</b></td><td>结论基于 Medgemma / Lingshu 两系。</td><td>不宜外推成"所有医学微调都退化"——它说明的是<em>这两类</em>微调配方在<em>复杂推理</em>上有通用能力损失，换微调策略未必如此。</td></tr>
-<tr><td><b>复现门槛</b></td><td>纯评测，无训练；模型经官方 API / VLLM 推理，prompt 模板与数据见项目页。</td><td>门槛低（不需训练算力），但<strong>闭源模型经 API</strong>评测——API 版本漂移可能让 GPT-5/Gemini 的数字随时间变化，复现需锁定模型版本与日期。</td></tr>
+<tr><td>Qwen3-VL-235B-A22B</td><td>58.21</td><td>44.62</td><td>54.44</td><td>59.72</td><td>59.07</td><td>52.17</td></tr>
 </tbody></table></div>
-<p>一句话概括复现门槛：<strong>这是一把"测疑难推理"的诊断尺，不是"测日常通量"的尺</strong>；它的可信度押在多重人审 + 单 judge 与人审的强对齐上，复现时要锁死闭源模型的 API 版本。</p></section>
+<h3>7.3 规模相关性：放大模型买到了什么？</h3><p>图 3 把每个分项分数对模型尺寸（log B）做相关分析。结论分裂得很干净：<strong>MCQ 侧，规模在所有类目上一致提升正确率</strong>（七维相关 $r=0.77\sim0.85$，全 $p&lt;0.001$）——更大的模型在模式识别、多模态整合、临床知识检索上确有更强容量；<strong>但开放题侧，规模的红利集中在语言质量</strong>：Coherence 相关较高（$r=0.79$），而 <strong>Visual accuracy 相关最弱（$r=0.59$）</strong>、GT correctness 也只 $r=0.70$。</p>
+<figure class="fig-wide"><a href="../assets/figures/medcmr/medcmr_fig3.png"><img src="../assets/figures/medcmr/medcmr_fig3.png" alt="模型尺寸与各分项分数的相关散点图，按模型家族着色，每图给出 r 与 p"></a><figcaption><strong>图 3 · 规模 vs 各分项的相关散点。</strong>横轴为模型尺寸（B，对数刻度），每个子图一条分项，按模型家族着色（Gemma3 / Medgemma / InternVL3.5 / Qwen2.5 / Lingshu / Qwen3），给出 Pearson $r$ 与 $p$。这组图要支撑的结论是<strong>“放大模型主要买到了 MCQ 正确率与语言连贯，却买不太到视觉准确性”</strong>：注意 Vision Accuracy 子图相关最弱（$r=0.59$），点云最散——说明“看准图里的证据”不是靠堆参数就能解决的，需要规模之外的进步。</figcaption></figure>
+<div class="socratic"><p class="question">问：MCQ 一致随规模涨、开放题的视觉准确性却几乎不随规模涨——这两件事矛盾吗？</p><p class="answer">答：不矛盾，它们指向同一个解释。MCQ 是“在五个选项里挑一个”，规模带来的更强的模式识别 + 知识检索，能直接把胜率抬上去——哪怕模型没真正“看准”，靠知识先验排掉几个干扰项也能蒙对更多。开放题的视觉准确性却要求<strong>主动、准确地描述图里的视觉证据</strong>，这是一种更硬的接地能力，<em>不能</em>靠语言先验绕过。所以规模买到了“选择题里的命中率”和“语言上的连贯”，却买不到“看准图”——后者正是 §8.1 误差分析里“识别类错误占最大头”的根因。</p><p class="takeaway"><strong>Takeaway：</strong>规模是“感知 + 知识检索 + 语言流畅”的有效杠杆，却撬不动“视觉接地”这块硬骨头——这正是 Med-CMR 想用 VA/GT 高权重照出来的那条短板。</p></div></section>
 
-<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>Med-CMR 把"医学多模态推理"这个不可诊断的标量，沿临床上有意义的 <strong>3 视觉 × 4 推理 = 7 条能力轴</strong>切开，配上"题必须吃图、干扰项不与正解语义重叠、三模型全对则剔"的构造流水线，再用 <strong>MCQ + 开放式（vis/gt 加权 4:1）双协议 + 独立 LLM-as-Judge（与人审 $\rho$>0.78）</strong> 把"答案对不对 + 推理好不好"分别量出来——于是在 18 个 SOTA 模型上，第一次能说清"GPT-5 强在哪、长尾为何全场最难、医学微调到底换走了什么"。</p>
-<div class="note"><p class="note-title">三个 takeaway</p><ol><li><strong>"把分数拆成几条能独立归因的轴"才是 benchmark 的真正设计变量</strong>：拆成 7 维后，"看不清"（视觉侧）和"推不出"（推理侧）不再互相掩盖，图 3 才能揭示"规模买得到流利、买不到看准"，图 4 才能把医学微调的得失讲清楚。</li><li><strong>权重要跟着"想奖励什么能力"走，并能用数据自证</strong>：开放式 vis/gt 设权 4、cons/coh 设权 1——上锚"看得准 + 答得实"，下有图 3 佐证（语言维度随规模饱和、区分力弱，视觉-实质维度才是真瓶颈）。4:1 不是拍脑袋。</li><li><strong>长尾是堆参数解决不了的结构性瓶颈</strong>：罕见病在任何训练分布里都稀薄，规模对长尾边际收益递减（GPT-5 仅 55.19、开源全 &lt; 46）。Med-CMR 把长尾单列一维，正是为了让这个问题无处可藏。</li></ol></div>
-<p>留给后续的两个反驳 / 验证路径：<strong>(a)</strong> "模型难度裁判 vs 人类难度"的直接对照——论文用"三模型全对则剔"卡了下限，但未验证"对这三个模型难"是否等于"对人类专家也难"；做一轮医生答题、与模型难度排名比 Spearman，能坐实难度闸是否对齐人类。<strong>(b)</strong> 把开放式 judge 从单模型扩成<em>多 judge 投票</em>，看 win-ratio 与 $\rho$ 是否进一步提升、单 judge 的盲区有多大——若多 judge 与人审对齐显著更好，则现有数字应被视为"可靠下界"而非定论。</p></section>
+<section id="ablations"><h2>8. 误差与对照分析：分解出的短板，能否解释结果？</h2><p>一个好的分解，应该能让“为什么差”也可被诊断。论文 §4 的三组分析正是在验证这件事。</p>
+<h3>8.1 GPT-5 误差画像：识别错误占最大头</h3><p>对上限模型 GPT-5，按七维各采样误差、人工归入五类（识别 / 推理 / 医学知识 / 题意误解 / 格式）。主导误差是<strong>图像识别、推理、医学知识不足</strong>三类，题意误解与格式问题罕见。三条观察：</p>
+<ul><li><strong>观察 1：识别类错误在“视觉吃重”的维度里占比最大。</strong>GPT-5 常盯整体外观、忽略对推理至关重要的细节，于是漏掉小特征、混淆重叠结构、跨切片追踪不一致——最常见于小目标检测、多源整合、细节判别、空间理解。作者据此推断：<strong>当前视觉编码器缺乏稳健的多尺度特征与跨帧一致性</strong>，让模型依赖粗糙的全局线索而非局部证据。</li><li><strong>观察 2：推理失败多源于“无法跨视图/时间/上下文连接证据”。</strong>模型常聚焦局部信息、形成有偏推理路径，即便部分观察正确也得出错误结论——在空间理解、多源整合、时序预测、因果推理上最明显。</li><li><strong>观察 3：最先进的模型仍卡在“需要专科医学知识”的题上。</strong>最明显于时序预测、因果推理、长尾泛化——答案取决于对疾病机制和罕见情形的理解，而模型训练里少见。</li></ul>
+<h3>8.2 医学微调到底买到了什么、又赔掉了什么？</h3><p>这是全文最有价值的对照实验（图 4b/c）。现象一致：<strong>所有医学微调模型在 MCQ 上相对其基座下降，在开放题上差距缩小、个别甚至反超</strong>。论文做了定向误差分析：取 150 道“Qwen2.5-VL-32B 对、Lingshu-32B 错”的 MCQ、150 道“Gemma-27B 对、Med-Gemma-27B 错”的 MCQ，再取 50 道“Lingshu-32B 开放题分高于 Qwen2.5-VL-32B”的题，人工复核。</p>
+<div class="socratic"><p class="question">问：同一个微调，为什么在 MCQ 上掉点、却在开放题上反超？用“训练分布 vs 评测分布”解释。</p><p class="guide">引导：医学 SFT 把输出分布<strong>收窄</strong>到“典型疾病模式 + 规范化医学措辞”上。这种收窄对“答案靠不靠医学语义”有利，对“要不要抠出图里细微视觉差别”不利——而 MCQ 和开放题恰好分别考这两件事。</p><p class="answer">答：分两边看。<br><strong>MCQ 端（分布收窄 → 掉点）：</strong>论文识别出两种医学模型的 MCQ 错误模式——(1) 走对了诊断大方向，却<strong>忽略细微视觉线索</strong>而选错；(2) 依赖<strong>模式匹配</strong>，把几个显著特征直接连到典型诊断、不整合其它上下文。两者都说明医学微调让模型更依赖<strong>领域内的关联模式</strong>、更少做跨模态证据整合——而 Med-CMR 的 MCQ 干扰项是专门设计来惩罚“只靠原型匹配、不抠细节”的，于是评测分布与“被收窄的训练分布”错位，掉点。<br><strong>开放题端（语义对齐 → 反超）：</strong>开放题部分由“医学语义是否贴合”计分。医学模型即便漏了细粒度细节，也更可能生成“匹配整体视觉语义 / 合理诊断描述”的文本——这正落在它被微调收窄到的那块分布里，于是开放题差距缩小甚至反超。<strong>同一次分布收窄，在“考细节辨别”的 MCQ 上是负债、在“考医学措辞贴合”的开放题上是资产。</strong><br><strong>反例诚实标注：</strong>Medgemma-27B 是例外——它开放题四维全线下滑，反映其通用推理能力退化得更严重，说明“微调收窄”并非总能在开放题上变现。</p><p class="takeaway"><strong>Takeaway：</strong>医学微调买到的是“领域语义对齐”、赔掉的是“通用多模态推理与细节辨别”。它在评测分布偏语义的开放题上是资产、在偏细节的 MCQ 上是负债——这解释了“医学模型不稳定优于通用模型”这一全文核心反直觉发现。</p></div>
+<p>为佐证，论文把 500 道“原本偏向通用模型”的 MCQ 改写成开放题重测（图 4c）：<strong>Lingshu-32B 改写后开放题分高于其基座，Medgemma-27B 仍低于 Gemma-27B</strong>——再次印证“收窄能否变现，取决于评测分布偏不偏语义，且并非对所有医学模型都成立”。</p>
+<h3>8.3 LLM 评委可信吗？</h3><p>开放题用 DeepSeek-V3.2-Exp 当评委，论文做了人-机对齐验证（§4.3，图 4d）：随机取 200 道开放题，三个代表模型（Qwen3-8B / Qwen3-32B / MedGemma-27B）的回答由两名标注者按同一准则独立排名、再调和；按胜率（赢/平/负=1/0.5/0）聚合，并算人-机排名的 Spearman $\rho$。结果：<strong>各维度胜率最大差异仅 0.0449</strong>（出现在 MedGemma-27B 的连贯性维度）；<strong>一致性、视觉准确性的 $\rho&gt;0.8$，连贯性、真值正确性的 $\rho&gt;0.78$</strong>。结论：自动评测可作为专家评分的可靠替代。</p></section>
 
-<section id="references" class="references"><h2>资料来源与图像说明</h2><ol>
-<li>Haozhen Gong, Xiaozhong Ji, Yuansen Liu, Wenbin Wu, Xiaoxiao Yan, Jingjing Liu, Kai Wu, Jiazhen Pan, Bailiang Jian, Jiangning Zhang, Xiaobin Hu, Hongwei Bran Li. <em>Med-CMR: A Fine-Grained Benchmark Integrating Visual Evidence and Clinical Logic for Medical Complex Multimodal Reasoning</em>. CVPR 2026（CVF pp. 41224–41234）/ arXiv:2512.00818v2（National University of Singapore · Nanjing University · Tongji University · Ruijin Hospital · Technical University of Munich · Zhejiang University）。项目页 / 代码：<code>github.com/LsmnBmnc/Med-CMR</code>。</li>
-<li>本文所有数字、表格（表 1–3、§2.2 流水线、§2.4 开放式打分式）与实验结论以 arXiv PDF 为准。<strong>表 2 / 表 3 为节选转写</strong>：保留闭源两行 + 各规模档代表/极值行与全部 7 维 + 开放式四维列，完整 18 行见原文 Table 2 / Table 3（已在表注标明"节选"）。开放式加权式（vis/gt=4、cons/coh=1）、judge 可信度（win-ratio 差 ≤0.0449、Spearman $\rho$>0.78）对照原文 §2.4 / §4.3。</li>
-<li><strong>kexue:su 方法与归因</strong>：第 1、4、5、8 节"为什么先拆维度再评分""三模型全对则剔在控什么变量""4:1 权重为何不是拍脑袋""长尾为何跨模型主导失败""LLM-as-Judge 凭什么可信"等多路径论证，按 <code>kexue:su</code> 方法（动机先行、假设显式、≥2 路径交叉验证）重新推导。检索 <code>kexue:su</code> 语料返回的卡片为分类损失 / 类别不平衡 / softmax 外推等条目（[9984][7708][7846][9526][8373]），<strong>与 benchmark 设计 / 能力拆解 / LLM-as-Judge 这一主题均无直接相关性</strong>，故本页<strong>仅应用其方法论、未作任何 [archives] 归因</strong>；GPT-5 / Gemini / DeepSeek / Qwen / DICOM / RadLex 等第三方系统与标准均按其本身引用，不借 kexue 转引。</li>
-<li>图像说明：图 2、3 为本地 PNG，由 <code>extract_figures.py</code>（PyMuPDF，caption 锚定）从 arXiv PDF 裁切；<strong>图 1（总览 teaser，含矢量样题排版 + 中心雷达图）被抽取器跳过（"caption 上方无图形"），改用按页面坐标的高 DPI 裁切（page 3，clip 至 caption 上沿，不含下方 Table 1）</strong>，并在图注转写其 7 维样题与雷达对比含义。路径 <code>assets/figures/medcmr/</code>。本文为纯评测工作，无 GPU / 训练账本，故 <code>#training</code> 节为评测设置。</li>
-</ol></section>
+<section id="limitations"><h2>9. 局限、失败模式与复现门槛</h2>
+<ul><li><strong>题目源于已发表病例报告，存在“被预训练见过”的污染风险。</strong>JMCR / NEJM 等公开期刊文本很可能进入过被测模型的预训练语料；论文用“强视觉依赖 + 三模型都对就删”来压低纯文本可蒙对的题，但无法完全排除知识泄漏，长尾/罕见题尤甚。</li><li><strong>出题与干扰项重度依赖大模型（GPT-5-mini / Claude / Qwen 等）。</strong>题目正确性最终靠人工 + 持照医师复核兜底（剔除约 8% 可疑内容），但“用模型造、再用模型筛”的链条本身可能带入系统性偏好——例如干扰项风格偏向某些模型的盲区。</li><li><strong>开放题评委也是 LLM（DeepSeek-V3.2-Exp）。</strong>尽管人-机对齐 $\rho&gt;0.78$ 较强，LLM-as-Judge 仍可能对“措辞华丽但视觉错误”的回答给偏高分；4:1 权重缓解了这一点，但未根除。</li><li><strong>“无像素级视觉接地核验”。</strong>基准用 MCQ/开放题间接量视觉接地，并不提供病灶级 mask/bbox 监督，因此“视觉准确性低”是从答案与图注一致性反推的，而非像素级核验。</li><li><strong>覆盖虽广，但各模态/系统题量分布不均（图 2 饼图）。</strong>少数模态/系统占比较小，细分到“某模态 × 某维度”时样本可能偏少，单格分数的方差需谨慎解读。</li><li><strong>失败模式集中且一致：长尾泛化最难、识别类错误最多。</strong>这既是发现也是局限——它意味着即便登顶的 GPT-5（LTG 仅 55.19）距“专家级复杂推理”仍有明显差距，Med-CMR 测到的是“现阶段普遍做不到”，而非“接近天花板”。</li></ul>
+<div class="note"><p class="note-title">复现门槛（诚实标注）</p><p>评测侧复现门槛不高：开源模型 vLLM 本地推理、闭源走 API、正则抽答案、独立 LLM 评委——无训练、无特殊硬件依赖。真正的门槛在<strong>数据与协议的可得性</strong>：题库、prompt 模板、评分 prompt 均称见 Project page / 附录；本文交付时仅核到项目主页（<code>github.com/LsmnBmnc/Med-CMR</code>），<strong>未核到可运行的独立代码仓与数据下载</strong>，因此“能否端到端复现整套打分”取决于项目页后续是否公开题库与脚本。</p></div></section>
+
+<section id="summary"><h2>10. 结语：把“医学多模态推理”这件事，第一次拆到可诊断</h2><p><strong>一句话：</strong>Med-CMR 把“医学多模态推理”从一个含糊的总分，升级成“七维能力 × 双轨打分”的应力测试机——它的价值不在某个模型排第几，而在于让“强在哪、弱在哪、医学微调赚赔了什么”第一次都变得可分维、可对照、可诊断。</p>
+<p>三条带走的判断：</p>
+<ol><li><strong>分解是设计、不是装饰。</strong>七维让“长尾泛化是共同短板”“识别类错误占最大头”这些原本被总分平均掉的结论显形——一个分解能让新结论显形，就证明它携带了总分没有的信息。</li><li><strong>4:1 权重把方差压在“还没解决”的轴上。</strong>流畅度（一致性/连贯性）已饱和、分不开模型；视觉准确性/真值正确性才是临床目标且远未解决，故加权 4 倍——这一选择被表 2“流畅度满分、视觉接地塌陷”的数据反向坐实。</li><li><strong>医学微调是“语义对齐 ↔ 通用推理”的权衡。</strong>它在偏语义的开放题上是资产、在偏细节的 MCQ 上是负债——这把“医学模型为何不稳定优于通用模型”从一句口号，变成了可用“训练分布 vs 评测分布”解释的机制。</li></ol>
+<p>推荐阅读路径：先看图 1 建立七维坐标系 → §1 理解“为什么总分量不出复杂推理” → §5.1 想清楚 4:1 权重的判别力逻辑 → 表 2 主结果 → §8.2 医学微调的赚赔对照（全文最值得细读的一节）。</p></section>
+
+<section id="references"><h2>11. 参考与图片出处</h2>
+<div class="references"><ol>
+<li>Haozhen Gong, Xiaozhong Ji, Yuansen Liu, Wenbin Wu, Xiaoxiao Yan, Jingjing Liu, Kai Wu, Jiazhen Pan, Bailiang Jian, Jiangning Zhang, Xiaobin Hu, Hongwei Bran Li. <strong>Med-CMR: A Fine-Grained Benchmark Integrating Visual Evidence and Clinical Logic for Medical Complex Multimodal Reasoning.</strong> arXiv:2512.00818v2 [cs.AI], 2026. CVPR 2026 · Medical AI. （NUS / 南京大学 / 同济 / 瑞金医院 / TUM / 浙大）</li>
+<li>arXiv abstract：<a href="https://arxiv.org/abs/2512.00818">https://arxiv.org/abs/2512.00818</a>；Project page：<a href="https://github.com/LsmnBmnc/Med-CMR">https://github.com/LsmnBmnc/Med-CMR</a>（本文交付时仅核到项目主页，未核到可运行的独立代码仓 / 数据下载）。</li>
+<li>本页所有数值、表 2 / 表 3、七维定义、评分公式（式 1）与误差分析均转写自论文正文 §2–§4；表 2 / 表 3 为<strong>完整 18 行转写</strong>（非节选）。图 3 中各 $r$ / $p$ 取自图内标注。论文未披露评测的 GPU 卡数 / 墙钟时间，#training 一节据此标注“不适用 / 论文未说明”，不做 GPU-hours 估算。</li>
+<li><strong>方法论与归因说明：</strong>本页的机制论证（七维分解的信息论/实验双路径、4:1 权重的判别力解释、医学微调“训练分布 vs 评测分布”的赚赔分析）按 <strong>kexue.fm / 苏剑林</strong> 的科学推导姿态组织（动机先行、假设显式、同一结论 ≥2 条独立路径交叉验证）。检索其语料库时，返回的卡片（类别不平衡 loss 重加权、Key 归一化长度外推、ELECTRA 等）<strong>均与本文“医学基准能力分解 / 打分权重 / 微调分布偏移”的具体主张不相关</strong>，故<strong>仅应用其方法论、不作任何 <code>[archives/XXXX]</code> 归因</strong>——以遵守“无相关卡片则不杜撰引用”的红线。</li>
+<li>图片出处：图 1（teaser/七维概览）、图 2（基准统计与临床智能映射）、图 3（规模相关散点）均为从 arXiv PDF 2512.00818 用 caption-anchored 提取器（<code>extract_figures.py</code>）抽出的本地 PNG，用于学术评述。</li>
+</ol></div></section>
+
 </main>
-
-<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">构造流水线</a></li><li><a href="#method">评测协议 / 7 维拆解</a></li><li><a href="#training">评测设置</a></li><li><a href="#experiments">主结果</a></li><li><a href="#ablations">误差分析 / 消融</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Med-CMR: A Fine-Grained Benchmark Integrating Visual Evidence and Clinical Logic for Medical Complex Multimodal Reasoning</dd><dt>Venue</dt><dd>CVPR 2026 · Medical AI（CVF pp.41224–41234）</dd><dt>Type</dt><dd>Benchmark（无训练，纯评测）</dd><dt>规模</dt><dd>20,653 VQA（16,655 MCQ + 3,998 开放式）· 11 器官系统 · 12 模态</dd><dt>评测</dt><dd>18 个 MLLM · MCQ + 开放式双协议 · DeepSeek-V3.2-Exp 当 judge</dd><dt>arXiv</dt><dd>2512.00818</dd><dt>Topic</dt><dd>Medical Multimodal Reasoning Benchmark</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：7 维样题 + 中心雷达</li><li>表 1：唯一三项全 ✓</li><li>式：开放式加权（vis/gt=4）</li><li>表 2：GPT-5 57.81 / 长尾最难</li><li>图 3：规模买流利、买不到看准</li><li>图 4：医学微调 MCQ 退化</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> Med-CMR 深读</p><p><span class="status-good">figures</span> 3 张 PNG（fig1 坐标裁切 / fig2-3 caption 锚定）</p><p><span class="status-good">formula</span> 开放式加权式待 MathJax 预检</p><p><span class="status-warn">scope</span> 偏疑难病例 / 闭源经 API（版本漂移）/ 单 judge</p></div></section></aside></div></body></html>
+</article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据 / 七维</a></li><li><a href="#pipeline">构建流水线</a></li><li><a href="#method">方法 / 打分公式</a></li><li><a href="#training">评测配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">误差与对照分析</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Med-CMR: A Fine-Grained Benchmark Integrating Visual Evidence and Clinical Logic for Medical Complex Multimodal Reasoning</dd><dt>Venue</dt><dd>CVPR 2026 · Medical AI</dd><dt>类型</dt><dd>医学复杂多模态推理评测基准（无模型训练）</dd><dt>规模</dt><dd>20,653 道（16,655 MCQ + 3,998 开放题）· 11 系统 × 12 模态</dd><dt>能力轴</dt><dd>3 视觉 + 4 推理 = 七维；双轨打分（MCQ 正确率 + 开放题四维加权）</dd><dt>arXiv</dt><dd>2512.00818</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：七维能力坐标系 + 示例题</li><li>图 2：模态/系统覆盖 + 临床智能映射</li><li>式 1：开放题四维加权（VA/GT 权 4）</li><li>表 2：18 模型主表，GPT-5 57.81 居首</li><li>表 3：按临床智能重切，DX 普遍偏弱</li><li>图 3：规模 vs 视觉准确性 r=0.59</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> Med-CMR 深读</p><p><span class="status-good">figures</span> 3 张 PNG（fig1/2/3）</p><p><span class="status-good">formula</span> 式 1 已过 MathJax 预检</p><p><span class="status-warn">scope</span> 无独立代码仓 / 数据下载；长尾泛化全场最难</p></div></section></aside>
+</div>
+</body>
+</html>

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MatAnyone 2 深读：没有真值 alpha，怎么用一个"学出来的质量打分器"把视频抠像 scale 到 2.4M 帧？</title>
+<meta name="description" content="MatAnyone 2（CVPR 2026 Highlight）深读：用一个无需真值的 Matting Quality Evaluator（MQE）同时做训练在线监督与离线数据筛选，构建 28K 片段 / 2.4M 帧的真实视频抠像数据集 VMReal，再配 reference-frame 策略处理长视频外观突变。问题→引导→回答→Takeaway 式机制深读。">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Video Matting · 学出来的质量打分器 / 真实视频抠像数据规模化</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Video Matting &gt; MatAnyone 2</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">12</span><span class="month">Jun</span></div><h1 id="paper-title">MatAnyone 2 深读：没有真值 alpha，怎么用一个"学出来的质量打分器"把视频抠像 scale 到 2.4M 帧？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-12</span><span>CVPR 2026 Highlight · NTU S-Lab / SenseTime</span><span>来源：arXiv:2512.11782 PDF</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Video Matting</span><span class="tag green">Learned Quality Evaluator</span><span class="tag">Memory Propagation</span><span class="tag">Real-world Dataset</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>视频抠像（video matting）卡住的地方，从来不是网络结构不够花哨，而是<strong>数据本身</strong>：真实视频里逐帧手标 alpha（毛发级的半透明边界）几乎做不到，于是大家只能拿合成数据（前景抠出来贴随机背景）凑，光照与边界都不自然，模型一到真实背光、飞发场景就露馅。前作 MatAnyone 想用<strong>分割数据</strong>补数据缺口，但分割只在"非边界区"（alpha 取 0 或 1）能给可靠监督，<strong>边界区只能挂一个很弱的无监督损失</strong>——结果语义稳了，边界却退化成"分割味"的硬边。MatAnyone 2 的核心赌注是：与其继续在"合成 vs 分割"之间折中，不如<strong>先学一个不需要真值 alpha 的质量打分器 MQE（Matting Quality Evaluator）</strong>，让它逐像素判断"这块 alpha 预测是可靠还是错的"，然后一鱼两吃——<strong>训练时当在线监督信号</strong>（错的地方罚、对的地方放过），<strong>离线时当数据仲裁器</strong>（融合视频抠像模型的语义稳定 + 图像抠像模型的边界细节），由此凑出 <strong>28K 片段 / 2.4M 帧的真实数据集 VMReal</strong>（比前作大约 35×）。立题问题因此很具体：<strong>当真值 alpha 根本拿不到，监督信号该从哪来——能不能"学一个评委"，既给训练打分、又给数据把关？</strong>第二条暗线是长视频：propagation 类方法只在局部窗口里有记忆，主体一旦露出之前没见过的部位（新举起的手、新掏出的杯子）就抠不出来，MatAnyone 2 用 <strong>reference-frame 策略</strong>把长程帧塞进记忆而不增显存。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>MatAnyone 2：用<strong>学出来的 MQE</strong>（无需真值 alpha）同时驱动<strong>在线训练监督</strong>与<strong>离线数据筛选</strong>，构建首个大规模真实视频抠像数据集 <strong>VMReal</strong>（28K 片段 / 2.4M 帧），再加 reference-frame 策略治长视频外观突变。纯 CNN，仅需首帧 mask。</div><div class="kv"><b>关键机制</b>MQE 吃〈视频帧 $I_{rgb}$、预测 alpha $\hat{\alpha}$、分割 mask $M^{seg}$〉三元组，输出逐像素二值<strong>评估图</strong>（1=可靠 / 0=错误）。在线：把 0 区当惩罚掩码压错误；离线：拿它当仲裁器，把 $B_V$（视频抠像，语义稳）与 $B_I$（图像抠像，边界利）逐像素融合成高质标注。</div><div class="kv"><b>核心证据</b>4 个合成基准全部指标第一（表 1）；真实 CRGNN 基准 Grad 11.74、相对 MatAnyone 各指标大幅下降（表 2）；消融逐项加（$L_{eval}$ → VMReal → reference-frame）单调变好（表 3）；MQE 预测与真值 discrepancy 的 Pearson <strong>r = 0.87</strong>（图 10）。</div><div class="kv"><b>复现门槛</b>训练用 <strong>8× A800-80G</strong>、batch 16；MQE 与抠像模型分别训练。VMReal 含 4.5K 自采 1080p + 其余源自 SA-V 人像子集（720p），<strong>数据未公开发布说明</strong>。代码仓 <code>pq-yang/MatAnyone2</code>（HTTP 200，标注 CVPR 2026 Highlight）。</div></div></div><figure class="hero-card"><a href="../assets/figures/matanyone2/matanyone2_fig1.png"><img src="../assets/figures/matanyone2/matanyone2_fig1.png" alt="MatAnyone 2 与 MatAnyone、GVM 的抠像对比 teaser"></a><figcaption><strong>图 1 · 全文"核心断言可视化"。</strong>左半（a）对比前作 <strong>MatAnyone</strong>：飞发、背光等挑战场景下，MatAnyone 的边界退化成"分割味"硬边，MatAnyone 2 保住了发丝级细节。右半（b）对比扩散式 <strong>GVM</strong>：扩散先验虽稳，但 alpha 模糊、边界过渡不自然；MatAnyone 2（纯 CNN）反而给出更清晰的边界。这张 teaser 回答的不是"某一帧多好看"，而是论文要支撑的两条主张：<strong>同时</strong>拿到语义稳定与边界细节，且不靠扩散先验。（建议放大看发丝区）</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：真值 alpha 拿不到，监督信号到底从哪来？</h2>
+<p>抠像要解的是 <strong>alpha matting</strong>：把每个像素分解成"前景占多少、背景占多少"，输出一张连续的 alpha 图 $\alpha\in[0,1]$。难点全在<strong>边界</strong>——发丝、半透明衣料、运动模糊处，alpha 是 0 到 1 之间的连续值，这正是"抠像"区别于"分割"（只有 0/1）的地方。可问题是：<strong>真实视频里这种毛发级 alpha 几乎无法逐帧手标</strong>，论文原话是"if not impossible at scale"。监督信号的缺失，是这一行所有麻烦的总根子。</p>
+<p>历史上绕这个根子有三条路，论文逐条点了它们的破绽：</p>
+<ul>
+<li><strong>合成数据。</strong>把抠好的前景贴到随机背景上（RGBA blending）。规模能凑，但光照不一致、边界不自然，和真实视频存在 domain gap——模型一到真实挑战场景就掉链子。即便最大的合成集 VM800 也只有 826 段，约是 SAM 2 所用 VOS 数据（SA-V）的 1/60。</li>
+<li><strong>分割预训练。</strong>先在分割模型/数据上预训练再 finetune。但高质抠像数据太少，finetune 时预训练学到的分割能力反而会退化。</li>
+<li><strong>分割联合训练（前作 MatAnyone 走的路）。</strong>把分割与抠像监督塞进一个框架同时学。这里是全文动机的关键转折：<strong>分割数据只能在"非边界区"（alpha=0 或 1）给可靠监督</strong>，因为分割本身就只有 0/1 标签；而真正决定抠像质量的<strong>边界区</strong>，分割给不出连续 alpha 的监督，MatAnyone 只能挂一个依赖强假设的<strong>无监督损失</strong>。这条弱监督的后果是：语义/跟踪是稳了，但边界被往"分割味"硬边上拽（见图 1、图 2a）。</li>
+</ul>
+<div class="socratic"><p class="q"><strong>问题。</strong>三条路都卡在同一处——边界区没有可靠监督。那能不能换个思路：不去硬造真值 alpha，而是<strong>学一个"评委"</strong>，让它在没有真值的情况下，逐像素告诉我"这块 alpha 预测靠不靠谱"？</p>
+<p class="g"><strong>引导。</strong>如果真有这么个评委，它至少能干两件事：训练时，把它判为"错"的像素当成惩罚信号，等于<strong>凭空</strong>给边界区补上了监督；离线时，拿它当裁判去<strong>挑</strong>——视频抠像模型语义稳但边界糙、图像抠像模型边界利但语义飘，让评委逐像素选出各自靠谱的部分拼起来，就能<strong>自动</strong>标出高质量真实数据。</p>
+<p class="a"><strong>回答。</strong>这正是 MQE（Matting Quality Evaluator）。它把"缺真值"这个死结，转化成一个<strong>能学的二分类问题</strong>：每个像素，alpha 预测是"可靠(1)"还是"错误(0)"。一旦这张评估图能学出来，监督信号的来源问题就从"造真值"降级成"判对错"——后者用现成的图像抠像真值就能造伪标签训练。</p>
+<p class="t"><strong>Takeaway。</strong>MatAnyone 2 的根本动机不是又一个抠像网络，而是<strong>把监督信号的瓶颈外包给一个学出来的质量打分器</strong>。理解全文的钥匙就一句话：<em>没有真值，就学一个判对错的评委，再让它一鱼两吃（在线监督 + 离线筛数据）</em>。</p></div>
+</section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出的 vs 读者可顺势推断的</h2>
+<p><strong>作者明确提出的三条贡献：</strong></p>
+<ol>
+<li><strong>学出来的 MQE。</strong>无需真值 alpha，对预测 alpha 做语义 + 细节双重评估，逐像素输出可靠/错误图；既当训练在线监督，又当离线数据筛选模块，由此把视频抠像 scale 起来。</li>
+<li><strong>VMReal 数据集。</strong>借 MQE 构建的大规模、场景多样、<strong>真实</strong>视频抠像数据集，约 28K 片段、2.4M 标注帧。</li>
+<li><strong>reference-frame 训练策略。</strong>把局部窗口外的长程帧引入记忆，让模型在<strong>不增显存</strong>的前提下应对长视频里的大幅外观变化。</li>
+</ol>
+<p><strong>与前作 MatAnyone 的真正差别</strong>（图 2 是全文最该先看的一张图）：MatAnyone 靠分割监督补数据，可靠的只有 core 区（$L_{cert.}$），边界区是弱无监督（$L_{uncert.}$），且记忆被限在局部窗口；MatAnyone 2 改成"在 VMReal 真实数据上训练，每张 alpha 标签都配一张二值评估图"——可靠像素上算 masked 抠像损失 $L_{mat}$，MQE 再补一个 $L_{eval}$ 同时监督 core 与边界，外加 reference-frame 提供长程线索。</p>
+<figure><a href="../assets/figures/matanyone2/matanyone2_fig2.png"><img src="../assets/figures/matanyone2/matanyone2_fig2.png" alt="MatAnyone 与 MatAnyone 2 的对比示意图"></a><figcaption><strong>图 2 · 两代方法的根本差别（先看这张）。</strong>(a) MatAnyone：合成抠像 + 分割数据联合训练，分割给可靠的 core 监督 $L_{cert.}$、却只能给边界弱无监督 $L_{uncert.}$，记忆限在 local window。(b) MatAnyone 2：在真实 VMReal 上训练，每帧 alpha 配一张二值评估图 → 可靠像素算 $L_{mat}$、MQE 供 $L_{eval}$ 同监督 core 与边界；reference-frame 把长程帧塞进记忆而不增显存。要看的对比点是<strong>监督结构</strong>（虚线弱监督 → 实线 MQE 监督）与<strong>记忆范围</strong>（local → local+reference）。</figcaption></figure>
+<p><strong>读者可顺势推断的点：</strong>这套设计的真正杠杆是"<strong>用一个可学的、逐像素的质量代理，替代手工真值</strong>"——它和近年低层视觉里用 IQA 模型造 DPO 数据对、用判别器挑高质样本是同一思路谱系，但 MQE 把粒度做到了<strong>逐像素 + 时序</strong>（图像级 IQA 给不了边界级、跨帧一致的评估），这是它能服务于"抠像"这一边界敏感任务的关键。需要强调：论文未声称 MQE 是通用 IQA，它只在"判 alpha 对错"这一窄任务上学，伪标签也只来自图像抠像真值。</p>
+</section>
+
+<section id="datasets"><h2>3. 数据：MQE 的伪标签从哪来，VMReal 又是怎么凑出来的？</h2>
+<p>这一节有两套数据，别混：一套是<strong>训 MQE 用的伪标签</strong>，一套是<strong>MQE 反过来造出来的 VMReal</strong>。</p>
+<h3>3.1 训 MQE：用图像抠像真值造伪评估图</h3>
+<p>MQE 要学"判 alpha 对错"，可"对错"本身也没有现成标签。论文的做法：拿<strong>有真值 alpha 的图像抠像集 P3M-10k</strong>，对某个预测 $\hat{\alpha}$ 与真值 $\alpha_{gt}$ 算逐 patch 的差异分，差异小判可靠(1)、大判错误(0)。具体是把每张图切成 7×7 不重叠 patch，每个 patch 算抠像标准指标的加权组合（式 3，下节给），min–max 归一化到 [0,1]，再以阈值 $\delta=0.2$ 二值化。由于"错误"像素主要集中在边界、占比小，正负类极不平衡，故用 <strong>focal loss</strong> 强调难分的错误区。这里的关键假设是：<em>"在 patch 上 MAD/Grad 偏离大" 约等于 "这块 alpha 预测肉眼也错"</em>——图 10 的 r=0.87 相关性就是来验证这个假设的。</p>
+<h3>3.2 VMReal：自动双分支标注 + MQE 仲裁</h3>
+<p>VMReal 的数据源有两块：(1) 从视频素材网站和 YouTube 自采的 <strong>4.5K 段 1080p</strong> 高清视频（发丝细节丰富）；(2) 其余源自 <strong>SA-V</strong>（SAM 2 用的大规模 VOS 数据）的<strong>人像子集</strong>，多为 720p，场景/运动/光照多样。SA-V 的 mask 没有语义标签且常是残体（只有头、只有上半身），论文用一套两阶段"过滤+合并"流程：先按 IoU&gt;0.9 去冗余 mask，再用 OWL-SAM 以 "person" 文本提示做人像提名、把碎 mask 归并成完整人体 mask，丢掉非人或残缺的。</p>
+<p>下表是论文 Table 4，VMReal 与既有数据集的对照（如实转写）：</p>
+<div class="table-wrap"><table>
+<caption>表 4 · 视频抠像训练数据集对照（转写自论文 Table 4）。VMReal 是其中唯一"真实"（非前景贴背景合成）的，规模约为前作 VM800 的 35×（按片段数）。</caption>
+<thead><tr><th>数据集</th><th>VM108</th><th>VideoMatte240K</th><th>VM800</th><th>SynHairMan</th><th>VMReal（本文）</th></tr></thead>
+<tbody>
+<tr><td>#片段</td><td>108</td><td>484</td><td>826</td><td>200</td><td><strong>28K</strong></td></tr>
+<tr><td>#帧</td><td>92K</td><td>240K</td><td>320K</td><td>18K</td><td><strong>2.4M</strong></td></tr>
+<tr><td>真实性 Realism</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td><td><strong>✓</strong></td></tr>
+</tbody>
+</table></div>
+<figure><a href="../assets/figures/matanyone2/matanyone2_fig8.png"><img src="../assets/figures/matanyone2/matanyone2_fig8.png" alt="VMReal 数据集示例：视频帧、alpha 图、评估图三行"></a><figcaption><strong>图 8 · VMReal 长什么样。</strong>三行分别是视频帧、对应 alpha 图、对应评估图（evaluator map）。覆盖近景人像、大幅运动飞发、低光环境等真实挑战。要点：每段视频不只配 alpha，还配一张<strong>评估图</strong>——这张图就是训练时 $L_{mat}$ 只在可靠像素上算的依据，也是把"哪些标注可信"显式带进数据集的方式。</figcaption></figure>
+</section>
+
+<section id="pipeline"><h2>4. Pipeline：MQE 的两个角色，逐级拆开</h2>
+<p>MQE 训好之后，论文让它走两条独立的 pipeline。把每一步的"为什么需要 / 去掉会怎样"讲清楚，是理解全文的主线。</p>
+<h3>4.1 在线角色：训练时的逐像素打分器</h3>
+<p>对每个输入帧，MQE 先产出一张错误概率图 $P^{(0)}_{eval}$（每个像素 alpha 预测出错的可能性），它直接当<strong>惩罚掩码</strong>，鼓励网络压低错误概率。这一步替代的是 MatAnyone 边界区那个弱无监督损失——<strong>去掉它，边界区就退回"无人监督"状态，硬边复现</strong>（表 3a→b 验证）。</p>
+<figure><a href="../assets/figures/matanyone2/matanyone2_fig4.png"><img src="../assets/figures/matanyone2/matanyone2_fig4.png" alt="MQE 检测出的低质边界与语义错误区域"></a><figcaption><strong>图 4 · MQE 在判什么。</strong>(a) 细节保真：发丝边界处 alpha 退化成分割味硬边，MQE 在 Eval. Map 里把这条边界标红为"错误"。(b) 语义准确：core 区前景/背景判错（如背包/腿部），MQE 同样在像素级标出。要看的是：MQE 只吃〈帧、预测 alpha、分割 mask〉，<strong>不需要真值</strong>，就能同时抓住"边界糙"和"语义错"两类病。</figcaption></figure>
+<h3>4.2 离线角色：双分支标注的质量仲裁器</h3>
+<p>离线这条线是 VMReal 的生产线（图 5）。两个分支天生互补：</p>
+<ul>
+<li><strong>$B_V$（视频抠像分支，如 MatAnyone）</strong>：时序稳、整体结构稳，但边界细节糙。只需首帧分割 mask 指定目标，之后自行 propagate 出时序稳定的 alpha 序列。</li>
+<li><strong>$B_I$（图像抠像分支，如 MattePro + 每帧 SAM 2 mask）</strong>：边界锐、细节足，但逐帧独立做、时序飘、语义不一致。</li>
+</ul>
+<p>MQE 当裁判：分别给两支的 alpha 出评估图 $M^{eval}_V$、$M^{eval}_I$，以<strong>稳的 $B_V$ 为底</strong>，只在"$B_V$ 错（$M^{eval}_V{=}0$）但 $B_I$ 对（$M^{eval}_I{=}1$）"的区域，把 $B_I$ 的边界细节<strong>选择性</strong>融进来（融合掩码 $M^{fuse}=M^{eval}_I\odot(1-M^{eval}_V)$，再做高斯平滑避免接缝）。</p>
+<figure><a href="../assets/figures/matanyone2/matanyone2_fig5.png"><img src="../assets/figures/matanyone2/matanyone2_fig5.png" alt="自动双分支标注 pipeline 示意"></a><figcaption><strong>图 5 · 离线双分支标注 pipeline。</strong>视频帧分别过 $B_V$（蓝，视频抠像）、SAM 2（出分割 mask）、$B_I$（红，图像抠像）。MQE 给两支 alpha 各出评估图，Alpha Fusion（式 2）以 $B_V$ 为底、按 $M^{fuse}$ 补入 $B_I$ 的边界细节，同时合并出 Final Eval. Map。右侧小图是直观示例：$B_V$ 边界糙（评估图标错）、$B_I$ 边界利——融合后既保了语义稳定又拿回了发丝。要看的对比是"<strong>各取所长由 MQE 逐像素裁决</strong>"，而非简单平均。</figcaption></figure>
+<figure><a href="../assets/figures/matanyone2/matanyone2_fig9.png"><img src="../assets/figures/matanyone2/matanyone2_fig9.png" alt="双分支标注 pipeline 在一个视频序列上的逐帧示意"></a><figcaption><strong>图 9 · 为什么必须"以 $B_V$ 为底、选择性补 $B_I$"。</strong>逐帧看：$B_V$（视频分支）的错误集中在发丝等细结构，但语义结构整体稳定；$B_I$（图像分支）语义跨帧剧烈抖动（如双手所持物时有时无）、细节也会无故波动。直接用 $B_I$ 会引入时序灾难，直接用 $B_V$ 会丢边界——所以拿稳的 $B_V$ 兜底、只在它出错且 $B_I$ 可靠处补细节。Final Eval Map 里错误像素显著减少，佐证融合后标注质量。补充材料还说明：对 SA-V 来源的视频，两支改为"视频分割（SA-V 标注）+ 视频抠像"，因 SA-V 边界细节有限，再加图像分支收益不大。</figcaption></figure>
+</section>
+
+<section id="method"><h2>5. 方法：把每个损失放回它要解决的问题里</h2>
+<p>这一节按 <code>kexue:su</code> 的姿态来写——先讲每个式子<strong>为什么需要</strong>，把关键假设显式标出，并尽量从两个角度交叉验证同一结论。</p>
+
+<h3>5.1 MQE 的伪真值：差异度量与二值化（式 3–4）</h3>
+<p>要把"alpha 对不对"变成可学标签，先得有个<strong>差异度量</strong> $D(\cdot)$。论文在 7×7 patch 内算抠像两大指标的加权组合：</p>
+<div class="equation">$$D(\cdot) = 0.9\cdot \mathrm{MAD} + 0.1\cdot \mathrm{Grad}$$<div class="eq-caption">式 3：patch 级差异度量。MAD（平均绝对差）抓<strong>语义级</strong>偏差（整块该是前景却判成背景），Grad（梯度差）抓<strong>细节级</strong>偏差（边界过渡对不对）。</div></div>
+<p class="formula-note"><strong>公式读法 + 动机。</strong>为什么是 0.9/0.1 而不是各半？因为"语义判错"（大块错）比"边界略糙"严重得多——一块前景整片丢了，比发丝差一点致命，故主权重给 MAD。这是个<strong>设计选择，不是推导出来的最优</strong>，论文用经验值。二值化随之而来：</p>
+<div class="equation">$$M^{eval}_{gt} = \mathbb{I}\!\left(D(\alpha_{gt},\hat{\alpha}) < \delta\right),\qquad \delta=0.2$$<div class="eq-caption">式 4：差异小于阈值 $\delta$ 判可靠(1)，否则判错误(0)。$\mathbb{I}(\cdot)$ 是指示函数；所有 $D$ 值先 min–max 归一化到 [0,1] 再比 $\delta$。</div></div>
+<p class="formula-note"><strong>隐含假设（显式标出）。</strong>这一步默认"<em>patch 级指标偏差大 ⇔ 该 patch 的 alpha 肉眼也错</em>"。这个等价不是天然成立的——它要求 MAD/Grad 与"感知质量"足够相关。论文没有把它当显然，而是单独用图 10 去验证（r=0.87，见 §8）。这是一条<strong>独立验证路径</strong>：式 3–4 是构造，图 10 是事后检验，两头对上才算这套伪标签可信。</p>
+
+<h3>5.2 MQE 训练损失：focal + dice（式 5–6）</h3>
+<p>"错误"像素主要在边界、占比小 → 类别极度不平衡。直接用交叉熵，网络会偷懒全判"可靠"。论文上 <strong>focal loss</strong> 把难分样本（罕见的错误像素）的权重抬上来：</p>
+<div class="equation">$$L_{focal} = -\alpha(1-p)^{\gamma}\,y\log p \;-\;(1-\alpha)\,p^{\gamma}(1-y)\log(1-p)$$<div class="eq-caption">式 5：focal loss。$p$ 是预测为"可靠(class 1)"的概率，$y\in\{0,1\}$ 是伪真值；$\gamma=2$、$\alpha=0.25$（沿用原 focal loss 设置）。</div></div>
+<p class="formula-note"><strong>公式读法。</strong>$(1-p)^{\gamma}$ 这个调制因子是 focal loss 的灵魂：当某像素已被自信判对（$p\to1$ 且 $y{=}1$），$(1-p)^{\gamma}\to0$，它对损失几乎不贡献——梯度自动让位给那些<strong>判错或没把握</strong>的像素。$\gamma=2$ 控制这种"让位"的陡峭程度。再叠一个 dice loss 稳定区域级重叠：</p>
+<div class="equation">$$L_{MQE} = L_{focal} + L_{dice}$$<div class="eq-caption">式 6：MQE 总损失。dice 损失从"区域重叠"角度补 focal 的"逐像素"视角——两者一个看像素、一个看区域，互为冗余的监督。</div></div>
+
+<h3>5.3 在线引导损失：把评估图当惩罚（式 11–12）</h3>
+<p>训练抠像模型时，MQE 对每帧预测 alpha 产出错误概率图 $P^{(0)}_{eval}$。在线引导损失就是直接压它的 $\ell_1$ 范数：</p>
+<div class="equation">$$L_{eval} = \big\| P^{(0)}_{eval} \big\|_{1}$$<div class="eq-caption">式 11：在线引导损失。让"被判为错"的总量越小越好，等价于鼓励更准的 alpha。</div></div>
+<p class="formula-note"><strong>两条独立路径交叉验证"它为什么比前作强"。</strong>路径一（自上而下直觉）：MatAnyone 边界用的是依赖强假设的无监督损失，信号弱；MQE 是<strong>从图像抠像真值学出来的</strong>，等于把"边界该长什么样"的先验蒸馏进了一个打分器，再回灌给训练——监督从"无人区"变成"有评委盯着"。路径二（自下而上对照）：表 3a→b 单加 $L_{eval}$，提升最明显的恰是语义（MAD/MSE）与细节（Grad）指标，正好对应 MQE 同时评"语义 + 细节"两类病（图 4a/b）。两条路指向同一结论：<strong>$L_{eval}$ 的增益来自它给边界区补上了可靠监督</strong>。最终总损失把它和主抠像损失按 0.1 权重相加：</p>
+<div class="equation">$$L^{total}_{mat} = L^{M}_{mat} + 0.1\,L_{eval}$$<div class="eq-caption">式 12：抠像总损失。0.1 是为让 $L_{eval}$ 量级与主损失 $L^{M}_{mat}$ 相当、优化稳定，经验设定。</div></div>
+
+<h3>5.4 masked 抠像损失：只在可靠像素上算（式 7–10）</h3>
+<p>VMReal 每个样本是三元组 $\langle I_{rgb},\alpha,M^{eval}\rangle$，$M^{eval}{=}1$ 标记可靠像素。关键设计：<strong>主抠像损失只在可靠区算</strong>——因为标注本身（由 $B_V/B_I$ 融合而来）在不可靠区可能也是错的，硬监督反而会教坏模型。令可靠掩码 $R_t=\mathbb{I}(M^{eval}{=}1)$，masked L1 与 Laplacian 损失为：</p>
+<div class="equation">$$L^{M}_{l1} = \frac{\big\| R_t\odot(\hat{\alpha}_t-\alpha_t)\big\|_{1}}{\|R_t\|_{1}+\epsilon}$$<div class="eq-caption">式 7：masked L1 损失。分子只统计可靠像素的误差，分母 $\|R_t\|_1$ 做归一化（可靠像素越少、单像素权重越大），$\epsilon$ 防除零。</div></div>
+<p class="formula-note"><strong>公式读法。</strong>$R_t\odot$ 是这套损失的总开关：不可靠像素被乘成 0、不进梯度。Laplacian 金字塔损失（式 8）同理逐层加 mask，抓多尺度边界细节；时序一致损失（式 9）只在<strong>连续两帧都可靠</strong>的像素上算（$R_t^{tc}=R_t\odot R_{t-1}$），约束 $\Delta\hat{\alpha}$ 贴近 $\Delta\alpha$、压闪烁。三者合成 masked 抠像损失：</p>
+<div class="equation">$$L^{M}_{mat} = L^{M}_{l1} + L^{M}_{lap} + L^{M}_{tc}$$<div class="eq-caption">式 10：masked 抠像损失三件套。语义（L1）、细节（Laplacian）、时序（tc）各管一摊，全部只在可靠像素上生效。</div></div>
+
+<h3>5.5 reference-frame 策略：长程记忆不增显存</h3>
+<p>长视频里主体外观会大幅变（露出新部位）。propagation 类方法（MatAnyone）训练时只见短序列（如 8 帧），记忆只存局部窗口，<strong>没法建模这种大变化</strong>；硬把窗口拉长（如 40 帧）显存爆炸。论文的解法是 reference-frame：把<strong>局部窗口之外</strong>的长程参考帧引入记忆，按 ProPainter 的训练方案，<strong>扩展时序上下文而不增显存</strong>。</p>
+<p>但采样是概率性的，不保证抽到的参考帧外观差异够大。于是再加一个 <strong>random dropout 增强</strong>：由于"没见过的区域"通常出现在物体边界附近，就在参考帧的边界区随机抠掉 0–3 个 patch、非边界区 0–1 个（patch 边长在 [50,100] 随机），RGB 与 alpha 对应区域都置零。这等于<strong>人为模拟</strong>"参考帧里某些部位缺失、当前帧才出现"的长视频场景，逼模型学会处理 unseen 区域，而不是过度依赖历史记忆。</p>
+<figure><a href="../assets/figures/matanyone2/matanyone2_fig7.png"><img src="../assets/figures/matanyone2/matanyone2_fig7.png" alt="reference-frame 策略对长视频新出现区域的鲁棒性"></a><figcaption><strong>图 7 · reference-frame 治的是什么病。</strong>长视频里主体露出之前没见过的区域时，MatAnyone（中行）抠不出新部位；MatAnyone 2（下行，带 reference-frame）能稳健识别。要看的是 reference-frame 不是为了涨某个均值指标，而是补上 propagation 的结构性短板——<strong>对 unseen 区域的兜底</strong>。</figcaption></figure>
+</section>
+
+<section id="training"><h2>6. 训练账本：算力、配置、损失权重</h2>
+<p>论文明确披露的训练配置如下（缺的地方标"论文未说明"）：</p>
+<div class="table-wrap"><table>
+<caption>表 · 训练配置（转写自论文 §4 实现细节 + 补充材料 §A）。</caption>
+<thead><tr><th>项目</th><th>抠像模型</th><th>MQE 模型</th></tr></thead>
+<tbody>
+<tr><td>硬件</td><td>8× A800-80G</td><td>8× A800-80G</td></tr>
+<tr><td>batch size</td><td>16</td><td>16</td></tr>
+<tr><td>训练片段</td><td>crop 到 480×480、8 帧</td><td>—（图像级，P3M-10k）</td></tr>
+<tr><td>backbone</td><td>沿用 MatAnyone</td><td>DINOv3 编码器 + DPT 解码器（仿 Depth Anything）</td></tr>
+<tr><td>迭代数</td><td>论文未说明</td><td>80K iterations</td></tr>
+<tr><td>学习率</td><td>论文未说明</td><td>编码器 $3\times10^{-6}$，解码器 10×（即 $3\times10^{-5}$）</td></tr>
+<tr><td>关键权重</td><td>$L_{eval}$ 权重 0.1（式 12）</td><td>focal $\gamma{=}2,\alpha{=}0.25$；差异阈值 $\delta{=}0.2$</td></tr>
+</tbody>
+</table></div>
+<p class="note"><strong>算力粗估（声明）。</strong>论文只给了"8× A800-80G、batch 16"，未公开训练总时长。若硬要按卡数估一个量级，需要 epoch/步数与单步耗时——抠像模型这两项论文未说明，故无法给出可信 GPU-hours。<strong>任何由此外推的 GPU-hours 仅为按论文披露数字的粗略估算，不等同于实际账单。</strong>另需注意：训练用 VMReal，但论文<strong>未说明数据集是否公开发布</strong>，这是复现的硬门槛之一。一个值得记的设计是：用了 VMReal 后，<strong>不再做抠像 + 分割的联合训练</strong>——所有样本都被标注 pipeline 统一成三元组，从源头避开了"分割监督带来分割味"的老问题。</p>
+</section>
+
+<section id="experiments"><h2>7. 实验：这些表到底支撑了哪条主张？</h2>
+<h3>7.1 合成基准全指标第一（表 1）</h3>
+<p>表 1 在 4 个合成基准（VideoMatte / YoutubeMatte 各两档分辨率）上比，指标含 MAD/MSE（语义）、Grad（细节）、dtSSD（时序）、Conn（感知）。这张大表要支撑的结论是：<strong>MatAnyone 2 在所有基准、所有指标上都拿第一或并列第一</strong>。下面转写代表性两档（512×288 与 1920×1080 的 VideoMatte / YoutubeMatte），完整表见原文。</p>
+<div class="table-wrap"><table>
+<caption>表 1（代表性行，转写自论文 Table 1，越低越好 ↓）。完整表含 9 个对比方法；此处取每个基准的核心指标行。$^*$GVM 为扩散式、借 Stable Video Diffusion 先验；本文纯 CNN。$^\dagger$MaGGIe 需每帧实例 mask，本文只需首帧。</caption>
+<thead><tr><th>基准 / 指标</th><th>RVM</th><th>GVM$^*$</th><th>MaGGIe$^\dagger$</th><th>MatAnyone</th><th>Ours</th></tr></thead>
+<tbody>
+<tr><td>VideoMatte 512 · MAD↓</td><td>6.08</td><td>6.39</td><td>5.49</td><td>5.15</td><td><strong>4.73</strong></td></tr>
+<tr><td>VideoMatte 512 · Grad↓</td><td>0.88</td><td>0.72</td><td>0.57</td><td>0.67</td><td><strong>0.51</strong></td></tr>
+<tr><td>VideoMatte 1080 · MAD↓</td><td>6.57</td><td>6.33</td><td>4.42</td><td>4.24</td><td><strong>4.10</strong></td></tr>
+<tr><td>VideoMatte 1080 · Grad↓</td><td>10.55</td><td>8.04</td><td>4.03</td><td>4.00</td><td><strong>3.45</strong></td></tr>
+<tr><td>YoutubeMatte 512 · MAD↓</td><td>4.08</td><td>3.30</td><td>3.54</td><td>2.72</td><td><strong>2.30</strong></td></tr>
+<tr><td>YoutubeMatte 1080 · MAD↓</td><td>4.37</td><td>2.68</td><td>2.37</td><td>1.99</td><td><strong>1.61</strong></td></tr>
+<tr><td>YoutubeMatte 1080 · Grad↓</td><td>15.10</td><td>8.38</td><td>7.69</td><td>8.91</td><td><strong>7.14</strong></td></tr>
+</tbody>
+</table></div>
+<p>读这张表的关键不是"又赢了"，而是<strong>赢在哪</strong>：本文是纯 CNN、只需首帧 mask，却压过了有扩散先验的 GVM 和需每帧 mask 的 MaGGIe——说明增益来自<strong>数据与监督（VMReal + MQE）</strong>，而非更重的架构或更强的输入条件。</p>
+<h3>7.2 真实基准：泛化才是终极考题（表 2）</h3>
+<p>合成赢不算数，真实视频才是。CRGNN 是 19 段真实视频、每 10 帧手标真值 alpha 的基准。这张表要支撑的是<strong>跨真实场景的泛化</strong>。</p>
+<div class="table-wrap"><table>
+<caption>表 2 · 真实 CRGNN 基准（转写自论文 Table 2，越低越好 ↓）。</caption>
+<thead><tr><th>方法</th><th>MAD↓</th><th>MSE↓</th><th>Grad↓</th><th>dtSSD↓</th></tr></thead>
+<tbody>
+<tr><td>RVM-Large</td><td>5.75</td><td>2.47</td><td>13.26</td><td>5.17</td></tr>
+<tr><td>GVM（扩散）</td><td>5.03</td><td>2.15</td><td>14.28</td><td>4.86</td></tr>
+<tr><td>MaGGIe</td><td>9.50</td><td>6.11</td><td>16.51</td><td>6.02</td></tr>
+<tr><td>MatAnyone</td><td>5.76</td><td>3.04</td><td>15.55</td><td>5.44</td></tr>
+<tr><td><strong>MatAnyone 2（Ours）</strong></td><td><strong>4.24</strong></td><td><strong>2.00</strong></td><td><strong>11.74</strong></td><td><strong>4.54</strong></td></tr>
+</tbody>
+</table></div>
+<p>相对前作 MatAnyone，论文报告 <strong>Grad 与 Conn 各降 27.1% / 22.4%</strong>（在合成主表上的统计）；真实基准上各指标也全面领先，尤其 Grad（细节）从 15.55→11.74。结论：<strong>VMReal + MQE 的增益在真实分布上没有塌掉</strong>，这才是这套数据-监督设计真正的价值证明。</p>
+<figure><a href="../assets/figures/matanyone2/matanyone2_fig6.png"><img src="../assets/figures/matanyone2/matanyone2_fig6.png" alt="真实视频上的定性对比"></a><figcaption><strong>图 6 · 真实视频定性对比。</strong>列序：视频帧 / RVM / GVM / MatAnyone / MatAnyone 2。GVM 边界模糊、过渡不自然（尤其发丝）；MatAnyone 边界呈分割味硬边；MatAnyone 2 在飞发（首行）、复杂光照（末两行）下同时拿到语义稳与边界细。这张图与表 1/2 互为印证——数字上的 Grad 降低，对应肉眼可见的发丝恢复。</figcaption></figure>
+<figure><a href="../assets/figures/matanyone2/matanyone2_fig11.png"><img src="../assets/figures/matanyone2/matanyone2_fig11.png" alt="更多真实视频定性对比"></a><figcaption><strong>图 11 · 更多真实场景定性对比（补充材料）。</strong>加入 MaGGIe 一列。各种挑战条件下，MatAnyone 2 在细节提取与语义准确上都更稳。作为图 6 的扩展样本，进一步排除"挑了好例子"的嫌疑。</figcaption></figure>
+</section>
+
+<section id="ablations"><h2>8. 消融：提出的机制，是否真能解释结果？</h2>
+<h3>8.1 三件套逐项加，单调变好（表 3）</h3>
+<p>表 3 以 MatAnyone 为 baseline（exp a），逐项叠加 $L_{eval}$（在线引导）、VMReal（数据）、reference-frame（长程记忆），在 YoutubeMatte 1080 上看。这张表要回答的是：<strong>三个贡献各自有没有用、是不是叠加有效。</strong></p>
+<div class="table-wrap"><table>
+<caption>表 3 · 消融（转写自论文 Table 3，YoutubeMatte 1920×1080，越低越好 ↓）。✓ 表示该组件启用。</caption>
+<thead><tr><th>Exp.</th><th>$L_{eval}$</th><th>VMReal</th><th>Ref. Train</th><th>MAD↓</th><th>MSE↓</th><th>Grad↓</th><th>dtSSD↓</th></tr></thead>
+<tbody>
+<tr><td>(a) MatAnyone baseline</td><td></td><td></td><td></td><td>1.99</td><td>0.71</td><td>8.91</td><td>1.65</td></tr>
+<tr><td>(b)</td><td>✓</td><td></td><td></td><td>1.90</td><td>0.62</td><td>8.20</td><td>1.63</td></tr>
+<tr><td>(c)</td><td>✓</td><td>✓</td><td></td><td>1.76</td><td>0.61</td><td>7.65</td><td>1.54</td></tr>
+<tr><td>(d) MatAnyone 2</td><td>✓</td><td>✓</td><td>✓</td><td><strong>1.61</strong></td><td><strong>0.50</strong></td><td><strong>7.13</strong></td><td><strong>1.53</strong></td></tr>
+</tbody>
+</table></div>
+<p>三处增益各对应一个机制主张：(a→b) 单加 $L_{eval}$，语义（MAD/MSE）与细节（Grad）齐降——印证 MQE 在线监督同时补了 core 与边界（对应图 4a/b 两类病）；(b→c) 加 VMReal，各指标继续降——印证真实数据本身就是强监督；(c→d) 加 reference-frame，提升集中在语义准确（MAD/MSE），且<strong>不增显存</strong>——印证它补的是长视频 unseen 区域（对应图 7、图 12）。三条机制各管一摊、互不抢功，消融与机制叙事是对得上的。</p>
+<h3>8.2 VMReal 对别的模型也涨（表 6，跨模型验证）</h3>
+<p>一个更硬的验证：把 VMReal 拿去训<strong>另一个</strong>模型 RVM，看是否同样涨。这是排除"VMReal 只是恰好适配本文 backbone"的替代解释。</p>
+<div class="table-wrap"><table>
+<caption>表 6（代表性行，转写自补充材料 Table 6，YouTubeMatte，越低越好 ↓，括号内为相对增益）。</caption>
+<thead><tr><th>方法</th><th>512·MAD↓</th><th>512·MSE↓</th><th>1080·MAD↓</th><th>1080·MSE↓</th></tr></thead>
+<tbody>
+<tr><td>RVM（w/o VMReal）</td><td>4.08</td><td>1.97</td><td>4.27</td><td>2.25</td></tr>
+<tr><td>RVM（w/ VMReal）</td><td>3.32 (−0.76)</td><td>1.34 (−0.63)</td><td>3.37 (−0.90)</td><td>1.51 (−0.74)</td></tr>
+</tbody>
+</table></div>
+<p>RVM 加上 VMReal 后各指标一致下降——<strong>VMReal 是可迁移的监督信号</strong>，不绑定本文模型。这条跨模型证据，比单看本文涨点更能支撑"数据是核心杠杆"的主张。</p>
+<h3>8.3 MQE 本身可信吗？相关性 r=0.87（图 10）</h3>
+<p>整套设计的地基是"MQE 真能判对错"。论文把 173 万个 patch 按真值 discrepancy 分 30 桶，画 MQE 预测的 class-0 概率均值。这张图要验证的是 §5.1 那个隐含假设。</p>
+<figure><a href="../assets/figures/matanyone2/matanyone2_fig10.png"><img src="../assets/figures/matanyone2/matanyone2_fig10.png" alt="MQE 预测与真值 discrepancy 的相关性曲线"></a><figcaption><strong>图 10 · MQE 校准曲线（地基验证）。</strong>横轴真值 discrepancy、纵轴 MQE 预测错误概率，气泡大小=该桶 patch 数。MQE 预测随真值 discrepancy <strong>单调上升</strong>，Pearson <strong>r=0.87</strong>；低-中区（$D<0.5$）近似线性（校准良好、对细微质量差异敏感），高区（$D>0.5$）饱和到 1.0（趋于保守、宁可多报错以免漏判严重错误）。由于错误像素占比小，饱和不太损失有效监督量。这张图把 §5.1 的"指标偏差 ⇔ 感知错误"假设<strong>定量坐实</strong>，是全文方法成立的前提。</figcaption></figure>
+<h3>8.4 为什么必须双分支（表 5，反证 $B_I$ 单用不行）</h3>
+<p>论文还反证了"为什么不能只用边界更利的图像分支 $B_I$"：把 $B_I$（SAM 2 + MattePro）单独拿去测视频基准，结果<strong>显著差于</strong>视频分支 $B_V$（MatAnyone）。如 VideoMatte 512 上 $B_I$ 的 MAD 8.96、dtSSD 2.36，而 $B_V$ 是 5.15 / 1.18——$B_I$ 逐帧抖、语义飘。这正是"以 $B_V$ 兜底、只选择性补 $B_I$ 边界"这一设计的依据。</p>
+</section>
+
+<section id="limitations"><h2>9. 局限与复现门槛</h2>
+<ul>
+<li><strong>标注质量被现成模型上限锁死。</strong>论文自己点明：标注 pipeline 自适应融合了 SOTA 图像/视频抠像模型的长处，但<strong>整体质量仍被这些模型的能力封顶</strong>。$B_V$、$B_I$、SAM 2、MattePro 哪个有系统性盲区，VMReal 就会继承。作者把"数据-模型 refinement flywheel（迭代精炼闭环）"列为 future work，并说这需要可观工程与算力，故未做。</li>
+<li><strong>MQE 的伪标签来自图像抠像真值（P3M-10k），且只评人像。</strong>VMReal 与评测全是 human-centric。论文未声称对非人主体（动物、透明物、烟雾）有效——超出人像分布时 MQE 与整套数据是否成立，论文未说明。</li>
+<li><strong>MQE 高 discrepancy 区饱和、偏保守。</strong>图 10 显示 $D>0.5$ 时预测饱和到 1.0，意味着在"极不可靠"区它倾向多报错。论文论证这对监督量影响小，但这本身是 MQE 在极端区分辨力下降的体现。</li>
+<li><strong>评测的非参考指标依赖 MQE 自身。</strong>真实视频无真值时，论文用 MQE 自己产出的评估图定义 ERR/MER/BER 指标（表 7）。这是<strong>自评估</strong>——MQE 既当被验证对象、又当评测尺子，存在循环，需谨慎解读（论文也强调这些只是无参考"指示"，趋势与有参考指标对齐）。</li>
+<li><strong>复现门槛。</strong>训练需 8× A800-80G；训练总时长、抠像模型的迭代数/学习率论文未说明。<strong>VMReal 是否公开发布论文未说明</strong>——若不放出，这套结果的核心资产（数据）难以复现。代码仓 <code>pq-yang/MatAnyone2</code> 在线（HTTP 200）。</li>
+</ul>
+<figure><a href="../assets/figures/matanyone2/matanyone2_fig12.png"><img src="../assets/figures/matanyone2/matanyone2_fig12.png" alt="长视频鲁棒性：新出现的人体部位与手持物"></a><figcaption><strong>图 12 · reference-frame 的成败边界。</strong>长视频里新出现的人体部位（举起的手臂）或手持物（杯子）：MatAnyone 识别不出，MatAnyone 2 能恢复完整结构。这张图既是优势展示，也圈出了该机制的<strong>适用边界</strong>——它治的是"propagation 对 unseen 区域失忆"这一类病，而非所有长视频难题。</figcaption></figure>
+</section>
+
+<section id="summary"><h2>10. 结语与三条 takeaway</h2>
+<p><strong>一句话。</strong>MatAnyone 2 把视频抠像的真正瓶颈（缺真值 alpha）转译成一个可学的逐像素质量打分问题，再让这个 MQE 评委一鱼两吃——在线给训练补监督、离线给数据当裁判——从而把真实视频抠像数据 scale 到 2.4M 帧。</p>
+<ul>
+<li><strong>Takeaway 1（机制内核）。</strong>当真值拿不到时，<strong>学一个判对错的代理</strong>比硬造真值更可行——前提是这个代理可被独立验证（图 10 的 r=0.87 是地基）。这套"质量打分器当监督源"的思路可迁移到其他缺标注的稠密任务。</li>
+<li><strong>Takeaway 2（数据是杠杆）。</strong>纯 CNN、只需首帧 mask，却压过扩散式 GVM 和每帧 mask 的 MaGGIe，且 VMReal 拿去训 RVM 也涨——增益来自<strong>数据与监督</strong>，不是更重的架构。</li>
+<li><strong>Takeaway 3（边界 vs 语义不必二选一）。</strong>前作"分割补数据"导致语义稳但边界糙的折中，被"双分支 + MQE 仲裁"打破：稳的视频分支兜底、利的图像分支补细节，由评委逐像素裁决——这是全文最值得借鉴的工程范式。</li>
+</ul>
+<p class="note"><strong>建议阅读路径：</strong>图 2（两代差别）→ §1 核心问题 → 图 5/9（离线双分支怎么造数据）→ §5.1–5.3（MQE 与 $L_{eval}$）→ 表 3（消融逐项）→ 图 10（MQE 地基）→ §9 局限。</p>
+</section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol>
+<li>Peiqing Yang, Shangchen Zhou, Kai Hao, Qingyi Tao. <em>MatAnyone 2: Scaling Video Matting via a Learned Quality Evaluator</em>. CVPR 2026 (Highlight) / arXiv:2512.11782v2（S-Lab, Nanyang Technological University · SenseTime Research）。项目页：<code>pq-yang.github.io/projects/MatAnyone2/</code>；代码：<code>github.com/pq-yang/MatAnyone2</code>（HTTP 200，仓库标题标注 "[CVPR 2026 Highlight]"）；CVF openaccess 页面可解析（HTTP 200）。</li>
+<li>本文全部公式（式 3–12 选录）、表格（Table 1/2/3/4/5/6）与实验数字以 arXiv PDF 为准。表 1、3、6 为<strong>代表性行转写</strong>（原表更宽，含 MODNet/RVM-Large/AdaM/FTP-VM 等更多列与 MSE/dtSSD/Conn 等更多指标），已在各表标题注明"代表性行"。MQE 校准 r=0.87 与 173 万 patch 统计、reference-frame 的 dropout 细节（边界 0–3 patch / 非边界 0–1 patch、边长 [50,100]）均出自补充材料 §A/§C。</li>
+<li><strong>kexue:su 方法与归因。</strong>第 1、5、8 节"监督信号从哪来""$L_{eval}$ 为何胜过弱无监督""伪标签假设如何被 r=0.87 坐实""为何必须双分支"等多路径论证，按 <code>kexue:su</code> 方法（动机先行、假设显式、≥2 路径交叉验证、重新推导而非罗列）展开。<strong>本次 <code>kexue:su</code> 检索语料库为空（0 卡片、无 BM25 索引），未返回任何相关卡片</strong>，故全程<strong>仅应用方法、未作任何 [archives/XXXX] 归因</strong>——focal loss、DINOv3、DPT、SAM 2、ProPainter、P3M-10k 等均按其各自原始论文理解，未借苏剑林博客二次归因。</li>
+<li>图像说明：图 1/2/4/5/6/7/8/10/11 为本地 PNG，由 <code>extract_figures.py</code>（PyMuPDF，caption 锚定）从 arXiv PDF 裁切；图 9（双分支序列，p15）与图 12（长视频鲁棒性，p20）因图形位于 caption 下方、被锚定提取器跳过，改用 PyMuPDF 按页面坐标直接裁切（已剔除溢出文本带），均为 300 DPI 原生分辨率。图 3（MQE 输入输出简图）与补充表 Table 7（自评估 ERR/MER/BER）信息已在正文以文字/公式转述，未单独配图。路径 <code>assets/figures/matanyone2/</code>。</li>
+</ol></section>
+
+</main>
+
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据 / VMReal</a></li><li><a href="#pipeline">Pipeline / MQE 两角色</a></li><li><a href="#method">方法 / 损失推导</a></li><li><a href="#training">训练账本</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融 / 机制验证</a></li><li><a href="#limitations">局限</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>MatAnyone 2: Scaling Video Matting via a Learned Quality Evaluator</dd><dt>Venue</dt><dd>CVPR 2026 · Highlight</dd><dt>核心</dt><dd>学出来的 MQE（无需真值 alpha）→ 在线监督 + 离线数据筛选</dd><dt>数据</dt><dd>VMReal：28K 片段 / 2.4M 帧，真实</dd><dt>backbone</dt><dd>抠像沿用 MatAnyone（纯 CNN）；MQE = DINOv3 + DPT</dd><dt>arXiv</dt><dd>2512.11782</dd><dt>Topic</dt><dd>Video Matting · Learned Quality Evaluator</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 2：两代方法差别（先看）</li><li>图 5/9：离线双分支造数据</li><li>式 11–12：在线引导损失</li><li>式 7：masked 抠像损失</li><li>表 1/2：合成 + 真实全指标第一</li><li>表 3：消融逐项单调变好</li><li>图 10：MQE r=0.87 地基</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> MatAnyone 2 深读</p><p><span class="status-good">figures</span> 11 张 PNG（fig1/2/4/5/6/7/8/9/10/11/12）</p><p><span class="status-good">formula</span> 式 3–12 选录 · MathJax 待预检</p><p><span class="status-warn">scope</span> human-centric · VMReal 是否公开未说明</p></div></section></aside></div>
+</body>
+</html>

@@ -226,6 +226,12 @@ body.lb-lock{overflow:hidden}
   @page{margin:18mm 16mm}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
 </style>
 <script defer>
 (function(){
@@ -478,6 +484,7 @@ body.lb-lock{overflow:hidden}
 
 </main>
 
+</article>
 <aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与标注</a></li><li><a href="#pipeline">三阶段 Pipeline</a></li><li><a href="#method">五元组方法</a></li><li><a href="#training">评测账本</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">捷径诊断（核心）</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li></ol></div></section>
 <section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>SurgCoT: Advancing Spatiotemporal Reasoning in Surgical Videos through a Chain-of-Thought Benchmark</dd><dt>Venue</dt><dd>CVPR 2026 · Medical AI</dd><dt>类型</dt><dd>基准 / 评测协议（不训练新模型）</dd><dt>规模</dt><dd>7 专科 · 35 术式 · 2,841 视频 · 19,345 主问题 + 59,177 子问题</dd><dt>评测</dt><dd>10 个 MLLM · 5 维度 · 三档（BL/KE/FC）</dd><dt>arXiv</dt><dd>2604.20319</dd><dt>Topic</dt><dd>Surgical Video Spatiotemporal Reasoning</dd></dl></div></section>
 <section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：视频→片段→帧三级链路</li><li>式 1：三阶段渐进条件链</li><li>表 1：四件套唯一全勾选</li><li>表 2：FC 稳定涨点（Claude 74.1→87.5）</li><li>表 3：主对子错（GPT-5 主 87.6 / Q3 50.5）</li><li>图 4：BL→KE→FC 把错答救回</li></ul></div></section>
