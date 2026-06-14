@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>V²-SAM 深读：SAM2 要"目标视角里的坐标"才能分割，可跨视角里那个坐标恰好是未知量——怎么把它从查询视角"造"出来？</title>
+<meta name="description" content="V²-SAM 深读：在 ego–exo 跨视角物体对应里，SAM2 的强项（坐标点 prompt 驱动的精准定位）恰恰失效，因为目标视角里物体的位置/尺度/外观全变了——而那个坐标正是要找的答案。本文用 kexue:su 方法论拆解 V²-SAM 如何用两个互补的 prompt 生成器把'目标视角坐标'造出来：V²-Anchor 借 DINOv3 几何特征做跨视角匹配→前景约束→稀疏分层→质心，首次为 SAM2 解锁跨视角坐标 prompt；V²-Visual 用 VPMatcher 把外观线索从特征与结构两路映射过去；再以 Anchor/Visual/Fusion 三专家 + 点级循环一致选择器 PCCS 按实例挑最可靠的预测。Ego-Exo4D 48.0 总 IoU、DAVIS-17 78.8 J&F、HANDAL-X 77.2 IoU 三榜 SOTA，仅 15M 可训练参数。">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Object Tracking / Correspondence · 为 SAM2 在跨视角下"造"出缺失的坐标提示</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs"><a href="../index.html">首页</a> &gt; CVPR 2026 &gt; Object Tracking / Correspondence &gt; V²-SAM</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">12</span><span class="month">Jun</span></div><h1 id="paper-title">V²-SAM 深读：SAM2 要"目标视角里的坐标"才能分割，可跨视角里那个坐标恰好是未知量——怎么把它从查询视角"造"出来？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-12</span><span>CVPR 2026 Highlight · Top Paper (candidate) · INSAIT / 清华 / 复旦 / 华东师大</span><span>来源：arXiv:2511.20886 v2 PDF + 正文/补充材料</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Cross-View Correspondence</span><span class="tag green">SAM2 / DINOv3</span><span class="tag">Ego–Exo4D</span><span class="tag">Multi-Prompt Experts</span><span class="tag">Cyclic Consistency</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>SAM2 是当下最强的可提示分割基座，但它有一条硬约束：它的解码器要靠<strong>"目标图像坐标系里的"空间提示</strong>（点 / 框 / 掩码坐标）才能被条件化。把它搬到<strong>跨视角物体对应</strong>（cross-view object correspondence）——给定查询视角 ego（第一人称）里某物体的掩码，要在目标视角 exo（第三人称）里把<em>同一个物理物体</em>抠出来——它立刻翻车：目标视角里这个物体的<strong>位置、尺度、形状、外观几乎全变了</strong>，于是"目标视角里的坐标"恰恰成了你要找的未知量。前人方案 Ref-SAM 走了另一条路：干脆扔掉空间提示、换成视觉参考提示——可这既丢了 SAM2 的定位强项，又在剧烈外观变化下崩盘。本文的核心张力就在这：<strong>SAM2 最擅长的输入（目标视角坐标），在跨视角里恰好是缺失的；你能不能把它从查询视角"造"出来，而不是放弃它？</strong>V²-SAM 的答案是<strong>两个互补的 prompt 生成器 + 多专家挑选</strong>：V²-Anchor 借 DINOv3 几何特征把查询掩码"翻译"成目标视角的一个<strong>高置信坐标</strong>（首次为 SAM2 解锁跨视角坐标提示，且全程不可训练）；V²-Visual 用可学的 VPMatcher 把外观线索从<strong>特征</strong>与<strong>结构</strong>两路映射过去；再用 Anchor / Visual / Fusion 三个专家覆盖不同场景，靠一个<strong>点级循环一致选择器 PCCS</strong> 按实例挑最可靠的那个。Ego-Exo4D 总 IoU 48.0、DAVIS-17 78.8 J&amp;F、HANDAL-X 77.2 IoU 三个基准全 SOTA，而可训练参数只有 <strong>15M</strong>（约为 ObjectRelator 的 1%）。</p>
+
+<figure>
+<a href="../assets/figures/v2sam/v2sam_fig1.png"><img src="../assets/figures/v2sam/v2sam_fig1.png" alt="三种 SAM 变体在跨视角分割上的对比：Vanilla-SAM 无结果、Ref-SAM 错误结果、V²-SAM 正确结果"></a>
+<figcaption><strong>图 1（论文 Fig.1，本页 hero）：把问题一眼说清。</strong>同一个跨视角查询（左侧 query 物体），(a) Vanilla-SAM 直接用坐标点提示——因为没有"目标视角里的坐标"可给，<strong>无结果</strong>；(b) Ref-SAM 改用视觉参考提示——在杂乱多相似物的场景里<strong>认错对象</strong>；(c) V²-SAM 同时支持坐标点与视觉参考两类提示——<strong>正确</strong>。看右栏三个图标：cross-view query / coordinate point / visual reference，本文要做的就是把"coordinate point"这一栏在跨视角下重新点亮。</figcaption>
+</figure>
+
+<section id="motivation">
+<h2>核心问题：SAM2 的强项为什么在跨视角下成了"缺口"<a class="anchor" href="#motivation">#</a></h2>
+
+<p>先讲<strong>为什么需要</strong>这件事。跨视角物体对应是多视角场景理解、视频感知与具身智能的底层能力：你在 ego 视角里圈定一个物体，系统要在 exo 视角里指认出同一个物理实体。其中 ego–exo 对应是最具代表性也最难的一档——一个移动的第一人称相机 + 一个静止的第三人称相机同时观察，导致<strong>剧烈的视角与外观差异、复杂背景杂乱、动态运动与遮挡</strong>（论文 Fig.7 把这四类难点摆得很清楚：杂乱环境、高动态、外观相似、部分遮挡）。</p>
+
+<p>再讲<strong>缺口在哪</strong>。SAM2 的解码器被设计成"给定一个良定位的空间提示 → 产出高质量掩码"。这个设计在单视角里是优点，但它隐含一个前提：<strong>提示必须在目标图像自己的坐标系里</strong>。跨视角恰好打破这个前提——目标视角里物体的位置可以漂到画面任意角落、尺度可以差几倍、被手遮掉一半。于是出现一个尴尬的循环依赖：</p>
+
+<div class="socratic">
+<p class="question">问：SAM2 要"目标视角坐标"才能分割，可"目标视角坐标"本身就是跨视角对应要找的答案——这是不是死结？</p>
+<p class="guide">引导：注意"找到目标视角的一个坐标"和"分割出目标视角的完整掩码"是两件难度不同的事。前者只要一个<strong>点</strong>落在物体上就够（SAM2 会负责把点扩成掩码）；后者要逐像素精确。</p>
+<p class="answer">答：不是死结。本文把任务<strong>降维</strong>——不直接求掩码，而是先求"目标视角里一个落在物体上的高置信坐标"，再把这个坐标喂回 SAM2 让它发挥定位强项。求这个坐标，靠的不是 SAM2 自己，而是一个<strong>几何感知的外部特征空间（DINOv3）</strong>做跨视角点匹配。这就是 V²-Anchor 的全部动机：<em>不抛弃 SAM2 的坐标提示能力，而是把缺失的那个坐标从查询视角"翻译"过来。</em></p>
+<p class="takeaway">Takeaway：跨视角的核心矛盾不是"SAM2 不够强"，而是"SAM2 要的那个输入恰好是未知量"。解法不是换基座，而是<strong>为基座补上它缺的输入</strong>。</p>
+</div>
+
+<p>论文据此把动机拆成两个递进的问题（正文原话）：① 能不能在跨视角下<strong>解锁 SAM2 的空间提示能力</strong>？② 若能，空间提示与视觉提示能否<strong>互补</strong>、把跨视角分割再往上推一截？对应 ① 的是 V²-Anchor，对应 ② 的是 V²-Visual 加多专家框架。后文你会看到，作者的经验结论是一句很干净的对仗：<strong>V²-Anchor 擅长判断"它在哪"（where it is），V²-Visual 擅长判断"它长什么样"（what it looks like）</strong>——两者天然互补。</p>
+
+<figure>
+<a href="../assets/figures/v2sam/v2sam_fig7.png"><img src="../assets/figures/v2sam/v2sam_fig7.png" alt="跨视角对应的四类挑战场景与 V²-SAM 方法概览"></a>
+<figcaption><strong>图 2（论文 Fig.7，补充材料）：难点与解法的"一图对照"。</strong>上半 (a) 列出四类跨视角难点——杂乱环境 / 高动态场景 / 外观相似 / 部分遮挡。下半 (b) 是 V²-SAM 的解题骨架：用 Anchor Expert 回答"Where it is"、用 Visual Expert 回答"What it looks like"，再用 Post-hoc Cyclic Consistency Selector 在两者之间做跨视角一致性裁决。这张图正是后面 §pipeline 与 §method 的"导览图"。</figcaption>
+</figure>
+</section>
+
+<section id="contribution">
+<h2>贡献拆解：作者声明 vs 读者解读<a class="anchor" href="#contribution">#</a></h2>
+
+<p>先把<strong>作者自己声明</strong>的四点贡献按原文转述，再补一栏读者视角的"它到底解决了什么/边界在哪"，两者分开，不混为一谈。</p>
+
+<div class="table-wrap"><table>
+<caption>表 A：贡献拆解（左：论文声明；右：读者解读，非论文原话）</caption>
+<thead><tr><th>论文声明的贡献</th><th>读者解读（机制层面它真正做了什么 / 边界）</th></tr></thead>
+<tbody>
+<tr><td><strong>统一框架</strong>：首个从架构层面把 SAM2 适配到跨视角物体对应（尤其 ego–exo）的统一框架。</td><td>"统一"体现在：图像与视频、Ego2Exo 与 Exo2Ego 共用一套权重；丢掉 SAM2 的记忆模块、只做帧级对应，是为了让框架在图像/视频间无缝泛化。代价：放弃了 SAM2 原生的时序传播。</td></tr>
+<tr><td><strong>跨视角提示生成器</strong>：V²-Anchor 首次为 SAM2 解锁跨视角坐标提示；V²-Visual 用新的视觉提示匹配器增强外观线索。</td><td>V²-Anchor 是<strong>全程不可训练</strong>的几何模块（DINOv3 匹配 + 分层 + 质心），所以 Anchor Expert 直接复用预训练 SAM2 解码器、零训练成本。这是"15M 可训练参数"的关键来源。</td></tr>
+<tr><td><strong>专家集成与选择</strong>：多 prompt 专家框架 + 新的 PCCS 模块，按实例自适应选最可靠专家。</td><td>三专家不是"加权融合"而是"硬选择"：推理时三路并行出掩码，PCCS 用<strong>点级</strong>循环一致性挑一个。点级而非掩码级，省掉一次额外解码。</td></tr>
+<tr><td><strong>充分验证</strong>：在 Ego-Exo4D、DAVIS-17、HANDAL-X 上均创 SOTA。</td><td>三个基准覆盖三种语义：ego–exo 对应（主战场）、视频物体跟踪（时序泛化）、机器人可操作物体（真实世界迁移，且是零样本设定）。覆盖面足以支撑"跨视角"而非"单一数据集过拟合"。</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section id="datasets">
+<h2>数据：三个基准与它们各自要证明的事<a class="anchor" href="#datasets">#</a></h2>
+
+<p>动机先行：为什么是这三个数据集，而不是随便三个分割集？因为它们分别压测了"跨视角"的三个侧面。下表把论文 Tab.6 的统计原样转写（数字均来自补充材料 §3.1）。</p>
+
+<div class="table-wrap"><table>
+<caption>表 B：实验所用数据集统计（转写自论文 Tab.6，补充材料）</caption>
+<thead><tr><th>数据集</th><th>子集 / 方向</th><th>Split</th><th>Pairs</th><th>Masks</th><th>类别数</th></tr></thead>
+<tbody>
+<tr><td rowspan="4">Ego-Exo4D</td><td rowspan="2">Ego2Exo</td><td>Train</td><td>110K</td><td>523K</td><td>≈28</td></tr>
+<tr><td>Test</td><td>41K</td><td>200K</td><td>≈35</td></tr>
+<tr><td rowspan="2">Exo2Ego</td><td>Train</td><td>123K</td><td>567K</td><td>≈29</td></tr>
+<tr><td>Test</td><td>47K</td><td>219K</td><td>≈35</td></tr>
+<tr><td rowspan="2">HANDAL-X</td><td rowspan="2">—</td><td>Train</td><td>39K</td><td>78K</td><td>17</td></tr>
+<tr><td>Test</td><td>13K</td><td>26K</td><td>17</td></tr>
+<tr><td rowspan="2">DAVIS-17</td><td rowspan="2">—</td><td>Train</td><td>2.8K</td><td>12.7K</td><td>8</td></tr>
+<tr><td>Test</td><td>1.4K</td><td>5.3K</td><td>5</td></tr>
+</tbody>
+</table></div>
+
+<ul>
+<li><strong>Ego-Exo4D（主战场）</strong>：同步的第一/第三人称人类活动视频，两个方向各 110K+/123K+ 训练对、合计逾 320K 对、1.5M 掩码、约 30 个语义类。这是"大规模成对监督"的来源——训练 VPMatcher 的跨视角映射就靠它。</li>
+<li><strong>HANDAL-X（真实世界迁移）</strong>：带 6-DoF 位姿标注的真实可操作物体，17 类。论文在这里用<strong>零样本（ZSL）</strong>设定——直接拿 Ego-Exo4D 训出的模型去测，专门验证 Human2Robot 迁移与泛化，比 Ego-Exo4D 更"机器人现实"。</li>
+<li><strong>DAVIS-17（时序泛化）</strong>：高质量多物体视频分割基准。论文按 PCC[1] 的协议，评测<strong>相隔 20 帧</strong>的所有帧对、且只算两视角同时可见的物体——把"视频跟踪"重新框成"跨视角对应"来测框架的通用性。</li>
+</ul>
+<p>评测指标：Ego-Exo4D 用 mIoU、Continuity Accuracy（Cont.A）、Localization Error（Loc.E）；DAVIS-17 用 J&amp;F / J / F；HANDAL-X 用 mIoU。</p>
+</section>
+
+<section id="pipeline">
+<h2>Pipeline / 架构：从一对图到一张被裁决的掩码<a class="anchor" href="#pipeline">#</a></h2>
+
+<figure class="fig-wide">
+<a href="../assets/figures/v2sam/v2sam_fig2.png"><img src="../assets/figures/v2sam/v2sam_fig2.png" alt="V²-SAM 总览：V²-Anchor 生成几何坐标提示、V²-Visual 生成外观提示，三专家各出掩码，PCCS 选最终结果"></a>
+<figcaption><strong>图 3（论文 Fig.2，全管线总览）：把整条数据流读一遍。</strong>输入是查询–目标图像对 $(I_q, I_t)$ 与查询掩码 $M_q$。<strong>蓝色 V²-Anchor 支路</strong>在 DINOv3 特征上做跨视角匹配，经点分层与坐标变换，吐出几何提示 $P_{anchor}^{q2t}$（一个落在目标物体上的坐标）。<strong>绿色 V²-Visual 支路</strong>对 SAM2 特征在查询掩码内做 mask pooling，经 VPMatcher 映射到目标视角，吐出外观提示 $P_{visual}^{q2t}$。两类提示组合出三个专家（Anchor / Visual / Fusion），各自接一个共享结构、独立参数的 SAM2 掩码解码器，并行产出候选掩码 $\{M_t^{\mathcal{A}}, M_t^{\mathcal{V}}, M_t^{\mathcal{F}}\}$。右下角 <strong>PCCS</strong> 把每个候选反投回查询视角做点级一致性打分，挑出最终输出 $\hat M_t$。底部那行是训练损失 $\mathcal{L}=\lambda_1\mathcal{L}_v^c+\lambda_2\mathcal{L}_s+\lambda_3\mathcal{L}_m$，只在训练时生效。</figcaption>
+</figure>
+
+<p>一句话概括架构哲学：<strong>冻住 SAM2 编码器，只在"如何为它生成跨视角提示"和"如何在多个提示间裁决"上下功夫。</strong>具体地，框架保留 SAM2 的图像编码器 $\phi(\cdot)$、提示编码器、掩码解码器，<strong>丢掉记忆相关模块</strong>（只做帧级对应，从而图像/视频通吃）。下面按数据流逐段拆。</p>
+
+<div class="note"><div class="note-title">读法：三个专家分别是什么</div>
+<p>三个专家用<strong>同一套解码器架构、不同参数</strong>，区别只在喂进去的提示：<strong>Anchor Expert</strong> 用 $P_{anchor}^{q2t}$（几何坐标，不可训练，直接复用预训练 SAM2 解码器，<strong>训练免费</strong>）；<strong>Visual Expert</strong> 用 $P_{visual}^{q2t}$（外观提示，需训练 VPMatcher + 解码器）；<strong>Fusion Expert</strong> 同时拿两类提示融成统一提示嵌入。设计灵感来自 Mixture-of-Experts，但这里专家定义为"提示生成器 + SAM2 解码器"的组合。</p>
+</div>
+</section>
+
+<section id="method">
+<h2>方法 / 机制：把"缺失的目标视角坐标"造出来，再把"外观"映射过去<a class="anchor" href="#method">#</a></h2>
+
+<h3>① V²-Anchor：用 DINOv3 几何特征"翻译"一个坐标出来</h3>
+<p>动机先行：SAM2 自己的特征不够"几何感知"，难以稳定做跨视角点对点匹配；DINOv3 的 patch 级特征是细粒度、空间感知的，更适合建立几何对应。于是 V²-Anchor 不碰 SAM2，转而在 DINOv3 特征空间上跑四步：<strong>特征匹配 → 点分层 → 坐标变换 → 提示编码</strong>。</p>
+
+<p><strong>第一步·特征匹配。</strong>提取查询/目标的 patch 特征 $\phi(I_q),\phi(I_t)$，对每个查询 patch 算它与所有目标 patch 的余弦相似度，得到稠密对应热图：</p>
+<div class="equation">$$H_{ij}=\frac{\phi(I_q)_i^{\top}\,\phi(I_t)_j}{\lVert\phi(I_q)_i\rVert_2\,\lVert\phi(I_t)_j\rVert_2}$$<div class="eq-caption">式 1：跨视角 patch 余弦相似度</div></div>
+<p class="formula-note"><strong>公式读法：</strong>$H_{ij}$ 衡量第 $i$ 个查询 patch 与第 $j$ 个目标 patch 的相似度。对每个查询 patch，取最相似目标 patch $j^*=\arg\max_j H_{ij}$，再把线性索引映回二维 patch 坐标，就得到一对跨视角对应点。<strong>关键约束（不可省）：</strong>只在查询掩码 $M_q$ 投到 DINOv3 patch 网格后选中的<strong>前景 patch</strong> 上做匹配——这一步把背景噪声压掉，让匹配集中在物体区域，是几何精度的前提。</p>
+
+<p><strong>第二步·点分层（Point Stratification）。</strong>即便加了前景约束，匹配点仍可能冗余或局部聚成一团。于是做一次分层采样，强制目标点之间有最小间距 $\tau$：</p>
+<div class="equation">$$P'_t=\{\,p_i \mid \lVert p_i-p_j\rVert_2 > \tau,\ \forall j<i\,\}$$<div class="eq-caption">式 2：最小间距分层采样</div></div>
+<p class="formula-note"><strong>公式读法：</strong>按顺序保留那些与已选点距离都大于 $\tau$ 的点，得到一个<strong>紧凑但空间多样</strong>的高质量对应集 $P'_t$。这步在 §ablations 里会被实验直接验证——"稀疏高置信"远好于"稠密"。</p>
+
+<p><strong>第三、四步·坐标变换与提示编码。</strong>$P'_t$ 是原图坐标系下的稀疏对应，经一个确定性几何投影 $\Pi(\cdot)$ 线性变换到 SAM2 的规范坐标空间 $\tilde P_t=\Pi(P'_t;(H_t,W_t))$，再送进提示编码器，得到目标视角的坐标提示 $P_{anchor}^{q2t}$。注意：去除离群点后<strong>取剩余匹配的质心</strong>作为高置信坐标，避免被邻近干扰物带偏。<strong>全程无可学习参数</strong>。</p>
+
+<div class="socratic">
+<p class="question">问：既然能匹配出一堆对应点，为什么不全给 SAM2，反而只留稀疏几个、甚至取一个质心？"信息越多越好"不对吗？</p>
+<p class="guide">引导：想想 SAM2 的点提示语义——多个点会被它当作"这些位置都属于目标"的强约束。如果其中混进了视角特有的噪声点（匹配到了相似干扰物），它们就会把掩码往错的地方拽。</p>
+<p class="answer">答：对跨视角而言，<strong>提示的"置信度"比"数量"重要得多</strong>。少量高置信对应给出的是更强、更干净的监督约束；稠密分布反而引入视角特有噪声、限制泛化。后面 Tab.9 是这句话的实锤——anchor 点从 1 个加到 30 个，IoU 单调下降。</p>
+<p class="takeaway">Takeaway：V²-Anchor 的精髓是"宁缺毋滥"——它的产物是<strong>一个</strong>可信坐标，把"在哪"这件事干净利落地交给 SAM2。</p>
+</div>
+
+<h3>② V²-Visual：把外观从"特征"与"结构"两路映射到目标视角</h3>
+<p>动机先行：V²-Anchor 解决"在哪"，但当外观跨视角剧变（如 music 场景）几何匹配会动摇；这时需要"它长什么样"的外观线索。V²-Visual 先在 SAM2 特征上用查询/目标掩码做 mask pooling 得区域级特征：</p>
+<div class="equation">$$v_q=\mathrm{MaskP}(\phi(I_q),M_q),\quad v_t=\mathrm{MaskP}(\phi(I_t),M_t)$$<div class="eq-caption">式 3：区域级表征（mask pooling）</div></div>
+<p class="formula-note"><strong>公式读法：</strong>$v_q$ 是查询视角物体的区域原型，$v_t$ 是目标视角的（仅训练时可得，用作对比/监督目标）。问题随即变成：如何只凭 $v_q$ 预测出目标视角该有的外观提示？答案是 VPMatcher。</p>
+
+<figure>
+<a href="../assets/figures/v2sam/v2sam_fig3.png"><img src="../assets/figures/v2sam/v2sam_fig3.png" alt="Visual Prompt Matcher 结构：上为结构映射分支（Light-Mask 编解码器），下为特征映射分支（交叉注意力 + Res-MLP）"></a>
+<figcaption><strong>图 4（论文 Fig.3，VPMatcher 结构）：双分支各管一件事。</strong>上半<strong>结构映射分支（Structural Mapping）</strong>是一对轻量 CNN（Light-Mask 编码器/解码器），从查询掩码 $M_q$ 重建出粗目标掩码 $\hat M_c$，维持结构一致性。下半<strong>特征映射分支（Feature Mapping）</strong>用 Transformer 交叉注意力层 + 残差 MLP（Res-MLP），把融合提示嵌入对齐到目标视角，输出跨视角嵌入 $\hat v_c$。两路一个保"语义一致"、一个保"结构连贯"。</figcaption>
+</figure>
+
+<p><strong>特征映射分支。</strong>由融合提示嵌入 $p_f=v_q+F_{mask}(M_q)$ 出发，做线性投影得 query/key/value，注意力权重经一个空间门控函数调制以压背景噪声，再过多层交叉注意力 + Res-MLP，预测跨视角嵌入 $\hat v_c$。<strong>结构映射分支</strong>则把先验掩码 $M_q$ 下采样为潜表示 $m_{prior}$，用 FiLM 风格的特征级线性调制把语义条件注入掩码空间：</p>
+<div class="equation">$$\tilde m = m_{prior}\odot(1+\tanh(\gamma))+\beta+F_{mask}(M_q)$$<div class="eq-caption">式 4：FiLM 条件调制（结构映射）</div></div>
+<p class="formula-note"><strong>公式读法：</strong>$(\gamma,\beta)$ 是由查询原型 $v_q$ 经 FiLM 层算出的调制参数，把"语义条件"打进掩码先验里；解码器再把 $\tilde m$ 逐级上采样重建跨视角掩码 $\hat M_c$。基于这个预测掩码可得到最终视觉提示 $P_{visual}^{q2t}=\mathrm{MLP}([\hat v_c, v'_c])$，其中 $v'_c=\mathrm{MaskP}(\phi(I_q),\hat M_c)$。</p>
+
+<h3>③ PCCS：用"点级循环一致性"按实例裁决</h3>
+<p>动机先行：三个专家各有所长（见 §ablations 的雷达图），但推理时你并不知道当前实例该信谁——总不能拿测试标签去挑。PCCS 的思路是<strong>自验证</strong>：把每个专家在目标视角的预测 $\hat M_t^k$ 反投回查询视角，看它和原始查询掩码 $M_q$ 对不对得上。</p>
+<div class="equation">$$\hat P_k^{t2q}=\text{V}^2\text{-Anchor}\big(I_t,I_q;\hat M_t^k\big)$$<div class="eq-caption">式 5：用 V²-Anchor 反向做循环对应</div></div>
+<p class="formula-note"><strong>公式读法：</strong>$\hat M_t^k$ 是第 $k$ 个专家的目标视角预测；把它当查询掩码、反方向再跑一次 V²-Anchor，得到反投到查询图上的点集 $\hat P_k^{t2q}$。PCCS 计算这些反投点与"从查询掩码采样的参考点"之间的<strong>平均距离</strong>作为代理分数，距离最小的专家被选中。</p>
+
+<div class="socratic">
+<p class="question">问：循环一致性早有人做（prior 的 Cycle-Mask 是反向重建一张查询掩码再比对）。PCCS 把它改成"点级"，到底省了什么、值不值？</p>
+<p class="guide">引导：反向重建一张掩码要再跑一次解码器（一次额外前向）。而点级一致只需比对反投点与参考点的距离，绕过了那次解码。</p>
+<p class="answer">答：PCCS 直接在<strong>点级</strong>度量几何一致，<strong>省掉一次额外解码 pass</strong>，却保住了选择精度。Tab.10 给出对照：两专家设定下 Cycle-Points 比 Cycle-Mask 的 Exo→Ego IoU 高 +1.4、单样本运行时间少 110 ms；三专家设定下精度持平而延迟与 FLOPs 都更低。这是"更轻 + 不掉点"的典型双赢。</p>
+<p class="takeaway">Takeaway：把"重建掩码再比"换成"比较点的几何一致"，是一次抓住度量本质的简化——你要的本就是几何对不对得上，不必经过像素重建。</p>
+</div>
+</section>
+
+<section id="training">
+<h2>训练配置：三项损失 + 一个"前 4K 步狂拉对比学习"的细节<a class="anchor" href="#training">#</a></h2>
+<p>总损失是三项加权之和：</p>
+<div class="equation">$$\mathcal{L}=\lambda_1\,\mathcal{L}_v^c(\hat v_c, v_t)+\lambda_2\,\mathcal{L}_s(\hat M_c, M_t)+\lambda_3\,\mathcal{L}_m(\hat M_t, M_t)$$<div class="eq-caption">式 6：总训练目标</div></div>
+<p class="formula-note"><strong>公式读法：</strong>$\mathcal{L}_v^c$ 是<strong>视觉对比损失</strong>（跨视角区域特征对齐，正对拉近、负对推远，形成紧凑可分的聚类）；$\mathcal{L}_s$ 是<strong>结构约束损失</strong>（对 VPMatcher 的跨视角结构映射施加掩码级约束，鼓励学一个固定空间变换）；$\mathcal{L}_m$ 是<strong>掩码预测损失</strong>，由逐像素交叉熵 $\mathcal{L}_{CE}$ + 区域级 Dice $\mathcal{L}_{Dice}$ 组成。注意 Anchor Expert 不可训练，损失只作用于 Visual / Fusion 两专家。</p>
+
+<div class="table-wrap"><table>
+<caption>表 C：训练超参（转写自论文 Tab.7 / Tab.8，补充材料）</caption>
+<thead><tr><th>项</th><th>取值</th><th>项</th><th>取值</th></tr></thead>
+<tbody>
+<tr><td>基座</td><td>SAM2-Hiera-Large（冻结编码器）</td><td>特征提取器</td><td>DINOv3 ViT-L/16（冻结）</td></tr>
+<tr><td>per-device batch</td><td>16</td><td>梯度累积</td><td>4 步（有效 batch 64）</td></tr>
+<tr><td>训练轮数</td><td>24 epochs</td><td>优化器</td><td>AdamW，β=(0.9,0.999)，wd=0.05</td></tr>
+<tr><td>学习率</td><td>4×10⁻⁵</td><td>调度</td><td>linear warm-up(5%) → cosine 退火到 0</td></tr>
+<tr><td>损失权重 λ₁:λ₂:λ₃</td><td>1:1:10</td><td>前 4K 步特例</td><td>λ₁=100（先猛拉对比学习）</td></tr>
+<tr><td>精度</td><td>bfloat16 混合精度</td><td>梯度裁剪</td><td>norm=1.0</td></tr>
+<tr><td>输入分辨率</td><td>直接 resize 到 1024px</td><td>BCE:Dice 权重</td><td>2.0 : 0.5（sigmoid + naive Dice）</td></tr>
+<tr><td>训练硬件</td><td>8× NVIDIA H 系列 GPU</td><td>推理 batch</td><td>1（三专家并行 + PCCS 裁决）</td></tr>
+</tbody>
+</table></div>
+
+<div class="socratic">
+<p class="question">问：为什么前 4K 步要把 λ₁ 从 1 临时拉到 100？这看起来像个"调参 trick"，背后有机制吗？</p>
+<p class="guide">引导：想想三项损失依赖关系——结构/掩码损失要在"区域特征已经跨视角对齐"之后才有意义。如果一开始特征还没对齐就硬学掩码，监督信号会很乱。</p>
+<p class="answer">答：这是<strong>课程式的初始化</strong>：先用极大权重把视觉对比损失 $\mathcal{L}_v^c$ 顶上去，强行把跨视角区域表征对齐好（建立"语义底座"），之后再切回 1:1:10 让掩码损失主导精修。换句话说，λ₁=100 的阶段是在为后续的结构/掩码学习<strong>铺一个对齐的特征空间</strong>。补充材料 Tab.11 的消融也印证了顺序——V²-Visual 先建立一致表征，V²-Anchor 再放大它。</p>
+<p class="takeaway">Takeaway：损失权重不是常数而是"分阶段"，本质是给一个有依赖关系的多任务目标排了个先后。</p>
+</div>
+<p>关于 GPU 账单：论文只披露"8× H 系列 GPU、24 epochs"，未给总 GPU 小时数；任何换算都属<strong>按论文披露数字粗略估算，不等同于实际账单</strong>，故此处不臆测。</p>
+</section>
+
+<section id="experiments">
+<h2>实验结果：三个基准，三种"跨视角"压测<a class="anchor" href="#experiments">#</a></h2>
+
+<h3>Ego-Exo4D（主战场）</h3>
+<p>下表完整转写论文 Tab.1（Correspondences v2 test split）。最后两行是本文方法。</p>
+<div class="table-wrap"><table>
+<caption>表 1（转写自论文 Tab.1）：Ego-Exo4D Correspondences v2 测试集。↑ 越大越好，↓ 越小越好。</caption>
+<thead><tr><th>方法</th><th>Ego2Exo IoU↑</th><th>Ego2Exo Cont.A↑</th><th>Ego2Exo Loc.E↓</th><th>Exo2Ego IoU↑</th><th>Exo2Ego Cont.A↑</th><th>Exo2Ego Loc.E↓</th><th>Total-IoU↑</th><th>Param 总(M)</th><th>可训练(M)</th></tr></thead>
+<tbody>
+<tr><td>PSALM（零样本）</td><td>7.4</td><td>0.121</td><td>0.266</td><td>2.1</td><td>0.058</td><td>0.294</td><td>4.8</td><td>1587.1</td><td>0</td></tr>
+<tr><td>CMX</td><td>6.8</td><td>0.137</td><td>0.110</td><td>12.0</td><td>0.177</td><td>0.166</td><td>9.4</td><td>138.0</td><td>17.3</td></tr>
+<tr><td>XSegTx</td><td>18.9</td><td>0.386</td><td>0.070</td><td>27.1</td><td>0.358</td><td>0.104</td><td>23.0</td><td>12.1</td><td>3.6</td></tr>
+<tr><td>XMem</td><td>19.3</td><td>0.262</td><td>0.151</td><td>16.6</td><td>0.240</td><td>0.160</td><td>18.0</td><td>62.2</td><td>62.2</td></tr>
+<tr><td>XMem + XSegTx</td><td>34.9</td><td>0.559</td><td>0.038</td><td>25.0</td><td>0.237</td><td>0.117</td><td>30.0</td><td>75.6</td><td>67.1</td></tr>
+<tr><td>Ref-SAM*</td><td>29.2</td><td>0.452</td><td>0.077</td><td>42.2</td><td>0.502</td><td>0.096</td><td>37.8</td><td>224.8</td><td>4.3</td></tr>
+<tr><td>ObjectRelator</td><td>35.3</td><td>0.540</td><td>0.036</td><td>40.3</td><td>0.500</td><td>0.068</td><td>37.8</td><td>1587.3</td><td>1587.3</td></tr>
+<tr><td>O-MaMa (k-NN)</td><td>31.9</td><td>0.414</td><td>0.195</td><td>30.9</td><td>0.373</td><td>0.127</td><td>31.4</td><td>154.0</td><td>0</td></tr>
+<tr><td>O-MaMa</td><td>42.6</td><td>0.590</td><td>0.033</td><td>44.1</td><td>0.524</td><td>0.082</td><td>43.4</td><td>165.6</td><td>11.6</td></tr>
+<tr><td><strong>V²-SAM（单专家）</strong></td><td>44.5</td><td>0.607</td><td>0.055</td><td>47.3</td><td>0.552</td><td>0.092</td><td>45.9</td><td>531.3</td><td>7.6</td></tr>
+<tr><td><strong>V²-SAM（多专家）</strong></td><td><strong>46.3</strong></td><td><strong>0.616</strong></td><td>0.056</td><td><strong>49.6</strong></td><td><strong>0.575</strong></td><td>0.078</td><td><strong>48.0</strong></td><td>543.4</td><td>15.3</td></tr>
+</tbody>
+</table></div>
+<p>读数：多专家版在两方向均创 SOTA，比次优的 O-MaMa 在 Ego2Exo / Exo2Ego 上分别高 <strong>+3.7 / +5.5 IoU</strong>。更值得注意的是<strong>参数效率</strong>——ObjectRelator 用 1.6B 参数（全量可训练），V²-SAM 只用 543M 总参数、<strong>15M 可训练</strong>（约 ObjectRelator 的 1%），Total-IoU 反而高出 +10.2。连单专家版（45.9）都已超过所有前人。Loc.E 略高于最优是唯一不占优的细项，但 IoU/Cont.A 全面领先。</p>
+
+<h3>DAVIS-17（时序泛化）与 HANDAL-X（真实世界零样本）</h3>
+<div class="fig-grid">
+<div class="table-wrap"><table>
+<caption>表 2（转写自论文 Tab.2）：DAVIS-17 Val，间隔 20 帧的视频物体对应。</caption>
+<thead><tr><th>方法</th><th>J&amp;F<sub>m</sub>↑</th><th>J<sub>m</sub>↑</th><th>F<sub>m</sub>↑</th></tr></thead>
+<tbody>
+<tr><td>SiamMAE</td><td>60.7</td><td>58.4</td><td>62.9</td></tr>
+<tr><td>CrocoV2 + Cont. Pretrain</td><td>40.0</td><td>37.4</td><td>42.5</td></tr>
+<tr><td>Probabilistic Warp Consistency</td><td>42.9</td><td>42.6</td><td>42.7</td></tr>
+<tr><td>DINO ViTs/8</td><td>64.5</td><td>61.6</td><td>67.5</td></tr>
+<tr><td>DINO ViTb/8</td><td>66.4</td><td>63.7</td><td>69.2</td></tr>
+<tr><td>DINOv2 + Reg ViTb/14</td><td>62.1</td><td>59.6</td><td>64.8</td></tr>
+<tr><td>PCC</td><td>70.2</td><td>67.8</td><td>72.7</td></tr>
+<tr><td><strong>V²-SAM（Ours）</strong></td><td><strong>78.8</strong></td><td><strong>76.5</strong></td><td><strong>81.0</strong></td></tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<caption>表 3（转写自论文 Tab.3）：HANDAL-X 零样本（ZSL）物体分割。</caption>
+<thead><tr><th>Setup</th><th>方法</th><th>训练数据</th><th>IoU↑</th></tr></thead>
+<tbody>
+<tr><td rowspan="6">ZSL</td><td>XSegTx</td><td>COCO / 自生成对</td><td>1.5</td></tr>
+<tr><td>SEEM</td><td>COCO Panoptic, RefCOCO/+g</td><td>2.5</td></tr>
+<tr><td>PSALM</td><td>COCO Panoptic, RefCOCO/+g 等</td><td>14.2</td></tr>
+<tr><td>PSALM</td><td>Ego-Exo4D</td><td>39.9</td></tr>
+<tr><td>ObjectRelator</td><td>Ego-Exo4D</td><td>42.8</td></tr>
+<tr><td><strong>V²-SAM（单专家）</strong></td><td>Ego-Exo4D</td><td>66.4</td></tr>
+</tbody>
+<tbody>
+<tr><td>—</td><td><strong>V²-SAM（多专家）</strong></td><td>Ego-Exo4D</td><td><strong>77.2</strong></td></tr>
+</tbody>
+</table></div>
+</div>
+<p>DAVIS-17 上 V²-SAM 全指标领先，J&amp;F 比次优 PCC 高 +8.6，说明框架在"间隔 20 帧、视角剧变"的视频跟踪上同样稳。HANDAL-X 是更狠的考验——<strong>零样本</strong>跨域到真实机器人物体：单专家版 66.4 IoU 已大幅超过 PSALM(39.9) 与 ObjectRelator(42.8)，多专家版进一步到 <strong>77.2</strong>。这组数据是"跨视角能力可迁移、非数据集过拟合"的关键证据。</p>
+
+<h3>定性：互补性肉眼可见</h3>
+<div class="fig-grid">
+<figure><a href="../assets/figures/v2sam/v2sam_fig5.png"><img src="../assets/figures/v2sam/v2sam_fig5.png" alt="Ego2Exo 定性：查询视角、Anchor/Visual/Fusion 三专家预测、PCCS 选中结果"></a></figure>
+<figure><a href="../assets/figures/v2sam/v2sam_fig6.png"><img src="../assets/figures/v2sam/v2sam_fig6.png" alt="Exo2Ego 定性：查询视角、Anchor/Visual/Fusion 三专家预测、PCCS 选中结果"></a></figure>
+<figcaption><strong>图 5（论文 Fig.5/Fig.6）：三专家 + PCCS 的实例级互补。</strong>左 Ego2Exo、右 Exo2Ego。每行从左到右：查询视角、Anchor / Visual / Fusion 三专家预测、PCCS 选中的最终掩码。可见在杂乱多相似物场景里 Visual Expert 易认错相似物、而 Anchor Expert 靠几何线索定位准；在篮球等高动态场景里 Visual Expert 反而更稳——PCCS 的任务就是按实例把"对的那个"挑出来。</figcaption>
+</figure>
+
+<figure class="fig-wide">
+<a href="../assets/figures/v2sam/v2sam_fig8.png"><img src="../assets/figures/v2sam/v2sam_fig8.png" alt="Ref-SAM 与 V²-SAM 在 Ego-Exo4D 上的定性对比"></a>
+<figcaption><strong>图 6（论文 Fig.8，补充材料）：Ref-SAM vs V²-SAM。</strong>左 Ego2Exo、右 Exo2Ego，每组三列：query / Ref-SAM / Ours。Ref-SAM 在杂乱或多相似物场景常定位失败，V²-SAM 两个方向都给出更准、更一致的预测——直观印证了"补回坐标提示"相对"只用视觉参考"的优势。</figcaption>
+</figure>
+</section>
+
+<section id="ablations">
+<h2>消融：四条独立证据链锁死"互补 + 稀疏 + 点级裁决"<a class="anchor" href="#ablations">#</a></h2>
+<p>按 kexue:su 的要求，核心机制要从 ≥2 个独立角度交叉验证。这里有四条独立证据，分别压测三个设计点。</p>
+
+<h3>证据①：拿掉任一 prompt 生成器，对应专家直接崩</h3>
+<div class="table-wrap"><table>
+<caption>表 4（转写自论文 Tab.4）：单专家上移除其 prompt 生成器的后果（Total IoU）。</caption>
+<thead><tr><th>专家</th><th>配置</th><th>Ego2Exo IoU↑</th><th>Exo2Ego IoU↑</th><th>Total IoU↑</th></tr></thead>
+<tbody>
+<tr><td rowspan="2">Anchor Expert</td><td>w/o V²-Anchor（仅用 M_q 质心）</td><td>0.8</td><td>2.1</td><td>1.5</td></tr>
+<tr><td>w/ V²-Anchor（Ours）</td><td>38.7</td><td>41.6</td><td>40.1</td></tr>
+<tr><td rowspan="2">Visual Expert</td><td>w/o V²-Visual（直接用查询特征）</td><td>1.0</td><td>5.0</td><td>3.0</td></tr>
+<tr><td>w/ V²-Visual（Ours）</td><td>36.2</td><td>46.6</td><td>41.4</td></tr>
+</tbody>
+</table></div>
+<p>读数：把 V²-Anchor 换成"直接拿查询掩码质心当目标提示"，Total IoU 从 40.1 跌到 <strong>1.5</strong>——几乎归零，说明"目标视角坐标"绝不能用查询坐标顶替（位置完全错位）。把 V²-Visual 拿掉、直接用查询视角特征当提示，Total IoU 从 41.4 跌到 <strong>3.0</strong>——查询视角特征对目标视角毫无意义。两个生成器都不是锦上添花，而是各自专家的命门。</p>
+
+<h3>证据②：三专家组合，缺一不可</h3>
+<div class="table-wrap"><table>
+<caption>表 5（转写自论文 Tab.5）：不同专家解码器组合（v2 test split）。A=Anchor，B=Visual，C=Fusion。</caption>
+<thead><tr><th>组合</th><th>Ego2Exo IoU↑</th><th>Exo2Ego IoU↑</th><th>Total IoU↑</th></tr></thead>
+<tbody>
+<tr><td>A：Anchor Expert</td><td>38.7</td><td>41.6</td><td>40.1</td></tr>
+<tr><td>B：Visual Expert</td><td>36.2</td><td>46.6</td><td>41.4</td></tr>
+<tr><td>C：Fusion Expert</td><td>44.5</td><td>47.3</td><td>45.9</td></tr>
+<tr><td>A + B</td><td>42.7</td><td>48.2</td><td>45.5</td></tr>
+<tr><td><strong>A + B + C</strong></td><td><strong>46.3</strong></td><td><strong>49.6</strong></td><td><strong>48.0</strong></td></tr>
+</tbody>
+</table></div>
+<p>读数：单专家里 Fusion 最强（45.9），但 A+B 组合（45.5）就已逼近、且 Ego2Exo 从单专家的 38.7/36.2 跳到 42.7——证明 anchor 与 visual 提供<strong>互补</strong>的跨视角信息。加上 Fusion 成 A+B+C 拿到全场最优 48.0。这条链与图 5 的定性观察相互印证。</p>
+
+<h3>证据③：稀疏锚点 ≫ 稠密锚点（"宁缺毋滥"的实锤）</h3>
+<div class="table-wrap"><table>
+<caption>表 6（转写自论文 Tab.9，补充材料）：V²-Anchor 稀疏锚点数量消融（IoU）。</caption>
+<thead><tr><th>设置</th><th>1 pt</th><th>5 pts</th><th>10 pts</th><th>30 pts</th></tr></thead>
+<tbody>
+<tr><td>Ego→Exo</td><td><strong>38.7</strong></td><td>32.2</td><td>28.7</td><td>21.8</td></tr>
+<tr><td>Exo→Ego</td><td><strong>41.6</strong></td><td>26.1</td><td>18.3</td><td>18.5</td></tr>
+</tbody>
+</table></div>
+<p>读数：两个方向都在 <strong>1 个锚点</strong>时最优，锚点越密 IoU 越低（Ego→Exo 38.7→21.8，Exo→Ego 41.6→18.5）。这直接验证了 §method 里那段 Socratic 推断：稠密匹配引入视角特有噪声、把 SAM2 往错处拽；少量高置信对应反而是更强的监督约束。这也解释了为何 V²-Anchor 最终取质心——它要的就是<strong>那一个</strong>最可信的点。</p>
+
+<h3>证据④：点级循环一致（PCCS）= 掩码级一致的轻量平替</h3>
+<div class="table-wrap"><table>
+<caption>表 7（转写自论文 Tab.10，补充材料）：PCCS 选择器对照（Cycle-Points vs 先前 Cycle-Mask）。</caption>
+<thead><tr><th>解码器</th><th>选择器</th><th>Ego2Exo IoU↑</th><th>Exo2Ego IoU↑</th><th>Runtime(ms)↓</th><th>FLOPs(G)↓</th></tr></thead>
+<tbody>
+<tr><td rowspan="2">A+B</td><td>Cycle-Mask（先前）</td><td>42.60</td><td>46.73</td><td>620</td><td>2188.58</td></tr>
+<tr><td><strong>Cycle-Points（Ours）</strong></td><td>42.71</td><td><strong>48.17</strong></td><td><strong>510</strong></td><td><strong>2173.58</strong></td></tr>
+<tr><td rowspan="2">A+B+C</td><td>Cycle-Mask（先前）</td><td>46.27</td><td>49.43</td><td>820</td><td>2207.13</td></tr>
+<tr><td><strong>Cycle-Points（Ours）</strong></td><td><strong>46.31</strong></td><td><strong>49.61</strong></td><td><strong>760</strong></td><td><strong>2184.63</strong></td></tr>
+</tbody>
+</table></div>
+<p>读数：点级一致在精度上持平或更高（两专家时 Exo→Ego +1.4），同时<strong>每样本快 110 ms、FLOPs 更低</strong>。证明"专家选择可以只靠点级几何一致驱动"，无需重建掩码那次昂贵的解码——这是从效率角度对 §method 设计的独立交叉验证。</p>
+
+<h3>子模块消融：语义/结构约束 + V²-Anchor 的叠加增益</h3>
+<div class="table-wrap"><table>
+<caption>表 8（转写自论文 Tab.11，补充材料）：V²-Visual 子模块（语义映射 / 结构映射）与 V²-Anchor 的逐项消融。</caption>
+<thead><tr><th>V²-Anchor</th><th>L_v</th><th>L_s</th><th>语义映射</th><th>结构映射</th><th>Ego2Exo↑</th><th>Exo2Ego↑</th><th>Total↑</th></tr></thead>
+<tbody>
+<tr><td>✗</td><td>✓</td><td>✗</td><td>✓</td><td>✗</td><td>34.19</td><td>45.16</td><td>39.68</td></tr>
+<tr><td>✗</td><td>✗</td><td>✓</td><td>✗</td><td>✓</td><td>34.98</td><td>46.46</td><td>40.72</td></tr>
+<tr><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>36.17</td><td>46.63</td><td>41.40</td></tr>
+<tr><td><strong>✓</strong></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><strong>44.51</strong></td><td><strong>47.29</strong></td><td><strong>45.90</strong></td></tr>
+<tr><td colspan="5">相对增益（末行相对前一行）</td><td>+30.2%</td><td>+4.7%</td><td>+15.7%</td></tr>
+</tbody>
+</table></div>
+<p>读数：语义映射 + $\mathcal{L}_v$ 略优于结构映射 + $\mathcal{L}_s$（说明跨视角迁移时"语义一致"比"空间对齐"更关键）；两路联合再涨；而<strong>引入 V²-Anchor 带来最大跳变</strong>——Ego2Exo +30.2%、Total +15.7%。论文据此总结一句机制：V²-Visual 先把跨视角表征对齐打底，V²-Anchor 再放大这个效果。</p>
+
+<figure>
+<a href="../assets/figures/v2sam/v2sam_fig4.png"><img src="../assets/figures/v2sam/v2sam_fig4.png" alt="三专家按场景的 IoU 雷达图与 PCCS 选择 Win% 柱状图"></a>
+<figcaption><strong>图 7（论文 Fig.4）：专家专长的"指纹"。</strong>左侧雷达图按场景类别画三专家 IoU：<strong>Anchor Expert（橙）</strong>在结构化、相对静态场景（Cooking、Health）强；<strong>Visual Expert（蓝）</strong>在动态、人本场景（Basketball、Music）强；<strong>Fusion Expert（绿）</strong>覆盖最广、各场景都稳。右侧 Win% 柱状图标星号的是 PCCS 在该场景的实际选择——和雷达图的专长高度吻合（Cooking 选 Anchor、Basketball/Music 选 Visual、Soccer/Bike/Health 选 Fusion）。这是"互补性 + PCCS 选对了"最直观的证据。</figcaption>
+</figure>
+</section>
+
+<section id="limitations">
+<h2>局限与复现门槛<a class="anchor" href="#limitations">#</a></h2>
+<ul>
+<li><strong>性能被两个冻结基座锁顶。</strong>V²-Anchor 的几何匹配精度完全取决于 DINOv3 特征的跨视角可分性，掩码质量取决于冻结的 SAM2 解码上限——当 DINOv3 在某类外观/纹理上匹配失效（论文提到 music 这类外观剧变场景 Anchor Expert 会动摇），框架只能指望 Visual Expert 兜底，而非真正"修复"几何匹配。</li>
+<li><strong>丢弃了 SAM2 的记忆/时序模块。</strong>为换取图像/视频通用，框架只做帧级对应，不利用 SAM2 原生的跨帧传播。DAVIS-17 是按"间隔 20 帧的帧对"评测的，并非长时序连续跟踪——长程时序一致性不在本文验证范围。</li>
+<li><strong>推理是三专家并行 + 选择，不是单次前向。</strong>虽然 Anchor Expert 训练免费、PCCS 用点级一致省了一次解码，但推理仍需跑三个解码器再裁决（Tab.10 的 760 ms/样本、~2185 GFLOPs 是三专家 A+B+C 的代价）。这对实时机器人部署是要权衡的开销。</li>
+<li><strong>仅靠视觉、无位姿/3D。</strong>任务设定明确"不访问相机位姿、语义标签或显式 3D 几何"。这是优点（部署门槛低），也是天花板——当纯视觉线索不足以消歧（多个几乎一样的工具）时，没有几何先验可借。</li>
+<li><strong>复现门槛。</strong>需 8× H 系列 GPU、SAM2-Hiera-Large + DINOv3 ViT-L/16 两个大基座、逾 320K 训练对。论文称"Codes and Models will be released"；本页撰写时官方代码库 <a href="https://github.com/jaychempan/V2-SAM">jaychempan/V2-SAM</a> 已建（CVPR'26 Highlight，HTTP 200），但权重/数据脚本是否齐备需以放出版本为准。GPU 小时数论文未给——任何换算属<strong>按论文披露数字粗略估算，不等同于实际账单</strong>。</li>
+</ul>
+</section>
+
+<section id="summary">
+<h2>总结：一次"补输入"而非"换基座"的范式<a class="anchor" href="#summary">#</a></h2>
+<p>V²-SAM 的价值不在于又造了一个更大的分割模型，而在于它把跨视角对应的核心矛盾<strong>看穿了</strong>：SAM2 不是不行，而是它要的那个输入（目标视角坐标）在跨视角下恰好缺席。顺着这个判断，全文是一条干净的"补输入"逻辑链——</p>
+<ol>
+<li><strong>V²-Anchor</strong>：借 DINOv3 几何特征把缺失的目标视角坐标"翻译"出来（前景约束→分层→质心，全程不可训练），首次为 SAM2 解锁跨视角坐标提示，回答"它在哪"。</li>
+<li><strong>V²-Visual</strong>：用 VPMatcher 从特征+结构两路把外观映射过去，回答"它长什么样"，与 Anchor 天然互补。</li>
+<li><strong>三专家 + PCCS</strong>：Anchor/Visual/Fusion 覆盖不同场景，点级循环一致按实例挑最可靠的——既不掉点又省一次解码。</li>
+</ol>
+<p>四条独立消融证据（拿掉生成器即崩 / 三专家缺一不可 / 稀疏≫稠密 / 点级≈掩码级但更轻）把每个设计点都钉死，三个基准三种压测全 SOTA，且只用 15M 可训练参数。对做基座适配的研究者，最值得带走的一条方法论是：<strong>当一个强基座"水土不服"，先别急着改它，先问清楚它缺的到底是哪个输入，然后专门去把那个输入造出来。</strong></p>
+</section>
+
+<section id="references">
+<h2>参考与署名说明<a class="anchor" href="#references">#</a></h2>
+<ul>
+<li><strong>论文：</strong>Jiancheng Pan, Runze Wang, Tianwen Qian, Mohammad Mahdi, Yanwei Fu, Xiangyang Xue, Xiaomeng Huang, Luc Van Gool, Danda Pani Paudel, Yuqian Fu. <em>V²-SAM: Marrying SAM2 with Multi-Prompt Experts for Cross-View Object Correspondence.</em> CVPR 2026（Highlight）/ arXiv:2511.20886 v2。机构：INSAIT（索菲亚大学）/ 清华大学 / 复旦大学 / 华东师范大学。</li>
+<li><strong>代码：</strong><a href="https://github.com/jaychempan/V2-SAM">https://github.com/jaychempan/V2-SAM</a>（官方，CVPR'26 Highlight，撰写时 HTTP 200）。项目主页：<a href="https://jianchengpan.space/projects/V2-SAM/">jianchengpan.space/projects/V2-SAM</a>。CVF：<a href="https://openaccess.thecvf.com/content/CVPR2026/html/Pan_V2-SAM_Marrying_SAM2_with_Multi-Prompt_Experts_for_Cross-View_Object_Correspondence_CVPR_2026_paper.html">openaccess CVPR2026</a>（已解析，含 citation_title）。</li>
+<li><strong>关键依赖：</strong>SAM2（Ravi et al., 2024）、DINOv3 特征、Ego-Exo4D（Grauman et al., CVPR 2024）、HANDAL（Guo et al., IROS 2023）、DAVIS-2017（Pont-Tuset et al., 2017）、O-MaMa（ICCV 2025）、ObjectRelator（Fu et al., 2024）、PCC（Baade &amp; Chen, CVPR 2025）。表 1–11 数据均转写自论文正文与补充材料。</li>
+<li><strong>署名说明（kexue 红线）：</strong>本文的"动机先行→机制拆解→≥2 条独立验证"写作方法论遵循 <code>kexue:su</code>（苏剑林 / kexue.fm）的科学认知姿态。撰写时以关键词"cross-view correspondence / SAM2 coordinate prompt / cyclic consistency / mixture-of-experts"检索 <code>kexue:su</code> 语料库，<strong>返回的卡片（P-tuning、NSP zero-shot、GAN、LoRA、arXiv 翻译）均与本文主题不相关</strong>，故按红线规定<strong>仅应用方法论、不附 [archives/XXXX] 引用</strong>。</li>
+<li>正文中"论文未说明"之处（如总 GPU 小时数）已显式标注，未作臆测；GPU 相关换算均声明"按论文披露数字粗略估算，不等同于实际账单"。</li>
+</ul>
+</section>
+
+</main>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline / 架构</a></li><li><a href="#method">方法 / 三机制</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>V²-SAM: Marrying SAM2 with Multi-Prompt Experts for Cross-View Object Correspondence</dd><dt>Venue</dt><dd>CVPR 2026 · Highlight · Top Paper (candidate)</dd><dt>机构</dt><dd>INSAIT / 清华 / 复旦 / 华东师大</dd><dt>基座</dt><dd>冻结 SAM2-Hiera-Large + DINOv3 ViT-L/16</dd><dt>arXiv</dt><dd>2511.20886 v2</dd><dt>Topic</dt><dd>Cross-View Object Correspondence · Ego–Exo</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：Vanilla/Ref/V²-SAM 三态对比</li><li>图 3：V²-Anchor + V²-Visual + 三专家 + PCCS 全管线</li><li>式 1–2：跨视角匹配 + 稀疏分层</li><li>式 5：点级循环一致裁决</li><li>表 1：Ego-Exo4D 48.0 总 IoU，15M 可训练</li><li>表 6：1 锚点 38.7 → 30 锚点 21.8（稀疏≫稠密）</li><li>表 7：Cycle-Points 更准更快</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> V²-SAM 深读</p><p><span class="status-good">figures</span> 7 张 PNG（fig1/7/2/3/5/6/8/4，原生分辨率）</p><p><span class="status-good">tables</span> 表 1/2/3/4/5/9/10/11 全转写（含补充材料）</p><p><span class="status-good">formula</span> 式 1–6 待 MathJax 预检</p><p><span class="status-warn">scope</span> 仅帧级、无时序记忆；性能受冻结 DINOv3/SAM2 上限锁定</p></div></section></aside></div>
+</body></html>

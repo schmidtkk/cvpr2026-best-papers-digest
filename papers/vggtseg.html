@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VGGT-Segmentor 深读：VGGT 的逐点投影会漂、可注意力却很稳——凭什么把"稳的对齐"榨成"准的掩码"？</title>
+<meta name="description" content="VGGT-S 深读：在 ego–exo 跨视角实例分割里，VGGT 的逐像素点投影系统性漂移，但其 object-level attention 仍稳定落在目标区域。本文用 kexue:su 方法论拆解 Union Segmentation Head 的三阶段（Mask Prompt Fusion → Point-Guided Prediction → Mask Refinement）如何把不可靠的稀疏点当 prompt、靠特征融合与迭代修边把掩码拉回几何一致位置，并以单图自监督训练去掉配对标注，在 Ego–Exo4D 上 67.7 / 68.0 IoU 创 SOTA。">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Cross-View Segmentation · 冻结 VGGT + Union Segmentation Head / 几何先验治跨视角对应</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Segmentation &gt; VGGT-Segmentor</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">12</span><span class="month">Jun</span></div><h1 id="paper-title">VGGT-Segmentor 深读：VGGT 的逐点投影会漂、可注意力却很稳——凭什么把"稳的对齐"榨成"准的掩码"？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-12</span><span>CVPR 2026 · Top Paper (candidate) · Beihang University</span><span>来源：arXiv:2604.13596 PDF</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Cross-View Segmentation</span><span class="tag green">VGGT / 几何先验</span><span class="tag">Ego–Exo4D</span><span class="tag">Union Segmentation Head</span><span class="tag">单图自监督</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>VGGT 是个"几何一致"的多视角大模型：一次前馈联合预测深度、相机参数、点图，给跨视角特征对齐打了很好的底子。可一旦你想拿它直接做<strong>跨视角实例分割</strong>——给定 ego（第一人称）一张图里某个物体的 mask，要在 exo（第三人称）那张图里把<em>同一个物理物体</em>抠出来——它会在一个意想不到的地方翻车：<strong>VGGT 的逐像素点投影会系统性漂移</strong>（把锅投到砧板上、把瓶子认成旁边那只长得像的瓶子），<strong>但它内部的 object-level attention 却仍然稳稳地落在目标大致区域</strong>。这就是本文的核心张力：<strong>同一个模型，"逐点重投影"不可信，"注意力对齐"却可信——你该信哪个、又怎么把"可信的那个"榨成一张像素级准确的掩码，而不被"不可信的那个"带偏？</strong>VGGT-Segmentor（VGGT-S）的答案是冻住 VGGT、只加一个轻量 <strong>Union Segmentation Head</strong>，把漂移的稀疏点降格成"引导用的 prompt"而非"答案"，再靠特征融合做空间共识、靠迭代修边把掩码拉回几何一致的位置；外加一招<strong>单图自监督训练</strong>彻底甩掉配对标注。Ego–Exo4D 上 67.7%（Ego→Exo）/ 68.0%（Exo→Ego）IoU 创 SOTA，连"零配对标注"的预训练版都反超了一批全监督方法。</p>
+
+<figure>
+  <a href="../assets/figures/vggtseg/vggtseg_fig1.png"><img src="../assets/figures/vggtseg/vggtseg_fig1.png" alt="VGGT 跨视角对应可视化：source 图采样点直接用 VGGT 投到 target 出现系统性漂移（中列红框 Wrong Projection），而同样这些点对应的 attention map（右列）却稳定聚焦在正确物体区域"></a>
+  <figcaption><strong>图 1（核心矛盾的实锤）。</strong>左：source 图。中：把 source 采样点用 VGGT 直接投到 target——红色"Wrong Projection!"标出投歪了的点，蓝色"Well-Aligned"是少数对上的。右：同样这些点（source 上的星标）在 target 上的 attention map——热区稳稳压在正确物体上。<strong>看点：逐点投影漂，可注意力不漂。</strong>这张图把"为什么不能直接拿 VGGT 投影当掩码、却可以信它的注意力"一句话钉死，也直接立起了全篇的设计动机。</figcaption>
+</figure>
+
+<section id="motivation">
+<h2>一、核心问题：投影会漂、注意力却稳，这种"半可信"的几何先验该怎么用？</h2>
+
+<p><strong>问题。</strong>跨视角实例分割难在哪？ego 相机贴着操作者的手、exo 相机远在另一个高度甚至角度，同一个物体在两张图里尺度、视角、遮挡全变了——ego 帧常被手和工具挡住，exo 帧里又塞满了长得差不多的干扰物。直接做逐像素匹配天然不稳。早期路线要么靠语义一致性、要么塞个大语言模型补上下文，<strong>但都绕开了几何结构与空间关系</strong>，于是遇到"两只几乎一样的瓶子"就只能猜。</p>
+
+<p><strong>引导。</strong>VGGT 看起来是救星：它是几何驱动的大 transformer，联合推断深度/相机/点图，跨视角特征天然对齐。一个朴素想法是——既然 VGGT 能把 source 的点"投"到 target，那把 source mask 里的点全投过去，连起来不就是 target mask 了？<strong>本文恰恰证明这条捷径是错的。</strong>图 1 显示：在 ego–exo 这种强遮挡 + 大视角变化下，逐点投影会系统性漂移；可耐人寻味的是，<em>同样这些点的内部注意力却仍然落在正确物体上</em>。</p>
+
+<p><strong>为什么会出现"投影漂 / 注意力稳"的撕裂？</strong>（这里用动机先行、并从两个角度交叉印证，是全篇机制的锚点。）</p>
+<ul>
+  <li><strong>自上而下的直觉。</strong>"逐点重投影"是一个<em>点级、需要精确深度与精确对应</em>的任务：遮挡让目标点在 target 里根本不可见，大基线让深度的小误差被放大成像素级的大偏移，于是单点投影的方差爆炸。而"object-level attention"是一个<em>区域级、软聚合</em>的量：它只需要"这一团 token 大致对上那一团 token"，对单点深度误差天然鲁棒。<strong>同一个表征，在"点精度"这个尺度上崩，在"区域聚合"这个尺度上稳</strong>——这不矛盾，是两个不同粒度的读出口。</li>
+  <li><strong>自下而上的旁证（后文表 3 会兑现）。</strong>如果"投影"本身可信，那把更多点投过去应该一路涨；可消融显示点数从 1→5 涨 6.2 IoU、5→9 只涨 0.6——稀疏锚点足矣，密集投影并不带来对应的密集收益。这反过来说明：点的价值在于"提供少量几何锚"，<strong>而不在于"逐点拼出掩码"</strong>。</li>
+</ul>
+
+<p><strong>回答（立题）。</strong>于是核心问题变得很具体：<strong>把 VGGT 的几何先验当成"半可信"——区域对齐可信、逐点投影不可信——该怎么设计读出头，让可信的部分主导、不可信的部分只做弱引导？</strong>VGGT-S 的回答是：①冻住 VGGT，只加轻量头（不破坏已学好的几何一致性）；②把漂移的投影点降级成稀疏 <em>prompt</em>，而非掩码答案；③靠双向特征融合做"空间共识"、靠迭代修边把掩码拉回几何一致位置。</p>
+
+<p class="takeaway"><strong>Takeaway：</strong>本文真正的贡献不是"又一个分割头"，而是<strong>对一个强几何基座的"可信边界"的精确判定</strong>——指出 VGGT 的注意力能用、逐点投影不能照搬，并据此把"不可信的输出"系统地降格使用。这一步判定，比任何模块都更值钱。</p>
+</section>
+
+<section id="contribution">
+<h2>二、贡献拆解：三件事，分别对应"半可信"的三种用法</h2>
+<p>论文自陈三条贡献，我按"它们各自如何处理 VGGT 的半可信输出"重排，方便对上后文机制：</p>
+<ol>
+  <li><strong>VGGT-S 框架</strong>：一个几何增强的跨视角分割框架，充分利用 VGGT 的多视角几何表征，但<em>冻结编码器、只训练新头</em>——把"可信的几何对齐"原封保留。</li>
+  <li><strong>Union Segmentation Head</strong>：三阶段协同——Mask Prompt Fusion（把 source mask 注入双视角特征，做区域级共识）、Point-Guided Prediction（把漂移的投影点当稀疏 prompt 弱引导）、Mask Refinement（迭代修边、补遮挡）。三阶段正好对应"用注意力 / 弱用投影 / 修不可信残差"。</li>
+  <li><strong>Single-Image Self-Supervised Training</strong>：单图自监督训练，去掉配对标注的依赖，让 Ego→Exo / Exo→Ego 都能在没有跨视角对应监督的情况下训练并强泛化。</li>
+</ol>
+<p><strong>读者侧判断（与作者主张分开）。</strong>第 2 条是工程主体，但第 1 条"冻结编码器"和第 3 条"单图自监督"才是让这套方案<em>可扩展</em>的关键：前者把训练代价压在轻量头上，后者把数据代价从"昂贵的跨视角配对"换成"任意单图 + 离线分割器伪标"。两者合起来，才支撑得起"correspondence-free 预训练版反超全监督"这个最反直觉的结果。</p>
+</section>
+
+<section id="datasets">
+<h2>三、数据：Ego–Exo4D 的对应基准长什么样</h2>
+<p>主实验用 <strong>Ego-Exo4D</strong> 的 ego–exo correspondence 基准：同步的第一/第三人称专业技能演示视频。规模与构成（均为论文披露数字）：</p>
+<table>
+<thead><tr><th>项目</th><th>数值 / 说明</th></tr></thead>
+<tbody>
+<tr><td>标注 takes</td><td>1,335</td></tr>
+<tr><td>目标物体数</td><td>5,566</td></tr>
+<tr><td>掩码总量（1 FPS 采样）</td><td>180 万（其中 ego 74.2 万、exo 110 万）</td></tr>
+<tr><td>平均每视频</td><td>约 5.5 个物体 / 173 帧每 track</td></tr>
+<tr><td>物体类别</td><td>工具、相关环境物件、人体部位</td></tr>
+<tr><td>划分 / 指标</td><td>官方 train/val 划分；指标为预测掩码与真值掩码的 mean IoU</td></tr>
+</tbody>
+</table>
+<p>泛化测试另用两个数据集：<strong>MvMHAT</strong>（多视角多人关联与跟踪，作泛化微调验证）与 <strong>MAVREC</strong>（多视角航拍户外，细节在补充材料，正文未给定量）。<strong>论文未说明</strong> Ego-Exo4D 各类别的精细分布。</p>
+<p class="takeaway"><strong>Takeaway：</strong>这是个"一张扫描里多个物体、且物体之间长得像"的高干扰基准——正好暴露"无几何约束的方法会认错近邻同类物"的软肋，也正是几何先验该发力的地方。</p>
+</section>
+
+<section id="pipeline">
+<h2>四、Pipeline / 架构：冻结的 VGGT + 一个轻量 Union Segmentation Head</h2>
+
+<figure>
+  <a href="../assets/figures/vggtseg/vggtseg_fig2.png"><img src="../assets/figures/vggtseg/vggtseg_fig2.png" alt="VGGT-S 总体架构：左侧冻结的 VGGT 编码器产出双视角几何特征 Fs/Ft；(B) Mask Prompt Fusion 把 source mask 经卷积注入并经 Bottleneck Fusion（下采样-自注意力-FFN-上采样）做双视角融合；(C) Point-Guided Prediction 用 L 层 decoder 在点 prompt 与图像特征间做 P→I / I→P 双向 cross-attention，最后输出掩码 token 与 Ht 点积得初始掩码"></a>
+  <figcaption><strong>图 2（全篇骨架）。</strong>(A) 总体：冻结的 VGGT 编码器（粉色）出双视角几何对齐特征 $F_s,F_t$，下挂轻量 Union Segmentation Head。(B) Mask Prompt Fusion：source mask $M_s$ 经卷积变成嵌入加进 $F_s$，再经 Bottleneck Fusion（下采样 $D$→自注意力/FFN→上采样 $U$）让 $F_t$ 也吸到 source 的空间先验。(C) Point-Guided Prediction：把 source 点与 track 出的 target 点编码成 prompt query，$L$ 层 decoder 里交替做"点→图(P→I)"与"图→点(I→P)"双向 cross-attention，最后输出掩码 token 与目标特征 $H_t$ 做逐像素点积得到初始掩码 $\hat M_t$。<strong>看点：source mask 既作"区域 prompt"（B），点又作"稀疏锚 prompt"（C）——两种 prompt 都不直接当答案。</strong></figcaption>
+</figure>
+
+<p><strong>一句话流程（Exo→Ego 为例）。</strong>给一对 source–target 图 $(I_s,I_t)$：VGGT 出 $F_s,F_t$ → source mask $M_s$ 编码并注入跨视角特征交互 → 从 $M_s$ 采一小撮代表点、经 VGGT track head 投到 target 得 $P_t$ → 这些点 prompt 引导预测 target 掩码 $\hat M_t$。<strong>训练时 VGGT 全程冻结，只优化 Union Segmentation Head</strong>，端到端但算力/显存开销极小。</p>
+
+<div class="equation">$$x_s=\mathrm{Stem}(I_s),\quad x_t=\mathrm{Stem}(I_t)\tag{1}$$
+$$h_s,h_t=\mathrm{VGGT}(x_s,x_t)\tag{2}$$
+$$F_s,F_t=\mathrm{DPT}(h_s,h_t)\tag{3}$$
+<div class="eq-caption">式 1–3（编码器读出口）：DINO 式 patch stem 把图切成 token；交替的 frame-wise / global 自注意力层处理双视角；DPT 式稠密头把 token 升采样融合成与深度/点图/跟踪几何对齐的稠密特征 $F_s,F_t$。注意这里读的是"稠密几何特征"，不是"投影点"——把可信的部分先拿出来。</div></div>
+</section>
+
+<section id="method">
+<h2>五、方法 / 三阶段：怎么"信注意力、弱用投影、修残差"</h2>
+
+<h3>5.1 Mask Prompt Fusion——把 source mask 变成跨视角的"区域共识"</h3>
+<p><strong>动机先行。</strong>第一步要解决的不是"点准不准"，而是"target 那边到底大概在哪个区域"。所以先把 source mask 当成<em>区域级 prompt</em> 注进特征里，让 target 特征也拿到来自 source 物体的空间先验——这一步只用"可信的区域对齐"，完全不碰漂移的点。</p>
+<div class="equation">$$E_m=\mathrm{Conv}(M_s)\tag{4}$$
+$$F_s'=F_s+E_m\tag{5}$$
+<div class="eq-caption">式 4–5：把 source mask $M_s$ 卷成高维嵌入 $E_m$（编码它的空间布局与身份），直接加到 source 特征上。<strong>注意：</strong>此时 $M_s$ 只进了 $F_s'$，还没和 $F_t$ 充分交互——所以单靠这步不够，下面要补一个跨视角的 Bottleneck Fusion。</div></div>
+<div class="equation">$$\tilde F_s=D_r(F_s'),\quad \tilde F_t=D_r(F_t)\tag{6}$$
+$$\dot F_s,\dot F_t=\mathrm{FFN}\big(\mathrm{SelfAttn}([\tilde F_s,\tilde F_t])\big)\tag{7}$$
+$$F_s^\star=U_r(\dot F_s),\quad F_t^\star=U_r(\dot F_t)\tag{8}$$
+<div class="eq-caption">式 6–8（Bottleneck Fusion，本步关键）：先用比例 $r$ 下采样 $D_r$ 把双视角特征压小（否则全分辨率自注意力显存炸——式 6 的下采样正是后文"37×37 / 74×74 / 518×518 OOM"那张消融的来由），拼接后做自注意力 + FFN 让两视角充分耦合，再上采样 $U_r$ 还原。$F^\star=[F_s^\star,F_t^\star]$ 是同时含几何与语义、跨两视角的紧致表征。<strong>这一步是"区域共识"：让 target 特征在被点引导之前，先知道 source 物体大概是什么、大概在哪。</strong></div></div>
+
+<h3>5.2 Point-Guided Prediction——把漂移的投影点降级成"稀疏锚 prompt"</h3>
+<p><strong>动机先行（全篇机制的核心一招）。</strong>现在才轮到点。但记住图 1 的教训：<em>逐点投影会漂</em>。所以这里绝不把投影点当掩码，而是只采<strong>极少数</strong>代表点、当作"稀疏几何锚"去<em>引导</em>已经做过区域共识的特征——点错一两个，区域共识能兜住；点对的那几个，提供视角/尺度鲁棒的定位线索。</p>
+<div class="equation">$$\Omega=\{(x,y)\mid M_s(x,y)=1\}\tag{9}$$
+$$P_s=\mathrm{kmeans}(\Omega,K_{pt})\tag{10}$$
+$$P_t=\mathcal T(P_s;I_s,I_t)\tag{11}$$
+<div class="eq-caption">式 9–11：从 source mask 前景像素集 $\Omega$ 里用 K-Means 选 $K_{pt}$ 个代表点 $P_s$（默认 5 个，"代表性"而非"密集"），再经 VGGT track head $\mathcal T$ 投到 target 得 $P_t$。<strong>这就是那批会漂的点</strong>——但下面只拿它做 prompt。</div></div>
+<div class="equation">$$E_p=G(P_s,F_s),\quad E_s=\psi(P_s),\quad E_t=\psi(P_t)\tag{12}$$
+$$Q_0=[E_p,E_s,E_t,O]\tag{13}$$
+<div class="eq-caption">式 12–13：$\psi$ 是 prompt 编码器，把 source 点 $P_s$、target 点 $P_t$ 编码成嵌入 $E_s,E_t$；$E_p$ 是从 $F_s$ 采的 source 点特征；再拼上一个可学习的输出掩码 token $O$，组成 prompt query $Q_0$。<strong>点和掩码 token 一起进 query——点是"线索"，token 才是"将要长成掩码的那个槽"。</strong></div></div>
+<div class="equation">$$\bar Q_\ell=\mathrm{SelfAttn}(Q_{\ell-1})\tag{14}$$
+$$Q_\ell^\star=\mathrm{CrossAttn}_{P\to I}(\bar Q_\ell,F^\star)\tag{15}$$
+$$H_\ell=\mathrm{CrossAttn}_{I\to P}(F^\star,Q_\ell^\star),\quad \ell=1,\dots,L\tag{16}$$
+<div class="eq-caption">式 14–16（$L$ 层轻量 decoder，双向是要点）：每层先 prompt 自注意力，再"点→图"$P\to I$ 让 query 去读图像特征，再"图→点"$I\to P$ 把 query 的信息写回图像特征 $H_\ell$。<strong>双向的意义：</strong>不是单纯"点查图"，而是点与图互相校准——漂的点会被区域共识后的图像特征拉回，图像特征也被对的点锐化。</div></div>
+<div class="equation">$$\tilde O=\mathrm{CrossAttn}_{P\to I}(O,H_t^L)\tag{17}$$
+$$z(x,y)=\big(W\tilde O+b\big)^{\!\top} f(x,y)\tag{18}$$
+$$\hat M_t^{(0)}(x,y)=\sigma\big(z(x,y)\big)\tag{19}$$
+<div class="eq-caption">式 17–19（读出初始掩码）：用精炼后的掩码 token $O$ 再对 target 侧融合特征 $H_t^L$ 做一次点→图注意力得 $\tilde O$；$\tilde O$ 经 MLP（权重 $W$、偏置 $b$）后与每个像素位置的特征 $f(x,y)$ 做点积，sigmoid 得到初始掩码 $\hat M_t^{(0)}$。<strong>公式读法：</strong>掩码 = "物体描述子 $\tilde O$" 与"逐像素特征"的相似度图——这是 SAM 系一脉的 token-点积式解码。</div></div>
+
+<h3>5.3 Mask Refinement——把不可信残差迭代修掉</h3>
+<p><strong>动机先行。</strong>即便有了区域共识 + 稀疏锚，边界仍可能糊、遮挡区仍可能漏。于是加一个迭代修边模块，专治"不可信的残差"：每轮重调边界、补遮挡。</p>
+<div class="equation">$$\hat M_t^{(k+1)}=\Psi\big(F_s,M_s,F_t,\hat M_t^{(k)},Q\big)\tag{20}$$
+<div class="eq-caption">式 20：第 $k$ 轮把当前预测 $\hat M_t^{(k)}$ 连同双视角特征、source mask、精炼 query $Q$ 一起喂给轻量掩码解码器 $\Psi$，输出更锐的 $\hat M_t^{(k+1)}$。训练时<strong>只对最后一轮迭代回传梯度，且每个 batch 仅一半样本走 refinement、另一半不走</strong>——这是个省显存又防过拟合的小技巧（避免每轮都回传导致训练代价线性膨胀，也让模型同时学会"一步到位"和"迭代修正"两种模式）。</div></div>
+
+<h3>5.4 单图自监督训练——把"跨视角配对标注"换成"任意单图 + 增广"</h3>
+<p><strong>动机先行。</strong>跨视角配对标注又贵又少。能不能不用配对、只用单图就训出跨视角分割头？关键洞察：<em>VGGT 的跨视角能力已经预训练好了，下游头要学的只是"怎么把 VGGT 特征读成掩码"</em>——而这个读出能力，可以用"单图 + 几何增广"来模拟跨视角。</p>
+<p>给任意图 $I$，生成增广视图 $I'$，用离线分割器（SAM）拿伪 mask $M$，要求模型在 $I'$ 上预测同一物体的掩码 $\hat M'$。增广分两族，对应 VGGT 的两种工作模式：</p>
+<ul>
+  <li><strong>VGGT-adaptive</strong>（缩放、轻微旋转、裁剪）：保留 VGGT 的点映射。此时<em>两个视图都过 VGGT 编码器</em>，由 track head 在 target 视图上给点 prompt——模拟"投影还算可信"的情形。</li>
+  <li><strong>VGGT-non-adaptive</strong>（大幅旋转、水平翻转）：严重破坏跨视角对齐、让 VGGT 失去有效对应。此时<em>两个视图各自独立过 VGGT 编码器</em>，并对 target 真值点加扰动来合成 prompt——模拟"投影不可信、得靠区域共识"的情形。</li>
+</ul>
+<p><strong>为什么要混两族（交叉验证式设计）。</strong>只喂 adaptive，模型会过度信任投影；只喂 non-adaptive，模型学不到"投影可信时怎么用"。混合后，模型学到一个<em>与 VGGT 特征对齐、且对投影漂移鲁棒</em>的掩码头——这正好覆盖真实 ego–exo 里"有时投影准、有时全漂"的整个谱系。作者在 SA-1B 的 1/20 子集上训出 correspondence-free 预训练版，直接在 Ego-Exo4D 上评测仍有竞争力（后文表 1 兑现）。</p>
+<p class="takeaway"><strong>Takeaway：</strong>三阶段不是堆模块，是一条"信任度递降"的流水线——先用最可信的区域对齐定大区域（5.1），再用半可信的稀疏点做锚定（5.2），最后用迭代修边清理不可信的残差（5.3）；单图自监督（5.4）则把"跨视角"这件昂贵的事，用"单图增广模拟两种投影可信度"廉价地造了出来。</p>
+</section>
+
+<section id="training">
+<h2>六、训练配置（均为论文披露）</h2>
+<table>
+<thead><tr><th>项</th><th>设置</th></tr></thead>
+<tbody>
+<tr><td>VGGT 编码器</td><td>官方设置，patch size 14，<strong>全程冻结</strong>，只训 Union Segmentation Head</td></tr>
+<tr><td>Mask Prompt Fusion</td><td>source mask 经卷积下采样到原分辨率一半，对齐 VGGT 输出特征图</td></tr>
+<tr><td>Point-Guided Prediction</td><td>K-Means 聚类数 = 5（匹配采样点数）；聚类只精炼一次以省训练时间</td></tr>
+<tr><td>损失</td><td>沿用 SAM：focal + dice 线性组合，权重比 20 : 1</td></tr>
+<tr><td>优化器 / LR</td><td>AdamW，初始 lr $5\times10^{-5}$，weight decay $1\times10^{-4}$</td></tr>
+<tr><td>训练轮数</td><td>12 epochs；第 8、11 epoch 后 lr ×0.1；梯度 $L_2$ 范数裁剪到 1.0</td></tr>
+<tr><td>硬件 / batch</td><td>4× NVIDIA RTX 4090，batch size 8</td></tr>
+<tr><td>推理计时</td><td>单 GPU 单图跑 100 次前传取均值；Ego→Exo 的额外 remapping 步在计时中略去</td></tr>
+</tbody>
+</table>
+<p><strong>算力口径声明。</strong>论文给出"4× RTX 4090、12 epochs"，但<strong>未披露总训练时长 / GPU-hours</strong>；任何由此外推的 GPU-hours 数字都属"按论文披露数字粗略估算，不等同于实际账单"，本文不擅自给。</p>
+</section>
+
+<section id="experiments">
+<h2>七、实验结果：SOTA，且"零配对标注版"反超一批全监督</h2>
+<p><strong>主结果（表 1，全表转写）。</strong>ZSL = 零样本；Type S = 仅空间建模，Type ST = 时空建模。VGGT-S 同时给出监督与零样本两档。</p>
+<table>
+<thead><tr><th>方法</th><th>ZSL</th><th>Type</th><th>Ego→Exo IoU↑</th><th>Exo→Ego IoU↑</th></tr></thead>
+<tbody>
+<tr><td>XSegTx</td><td>✓</td><td>S</td><td>0.3</td><td>1.3</td></tr>
+<tr><td>SEEM</td><td>✓</td><td>S</td><td>1.1</td><td>4.1</td></tr>
+<tr><td>XSegTx</td><td>×</td><td>S</td><td>6.2</td><td>30.2</td></tr>
+<tr><td>CMX</td><td>×</td><td>S</td><td>6.8</td><td>12.0</td></tr>
+<tr><td>PSALM</td><td>✓</td><td>S</td><td>7.9</td><td>9.6</td></tr>
+<tr><td>DCAMA</td><td>✓</td><td>S</td><td>9.7</td><td>14.1</td></tr>
+<tr><td>XView-XMem</td><td>✓</td><td>ST</td><td>16.2</td><td>13.5</td></tr>
+<tr><td>XView-XMem</td><td>×</td><td>ST</td><td>17.7</td><td>20.7</td></tr>
+<tr><td>XView-XMem + XSegTx</td><td>×</td><td>ST</td><td>36.9</td><td>36.1</td></tr>
+<tr><td>PCC</td><td>×</td><td>S</td><td>37.7</td><td>43.7</td></tr>
+<tr><td>PSALM</td><td>×</td><td>S</td><td>41.3</td><td>47.3</td></tr>
+<tr><td>ObjectRelator（LLM）</td><td>×</td><td>S</td><td>45.4</td><td>50.9</td></tr>
+<tr><td>DOMR（前 SOTA）</td><td>×</td><td>S</td><td>49.7</td><td>55.2</td></tr>
+<tr><td><strong>VGGT-S（零样本）</strong></td><td>✓</td><td>S</td><td><strong>54.1</strong></td><td><strong>58.4</strong></td></tr>
+<tr><td><strong>VGGT-S（监督）</strong></td><td>×</td><td>S</td><td><strong>67.7</strong></td><td><strong>68.0</strong></td></tr>
+</tbody>
+</table>
+<p><strong>怎么读这张表（动机：每个数都该支撑一个论点）。</strong></p>
+<ul>
+  <li><strong>监督版 67.7 / 68.0</strong>，比前 SOTA DOMR 高 18.0 / 12.8，比 LLM 路线 ObjectRelator 高 22.3 / 17.1——证明"几何先验 + 正确的半可信用法"打得过"靠 LLM 补语义"。</li>
+  <li><strong>零样本版 54.1 / 58.4 反超监督的 DOMR（49.7 / 55.2）</strong>，gains 4.4 / 3.2。这是最反直觉的一条：correspondence-free 预训练 + 单图自监督，居然超过吃了配对标注的全监督方法——印证 5.4 的设计赌注成立。</li>
+  <li>零样本版还把 PSALM（×，41.3/47.3）甩开 46.2 / 48.8、把用了时空线索的 XView-XMem（×, ST）甩开 37.9 / 44.9——<strong>VGGT-S 只用图像级特征、不用时序，仍打过时空方法</strong>，说明几何对齐比时序记忆更能治"认错近邻同类物"。</li>
+</ul>
+
+<p><strong>泛化（表 2，全表转写，MvMHAT 数据集，指标 AP）。</strong>把 correspondence-free 预训练版在 MvMHAT 上仅微调 1 个 epoch：</p>
+<table>
+<thead><tr><th>方法</th><th>AP</th></tr></thead>
+<tbody>
+<tr><td>MvMHAT</td><td>63.8</td></tr>
+<tr><td>DOMR</td><td>71.1</td></tr>
+<tr><td><strong>VGGT-S（Ours）</strong></td><td><strong>80.7</strong></td></tr>
+</tbody>
+</table>
+<p>1 epoch 微调即 80.7 AP，超 DOMR 9.6、超 MvMHAT 原方法 16.9——强泛化的旁证。</p>
+
+<figure>
+  <a href="../assets/figures/vggtseg/vggtseg_fig3.png"><img src="../assets/figures/vggtseg/vggtseg_fig3.png" alt="VGGT-S vs DOMR 定性对比：Ego→Exo 行 DOMR 把砧板当成预测结果，VGGT-S 正确识别锅；Exo→Ego 行有两只相似瓶子，DOMR 因缺几何信息混淆，VGGT-S 仍准确"></a>
+  <figcaption><strong>图 3（定性对比，证"几何治混淆"）。</strong>上行 Ego→Exo：DOMR 误把砧板当成目标，VGGT-S 正确认出锅。下行 Exo→Ego：旁边有两只长得几乎一样的瓶子，DOMR 因缺几何信息混淆，VGGT-S 仍准确。<strong>看点：在"近邻同类干扰物"这一最考验几何约束的场景，VGGT-S 把对应搜索限制在几何合理区域，干净利落地避开 look-alike。</strong>这正是表 1 里"超 LLM 路线"的可视化注脚。</figcaption>
+</figure>
+
+<figure>
+  <a href="../assets/figures/vggtseg/vggtseg_fig4.png"><img src="../assets/figures/vggtseg/vggtseg_fig4.png" alt="Union Segmentation Head 效果可视化：尽管 VGGT 把点投到错误位置，Union Segmentation Head 仍把预测掩码调整到几何一致的位置"></a>
+  <figcaption><strong>图 4（机制自证，呼应图 1）。</strong>即便 VGGT 把点投到了错误位置，Union Segmentation Head 仍通过特征融合与"空间共识"把掩码拉回几何一致的位置。<strong>看点：这张图直接兑现 5.2 的核心主张——"漂的点只当 prompt、不当答案"，最终掩码由区域共识主导而非逐点投影。</strong></figcaption>
+</figure>
+</section>
+
+<section id="ablations">
+<h2>八、消融：每个模块、每个超参各支撑一个论点</h2>
+
+<p><strong>组件分析（表 3，全表转写）。</strong>BF = Bottleneck Fusion，PGP = Point-Guided Prediction，MR = Mask Refinement；从 Plain Head 起逐件加。</p>
+<table>
+<thead><tr><th>配置</th><th>Ego→Exo IoU↑</th><th>Exo→Ego IoU↑</th><th>Time (ms)</th></tr></thead>
+<tbody>
+<tr><td>Plain Head</td><td>35.5</td><td>37.1</td><td>105.8</td></tr>
+<tr><td>+ BF</td><td>50.2</td><td>52.3</td><td>107.4</td></tr>
+<tr><td>+ PGP</td><td>62.2</td><td>63.5</td><td>153.2</td></tr>
+<tr><td>+ MR</td><td><strong>67.7</strong></td><td><strong>68.0</strong></td><td>161.4</td></tr>
+</tbody>
+</table>
+<p><strong>这张表是全篇机制的量化总账：</strong>Plain Head 只编码 source mask + 输出掩码 token，35.5/37.1；加 BF（区域共识）猛涨到 50.2/52.3 且几乎不加时延（+1.6ms）——证明"跨视角特征聚合"是视角迁移的关键；加 PGP（稀疏锚 prompt）再涨到 62.2/63.5——证明几何锚对视角/尺度变化鲁棒；加 MR（迭代修边）到 67.7/68.0——以极小开销修边补遮挡。全栈相对 Plain Head 共涨 32.2 / 30.9，正好对应 5.1–5.3 三步各自的必要性。</p>
+
+<p><strong>四个超参消融（表 4–8，代表行转写，趋势完整保留）。</strong>这几张表都遵循同一逻辑——"更大/更多通常更准，但默认值取在性价比拐点"：</p>
+<table>
+<thead><tr><th>消融维度</th><th>取值</th><th>Ego→Exo</th><th>Exo→Ego</th><th>Time(ms)</th><th>默认 & 结论</th></tr></thead>
+<tbody>
+<tr><td rowspan="3">Bottleneck Fusion 分辨率（表 4）</td><td>37×37</td><td>67.7</td><td>68.0</td><td>161.4</td><td rowspan="3"><strong>默认 37×37</strong>：74×74 仅 +0.7/+0.5 却更慢；518×518 训练 OOM</td></tr>
+<tr><td>74×74</td><td>68.4</td><td>68.5</td><td>180.9</td></tr>
+<tr><td>518×518</td><td>OOM</td><td>OOM</td><td>OOM</td></tr>
+<tr><td rowspan="3">点数（表 5）</td><td>1</td><td>61.5</td><td>63.4</td><td>160.1</td><td rowspan="3"><strong>默认 5</strong>：1→5 涨 6.2/4.6，5→9 仅 +0.6/+0.5——稀疏锚足矣</td></tr>
+<tr><td>5</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
+<tr><td>9</td><td>68.3</td><td>68.5</td><td>162.9</td></tr>
+<tr><td rowspan="3">Mask Refinement 迭代（表 6）</td><td>0</td><td>62.2</td><td>63.5</td><td>153.2</td><td rowspan="3"><strong>默认 2</strong>：0→3 共涨 +5.7/+4.9 但近线性增时延；2 次为性价比拐点</td></tr>
+<tr><td>2</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
+<tr><td>3</td><td>67.9</td><td>68.4</td><td>165.3</td></tr>
+<tr><td rowspan="3">输入图像尺寸（表 7）</td><td>420×420</td><td>66.1</td><td>66.3</td><td>136.8</td><td rowspan="3"><strong>默认 518×518</strong>：单调更准但更慢；512 档平衡精度/效率</td></tr>
+<tr><td>518×518</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
+<tr><td>700×700</td><td>68.5</td><td>68.9</td><td>225.4</td></tr>
+<tr><td rowspan="3">Decoder 块数（表 8）</td><td>1</td><td>65.1</td><td>65.5</td><td>158.2</td><td rowspan="3"><strong>默认 2</strong>：1→6 单调微涨；2 块已抓住大部分点-图迭代收益</td></tr>
+<tr><td>2</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
+<tr><td>6</td><td>68.8</td><td>69.3</td><td>176.8</td></tr>
+</tbody>
+</table>
+<p><strong>读法（点数消融最值得品）。</strong>"点数 1→5 涨 6.2、5→9 几乎不涨"这条，正是 §一里那个判断的实锤——<em>如果逐点投影可信，点越多越准；可它在 5 点就饱和</em>，说明点的作用是"提供少量几何锚"，多了反而把漂移的噪声也一起喂进来。这把"投影只配当稀疏 prompt"从设计主张升级成了可证伪的实验结论。</p>
+</section>
+
+<section id="limitations">
+<h2>九、局限与复现门槛</h2>
+<ul>
+  <li><strong>性能天花板被冻结的 VGGT 锁住。</strong>整套头建在"VGGT 注意力可信"的前提上；若某场景 VGGT 的区域对齐本身就崩（极端遮挡 + 极端基线同时发生），区域共识无源可依，三阶段都会受限。论文未给这类失败率的定量统计。</li>
+  <li><strong>更大配置普遍更准，默认值是性价比折中。</strong>表 4/7/8 都显示"加分辨率/加块数还能涨"，作者为效率取了小配置；这意味着<strong>报告数字不是该架构的精度上限</strong>，复现时若放宽算力可能更高（但 Bottleneck Fusion 518×518 直接 OOM，提示显存是硬约束）。</li>
+  <li><strong>仅空间、无时序。</strong>VGGT-S 是 Type S，只用图像级特征。这是优点（简单、超过时空方法）也是边界——它不建模时间一致性，视频级长程跟踪并非其目标场景。</li>
+  <li><strong>户外/航拍泛化只在补充材料定性给出。</strong>MAVREC 上"Details and visualization can be found in the Supplementary Material"，正文无定量——<strong>论文未说明</strong>其户外定量表现。</li>
+  <li><strong>计时口径有省略。</strong>Ego→Exo 的额外 remapping 步在计时中被略去；推理时延是单图 100 次前传均值，与真实部署吞吐不完全等价。</li>
+  <li><strong>复现门槛。</strong>需要 VGGT 官方权重 + SAM 当离线伪标分割器 + Ego-Exo4D 官方划分；单图自监督版还需 SA-1B 的 1/20 子集。代码已开源（见下）。</li>
+</ul>
+</section>
+
+<section id="summary">
+<h2>十、总结：一篇"先判定可信边界、再据此设计"的范本</h2>
+<p>VGGT-S 最该被记住的，不是它在 Ego-Exo4D 上把 IoU 推到 67.7/68.0，而是它<strong>先用图 1 把一个强基座的"可信边界"判定清楚</strong>——VGGT 的 object-level 注意力可信、逐像素点投影不可信——再据此把"不可信的输出"系统地降级使用：区域共识（信注意力）→ 稀疏锚 prompt（弱用投影）→ 迭代修边（修残差）。这条"信任度递降"的流水线，配上"用单图增广模拟两种投影可信度"的自监督训练，让一个零配对标注的版本都能反超全监督前 SOTA。对做"基于基础模型的下游头"的人，这套"判定可信边界 → 据此分配信任"的方法论，比任何具体模块都更可迁移。</p>
+<p class="takeaway"><strong>一句话 Takeaway：</strong>当一个强模型的输出"半可信"时，正确做法不是整体信或整体弃，而是<strong>精确切分出可信的子量、把不可信的部分降格成弱引导并迭代修正</strong>——VGGT-S 把这条原则在跨视角分割上做成了 SOTA。</p>
+</section>
+
+<section id="references">
+<h2>参考与引用说明</h2>
+<ul>
+  <li><strong>原文：</strong>Yulu Gao, Bohao Zhang, Zongheng Tang, Jitong Liao, Wenjun Wu, Si Liu. <em>VGGT-Segmentor: Geometry-Enhanced Cross-View Segmentation.</em> arXiv:2604.13596v3（CVPR 2026）。本深读的全部公式、表格、数字均以该 PDF 为准；缺失处标注"论文未说明"。</li>
+  <li><strong>代码：</strong><a href="https://github.com/buaa-colalab/VGGT-S">github.com/buaa-colalab/VGGT-S</a>（HTTP 200，已核验）。</li>
+  <li><strong>CVF：</strong><a href="https://openaccess.thecvf.com/content/CVPR2026/html/Gao_VGGT-Segmentor_Geometry-Enhanced_Cross-View_Segmentation_CVPR_2026_paper.html">CVPR 2026 open access 页面</a>（HTTP 200，已核验）。</li>
+  <li><strong>关键引用（论文 References 摘录）：</strong>VGGT（几何一致多视角基座）、Ego-Exo4D [21]（数据与基准）、DOMR [31]（前 SOTA，Dense Object Matching）、ObjectRelator [17]（LLM 跨视角对应）、MASA [30]（单图自监督增广的灵感来源）、SAM [28]（离线伪标分割器 + focal/dice 损失配方）、SEEM/PSALM/XSegTx/XView-XMem/PCC/CMX/DCAMA（表 1 基线）、MvMHAT [20] / MAVREC [13]（泛化测试）。完整文献见原文 References。</li>
+  <li><strong>方法论与归因声明：</strong>本文的机制叙述（动机先行、每个假设/近似显式标出、关键机制从"自上而下直觉 + 自下而上消融旁证"两条独立路径交叉验证）采用 <em>kexue:su</em>（苏剑林 / kexue.fm）的科学推导姿态。<strong>但检索 kexue:su 语料库（关键词：VGGT 跨视角点投影漂移 / 注意力一致性 / 掩码精炼）未返回任何主题对口的卡片</strong>（命中的均为 Transformer attention mask、MLM、seq2seq、RoPE 等无关条目），因此<strong>按归因红线，本文只应用其方法论、不附任何 [archives/XXXX] 引用</strong>。</li>
+</ul>
+</section>
+
+</main>
+</article>
+
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline / 架构</a></li><li><a href="#method">方法 / 三阶段</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>VGGT-Segmentor: Geometry-Enhanced Cross-View Segmentation</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper (candidate)</dd><dt>机构</dt><dd>Beihang University / Hangzhou International Innovation Institute of BUAA</dd><dt>基座</dt><dd>冻结 VGGT 编码器 + 轻量 Union Segmentation Head</dd><dt>arXiv</dt><dd>2604.13596</dd><dt>Topic</dt><dd>Cross-View Segmentation · Ego–Exo</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：投影漂 / 注意力稳的实锤</li><li>图 2：冻结 VGGT + 三阶段头</li><li>式 4–8：Mask Prompt Fusion（区域共识）</li><li>式 9–16：稀疏点 prompt + 双向 decoder</li><li>表 1：67.7/68.0 SOTA，零样本反超全监督</li><li>表 3：35.5→50.2→62.2→67.7 逐级证必要性</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> VGGT-S 深读</p><p><span class="status-good">figures</span> 4 张 PNG（fig1–4）</p><p><span class="status-good">tables</span> 表 1/2/3 全转写，表 4–8 代表行（趋势完整）</p><p><span class="status-good">formula</span> 式 1–20 待 MathJax 预检</p><p><span class="status-warn">scope</span> 仅空间、无时序；性能受冻结 VGGT 上限锁定</p></div></section></aside></div>
+
+</body></html>

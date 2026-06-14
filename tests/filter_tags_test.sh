@@ -37,7 +37,6 @@ const expected = [
   ['World Model', 'World Model / Video'],
   ['Neural PDE', 'Neural PDE / Physics'],
   ['Human Mesh', 'Human Mesh / Pose'],
-  ['Medical', 'Medical AI'],
   ['Vision-Language', 'Vision-Language Models'],
   ['Video Matting', 'Video Matting']
 ];

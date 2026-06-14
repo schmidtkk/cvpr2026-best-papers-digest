@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAMMA 深读：要让无标记动捕逼近 Vicon，凭什么是“密集 2D 表面地标 + 每点一个可学习 query”而不是稀疏关键点？</title>
+<meta name="description" content="CVPR 2026 Top Paper (candidate) · MAMMA: Markerless Accurate Multi-person Motion Acquisition 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Top / Highlight · 无标记多人动捕 / 密集 2D 表面地标 + SMPL-X 重投影优化</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Top / Highlight &gt; MAMMA</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">MAMMA 深读：要让无标记动捕逼近 Vicon，凭什么是“密集 2D 表面地标 + 每点一个可学习 query”而不是稀疏关键点？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>CVPR 2026 · Top Paper (candidate) · Max Planck IS / CMU</span><span>来源：arXiv:2506.13040 PDF</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">无标记多人动捕</span><span class="tag">密集 2D 表面地标</span><span class="tag green">SMPL-X 重投影优化</span><span class="tag">landmark queries</span><span class="tag">多视角三角化</span><span class="tag">SAM2 mask 条件</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>基于标记（marker-based）的 Vicon 是动捕的“金标准”，但它要专用硬件、贴反光球、手工清洗掉脱落/串号的噪声标记，复杂动作一段就要清几个钟头。学习类无标记方法想替掉它，却普遍卡在三道坎：多为单人、依赖<strong>稀疏关键点</strong>、在多人贴身接触/遮挡下崩。MAMMA 的核心赌注是<strong>“把稀疏关键点换成密集的 2D 表面地标”——每帧每视角预测 SMPL-X 身体上采出的 512 个表面点的像素位置 + 不确定度 + 可见性 + 接触</strong>，再把这些地标投影回标定相机做多视角重投影优化拟合 SMPL-X。立题问题因此很具体：<strong>当你要的精度逼近 Vicon、还得在两人贴身互动里把“谁是谁、哪块身体属于谁”分清，监督信号到底该“稀疏关键点”还是“密集表面点”，又该用什么网络结构去吐这么多点？</strong>第二条暗线是数据——真实数据里很难拿到接触/可见性这种细粒度标注，MAMMA 干脆在合成数据 MammaSyn 上造出带 SMPL-X 真值、带逐点接触/可见性的多视角序列。最终它在 Hi4D 上把 MPJPE 从前 SOTA 的 32.10mm 压到 <strong>12.44mm</strong>，对 Vicon+MoSh 的留出标记误差只差 <strong>0.862mm</strong>。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>MAMMA：无标记多人动捕流水线，从多视角视频直接恢复 SMPL-X；核心是 <strong>MammaNet</strong>——用<strong>每个地标一个可学习 query</strong> 的 transformer decoder 预测 512 个密集 2D 表面地标 + 不确定度/可见性/接触，再做<strong>无姿态先验、无姿态初始化</strong>的多视角重投影优化。</div><div class="kv"><b>关键机制</b>稀疏关键点只够拟“骨架”、还要靠强姿态先验补全；密集表面点信息量大到<strong>足以同时解出 SMPL-X 的体型、姿态、手部</strong>，于是优化可以丢掉 pose 先验与初始化。mask（SAM2）条件 + 把 SAM2 轨迹标签贴到每个地标，让两人贴身时也能“认人”。</div><div class="kv"><b>核心证据</b>Hi4D 19 关节 MPJPE <strong>12.44mm</strong>（前 SOTA AvatarPose 32.10）；跨视角身份匹配 <strong>100%</strong> 准确；对 Vicon+MoSh 留出标记误差 22.481 vs 21.619mm，<strong>仅差 0.862mm</strong>，动画肉眼难辨。</div><div class="kv"><b>复现门槛</b>MammaNet 训练 300K 迭代、<strong>4×A100、约 3 天</strong>（按论文披露数字粗略估算，不等同于实际账单）；全程<strong>仅用合成数据</strong>训练。代码/数据/权重承诺开源（<code>cuevhv/mamma</code>）。</div></div></div><figure class="hero-card"><a href="../assets/figures/mamma/mamma_fig1.png"><img src="../assets/figures/mamma/mamma_fig1.png" alt="MAMMA 从多视角视频里的密集表面地标重建出两人贴身互动的 SMPL-X 姿态与体型"></a><figcaption><strong>图 1 · 全文“核心断言可视化”。</strong>从同步多视角视频（两侧灰底相机画面，绿/橙两人正在拳击式贴身互动）出发，MAMMA 在每个视角预测密集 2D 表面地标，再多视角拟合出中间的两具 SMPL-X 网格（蓝、绿）。这张图回答的不是“某一帧多准”，而是<strong>“贴身接触 + 相互遮挡这种 marker-based 系统最头疼的场景，无标记方法能否给出干净、不穿模的两具网格”</strong>——MAMMA 的卖点正是把这种最难场景做到肉眼难辨于金标准。</figcaption></figure></div>
+
+<section id="motivation"><h2>1. 核心问题：要逼近金标准，监督信号该“稀疏关键点”还是“密集表面点”？</h2><p>动捕的现状是一道“贵但准” vs “便宜但糙”的取舍。<strong>marker-based（Vicon/OptiTrack/Qualisys 等）</strong>号称亚毫米级定位精度，是事实上的金标准，但代价是：专用硬件、人工贴标记、逐段清洗噪声/缺失/串号的标记数据——复杂动作或多人贴身时标记容易掉、容易被挡，清洗从几分钟到几小时不等，还要额外一步把原始标记转成骨架/参数化人体。<strong>学习类无标记方法</strong>想绕开这一切，论文却点名它们的三处通病：</p>
+<ul><li><strong>多为单人。</strong>地标/关键点检测器通常在“画面里只有一个人”的图上训练，一旦两人贴身，网络很难被引导去“认对人”或把身体部件分给正确的人。</li><li><strong>依赖稀疏关键点。</strong>很多多视角方法只检测稀疏 2D 关节、三角化出 3D 骨架，<strong>停在骨架层</strong>，要拿到完整的表面（体型/手）参数还得接一步 model-fitting，而这一步<strong>必须靠强姿态先验</strong>把信息不足补上。</li><li><strong>遮挡与贴身互动下崩。</strong>拥抱、武术、双人舞这类<em>贴身接触</em>在日常很常见，却在现有动捕数据集里严重缺失；单视角方法又有深度歧义，人一贴近就分不清。</li></ul>
+<div class="socratic"><p class="question">问：既然多视角三角化稀疏关键点已经能出 3D 骨架，为什么还要费劲去预测几百个“表面点”？多出来的点到底买到了什么？</p><p class="guide">引导：盯住“骨架 ≠ 表面”。SMPL-X 要解的不止是关节角，还有体型 $\beta$、全局平移/朝向、甚至手部姿态。稀疏关节只约束了“骨头在哪”，对“肉长什么样、手怎么摆”几乎没有约束——于是 fitting 阶段只能请出姿态/体型先验来兜底，而先验一旦和真实动作不符（极端瑜伽姿、贴身互动），就会把结果往“常见姿态”拉偏。</p><p class="answer">答：密集表面地标买到的是<strong>“信息量足以直接解出整套 SMPL-X 参数”</strong>。当你在每个视角都有 512 个分布在全身（且手/脚/头加密）的表面点的像素位置时，多视角重投影约束的数量远超 SMPL-X 的自由度——优化问题从“欠定、要先验补”变成“超定、数据自己说了算”。论文据此做了一个很硬的结构性决定：<strong>fitting 时既不上姿态先验，也不做姿态初始化</strong>（只对体型加一个温和的 L2 正则），因为“地标本身已经携带了关于这个人和这个场景的足够信息”。这与“稀疏关键点 + 强先验”的旧范式是相反的赌注：把建模负担从<em>先验</em>挪回到<em>观测</em>。</p><p class="takeaway"><strong>Takeaway：</strong>真问题不是“用不用三角化”，而是“<strong>观测稠不稠到能甩掉先验</strong>”。稀疏点逼你用先验补全、先验又把结果拉向均值；密集表面点把约束做到超定，于是 fitting 可以无先验、无初始化，让极端/贴身姿态不被“常见姿态”污染。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出了什么？</h2><p><strong>作者明确提出的贡献（论文 §1）：</strong></p>
+<ul><li><strong>密集 2D 表面地标检测器 MammaNet</strong>——用 ViT-Base 提图像特征、额外 CNN 处理 mask，transformer decoder 用<strong>每个地标一个可学习 embedding（landmark query）</strong>解出 512 个表面点，并同时预测不确定度 $\sigma$、可见性 $p$、人-人接触 $pc$、地面接触 $fl$。</li><li><strong>mask 条件 + 跨视角对应</strong>——用 SAM2 算/传播每个人的分割掩码作为条件输入，并把 SAM2 的轨迹标签贴到每个地标预测上，用<strong>对称极线距离</strong>做跨视角身份匹配。</li><li><strong>无先验、无初始化的多视角 fitting</strong>——把地标投影到标定相机、最小化 2D 重投影误差，分阶段优化平移/旋转→姿态/体型→不确定度重加权→接触。</li><li><strong>合成数据集 MammaSyn + 真实评测基准</strong>——扩展 BEDLAM 到 32 相机多视角、补极端姿态/手部/双人互动，含 SMPL-X 真值与逐点接触/可见性；并造了三个真实评测集（含一个专门对标 Vicon 的 MammaEval-Extra）。</li></ul>
+<div class="formula-note"><p class="note-title">读数提醒：这篇的“评测姿态”要单独标注</p><p>MAMMA 的最强主张不是“某个 benchmark 刷了 SOTA”，而是<strong>“无标记可以替掉金标准做真值”</strong>。它的杀手锏实验是 §5.5：用 Vicon 标记 + MoSh++ 拟 SMPL-X，再留出一批<strong>不参与拟合</strong>的额外标记当独立真值，比较“Vicon+MoSh 预测留出标记”和“MAMMA 预测留出标记”的误差。两者只差 0.862mm——这是衡量“两套<em>推断出的人体</em>谁更接近真实”，而不是“谁更接近 Vicon 自己的标记”。理解结论要扣住这一点：它在论证<strong>可替代性</strong>，不是宣称比 Vicon 标记定位更准。</p></div>
+<p><strong>读者能进一步推断的是</strong>：这篇真正推进的<em>单一变量</em>是“监督信号的稠密度”——把它从稀疏关键点拉到密集表面点，连锁解锁了“无先验 fitting”和“贴身互动可解”。其余组件（ViT 骨干、SAM2 mask、极线匹配、L-BFGS）多是成熟件，新意在<strong>landmark query 的结构</strong>与<strong>“密集到能甩掉先验”这一判断</strong>，以及为训练这套东西而专门合成的数据。</p></section>
+
+<section id="datasets"><h2>3. 数据：用合成造出“带逐点接触/可见性真值”的多视角序列</h2><p>MAMMA 有一个显式立场：<strong>MammaNet 完全用合成数据训练</strong>。理由是机制性的——真实多人接触序列里，<em>逐顶点的接触标签、逐地标的可见性</em>几乎不可能人工标，而这两样恰恰是 MAMMA 要预测、又对贴身互动至关重要的信号。合成则可以从 SMPL-X 网格 + 几何直接算出真值。</p>
+<h3>3.1 MammaSyn：把 BEDLAM 扩到 32 相机、补上互动与手</h3><p>MammaSyn 是 BEDLAM 的扩展，含 <strong>2.5M 个样本（crop）</strong>。流水线被改造成 32 相机多视角虚拟相机阵；从多个动作源采序列，并新采两组 marker-based(Vicon) 数据补“高质量互动”：Latin-Dance（2 人、10 段舞蹈）与 Interacting Couples（2 人、48 段双人互动）。所有 3D 人体统一为 SMPL-X。每个样本存<strong>逐人分割掩码、深度图、逐顶点可见性</strong>，并用<strong>带符号距离函数（SDF）+ 表面法向</strong>算出地面/人-人的逐顶点接触标签。最终图像约 <strong>955k 张</strong>。</p>
+<div class="fig-grid"><figure><a href="../assets/figures/mamma/mamma_fig2.png"><img src="../assets/figures/mamma/mamma_fig2.png" alt="MammaSyn 数据集裁剪样本：双人互动、手部、极端姿态"></a><figcaption><strong>图 2 · MammaSyn 裁剪样本。</strong>覆盖双人贴身互动（拥抱/搀扶/对练）、手-手互动与各种衣着/场景。这张图要看的是<strong>“训练分布里就塞满了接触与遮挡”</strong>——MAMMA 在贴身场景的鲁棒，先来自数据里见过足够多这类样本，而非测试时的临场技巧。</figcaption></figure><figure><a href="../assets/figures/mamma/mamma_fig3.png"><img src="../assets/figures/mamma/mamma_fig3.png" alt="从 SMPL-X 身体上用最远点采样选出的 512 个表面地标，手脚头加密"></a><figcaption><strong>图 3 · 512 个表面地标。</strong>用<strong>最远点采样（FPS）</strong>从 SMPL-X 身体采 512 个顶点作密集地标真值，并对<strong>手、脚、头</strong>加权（这些区域更小、更需精细，所以点更密）。这就是“密集监督信号”的定义：网络要学的不是十几个关节，而是这 512 个有固定语义、覆盖全身表面的点。</figcaption></figure></div>
+<div class="table-wrap"><table><caption><strong>表 6.</strong> MammaSyn 组成（论文附录 Tab. 6 转写）。三个子集分别补“单人 / 互动 / 手部”分布；百分比按全体 MammaSyn 图像计。</caption><thead><tr><th>子集</th><th>时长（分钟）</th><th>来源数据集</th><th>占图像比例</th></tr></thead><tbody>
+<tr><td rowspan="2">MammaSyn-S（单人）</td><td rowspan="2">86</td><td>BEDLAM</td><td>9.9%</td></tr>
+<tr><td>MOYO</td><td>15.9%</td></tr>
+<tr><td rowspan="5">MammaSyn-I（互动）</td><td rowspan="5">211</td><td>Harmony4D</td><td>17.7%</td></tr>
+<tr><td>Hi4D</td><td>8.0%</td></tr>
+<tr><td>Inter-X</td><td>14.6%</td></tr>
+<tr><td>Interacting Couples（自采）</td><td>19.4%</td></tr>
+<tr><td>Latin-Dance（自采）</td><td>3.4%</td></tr>
+<tr><td rowspan="2">MammaSyn-H（手部）</td><td rowspan="2">36</td><td>InterHand2.6M</td><td>10.0%</td></tr>
+<tr><td>SignAvatars</td><td>1.0%</td></tr>
+</tbody></table></div>
+<p>读这张表抓两点。其一，<strong>互动子集（MammaSyn-I）是分布主力</strong>（合计约 63% 图像），这与立题“贴身互动”一致——数据预算就压在最难的场景上。其二，<strong>手部单独建子集</strong>：因为 SMPL-X 要解手部姿态，而手在全身图里太小、点太密才学得动，于是用 InterHand2.6M/SignAvatars 把手的多样性补上，并通过给 BEDLAM 身体拟合 MANO 手把手姿合进来（论文 §3）。</p>
+<h3>3.2 真实评测：三个集，外加专门对标 Vicon 的留出标记</h3><p>MAMMA 采了三个真实评测集，都用 Vicon 同步多视角 RGB、标记经手工清洗后用 MoSh++ 转成 SMPL-X 作真值：<strong>MammaEval-S</strong>（singles，16 视角，3 人 22 段含物体交互）、<strong>MammaEval-D</strong>（dance，32 视角，专业舞者 18 段 West Coast Swing）、<strong>MammaEval-Extra</strong>（32 视角，3 人各 4 段含走/舞/基础运动）。Extra 的设计很关键：除标准 Vicon 标记集外，<strong>每人多贴 37 个额外标记，这些额外标记不参与 MoSh++ 拟合</strong>，专作独立真值，用来公平比较 marker-based 与 markerless 两条管线（详见 §5.5）。此外还释放了一个仅用 MAMMA 采的舞蹈集（9 人、约 1 小时、30 FPS）。</p></section>
+
+<section id="pipeline"><h2>4. Pipeline：地标检测 → 跨视角认人 → 多视角拟合 SMPL-X</h2><p>把整条流水线拆成可独立验证的三段，每段都对应一个“去掉就崩”的功能：</p>
+<ul><li><strong>① 每视角密集地标检测（MammaNet）。</strong>输入图像（+ SAM2 mask），对被 SAM2 追踪的每个人，每帧每视角输出 512 个地标的像素位置 $\mu$、不确定度 $\sigma$、可见性 $p$、接触 $pc/fl$。去掉它 → 没有稠密观测，回退到稀疏关键点。</li><li><strong>② 跨视角对应（认人）。</strong>对所有视角检测到的人两两比对，用<strong>对称极线距离</strong>构 affinity，匈牙利匹配 + 跨视角环一致，把同一个人在所有视角里串起来。去掉它 → 多视角三角化把不同人的地标混在一起，贴身时尤其致命。</li><li><strong>③ 多视角 fitting。</strong>把地标投影回标定相机，分阶段最小化重投影误差解出 SMPL-X 的 $\{\beta,\theta,t\}$，并用接触项防穿模。去掉它 → 只有 2D 地标，没有 3D 参数化人体。</li></ul>
+<figure class="fig-wide"><a href="../assets/figures/mamma/mamma_fig4.png"><img src="../assets/figures/mamma/mamma_fig4.png" alt="MammaNet 架构：ViT 处理图像、CNN 处理 mask，特征相加后送入 transformer decoder，N 个 landmark query 解出每点的位置/不确定度/可见性/接触"></a><figcaption><strong>图 4 · MammaNet 架构。</strong>左：图像走 <strong>ViT</strong>、mask 走 <strong>CNN</strong>，两路特征编码到同一空间后<strong>逐元素相加</strong>融合（mask 条件）。中：$N{=}512$ 个<strong>可学习 landmark query</strong>（图中 0,1,2,…,N-1 的彩色 token）连同图像 patch 嵌入进 <strong>Transformer Decoder</strong>，再过 MLP，<em>每个 query 各自</em>输出一组 $[\mu_i,\sigma_i,p_i,pc_i,fl_i]$。右：预测可视化——$[\mu,\sigma]$ 位置与不确定度、$p{>}0.5$/$p{\le}0.5$ 可见与不可见地标（绿/红）、$pc$ 人-人接触、$fl$ 地面接触。看这张图要抓的是<strong>“每个地标有专属 query”</strong>这一点：cross-attention 让第 $i$ 个 query 去关注与第 $i$ 个表面点最相关的图像 patch，self-attention 让 512 个 query 之间学到成对关联。</figcaption></figure>
+<div class="formula-note"><p class="note-title">数据流 vs 模型流 vs 训练/推理流</p><p><strong>数据流：</strong>多视角视频 → 每视角每人每帧 512 个 2D 地标 → 跨视角串成同一人 → 拟合出每帧每人的 SMPL-X。<strong>模型流：</strong>只有 MammaNet 是学习的（ViT+CNN+decoder），跨视角匹配与 fitting 都是<strong>不可训练</strong>的几何/优化模块。<strong>训练 vs 推理：</strong>训练只训 MammaNet、且<strong>只在合成 BEDLAM crop 上</strong>；推理时 mask 来自 SAM2、fitting 用 L-BFGS。这条分界很重要——MAMMA 的“泛化”主要是 MammaNet 从合成迁到真实的泛化，几何模块本身不学习、不存在过拟合。</p></div></section>
+
+<section id="method"><h2>5. 方法：每点一个 query 的密集地标 + 无先验的重投影优化</h2>
+<h3>5.1 为什么是“每个地标一个可学习 query”，而不是一个 token 出所有点？</h3><p>MammaNet 用 ViT-Base 抽图像特征、一个额外 CNN 处理 mask，再用 transformer decoder 解出 $N{=}512$ 个地标。关键设计在 decoder 的输入：<strong>不像 CameraHMR 那样用单个可学习 embedding 去回归整组地标，而是学 $N$ 个 embedding（landmark query），每个对应一个地标。</strong></p>
+<div class="socratic"><p class="question">问：单 token 出 512 个点和“每点一个 query”，最后都过 MLP 出 512 组数，差别真有那么大吗？给两条独立理由。</p><p class="answer"><strong>路径 A（注意力的“寻址”视角，自上而下）：</strong>decoder 的 cross-attention 本质是“query 去图像 patch 里检索信息”。若只有<em>一个</em> query，它必须把全身 512 个点要用的图像证据<strong>压进同一个注意力分布</strong>里，再靠输出 MLP 把这团混合信息切成 512 份——等于让一个“通用检索器”同时服务语义迥异的脚趾和鼻尖。给<em>每个地标一个专属 query</em> 后，第 $i$ 个 query 的 cross-attention 可以<strong>只聚焦与第 $i$ 个表面点最相关的图像 patch</strong>（论文原话：learn to match each landmark to the most relevant image patches）。寻址被解耦，每个点的定位都用自己的注意力分布，精度自然更高。<br><br><strong>路径 B（DETR 式 object query 的类比，自下而上）：</strong>这正是 DETR 把“一个检测头”换成“一组 object query”的同一招——用一组可学习 query 让每个 query 专门化为某个槽位。这里把“槽位”换成“具名表面点”：self-attention 在 512 个 query 间建立<strong>成对关联</strong>（学到“手腕地标和肘部地标的相对关系”这类身体结构先验），cross-attention 负责各自定位。两件事分到 self/cross 两种注意力上，比单 token 把一切揉在一起更可学。两条路径同指一个结论：<strong>专属 query 把“定位”与“结构关联”解耦，且每个点独享注意力带宽</strong>——这是密集地标能学准的结构前提。</p><p class="takeaway"><strong>Takeaway：</strong>密集地标不是“把输出维度从 17 改成 512”这么简单。没有<strong>每点一个 query</strong> 的解耦寻址，单 token 在 512 个语义不同的点上会被迫共享注意力，密集监督的好处就吃不到。</p></div>
+<p>对每个地标 $i\in\{0,\dots,N-1\}$，网络预测像素坐标 $\mu_i=[x,y]$ 与不确定度 $\sigma_i$；并额外预测<strong>可见性概率 $p_i$</strong>（论文观察到：刚性、被遮挡的区域如躯干，位置可能对、但网络给的 $\sigma$ 偏高，所以单独用一个可见性头来表达“看不看得见”），以及人-人接触 $pc_i$ 与地面接触 $fl_i$。训练损失：地标位置用<strong>高斯负对数似然</strong>，可见性用<strong>二元交叉熵</strong>，接触用<strong>focal loss</strong>（因为“无接触”的地标远多于“有接触”的，类别不均衡），各项带逐地标权重 $\lambda$。</p>
+<h3>5.2 fitting：把地标投影回相机，分阶段最小化重投影误差</h3><p>给定标定相机参数 $Q$、预测地标 $L$（含 $\mu,\sigma,p$），拟合 SMPL-X 中性体 $M(\beta,\theta,t)$，用 L-BFGS 优化。核心是重投影项：把 SMPL-X 网格上对应的顶点 $V$ 投影到每个相机，惩罚它与预测地标 $\mu$ 的像素偏差，用 $1/\sigma$ 加权、并套一个鲁棒核：</p>
+<div class="equation">$$E_{\text{ldmks}}=\sum_{t,c,l}\rho\!\left(\frac{1}{\sigma_{t,c,l}}\,\big\lVert\,\mu_{t,c,l}-\Pi\!\left(V_{t,l},Q_c\right)\big\rVert\right)\qquad(1)$$<div class="eq-caption">式 1：$\Pi(\cdot)$ 是相机投影，$t$ 帧、$c$ 视角、$l$ 地标；$\rho$ 为 Geman–McClure 鲁棒核，压低离群项的影响。$\mu,\sigma,p$ 是网络预测的位置/不确定度/可见性。</div></div>
+<div class="formula-note"><p class="note-title">公式读法（式 1 是“无先验 fitting”能成立的关键）</p><p>为什么用 $1/\sigma$ 加权？这是<strong>带不确定度的加权最小二乘</strong>的标准做法：网络对某个地标越不确定（$\sigma$ 大），它在重投影目标里的权重越小，不让坏点拖偏拟合。再叠 Geman–McClure 鲁棒核 $\rho$，进一步把少数离群地标的影响饱和掉。<strong>正因为有 512 个这样“自带置信度、又被鲁棒核保护”的密集约束</strong>，超定方程组里少数错点不致命——这就是 §1 说的“密集到能甩掉先验”的算法体现：论文明说 fitting <strong>不用姿态先验、不做姿态/体型回归初始化</strong>，初始平移只取“各相机射线最互相靠近的 3D 点”。</p></div>
+<p>优化分阶段：<strong>① 先解平移/旋转</strong>（只动全局位姿，最小化 $E_{\text{ldmks}}$）；<strong>② 再解姿态/体型/平移</strong>（加体型 L2 正则 $E_{\text{shape}}$，16 个体型系数）；<strong>③ 用重投影误差重加权不确定度</strong>——此时已接近局部最优，把第二阶段的重投影残差 $e_i$ 当“证据”去缩放 $\sigma_i$：$\sigma_i'=\sigma_i\cdot\min(\max(e_i/\tau,0),1)$，$\tau{=}10$px，意思是“网络嘴上没把握、但点其实落对了”就把它的权重放回来；<strong>④ 最后优化接触</strong>，并加大关节加速度正则 $E_{\text{temp}}$ 平滑时间。</p>
+<h3>5.3 接触项：把“逐视角接触概率”平均成期望，再分别处理穿模与吸附</h3><p>接触阶段的能量 $E_{\text{cont}}=E_p+E_c$ 分两块，背后各有一个清楚的几何动机。先把<strong>每视角网络输出的接触概率平均</strong>，得到期望接触概率（假设每视角是近似无偏、已标定的局部估计，平均能降方差）。然后：</p>
+<div class="equation">$$E_{p}=\frac{1}{N}\sum_{i=1}^{N}\Big[\min\!\big(0,\;\mathrm{SDF}(v_i)+\delta\big)\Big]^{2}\qquad(\text{排斥/防穿模})$$<div class="eq-caption">式（排斥项）：$\mathrm{SDF}(v_i)$ 是顶点 $v_i$ 相对另一个人的带符号距离，负值=插进了对方身体。该项惩罚所有“扎进对方体内”的顶点；$\delta$ 容许少量互穿以模拟软组织形变。</div></div>
+<div class="equation">$$E_{c}=\frac{1}{N}\sum_{i=1}^{N}pc_i\cdot\Big[\max\!\big(0,\;\mathrm{SDF}(v_i)\big)\Big]^{2}\qquad(\text{吸附/接触})$$<div class="eq-caption">式（吸附项）：用预测的人-人接触概率 $pc_i$ 加权，把“该接触却悬在表面之上”的点拉回到对方表面（$\mathrm{SDF}{>}0$ 即在体外）。SDF 用作者自写的 CUDA 核做全 GPU 加速。</div></div>
+<div class="socratic"><p class="question">问：排斥项不带概率权重、吸附项却乘 $pc_i$——为什么不对称？</p><p class="answer">答：因为两件事的“先验默认值”不同。<strong>穿模在物理上几乎总是错的</strong>（除了软组织那点形变 $\delta$），所以排斥项对<em>所有</em>顶点无条件生效，不需要网络批准。而<strong>“吸附到对方表面”只在确实接触时才对</strong>——若无脑把所有靠近的点都吸到表面，会在“擦身而过但没碰”的情形造出假接触。于是吸附项必须乘上预测接触概率 $pc_i$，<strong>只对网络判定“这里在接触”的点施加吸附</strong>。这是“先讲为什么需要、再写约束”的典型：约束形式跟着物理默认值走——防穿模是硬约束（恒为真），吸附是条件约束（要证据）。</p><p class="takeaway"><strong>Takeaway：</strong>接触建模不是一个对称的“拉到一起”，而是“无条件不许穿 + 有证据才吸附”两半。这也解释了为何要单独训一个接触头：吸附项的开关就是 $pc_i$。</p></div>
+<h3>5.4 跨视角认人：对称极线距离 + 匈牙利匹配 + 环一致</h3><p>多视角三角化前必须先“认人”——把不同视角里属于同一个人的地标串起来。MAMMA 用纯几何做法：对两视角的地标集 $x_a,x_b$，定义几何亲和度 $A(x_a,x_b)=\exp(-D_g/\lambda)\in[0,1]$，其中 $D_g$ 是<strong>对称极线距离</strong>：</p>
+<div class="equation">$$D_g=\frac{1}{2FN}\sum_{i=1}^{FN}\Big(d\!\left(x_a^{i},F_{ba}x_b^{i}\right)+d\!\left(x_b^{i},F_{ab}x_a^{i}\right)\Big)\qquad(2)$$<div class="eq-caption">式 2：$F_{ab}$ 是两视角间的基础矩阵，$d(x,l)$ 是点到极线的像素距离。<strong>只在两视角都可见的地标上算</strong>（用预测可见性 $p$ 筛），避免不可见点的错误预测污染匹配。</div></div>
+<p>读法很直接：若视角 $a$ 里的某点和视角 $b$ 里的某点真是同一物理点，则前者必落在后者对应的<em>极线</em>上，点到极线距离应近 0；对称地两个方向都算、平均，得到稳健的几何亲和度。所有视角两两的亲和度构成代价矩阵 $1-A$，<strong>匈牙利匹配</strong>求一对一最优匹配，再把所有视角对的高亲和匹配<strong>跨视角串成环一致的对应图</strong>，其连通分量就是“同一个人在各视角的集合”。论文报告这套做法在三个互动集上达到 <strong>100% 的跨视角身份匹配准确率</strong>，因此<strong>不需要</strong>像经典方法那样再外接一个网络去算身份特征——密集地标本身的几何信息已经够认人。</p>
+<div class="socratic"><p class="question">问：既然有了 SAM2 mask 在追人，为什么还要这套极线匹配？mask 不就把人分开了吗？</p><p class="answer">答：SAM2 只在<strong>单个视角内</strong>把人分开、并沿时间追踪同一个人；它给不出“视角 A 的人#1 和视角 B 的人#2 是同一人”这种<strong>跨视角</strong>对应——那是个三维几何问题，mask 解决不了。而且论文指出 SAM2 在两人贴太近时会漏掉部分身体，mask 本身也不完美。极线匹配用的是<strong>多视角几何约束</strong>（同一 3D 点在不同视角的投影必满足极线关系），与 mask 互补：mask 管“视角内分人 + 时序追踪”，极线匹配管“跨视角串人”。两者缺一，贴身多人就串不起来。</p><p class="takeaway"><strong>Takeaway：</strong>mask（SAM2）和极线匹配解决的是正交的两个问题——视角内 vs 跨视角。把 SAM2 轨迹标签贴到地标上，正是为了让“视角内身份”和“跨视角几何”能接到一起。</p></div></section>
+
+<section id="training"><h2>6. 训练配置：300K 迭代、4×A100、约 3 天，仅合成数据</h2><p>训练账本来自论文附录 §7（Landmark Networks Training Details）。MammaNet 与两个基线（CameraHMR、LookMa*）在<strong>相同设置</strong>下训练以求公平：</p>
+<div class="table-wrap"><table><caption><strong>表（训练配置）.</strong> MammaNet 训练超参（论文附录 §7 转写）。三网络同设置，仅骨干/初始化不同。</caption><thead><tr><th>项目</th><th>取值</th></tr></thead><tbody>
+<tr><td>迭代数</td><td>300K iterations</td></tr>
+<tr><td>硬件</td><td>4 × NVIDIA A100</td></tr>
+<tr><td>每卡 batch / 梯度累积</td><td>24 / 累积 2 步（等效 batch 192）</td></tr>
+<tr><td>训练时长</td><td>约 3 天</td></tr>
+<tr><td>优化器 / warm-up</td><td>Adam / 500 步</td></tr>
+<tr><td>骨干初始化（MammaNet & CameraHMR）</td><td>ViTPose-B（256×192 预训练），位置编码插值到 512×384</td></tr>
+<tr><td>输入分辨率</td><td>512 × 384</td></tr>
+<tr><td>训练数据</td><td>仅合成（BEDLAM/MammaSyn 的 crop）</td></tr>
+</tbody></table></div>
+<p>几个细节值得记：(1) <strong>仅合成数据训练</strong>，真实集只用于评测——这强化了“MammaNet 的真实泛化全靠合成质量”的判断；(2) 为对付其它模型不预测接触，作者还训了一个<strong>只出不确定度+可见性</strong>的精简版做公平对比；(3) 因 SMPL-X 要解手，输入分辨率特意拉到 512×384（按 ViTPose 的位置编码插值），合成渲染也用约 2 倍于 BEDLAM 的分辨率（2056×1504）以保住手部细节。</p>
+<div class="formula-note"><p class="note-title">GPU 账本口径</p><p>“4×A100、约 3 天”是<strong>按论文披露数字粗略估算，不等同于实际账单</strong>。论文未说明合成渲染（2.8k 序列、8 视角、95 张 HDR 等）的算力开销；这里只转写训练侧数字。</p></div></section>
+
+<section id="experiments"><h2>7. 实验：从 2D 地标到 3D 拟合，逐张表看证据</h2>
+<h3>7.1 2D 地标精度：单人与双人</h3><p>先比 2D 地标本身的精度（GT 与预测地标的平均 2D 欧氏像素误差，越低越好）。对手是 CameraHMR（同骨干、单 token decoder）与 LookMa*（Hewitt 等的复现，去掉姿态/体型头只留地标头）。</p>
+<div class="fig-grid"><div class="table-wrap"><table><caption><strong>表 1.</strong> 单人数据集密集地标评测（2D 像素误差）。粗体=最佳，下划线=不用 mask 时最佳。</caption><thead><tr><th>模型</th><th>RICH</th><th>MOYO</th><th>MammaEval-S</th></tr></thead><tbody>
+<tr><td>Look-Ma*</td><td>13.26</td><td>22.43</td><td>10.25</td></tr>
+<tr><td>CameraHMR</td><td>8.84</td><td>12.53</td><td>6.32</td></tr>
+<tr><td>MammaNet（ours）</td><td><b>8.55</b></td><td>11.40</td><td><b>6.09</b></td></tr>
+<tr><td>MammaNet + masks SAM2（ours）</td><td>8.83</td><td><b>11.04</b></td><td>6.16</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table><caption><strong>表 2.</strong> 双人数据集密集地标评测（仅取两人 IoU&gt;0.5 的图像，即真正贴身遮挡的难样本）。</caption><thead><tr><th>模型</th><th>Harmony4D</th><th>CHI3D</th><th>MammaEval-D</th></tr></thead><tbody>
+<tr><td>Look-Ma*</td><td>31.45</td><td>8.77</td><td>15.01</td></tr>
+<tr><td>CameraHMR</td><td>32.84</td><td>6.30</td><td>10.21</td></tr>
+<tr><td>MammaNet（ours）</td><td>31.96</td><td>6.22</td><td>9.87</td></tr>
+<tr><td>MammaNet + masks SAM2（ours）</td><td><b>18.33</b></td><td><b>4.36</b></td><td><b>7.70</b></td></tr>
+</tbody></table></div></div>
+<p>这两张表的对照非常干净，正是“控制变量”的样板：<strong>单人时（表 1）mask 几乎不影响</strong>——画面里就一个人，要不要 mask 都能定位（MOYO 略有提升）；<strong>双人贴身时（表 2）mask 的作用爆发</strong>——Harmony4D 从 31.96 直降到 18.33，CHI3D 6.22→4.36。这恰好支撑 §5 的机制论断：<strong>mask 的真正价值在“两人重叠时帮网络锁定目标个体”</strong>，而非泛泛提升。同时即便不用 mask，MammaNet(ours) 在多数列也已优于 CameraHMR，说明“每点一个 query”的结构本身就买到了精度。</p>
+<figure class="fig-wide"><a href="../assets/figures/mamma/mamma_fig5.png"><img src="../assets/figures/mamma/mamma_fig5.png" alt="极端姿态（瑜伽）上 Look-Ma*/CameraHMR/MammaNet 的地标预测对比，按像素误差红绿着色"></a><figcaption><strong>图 5 · 极端姿态对比。</strong>同样在 BEDLAM 上训练，测一张瑜伽（MOYO）极端姿态。绿色=GT 地标；各方法预测按像素误差着色（红=误差大、绿=误差小）。MammaNet（尤其 +masks）在四肢/扭转处明显更绿。值得注意：<strong>MOYO 这种姿态从未在训练里出现</strong>，却仍能定位——这支撑“密集 query 结构泛化到未见姿态”的说法。</figcaption></figure>
+<h3>7.2 接触预测与跨视角对应</h3><p>接触用 ROC-AUC 评（AUC=0.5 随机、越高越好）：地面接触在 MOYO 测、人-人接触在 Hi4D 测（且训练时<strong>剔除了 Hi4D 序列</strong>以防泄漏）。两者 AUC 都 &gt;0.90，说明接触头确实学到了可用信号。跨视角对应如 §5.4 所述达 <strong>100%</strong> 准确，免去外接身份网络。</p>
+<div class="fig-grid"><figure><a href="../assets/figures/mamma/mamma_fig6.png"><img src="../assets/figures/mamma/mamma_fig6.png" alt="接触预测的 ROC 曲线：Hi4D 人-人接触 AUC 0.91，MOYO 地面接触 AUC 0.96"></a><figcaption><strong>图 6 · 接触预测 ROC。</strong>左：Hi4D 人-人接触 <strong>AUC=0.91</strong>；右：MOYO 地面接触 <strong>AUC=0.96</strong>。两条曲线都远高于对角线（随机），说明从 2D 密集地标推接触是可行的——这是接触能量项 $E_{\text{cont}}$ 有意义的前提。</figcaption></figure>
+<div class="table-wrap"><table><caption><strong>表 3.</strong> 互动集上的平均穿模（M.P.）深度与穿模顶点数（Harmony4D/CHI3D/MammaEval-D 合计），越低越好。</caption><thead><tr><th>模型</th><th>M.P. Depth (mm)</th><th>M.P. Verts.</th></tr></thead><tbody>
+<tr><td>Look-Ma*</td><td>13.73</td><td>990.61</td></tr>
+<tr><td>CameraHMR</td><td>13.41</td><td>678.10</td></tr>
+<tr><td>Ground truth</td><td>9.84</td><td>479.94</td></tr>
+<tr><td>MAMMA（ours）</td><td>10.50</td><td>456.05</td></tr>
+<tr><td>MAMMA-C（ours，含接触优化）</td><td><b>8.46</b></td><td><b>378.02</b></td></tr>
+</tbody></table></div></div>
+<p>表 3 有个耐人寻味的细节：<strong>MAMMA-C 的穿模甚至低于 Ground truth</strong>（8.46 vs 9.84mm 深度、378 vs 480 顶点）。论文据此提醒——“人体重建指标不能说明全部”，因为<strong>GT 本身（Vicon+MoSh）就带一定互穿</strong>，于是直接对 MPJPE/PVE 比可能反而惩罚“比 GT 更干净”的预测。这就是为什么要单列穿模指标：它衡量的是物理合理性，而非“贴不贴近一个本身不完美的 GT”。</p>
+<h3>7.3 3D 拟合误差（主表）</h3><p>把所有方法都拟合出 SMPL-X，报告 55 个关节的 MPJPE 与逐顶点误差 PVE（mm，越低越好）。对手含多视角 SMPLify-X。</p>
+<div class="table-wrap"><table><caption><strong>表 4.</strong> 3D 拟合误差基准（mm）。每格为 MPJPE / PVE。“-”表示该方法在该集不适用。粗体=最佳。</caption><thead><tr><th>模型</th><th>RICH</th><th>Harmony4D</th><th>CHI3D</th><th>MammaEval-S</th><th>MammaEval-D</th><th>MOYO</th></tr></thead><tbody>
+<tr><td>SMPLify-X</td><td>96.18 / 71.42</td><td>- / -</td><td>67.68 / 51.79</td><td>47.15 / 35.42</td><td>53.92 / 43.08</td><td>62.15 / 44.68</td></tr>
+<tr><td>Look-Ma*</td><td>39.52 / 30.29</td><td>59.37 / 45.6</td><td>46.47 / 39.36</td><td>25.97 / 23.94</td><td>27.98 / 24.89</td><td>60.15 / 53.82</td></tr>
+<tr><td>CameraHMR</td><td>25.61 / 21.36</td><td>58.59 / 42.0</td><td>40.8 / 34.61</td><td>15.25 / 18.43</td><td>20.41 / 21.06</td><td>33.75 / 33.74</td></tr>
+<tr><td>MAMMA</td><td><b>22.20</b> / <b>19.76</b></td><td><b>45.26</b> / 34.02</td><td>38.01 / 32.84</td><td><b>12.96</b> / <b>17.18</b></td><td>17.71 / 19.80</td><td><b>22.95</b> / <b>25.48</b></td></tr>
+<tr><td>MAMMA-C</td><td><b>22.20</b> / <b>19.76</b></td><td>45.35 / <b>34.02</b></td><td><b>37.96</b> / <b>32.82</b></td><td><b>12.96</b> / <b>17.18</b></td><td>17.73 / 19.78</td><td><b>22.95</b> / <b>25.48</b></td></tr>
+</tbody></table></div>
+<p>主表的读法：MAMMA 在<strong>所有 6 个集</strong>上的 MPJPE/PVE 都优于 SMPLify-X、Look-Ma*、CameraHMR。MOYO（极端瑜伽）差距最大（22.95 vs CameraHMR 33.75），印证“无先验 fitting 在极端姿态上不被先验拉偏”。MAMMA 与 MAMMA-C 在这张表上几乎相同——因为接触优化主要改善的是<strong>穿模（表 3）</strong>而非关节位置，二者是不同维度的指标。</p>
+<figure class="fig-wide"><a href="../assets/figures/mamma/mamma_fig7.png"><img src="../assets/figures/mamma/mamma_fig7.png" alt="MOYO/RICH/Harmony4D/MammaEval-D 上 Look-Ma*/CameraHMR/MAMMA/MAMMA-C 的网格拟合对比"></a><figcaption><strong>图 7 · 网格拟合对比。</strong>自上而下：MOYO、RICH、Harmony4D、MammaEval-D。各列：输入、GT、LookMa*、CameraHMR、MAMMA、MAMMA-C。论文特意指出：在第 1/3/4 行，<strong>MAMMA 比 GT 体型更贴合图像</strong>（GT 由 Vicon+MoSh 推断、未必完美），第 4 行的手部接触也更准——这正是“无标记可替金标准”论证的视觉证据。</figcaption></figure>
+<h3>7.4 对标 Vicon：只差 0.862mm</h3><p>这是全文最硬的实验（§5.5）。在 MammaEval-Extra 上，每人额外贴 37 个<strong>不参与 MoSh++ 拟合</strong>的标记当独立真值。用 Vicon+MoSh 估的 SMPL-X 与 MAMMA 估的 SMPL-X 分别去<strong>预测这些留出标记</strong>的 3D 位置，比平均欧氏误差：<strong>Vicon+MoSh 21.619mm vs MAMMA 22.481mm，仅差 0.862mm</strong>。论文的结论是：这点差距小于“构造 AMASS（被无数工作当真值用）所用管线”的误差量级，因此<strong>MAMMA 足以替代传统管线做 SMPL-X 真值</strong>。配套效率账：把“采集到 SMPL-X”的全流程从约 <strong>72 小时压到 26 小时</strong>（消费级 GPU），近 3 倍提速。</p>
+<div class="table-wrap"><table><caption><strong>表 5.</strong> Hi4D 上 19 个 SMPL 关节的 MPJPE（mm）。MAMMA 未在任何 Hi4D 序列上训练。粗体=最佳。</caption><thead><tr><th>方法</th><th>MPJPE (mm)</th></tr></thead><tbody>
+<tr><td>MvP</td><td>92.77</td></tr>
+<tr><td>Graph</td><td>89.62</td></tr>
+<tr><td>Faster VoxelPose</td><td>68.40</td></tr>
+<tr><td>MVPose*</td><td>53.05</td></tr>
+<tr><td>MVPose</td><td>42.63</td></tr>
+<tr><td>4DAssociation</td><td>41.29</td></tr>
+<tr><td>AvatarPose</td><td>32.10</td></tr>
+<tr><td>MAMMA-C（ours）</td><td><b>12.44</b></td></tr>
+</tbody></table></div>
+<p>表 5 是“大幅领先”的硬证据：Hi4D 上把前 SOTA AvatarPose 的 32.10mm 砍到 <strong>12.44mm</strong>（降幅约 61%），且 MAMMA <strong>没在任何 Hi4D 序列上训练</strong>。论文也说明了对比口径：不与纯前馈方法比（它们要为每个多视角配置重训），也不与单帧相机方法比（它们恢复不了全局平移/朝向）——这是合理的可比性边界，读者应据此理解“领先”的范围。</p></section>
+
+<section id="ablations"><h2>8. 消融：每个设计是否真的在起作用？</h2><p>MAMMA 的消融分散在各小节，但都遵循“改一个变量看一个指标”的纪律，可归纳为四组：</p>
+<ul><li><strong>mask 条件（表 1 vs 表 2）。</strong>变量=有无 SAM2 mask。结论：单人无差、双人贴身大幅获益（Harmony4D 31.96→18.33）。这把“mask 提升来自哪里”钉死在“多人消歧”而非“普涨”。</li><li><strong>landmark query 结构（表 1/2 中 MammaNet vs CameraHMR）。</strong>变量=每点一个 query vs 单 token，同骨干。结论：即便都不用 mask，MammaNet 多数列已优于 CameraHMR，验证 §5.1 的解耦寻址论断。</li><li><strong>接触优化 MAMMA-C（表 3 vs 表 4）。</strong>变量=有无接触阶段。结论：穿模显著下降（表 3，10.50→8.46mm）、但 MPJPE 几乎不变（表 4）——说明接触项作用在物理合理性维度，且作者诚实指出<strong>地面接触优化没有改善结果</strong>，暗示网络地标已足够鲁棒，不必硬上 floor-contact。</li><li><strong>不确定度重加权（§5.2 第三阶段）。</strong>变量=是否用重投影残差回写 $\sigma$。动机=网络对“位置其实对、但嘴上没把握”的点给了过高 $\sigma$，在接近最优时用残差把这些点的权重放回来。</li></ul>
+<div class="socratic"><p class="question">问：消融最该回答的是“密集 vs 稀疏到底差多少”，但论文没有直接把 512 点改成 17 点做对比，这算缺口吗？</p><p class="answer">答：算一个诚实的边界。论文没有“512→17 点”的单变量消融，但用了两条<strong>间接</strong>证据顶上：(1) 与 SMPLify-X（稀疏关键点 + 强先验范式的代表）的主表对比，MAMMA 在每个集都大幅领先（RICH 22.20 vs 96.18）；(2) 与 CameraHMR（同样密集地标、但单 token）的对比，隔离出“query 结构”的贡献。两者合起来支持“密集 + 解耦 query 都重要”，但<strong>没有把“地标数量”作为单独旋钮扫一遍</strong>——若要严格归因“稠密度本身的边际收益”，这是留给后续工作的实验。这里如实标注，不替论文宣称它没做的消融。</p><p class="takeaway"><strong>Takeaway：</strong>消融充分支撑了 mask、query 结构、接触项各自的作用；但“稠密度”这一最核心变量是<strong>间接验证</strong>而非直接扫描——读者应把“密集优于稀疏”理解为“范式对比 + 结构对比”的合力，而非一条受控曲线。</p></div></section>
+
+<section id="limitations"><h2>9. 局限、复现门槛与适用边界</h2>
+<ul><li><strong>仍依赖标定多相机。</strong>MAMMA 假设相机标定已知、需要同步多视角输入（评测用 16/32 视角）。它降低的是“贴标记 + 清洗”的成本，<strong>不是“随手单目就能动捕”</strong>；论文另给了四部 iPhone 的消费级设置结果（在 SupMat），但主结果建立在多相机阵上。</li><li><strong>SAM2 mask 不完美。</strong>两人贴太近时 SAM2 会漏掉部分身体，导致地标预测受影响。论文称方法“仍鲁棒”，但 mask 质量是上游依赖；§7.1 双人提升也正建立在 mask 可用的前提上。</li><li><strong>合成-真实域差。</strong>MammaNet 仅用合成数据训练，真实泛化全押在 MammaSyn 的渲染质量与分布覆盖上。极端真实纹理/光照/相机若超出合成分布，行为论文未充分讨论。</li><li><strong>“替代金标准”的口径。</strong>0.862mm 差距是在 MammaEval-Extra（3 人、走/舞/基础运动）上、用留出标记测得；它论证<strong>该类动作下</strong>的可替代性，并非对一切动作（如高速碰撞、极端遮挡）都成立。GT 本身（Vicon+MoSh）也带互穿，使纯 MPJPE/PVE 比含噪声。</li><li><strong>复现门槛。</strong>MammaNet 训练需 4×A100、约 3 天（按论文披露数字粗略估算，不等同于实际账单）；MammaSyn 渲染（2.8k 序列、8 视角、2056×1504）的算力论文未说明。代码/数据/权重承诺开源（<code>cuevhv/mamma</code>），实际开放程度以仓库为准。</li><li><strong>未做的对比。</strong>不与纯前馈多视角方法、单帧相机方法直接比（理由见 §7.4）；也未做“地标数量”的受控消融（见 §8）。</li></ul>
+</section>
+
+<section id="summary"><h2>10. 一句话总结与三个 Takeaway</h2>
+<p class="lead"><strong>一句话：</strong>MAMMA 把无标记多人动捕的监督信号从“稀疏关键点”升级为“512 个密集 2D 表面地标 + 不确定度/可见性/接触”，并用“每点一个可学习 query”的 transformer 把它学准，于是多视角 fitting 可以<strong>无姿态先验、无初始化</strong>地解出 SMPL-X——在 Hi4D 上 12.44mm、对 Vicon+MoSh 仅差 0.862mm，逼近金标准。</p>
+<ol>
+<li><strong>稠密度是这篇的“单一变量”。</strong>密集表面点把多视角约束做到超定，让 fitting 甩掉先验/初始化，从而不被“常见姿态”拉偏——这是它在极端/贴身场景领先的根因。读这篇先抓“为什么稀疏→密集能解锁无先验”。</li><li><strong>结构跟着信息走。</strong>“每点一个 query”解耦了定位（cross-attn）与身体结构关联（self-attn）；mask 条件只在多人贴身时发力；接触项“无条件防穿模 + 有证据才吸附”。每个组件都对应一个可被消融验证的功能。</li><li><strong>“替金标准”是它最大的主张，也最该谨慎读。</strong>0.862mm 来自留出标记、特定动作集；它论证的是<em>可替代性</em>而非<em>超越定位精度</em>，且 GT 自带噪声。把它当“低成本、近金标准、可规模化采 SMPL-X 真值”的工具，比当“全面超越 Vicon”更准确。</li>
+</ol>
+<p>推荐阅读路径：图 1（核心断言）→ §1（稀疏 vs 密集的赌注）→ 图 4 + §5.1（landmark query 为何必要）→ 式 1 + §5.2（无先验 fitting 怎么成立）→ 表 2/表 5（mask 与领先幅度）→ §7.4（替金标准的口径）→ §9（边界）。</p>
+</section>
+
+<section id="references"><h2>11. 参考与图像出处</h2>
+<div class="references">
+<p><strong>论文：</strong>Hanz Cuevas-Velasquez, Anastasios Yiannakidis, Soyong Shin, Giorgio Becherini, Markus Höschle, Joachim Tesch, Taylor Obersat, Tsvetelina Alexiadis, Eni Halilaj, Michael J. Black. <em>MAMMA: Markerless &amp; Automatic Multi-Person Motion Action Capture</em>（项目页副标题：Markerless Accurate Multi-person Motion Acquisition）. arXiv:2506.13040v4, 2026. Max Planck Institute for Intelligent Systems / Carnegie Mellon University.</p>
+<p><strong>链接：</strong>arXiv <a href="https://arxiv.org/abs/2506.13040">2506.13040</a>；项目页 <a href="https://mamma.is.tue.mpg.de/">mamma.is.tue.mpg.de</a>；代码 <a href="https://github.com/cuevhv/mamma">github.com/cuevhv/mamma</a>。CVF CVPR 2026 openaccess 页在撰写时尚未解析（404），故未附。</p>
+<p><strong>关键依赖工作（论文引用）：</strong>SMPL-X [Pavlakos 2019]、BEDLAM [Black 2023]、CameraHMR [Patel &amp; Black 2025]、Look-Ma/Hewitt [2024]、SAM2 [Ravi 2025]、MoSh++/AMASS [Mahmood 2019]、AvatarPose [Lu 2025]、Hi4D [Yin 2023]、Harmony4D [Khirodkar 2024]、CHI3D [Fieraru 2020]、MOYO [Tripathi 2023]、L-BFGS [Liu &amp; Nocedal 1989]、Geman–McClure [1987]、focal loss [Lin 2017]、ViTPose [Xu 2022]、InterHand2.6M [Moon 2020]、SignAvatars [Yu 2025]、Inter-X [Xu 2024]。</p>
+<p><strong>关于 kexue:su 引用：</strong>本文用 <code>kexue:su</code> 的方法论（动机先行、显式标注假设、关键机制 ≥2 条独立路径交叉验证、重新推导而非罗列）来组织 §1/§5/§8 的推理。检索 苏剑林 语料库（关键词：无标记动捕 / 密集 2D 关键点 / 多视角三角化 / SMPL-X 重投影 / learnable landmark queries）<strong>未返回与本文主题相关的卡片</strong>（命中的是 RNN / 自注意力 / 概率空间优化等无关条目）。按归因红线，<strong>本文不作任何 [archives/XXXX] 苏剑林引用</strong>——仅借用其推导姿态，不借其博客为第三方方法背书。</p>
+<p><strong>图像出处：</strong>本页所有图均由 <code>extract_figures.py</code>（PyMuPDF，caption-anchored，300 DPI）从 arXiv:2506.13040 PDF 提取，存于 <code>assets/figures/mamma/</code>。图 1=论文 Fig.1（teaser）、图 2=Fig.2（MammaSyn 样本）、图 3=Fig.3（512 地标）、图 4=Fig.4（MammaNet 架构）、图 5=Fig.5（极端姿态对比）、图 6=Fig.6（接触 ROC）、图 7=Fig.7（网格拟合对比）。表 1–6 为论文对应表格/附录的转写，未改数字。</p>
+</div>
+</section>
+
+</main>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据 / MammaSyn</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法 / landmark query</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>MAMMA: Markerless Accurate Multi-person Motion Acquisition</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper (candidate)</dd><dt>核心</dt><dd>512 密集 2D 表面地标 + 每点一个 landmark query；无先验多视角 fitting</dd><dt>骨干</dt><dd>ViT-Base + mask-CNN + transformer decoder（MammaNet）</dd><dt>训练</dt><dd>仅合成（MammaSyn / BEDLAM）；4×A100 ·约 3 天</dd><dt>arXiv</dt><dd>2506.13040</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：贴身互动重建（核心断言）</li><li>图 4：每点一个 landmark query</li><li>式 1：$1/\sigma$ 加权重投影</li><li>表 2：mask 让双人 31.96→18.33</li><li>表 5：Hi4D 12.44 vs 32.10</li><li>§7.4：对 Vicon 仅差 0.862mm</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> MAMMA 深读</p><p><span class="status-good">figures</span> 7 张 PNG（fig1–7）</p><p><span class="status-good">verified</span> arXiv 标题匹配 · 代码 200</p><p><span class="status-warn">scope</span> 需标定多相机 · GT 自带噪声</p></div></section></aside></div></body></html>

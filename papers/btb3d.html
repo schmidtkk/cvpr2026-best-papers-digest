@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTB3D 深读：3D 医学 VLM 的瓶颈，真的是语言主干不够大吗？</title>
+<meta name="description" content="Medical AI · Better Tokens for Better 3D: Advancing Vision-Language Modeling in 3D Medical Imaging 学术深读">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Medical AI · 3D 医学影像 VLM tokenizer</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="../medical.html">Medical AI 专题</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs"><a href="../index.html">首页</a> &gt; NeurIPS 2025 &gt; <a href="../medical.html">Medical AI</a> &gt; BTB3D</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">BTB3D 深读：3D 医学 VLM 的瓶颈，真的是语言主干不够大吗？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>NeurIPS 2025 · Medical AI</span><span>来源：arXiv:2510.20639</span></div><div class="tags"><span class="tag orange">Medical AI (NeurIPS 2025)</span><span class="tag">3D 医学影像</span><span class="tag">VLM tokenizer</span><span class="tag green">Wavelet + LFQ</span><span class="tag">Report generation</span><span class="tag">Text-to-CT</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<div id="lead-hero">
+<p id="abstract" class="lead"><strong>导读。</strong>要把 3D 医学 VLM 做强，关键究竟在“换更大的语言主干”，还是在“如何把一卷三四百张切片的 CT 压成一串既紧凑又保真、还能 2D/3D 通用的 token”？BTB3D 的回答是后者。它用两条机制独立的下游验证同一件事：看图写报告和按文本生成 CT 都变好时，瓶颈更像在视觉 token，而不是 LLM。</p>
+
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>小波频域压缩 + 因果 3D 卷积 + lookup-free 量化 + 三阶段课程，把 3D 医学 VLM 的核心变量从“语言主干大小”改写为“体素 token 的保真与可扩展”。</div><div class="kv"><b>关键机制</b>CT 体先做 3D Haar 小波，再用严格因果的 3D encoder-decoder 产生 LFQ 离散 token；短体训练后用重叠时间 tiling 扩展到长 CT，Stage 3 冻结编码器只精修解码器。</div><div class="kv"><b>核心证据</b>报告生成 Ours-16 F1 0.258 vs CT-CHAT 0.184（+40% 相对）；text-to-CT mean FID 2.236 vs GenerateCT 9.512（约 −76.5%）。</div><div class="kv"><b>复现门槛</b>重建披露 64×H100，报告生成 40×H100，text-to-CT 16×H100；总 GPU 小时/墙钟时间：论文未说明。</div></div></div><figure class="hero-card"><a href="../assets/figures/btb3d/btb3d_fig1.png"><img src="../assets/figures/btb3d/btb3d_fig1.png" alt="BTB3D 架构：3D Haar 小波、因果卷积 encoder-decoder、LFQ 与重叠时间 tiling"></a><figcaption><strong>图 1 · BTB3D 架构总览。</strong>左侧是 9 切片子体的频域 tokenization，右侧是长 CT 的重叠时间 tiling。首屏要先看清一件事：BTB3D 的“语言模型增强”不是先动 LLaMA，而是先把整卷 CT 变成可重建、可延展、可 2D/3D 统一的视觉 token。</figcaption></figure></div>
+<div class="socratic"><p class="question">问：为什么开篇不先讲报告生成分数，而先问 token？</p><p class="guide">引导：如果只看一个下游，很容易把提升归因到 prompt、LoRA 或解码头；如果理解侧和生成侧共用同一 tokenizer 同时提升，归因才更集中。</p><p class="answer">答：BTB3D 的核心论证不是“又一个报告生成模型更强”，而是“3D 医学 VLM 的视觉 token 更保真后，两类不同任务都会受益”。所以本页先把 tokenization 当作核心问题，再看表格与图像证据。</p><p class="takeaway"><strong>Takeaway：</strong>这篇论文的读法是先追问“信息怎么进模型”，再看 LLM 或生成 head 的表现。</p></div>
+</div>
+
+<section id="motivation"><h2>1. 动机：3D 医学 VLM 为什么卡在视觉 token？</h2><p>3D CT 比 2D X 光包含更多轴向上下文，天然适合自动写放射报告、按文本合成体数据、做教学或规划。但现有 3D VLM 落后于 2D 同类，BTB3D 把病根放在视觉侧：对比学习式编码器、slice-wise tokenization、以及生成侧 encoder-decoder 都没有同时解决“长序列、细解剖、2D/3D 通用、可重建”这几件事。</p>
+<p><strong>第一处错位是 CLIP 式对比学习。</strong>放射报告不是“每张图只有唯一正确文本”的自然图像 caption：同一病征可被不同医生用不同措辞描述。把“未配对但相关”的报告当负样本惩罚，会放大标注噪声。并且高分辨率 3D 体极吃显存，CLIP 式大 batch 与深模型很难同时保住，最后容易得到欠拟合的弱编码器。</p>
+<p><strong>信息瓶颈视角。</strong>对比目标优化的是“图-文互信息”的判别代理，只保留能区分配对/非配对的粗粒度语义，不保证保留下游报告里的细粒度发现。重构目标则要求隐变量 $z$ 能还原 $x$，迫使 token 保留细解剖。苏剑林在变分编码/信息瓶颈中点明“重构损失希望隐变量尽量保留信息” [archives/6181]，正对应这里为什么要从对比换成重构。</p>
+<p><strong>第二处错位是 slice-wise tokenization。</strong>2D 医学 VLM 不能直接吃体数据，只能把 3D 投影成 2D 切片，于是丢掉轴向上下文；3D 数百切片又带来长序列建模难题；配对 3D 数据稀缺，也让从头训练大 3D 模型更难。</p>
+<p><strong>第三处错位在生成侧。</strong>GenerateCT 式级联方法会出现层间不连续，MedSyn 式轻量 encoder-decoder 保真度不够。根因仍然是缺一个能在长高分辨率序列上高保真重建的 encoder-decoder。</p>
+<div class="socratic"><p class="question">问：如果语言主干足够大，能不能自动补回视觉 token 丢掉的细节？</p><p class="guide">引导：报告里的小结节、细微纹理、层间连续性先存在于 CT 体里；如果压缩时已经丢掉，语言模型只能靠先验猜。</p><p class="answer">答：BTB3D 的判断是不能。真正缺的是一种 encoder-decoder：不丢细节地扩展到长体序列，用统一表示弥合 2D/3D，并能从该表示解码出高分辨率 3D 体。理解侧和生成侧都会受益，这也呼应苏剑林在多模态设计里强调的“以最保真的方式喂入、再用重构学表示”的思路 [archives/9984]。</p><p class="takeaway"><strong>Takeaway：</strong>把算力投在更保真、可 2D/3D 统一、能流式扩展的 token 上，比单纯堆更大 LLM 更划算。</p></div></section>
+
+<section id="contribution"><h2>2. 贡献：BTB3D 明确提出了什么？</h2><p><strong>作者明确提出的贡献</strong>集中在视觉 tokenization：一个因果卷积 encoder-decoder，为每卷 CT 学一串紧凑的频率感知体素 token；一个三阶段训练课程，使模型能“短切片上训、&gt;300 切片上用”，且不增额外显存；一个统一 2D/3D 的因果设计，让单切片可以被看作长度 1 的体。</p>
+<p>下游结果则服务于同一个中心论断：精确的三维 tokenization，而不是更大的语言主干，才是可扩展 3D 医学 VLM 的关键。报告生成端，临床 F1 较 CT-CHAT 提升 40%；text-to-CT 端，FID 相比 GenerateCT/MedSyn 大幅下降，能生成解剖一致的 512×512×241 体。</p>
+<div class="table-wrap"><table><caption><strong>贡献速览。</strong>BTB3D 把三类病根对应到三类机制。</caption><thead><tr><th>病根</th><th>机制</th><th>作者要验证的效果</th></tr></thead><tbody>
+<tr><td>CLIP 式视觉编码器与临床语言错位</td><td>重构式 tokenizer，而非只做图文对比</td><td>token 保留细解剖，报告生成临床 F1 上升</td></tr>
+<tr><td>2D/3D 不互通、长序列显存压力大</td><td>因果 3D 卷积 + 小波压缩 + 重叠 tiling</td><td>短体训练后泛化到 &gt;300 切片，且单切片仍兼容</td></tr>
+<tr><td>text-to-CT 缺高保真 encoder-decoder</td><td>LFQ 离散 token + 因果解码器 + Stage 3 解码器精修</td><td>FID/FVD 降低，三维解剖连续性更稳</td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：这篇的新意是某个单点模块，还是模块组合？</p><p class="guide">引导：小波、因果卷积、LFQ、课程学习都不是孤立炫技；它们分别压住显存、2D/3D 通用、码本效率和长序列泛化。</p><p class="answer">答：新意更像一个面向 3D 医学体的工程组合：用可逆频域变换省显存，用因果结构统一 2D/3D，用 LFQ 避免大码本查表，用三阶段课程解决短训长用。任何一环都服务于“token 保真且可扩展”。</p><p class="takeaway"><strong>Takeaway：</strong>BTB3D 的贡献不是把 LLM 换大，而是把 3D 视觉 token 的生成、压缩、量化、长序列推理串成闭环。</p></div></section>
+
+<section id="datasets"><h2>3. 数据：CT-RATE 训练，RadChestCT 域外验证</h2><p><strong>CT-RATE</strong> 是最大的公开 3D 医学配对报告数据集：25,692 卷胸部 CT / 21,304 名患者；训练 20,000 患者，测试 1,304。体数据转 Hounsfield Units 并裁剪到 [−1000, 1000]。Stage 1&2 使用原始体；Stage 3 重采样到 0.75×0.75×1.5 mm，并裁/填到 512×512×241。</p>
+<p><strong>RadChestCT</strong> 用于外部验证，提供多标签二值标签，但没有文本报告，所以只报告 F1、Precision、Recall。报告生成使用 findings + impression 段；所有临床指标用官方 CT-RATE 报告分类器计算。</p>
+<div class="table-wrap"><table><caption><strong>数据与任务。</strong>数据集在训练、评测和指标中的角色。</caption><thead><tr><th>数据集</th><th>论文披露</th><th>输入 → 输出</th><th>作用</th><th>缺失信息</th></tr></thead><tbody>
+<tr><td>CT-RATE</td><td>25,692 卷胸部 CT / 21,304 名患者；训练 20,000 患者，测试 1,304</td><td>CT 体 + findings/impression → 报告或重建/生成任务监督</td><td>重建训练、报告生成、text-to-CT 主评测</td><td>训练总 GPU 小时/墙钟时间：论文未说明</td></tr>
+<tr><td>RadChestCT</td><td>外部验证；多标签二值标签，无文本报告</td><td>CT 体 → 多标签预测</td><td>域外报告生成能力的二值标签验证</td><td>文本报告：论文未说明</td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：为什么 RadChestCT 只看 F1/Precision/Recall，不看 BLEU 或 METEOR？</p><p class="guide">引导：它没有文本报告，只有二值标签；自然语言指标没有参考文本可比。</p><p class="answer">答：RadChestCT 是域外临床标签验证，不是报告生成文本相似度评测。它能回答“模型识别异常标签是否更稳”，不能回答“生成句子是否更像参考报告”。</p><p class="takeaway"><strong>Takeaway：</strong>CT-RATE 负责配对报告与生成主任务，RadChestCT 负责域外二值标签检验；两个数据集回答的问题不同。</p></div></section>
+
+<section id="pipeline"><h2>4. Pipeline：CT 体如何变成可重建 token？</h2><p>一句话流程是：CT 体 → 3D Haar 小波频域压缩 → 因果 3D 卷积编码器 → LFQ 离散 token → 因果解码器 → 逆小波 → 重建体。下游把 token 接到 LLaMA（报告生成）或 transformer + 交叉注意力（text-to-CT）。</p>
+<figure class="fig-wide"><a href="../assets/figures/btb3d/btb3d_fig1.png"><img src="../assets/figures/btb3d/btb3d_fig1.png" alt="BTB3D Stage 1 架构和 Stage 2 重叠时间 tiling"></a><figcaption><strong>图 1 · BTB3D 架构。</strong>(a) Stage 1：9 切片子体先经 3D Haar 小波压缩，再由两个 stride-2 时间卷积严格因果编码，对过去补零、不看未来；经 lookup-free 量化得到离散 token，由对称的因果解码器解回小波域，再逆小波重建体数据。右侧为解码块细节：Pre-ResBlocks → 3×3×3 因果卷积 → AdaGN → ResBlock → depth-to-space 上采样 → GroupNorm+SiLU。(b) Stage 2：为扩展到长 CT，使用重叠时间 tiling，每个 9 切片窗只保留第二个 token（它已聚合该窗 9 片信息；仅首窗保留两个），保证长程表示一致；Stage 3 沿用同方案但只训练解码器。</figcaption></figure>
+<ol><li><strong>输入。</strong>CT 体先进入 HU 裁剪与尺度处理，再进入 3D Haar 小波域。</li><li><strong>局部子体重建。</strong>Stage 1 让 2D 单切片或 9 切片子体端到端学习局部时空结构。</li><li><strong>重叠时间 tiling。</strong>Stage 2 用 9 切片窗、8 步滑动产生长序列 token，减少整卷训练显存压力。</li><li><strong>长序列解码器精修。</strong>Stage 3 冻结编码器和码本，只微调解码器，增强长程解剖一致性。</li></ol>
+<div class="socratic"><p class="question">问：为什么 Stage 2 不直接把每个窗口所有 token 都拼起来？</p><p class="guide">引导：9 切片窗之间高度重叠，全部保留会引入冗余，也会让长序列更难处理。</p><p class="answer">答：BTB3D 只保留每个窗口的第二个 token，因为它已经聚合该窗 9 片信息；首窗保留两个 token 用于起始覆盖。这样既保持长程表示一致，又避免把重复窗口边界带入潜序列。</p><p class="takeaway"><strong>Takeaway：</strong>重叠 tiling 的关键不是“切小块”，而是只保留已聚合上下文的代表 token，从而短训长用。</p></div></section>
+
+<section id="method"><h2>5. 方法：小波、因果卷积、LFQ 与三阶段课程</h2>
+<h3>5.1 3D Haar 小波频域压缩</h3><p>对 $x\in\mathbb{R}^{D\times H\times W}$ 做 3D Haar 小波 $\mathcal{W}(\cdot)$：每个 $2\times2\times2$ 体素块变成 8 个子带（1 个低频 + 7 个高频），每轴分辨率减半，通道 $1\to8$，但体积缩 $8\times$。低频保粗结构，高频保细解剖边界，所以它是“频率感知”的压缩。2D 切片（$D=1$）下同一变换退化为低/高频对，保证 2D/3D 架构一致。小波正交可逆，压缩只是换基，意图是把“省显存”和“保细节”解耦。低秩/压缩“少存元素保主信息”的思路，可类比苏剑林 SVD 自编码器一文 [archives/4208]；这里是类比，归因较弱。</p>
+<h3>5.2 因果 3D 卷积与因式分解</h3><p>编码器 $E$ 用残差块，卷积分解为 $1\times k\times k$ 空间卷积和 $k\times1\times1$ 时间卷积。轴向使用因果 padding：过去补 $k-1$ 个零，未来不补，因此第 $t$ 个 token 只看 $\le t$ 的切片，第一个 token 仅由第一张切片算出。这让“单切片（2D）= 长度 1 的体（3D）”成立，也有利于下游自回归。</p>
+<p>压缩配置有两种：8×8×8 配置用两层 stride-2，使空间/时间各 $4\times$，叠加小波 $2\times$ 得到 $8\times$ 有效压缩；16×16×8 配置多一层空间 stride-2，使空间 $16\times$、时间 $8\times$。前者保更多空间细节，后者在显存紧或全局语义任务中更合适。因果性是否给非自回归重建带来不必要损失，论文未做因果 vs 双向卷积对照，论文未说明。</p>
+<h3>5.3 Lookup-free quantization 与熵正则</h3><p>编码器输出 $y=E(\mathcal{W}(x))$ 经 LFQ 离散化：码数 $K=2^d$，每个特征维按符号二值化 $b\in\{-1,1\}^d$，打包成整数 token $z\in\{0,\dots,K-1\}$。它不需要码本/embedding 查表，所以训练和推理更省显存。论文取 $d=18$，码本大小 $2^{18}=262{,}144$。熵正则 $\mathcal{L}_{\text{entropy}}$ 鼓励 $K$ 个码均匀使用，防止码本坍缩。</p>
+<h3>5.4 重构式训练目标</h3><p>解码器 $G$ 镜像编码器，重建到小波域 $\tilde{\mathcal{W}}(x)$，再经逆小波 $\mathcal{W}^{-1}$ 得到 $\hat{x}$。总损失为：</p>
+<div class="equation">$$\mathcal{L}=\mathcal{L}_{\text{rec}}+\lambda_{\text{adv}}\mathcal{L}_{\text{adv}}+\mathcal{L}_{\text{vq}}$$<div class="eq-caption">式 1：BTB3D 的重构式训练目标。</div></div>
+<ul><li>$\mathcal{L}_{\text{rec}}=\mathbb{E}_x\|x-\hat{x}\|_1$，用 $\ell_1$ 保持更锐利的细解剖。</li><li>$\mathcal{L}_{\text{adv}}=\mathbb{E}_x[-\log D(\hat{x})]$，3D 判别器 $D$ 直接在 CT 域监督，而不是在小波域监督。</li><li>$\mathcal{L}_{\text{vq}}=\mathbb{E}\big[\|\mathrm{sg}[y]-e\|_2^2+\beta\|y-\mathrm{sg}[e]\|_2^2\big]$，$\mathrm{sg}$ 为停梯度。</li><li>论文显式省略 VGG 感知损失，因为自然 RGB 与灰度医学图不匹配，可能反而损害医学重建。</li></ul>
+<p>这一目标与“重构损失希望隐变量尽量保留信息” [archives/6181]、对抗 + 互信息正则做编码生成 [archives/6214] 在思路上相承。</p>
+<h3>5.5 三阶段课程</h3><p>Stage 1 在单 2D 切片或 9 切片子体上端到端训练 $(E,Q,G)$，学习局部时空结构；Stage 2 使用 9 切片窗和 8 步滑动，$T=\lfloor(D-1)/8\rfloor$，最终潜序列为 $[z^1_1,z^1_2,z^2_2,z^3_2,\dots,z^T_2]$；Stage 3 冻结 $E$ 与码本，只微调解码器 $G$，增强长程解剖一致性。推理可 one-shot 或 tiled，下游均使用 tiled。</p>
+<div class="socratic"><p class="question">问：这套方法里最能连接“理解”和“生成”的部件是哪一个？</p><p class="guide">引导：理解任务需要 token 保留临床发现，生成任务需要 token 能被解码成连续 CT 体；两者共享的是同一 encoder-decoder 表示。</p><p class="answer">答：核心是可重构的频率感知 token。报告生成把 token 映入 LLaMA 输入空间，text-to-CT 则用 transformer + 交叉注意力在同一潜空间生成，再由解码器还原 CT。若 token 只保粗语义，两个下游不会同时受益。</p><p class="takeaway"><strong>Takeaway：</strong>BTB3D 的方法链条服务于同一个目标：让视觉 token 既紧凑又能还原细解剖。</p></div></section>
+
+<section id="training"><h2>6. 训练细节与算力账本</h2><p>论文披露了硬件、batch、优化器和迭代数，但没有披露总 GPU 小时或墙钟时间。以下只转写披露项，不外推训练账单。</p>
+<div class="table-wrap"><table><caption><strong>训练配置。</strong>重建、报告生成与 text-to-CT 的披露信息。</caption><thead><tr><th>项目</th><th>论文披露</th><th>解释</th><th>缺失信息</th></tr></thead><tbody>
+<tr><td>重建 tokenizer</td><td>64×H100，DDP + 混合精度；Stage 1 batch 8（9 切片）/40（单切片）；Stage 2/3 batch 1（201/241 切片）；Adam，lr 1e−5，$\beta_2$=0.99，$\epsilon$=1e−8，梯度裁剪阈 0.5；Stage 1 150k、Stage 2 60k、Stage 3 50k</td><td>Stage 1 学局部，Stage 2 学长序列 tiling，Stage 3 只精修解码器；判别器每阶段重新初始化</td><td>总 GPU 小时/墙钟时间：论文未说明</td></tr>
+<tr><td>报告生成</td><td>token 经线性层映入 LLaMA-3.1-8B；40k 迭代，DeepSpeed ZeRO-3，40×H100，AdamW lr 2e−5，warmup 0.03，有效全局 batch 40；LoRA：8×8×8 用 r=64/α=128，16×16×8 用 r=128/α=256</td><td>沿用 CT-CHAT 配置以隔离 token 影响；16×16×8 用 18 维 token，8×8×8 token 数翻四倍，embedding 经合并降到 72</td><td>总 GPU 小时/墙钟时间：论文未说明</td></tr>
+<tr><td>text-to-CT</td><td>12 层 transformer（hidden 1024、16 头）+ 交叉注意力；flow matching 损失；[7,7,7] 窗口自注意、[2,2,2] patching；T5v1.1-base 编码 prompt；16×H100，1500 epochs，AdamW lr 1e−4，batch 4（8×）/8（16×8）</td><td>prompt 模板为 <code>Chest CT scan of a {age}-year-old {sex}: {impression}</code></td><td>总 GPU 小时/墙钟时间：论文未说明</td></tr>
+</tbody></table></div>
+<div class="note"><p class="note-title">算力说明</p><p>GPU 小时和墙钟时间：论文未说明。页面只记录论文披露的卡数、迭代数和 epoch；任何小时数都只能是“按论文披露数字粗略估算，不等同于实际账单”，因此这里不填写总小时数。</p></div>
+<div class="socratic"><p class="question">问：为什么不能用“卡数 × 迭代数”直接给一个 GPU 小时？</p><p class="guide">引导：每步时长、数据管线、并行效率、重启和 checkpoint 策略都没有披露。</p><p class="answer">答：论文没有给 step time 或 wall-clock。给出具体小时数会让读者误以为这是论文披露的成本，所以这里统一写“论文未说明”，并保留 GPU disclaimer。</p><p class="takeaway"><strong>Takeaway：</strong>可复现门槛很高，但总 GPU 小时不能杜撰；本页只记录论文披露项。</p></div></section>
+
+<section id="experiments"><h2>7. 主实验：同一 tokenizer 能否同时撑住理解与生成？</h2><p>论文有三问：(1) 三阶段课程是否优于朴素端到端？(2) 该 tokenization 能否提升报告生成等 VLM 任务？(3) BTB3D 在从临床 prompt 合成高分辨率 CT 上较 SOTA 如何？本节先看两条机制独立、共享同一 tokenizer 的验证路径。</p>
+<p><strong>路径 1：理解侧。</strong>固定 LLaMA-3.1-8B 与 CT-CHAT 配置，只换 token，因此报告生成差异更集中地归因到 tokenizer。<strong>路径 2：生成侧。</strong>同一 encoder-decoder 表示接 transformer + 交叉注意力做 text-to-CT。两端都赢，能排除“只是某个下游 head 调得好”的替代解释。</p>
+<div class="table-wrap"><table><caption><strong>Table 2.</strong> RadChestCT 域外验证（仅二值标签，省文本指标）。最佳基线 F1 0.182 → Ours-16 0.266（+46% 相对）。</caption><thead><tr><th>Model</th><th>F1 ↑</th><th>Precision ↑</th><th>Recall ↑</th></tr></thead><tbody>
+<tr><td>CT2Rep</td><td>0.133</td><td>0.299</td><td>0.139</td></tr>
+<tr><td>Merlin</td><td>0.182</td><td>0.271</td><td>0.149</td></tr>
+<tr><td>CT-CHAT</td><td>0.182</td><td>0.382</td><td>0.171</td></tr>
+<tr><td>Ours-8</td><td>0.192</td><td>0.269</td><td>0.165</td></tr>
+<tr><td><b>Ours-16</b></td><td><b>0.266</b></td><td>0.272</td><td><b>0.329</b></td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table><caption><strong>Table 3.</strong> CT-RATE 报告生成（临床准确性 + 自然语言）。Ours-16 F1 0.258 vs CT-CHAT 0.184 = +40% 相对；BLEU-1 +18%、BLEU-mean +12%。</caption><thead><tr><th>Model</th><th>F1 ↑</th><th>P ↑</th><th>R ↑</th><th>CRG ↑</th><th>BLEU-1</th><th>BLEU-2</th><th>BLEU-3</th><th>BLEU-4</th><th>BLEU-mean</th><th>METEOR</th></tr></thead><tbody>
+<tr><td>CT2Rep</td><td>0.160</td><td>0.435</td><td>0.128</td><td>0.359</td><td>0.372</td><td>0.292</td><td>0.243</td><td>0.213</td><td>0.280</td><td>0.197</td></tr>
+<tr><td>Merlin</td><td>0.160</td><td>0.295</td><td>0.112</td><td>0.352</td><td>0.231</td><td>0.163</td><td>0.124</td><td>0.099</td><td>0.154</td><td>0.148</td></tr>
+<tr><td>CT-CHAT</td><td>0.184</td><td>0.450</td><td>0.158</td><td>0.368</td><td>0.373</td><td>0.284</td><td>0.231</td><td>0.198</td><td>0.272</td><td>0.215</td></tr>
+<tr><td>Ours-8</td><td>0.187</td><td>0.260</td><td>0.150</td><td>0.357</td><td>0.411</td><td>0.307</td><td>0.245</td><td>0.215</td><td>0.295</td><td>0.220</td></tr>
+<tr><td><b>Ours-16</b></td><td><b>0.258</b></td><td>0.260</td><td><b>0.260</b></td><td><b>0.370</b></td><td><b>0.439</b></td><td><b>0.320</b></td><td><b>0.248</b></td><td>0.213</td><td><b>0.305</b></td><td><b>0.223</b></td></tr>
+</tbody></table></div>
+<p>论文的读法是：Merlin 高 P 低 R，偏漏报；CT2Rep/CT-CHAT 高 R 低 P，偏幻觉；BTB3D 更平衡，因此 F1/CRG 更优。</p>
+<figure><a href="../assets/figures/btb3d/btb3d_fig5.png"><img src="../assets/figures/btb3d/btb3d_fig5.png" alt="BTB3D 报告生成定性对比，绿色为命中，橙色和红色为幻觉或漏报"></a><figcaption><strong>图 5 · 报告生成定性对比。</strong>颜色用于标注临床发现的匹配情况：绿=命中，橙/红=幻觉或漏报。重点看 Ours 相比 CT-CHAT、Merlin、CT2Rep 是否同时减少漏报与幻觉；这与 Table 3 里 F1/CRG 更平衡的结论相互印证。</figcaption></figure>
+<div class="table-wrap"><table><caption><strong>Table 4.</strong> text-to-CT 生成。mean FID 9.512（GenerateCT）→ 2.236（Ours-8），−76.5%；FVD（CT-Net）7.659 → 3.955，−48.3%；CLIP 文图对齐略升。</caption><thead><tr><th>Model</th><th>FID Axial ↓</th><th>FID Sagittal ↓</th><th>FID Coronal ↓</th><th>FID Mean ↓</th><th>FVD CT-Net ↓</th><th>FVD I3D ↓</th><th>CLIP Text-Img ↑</th><th>CLIP Img-Img ↑</th></tr></thead><tbody>
+<tr><td>GenerateCT</td><td>10.416</td><td>10.365</td><td>7.754</td><td>9.512</td><td>7.659</td><td>1512.5</td><td>23.625</td><td>84.287</td></tr>
+<tr><td>MedSyn</td><td>14.963</td><td>12.115</td><td>10.698</td><td>12.592</td><td>13.927</td><td>725.81</td><td>23.571</td><td>84.153</td></tr>
+<tr><td><b>Ours-8</b></td><td><b>2.479</b></td><td><b>2.166</b></td><td><b>2.062</b></td><td><b>2.236</b></td><td><b>3.955</b></td><td><b>325.51</b></td><td><b>24.270</b></td><td><b>88.352</b></td></tr>
+<tr><td>Ours-16</td><td>7.077</td><td>4.226</td><td>3.729</td><td>5.011</td><td>4.020</td><td>429.34</td><td>23.322</td><td>84.957</td></tr>
+</tbody></table></div>
+<figure><a href="../assets/figures/btb3d/btb3d_fig3.png"><img src="../assets/figures/btb3d/btb3d_fig3.png" alt="text-to-CT 生成定性对比：MedSyn、GenerateCT、Ours-16、Ours-8 的轴状、冠状、矢状面"></a><figcaption><strong>图 3 · text-to-CT 生成定性对比。</strong>图中对比 MedSyn、GenerateCT、Ours-16、Ours-8 在轴状、冠状、矢状三面的生成结果。Table 4 给的是分布指标，图 3 用来检查三维解剖是否连续、细节是否更接近真实 CT。</figcaption></figure>
+<div class="socratic"><p class="question">问：为什么 Ours-16 在报告生成最好，而 Ours-8 在生成 CT 最好？</p><p class="guide">引导：两个任务对 token 的偏好不同：报告生成偏全局语义，像素级合成偏空间细节。</p><p class="answer">答：16×16×8 压得更狠，token 更偏全局语义，适合报告生成；8×8×8 保留更多空间细节，适合 text-to-CT 的像素级合成。这种交叉结果反而支持“压缩率—任务”的权衡假设。</p><p class="takeaway"><strong>Takeaway：</strong>同一 tokenizer 家族在理解和生成两端都提升，但最佳压缩率随任务目标改变。</p></div></section>
+
+<section id="ablations"><h2>8. 消融：三阶段课程到底带来什么？</h2><p>三阶段课程解决的是“短训长用”的矛盾：只在短序列上训，整卷后段会退化；直接分块推理，窗口边界又容易不连续。Table 1 显示 Stage 2 的重叠 tiling 带来最大跳变，Stage 3 解码器精修继续小幅稳定提升。</p>
+<figure><a href="../assets/figures/btb3d/btb3d_fig2.png"><img src="../assets/figures/btb3d/btb3d_fig2.png" alt="BTB3D 三阶段重建消融：轴状、冠状、矢状三个方向的重建质量变化"></a><figcaption><strong>图 2 · 三阶段重建消融。</strong>Stage 1 重建模糊，9 切片外容易丢结构；Stage 2 通过重叠 tiling 恢复跨切片解剖一致；Stage 3 进一步锐化裂隙、血管等细边界。图像证据对应 Table 1 中 PSNR/SSIM/MSE 的逐阶段改善。</figcaption></figure>
+<div class="table-wrap"><table><caption><strong>Table 1.</strong> 逐阶段全卷重建指标（两种压缩率）。Stage 2（重叠 tiling）带来最大跳变：PSNR +14 dB 以上、SSIM 翻三倍、MSE 降一个量级；Stage 3 解码器精修小幅但稳定提升。</caption><thead><tr><th>Stage</th><th>压缩率</th><th>PSNR ↑</th><th>SSIM ↑</th><th>MSE ↓</th></tr></thead><tbody>
+<tr><td>Stage 1</td><td>8×8×8</td><td>9.350</td><td>0.206</td><td>0.117</td></tr>
+<tr><td>Stage 2</td><td>8×8×8</td><td>23.980</td><td>0.697</td><td>0.005</td></tr>
+<tr><td>Stage 3</td><td>8×8×8</td><td>28.166</td><td>0.760</td><td>0.001</td></tr>
+<tr><td>Stage 1</td><td>16×16×8</td><td>11.067</td><td>0.353</td><td>0.079</td></tr>
+<tr><td>Stage 2</td><td>16×16×8</td><td>23.808</td><td>0.700</td><td>0.005</td></tr>
+<tr><td>Stage 3</td><td>16×16×8</td><td>26.750</td><td>0.749</td><td>0.002</td></tr>
+</tbody></table></div>
+<p>漂亮的可证伪预测也被两类主结果内部交叉验证：16×16×8 在报告生成最好，8×8×8 在生成最好。这说明压缩率不是越低越好或越高越好，而要跟下游任务对语义/空间细节的需求匹配。</p>
+<div class="socratic"><p class="question">问：Table 1 里最关键的跳变为什么在 Stage 2，而不是 Stage 3？</p><p class="guide">引导：Stage 3 只精修解码器；Stage 2 改变的是长序列训练/推理方式。</p><p class="answer">答：Stage 2 引入重叠 tiling，让模型第一次在长 CT 的潜序列上学习全卷一致性，所以 PSNR、SSIM、MSE 都出现大幅跳变。Stage 3 冻结编码器和码本，只让解码器适配长程结构，因此更像稳定锐化。</p><p class="takeaway"><strong>Takeaway：</strong>三阶段课程的核心收益来自 Stage 2 的长序列表示一致性，Stage 3 是在此基础上的解码器修补。</p></div></section>
+
+<section id="limitations"><h2>9. 局限与复现门槛</h2><div class="table-wrap"><table><caption><strong>局限、风险与复现门槛。</strong>论文披露信息与本页的诚实补充。</caption><thead><tr><th>边界</th><th>论文/补充材料信息</th><th>读者应如何理解</th></tr></thead><tbody>
+<tr><td>解剖与模态范围</td><td>仅胸部 CT（CT-RATE/RadChestCT）</td><td>脑 MRI、腹部 CT、其他模态是否成立，论文未验证</td></tr>
+<tr><td>临床绝对性能</td><td>报告生成临床 F1 约 0.26 级</td><td>相对增益明显，但离临床可用仍有距离</td></tr>
+<tr><td>训练成本</td><td>重建 64×H100，报告生成 40×H100，text-to-CT 16×H100</td><td>门槛高；总 GPU 小时/墙钟时间：论文未说明</td></tr>
+<tr><td>因果卷积选择</td><td>严格因果设计统一 2D/3D 与长序列</td><td>是否损害非自回归重建，论文未做双向卷积对照，论文未说明</td></tr>
+<tr><td>诊断充分性</td><td>重建 PSNR 约 28 dB</td><td>是否诊断足够，未与临床阅片金标准对齐</td></tr>
+</tbody></table></div>
+<div class="socratic"><p class="question">问：这篇最容易被过度宣传成什么？</p><p class="guide">引导：注意它验证的是胸部 CT、相对增益和 token 瓶颈，不是临床部署完成。</p><p class="answer">答：容易被说成“3D 医学 VLM 已经可用”或“一个 tokenizer 通吃所有 3D 医学影像”。更严谨的说法是：BTB3D 在胸部 CT 上证明，更保真、可扩展的视觉 token 能同时提升报告生成和 text-to-CT，但临床绝对 F1、跨解剖泛化、因果卷积对照和成本披露仍有限。</p><p class="takeaway"><strong>Takeaway：</strong>论文强在定位瓶颈和给出两条独立验证，不强在宣告临床系统已可直接落地。</p></div></section>
+
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>在数据稀缺、序列超长、显存吃紧的 3D 医学 VLM 场景，把算力投在更精确、更保真、可 2D/3D 统一、能流式扩展的 token 上，比堆更大语言主干更划算。BTB3D 用“小波频域压缩 + 因果卷积 + LFQ + 三阶段课程”的工程组合，把“保真 token”哲学 [archives/9984] 在两条机制独立的下游（报告生成 F1 / text-to-CT FID-FVD）上同时兑现。</p>
+<div class="guide"><strong>三个 takeaway：</strong><ol><li><strong>视觉 token 是主变量。</strong>固定 LLaMA-3.1-8B 与 CT-CHAT 配置后，只换 token 仍带来临床 F1 提升。</li><li><strong>重构目标补上对比学习的短板。</strong>对比学习保粗粒度配对语义，重构目标强迫 token 保留可解码的细解剖。</li><li><strong>压缩率要跟任务走。</strong>16×16×8 更适合报告生成，8×8×8 更适合 text-to-CT；这不是矛盾，而是任务偏好的证据。</li></ol></div>
+<div class="socratic"><p class="question">问：如果后续要反驳 BTB3D，最该补哪两个实验？</p><p class="guide">引导：找论文未说明或未验证的关键替代解释。</p><p class="answer">答：第一是因果卷积 vs 双向卷积的等算力对照，确认因果性不是重建负担；第二是跨解剖/跨模态验证，确认胸部 CT 上的 token 结论能否迁移到脑 MRI、腹部 CT 等场景。</p><p class="takeaway"><strong>Takeaway：</strong>BTB3D 的中心论断成立在当前证据内；最重要的外推边界是架构对照和数据域扩展。</p></div></section>
+
+<section id="references" class="references"><h2>资料来源与图像说明</h2><ol><li>Ibrahim Ethem Hamamci, Sezgin Er, Suprosanna Shit, Hadrien Reynaud, Dong Yang, Pengfei Guo, Marc Edgar, Daguang Xu, Bernhard Kainz, Bjoern Menze. <em>Better Tokens for Better 3D: Advancing Vision-Language Modeling in 3D Medical Imaging</em>. NeurIPS 2025 / arXiv:2510.20639. 代码：<code>https://github.com/ibrahimethemhamamci/BTB3D</code>。NeurIPS 2025，无 CVF 页；以 arXiv / OpenReview 为准。</li><li>对比基线：CT2Rep [10]；CT-CHAT / CT-RATE [3]；Merlin [11]；GenerateCT [12]；MedSyn [20]。</li><li>token 谱系：VQ-VAE 离散隐空间 [29]；lookup-free quantization / 小波视频 tokenizer（MAGVIT-v2 系）[31]。</li><li>语言主干与文本编码：LLaMA-3.1-8B；prompt 编码 T5v1.1-base。</li><li>kexue 卡片： [archives/6181] 变分编码/信息瓶颈，重构保留信息；[archives/9984] 最保真输入做多模态生成；[archives/6214] 对抗 + 互信息编码生成；[archives/4208] SVD 自编码器压缩（类比，弱归因）。本页未使用其他苏剑林归因。</li><li>图像说明：正文嵌入 <code>btb3d_fig1.png</code>、<code>btb3d_fig2.png</code>、<code>btb3d_fig3.png</code>、<code>btb3d_fig5.png</code>，均为本地 PNG，路径位于 <code>assets/figures/btb3d/</code>。</li></ol>
+<div class="socratic"><p class="question">问：这些参考项能支撑哪些内容，不能支撑哪些内容？</p><p class="guide">引导：论文数字、图表、训练配置以 BTB3D 论文为准；kexue 卡片只用于一般机制归因。</p><p class="answer">答：Tables 1–4、训练配置、数据集规模和图像说明来自 BTB3D spine 对论文内容的转写；[archives/6181]、[archives/9984]、[archives/6214]、[archives/4208] 只支撑本页关于信息瓶颈、保真输入、对抗编码生成和压缩类比的机制解释。</p><p class="takeaway"><strong>Takeaway：</strong>实验数字只按论文转写；外部方法卡片只做机制解释，不新增未经检索的苏剑林引用。</p></div></section>
+</main>
+
+</article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">动机</a></li><li><a href="#contribution">贡献</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Better Tokens for Better 3D: Advancing Vision-Language Modeling in 3D Medical Imaging</dd><dt>Venue</dt><dd>NeurIPS 2025 · Medical AI</dd><dt>Topic</dt><dd>3D 医学影像 VLM tokenizer / 小波频域 + 因果卷积 + LFQ + 三阶段课程</dd><dt>Data</dt><dd>CT-RATE；RadChestCT 外部验证</dd><dt>arXiv</dt><dd>2510.20639</dd><dt>Compute</dt><dd>64/40/16×H100；总 GPU 小时：论文未说明</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：小波 + 因果卷积 + LFQ + tiling</li><li>Table 1：Stage 2 PSNR 大跳变</li><li>Table 3：报告生成 F1 0.258 vs 0.184</li><li>Table 4：text-to-CT FID 2.236 vs 9.512</li><li>图 5：绿=命中，橙/红=幻觉或漏报</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> BTB3D 深读</p><p><span class="status-good">figures</span> 4 张 PNG 正文嵌入（fig1/2/3/5）</p><p><span class="status-good">formula</span> MathJax TeX 已按 spine 写入</p><p><span class="status-warn">scope</span> 仅胸部 CT；总 GPU 小时论文未说明</p></div></section></aside></div></body></html>

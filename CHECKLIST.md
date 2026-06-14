@@ -20,7 +20,7 @@ _Last updated: 2026-06-11._
 | 🥈 Best Paper · Honorable Mention | 2 | SAM 3D · NitroGen |
 | 🎓 Best Student Paper | 1 | Native |
 | 🎓🥈 Best Student Paper · Honorable Mention | 1 | ChordEdit |
-| ⭐ Top Paper (candidate, curated list) | 9 done / **22 queued** | **B³-Seg · 4D-RGPT · tttLRM · MacTok · Delta Tokens · MSPT · SAM 3D Body · Molmo2 · MatAnyone 2** ✅ · 22 more in the **[Top / Highlight digest queue](#top--highlight-digest-queue-cvpr-2026-non-medical)** (MuM, VGGT-Segmentor, …) |
+| ⭐ Top Paper (candidate, curated list) | 19 done / **12 queued** | **B³-Seg · 4D-RGPT · tttLRM · MacTok · Delta Tokens · MSPT · SAM 3D Body · Molmo2 · MatAnyone 2 · VGGT-Segmentor · MuM · V²-SAM · INSID3 · Track-On-R · AsymLoc · RNS (Retrieve and Segment) · MAMMA · SA-FARI · MARCO** ✅ · 12 more in the **[Top / Highlight digest queue](#top--highlight-digest-queue-cvpr-2026-non-medical)** |
 
 > Note: only D4RT is the **confirmed** official Best Paper. The "candidate" tier is
 > the curated [SkalskiP/top-cvpr-2026-papers](https://github.com/SkalskiP/top-cvpr-2026-papers)
@@ -46,6 +46,16 @@ Legend: ✅ done · ⬜ todo · — n/a
 | **SAM 3D Body** | Top Paper (candidate) | Human Mesh Recovery | ✅ | ✅ (no Su corpus hit → no citation) | ✅ 7 表 / 320+ | ✅ | ✅ | ✅ arXiv+code+project (PDF) |
 | **Molmo2** | Top Paper (candidate) | Vision-Language Models | ✅ | ✅ (Su corpus not installed → no citation) | ✅ 6 表（Tab 2/5 节选；Tab 1/3/8b/9/11 全转写） | ✅ | ✅ | ✅ arXiv+code (200; CVF 404 omitted) |
 | **MatAnyone 2** | Top Paper (candidate) | Video Matting / Segmentation | ✅ | ✅ (Su corpus empty → no citation) | ✅ Tab 1/3/6 代表行节选；Tab 2/4 全转写 · 11 图 | ✅ | ✅ | ✅ arXiv+code+CVF+project (all 200) |
+| **VGGT-Segmentor** | Top Paper (candidate) | Segmentation / Cross-View | ✅ | ✅ (Su corpus no on-point card → no citation) | ✅ Tab 1/2/3 全转写；Tab 4–8 代表行（趋势完整）· 4 图 | ✅ | ✅ | ✅ arXiv+code+CVF (all 200) |
+| **MuM** | Top Paper (candidate) | 3D Vision / Multi-View MIM | ✅ | ✅ (Su corpus no on-point card → no citation) | ✅ Tab 1/2/3/6/10 全转写；Tab 4 代表行（各 SSL 范式代表）；Tab 5/7/8/9 合并转写 · 3 图 | ✅ | ✅ | ✅ arXiv+code (200; CVF 404 omitted) |
+| **V²-SAM** | Top Paper (candidate) | Object Tracking / Correspondence | ✅ | ✅ (Su corpus no on-point card → no citation) | ✅ Tab 1/2/3/4/5/9/10/11 全转写（含补充材料）；Tab 6 数据集统计全转写 · 8 图 | ✅ | ✅ | ✅ arXiv+code+CVF+project (all 200) |
+| **INSID3** | Top Paper (candidate) | Segmentation / In-Context | ✅ | ✅ (Su corpus no on-point card → no citation) | ✅ Tab 1/2/3/8 全转写；Tab 5/7/9/10/11/12/13 数字引用 · 8 图 | ✅ | ✅ | ✅ arXiv+code+project (200; CVF 404 omitted) |
+| **Track-On-R** | Top Paper (candidate) | Object Tracking / Point Tracking | ✅ | ✅ (Su corpus no on-point card → no citation) | ✅ Tab 1/2/3 全转写；Fig.4 转写为表 A（密集叠图，部分单 teacher 精确值未标注） · 3 图 | ✅ | ✅ | ✅ arXiv+code (200; CVF 404 omitted) |
+| **AsymLoc** | Top Paper (candidate) | 3D Vision / Visual Localization | ✅ | ✅ (Su corpus no on-point card → no citation) | ✅ Table 1 完整转写 + Table 2；式 1–13（5/6/9/10/11/13 重点）· 6 图 | ✅ | ✅ | ✅ arXiv only (code none found; CVF 404 omitted) |
+| **RNS (Retrieve and Segment)** | Top Paper (candidate) | Segmentation / Open-Vocabulary | ✅ | ✅ (Su corpus 仅返回 NLP 卡片 7427/4611/5409/6671/8934，无 on-point card → no citation) | ✅ Tab 1/2 全转写；式 1–13（4/6/7–10/12 重点）· 5 图 | ✅ | ✅ | ✅ arXiv+code (200; CVF 404 omitted) |
+| **MAMMA** | Top Paper (candidate) | Pose Estimation / Motion Capture | ✅ | ✅ (Su corpus 仅返回 RNN/attention/概率优化卡片，无 on-point card → no citation) | ✅ Tab 1/2/3/4/5/6 全转写（训练超参附录转写）· 7 图 | ✅ | ✅ | ✅ arXiv+code+project (200; CVF 404 omitted) |
+| **SA-FARI** | Top Paper (candidate) | Segmentation / Multi-Animal Tracking Dataset | ✅ | ✅ (Su corpus 仅返回 NLP/softmax/句向量卡片，无 on-point card → no citation) | ✅ Tab 1/2/3/4/5 全转写（数据集统计+基线+难度分层）· 5 图 | ✅ | ✅ | ✅ arXiv+project+CVF (all 200; code none found) |
+| **MARCO** | Top Paper (candidate) · Oral | Semantic Correspondence | ✅ | ✅ (Su corpus 仅返回 SimBERT/CUR/信息抽取/扩散蒸馏卡片，无 on-point card → no citation) | ✅ Table 2/4 全转写；Table 1 代表性节选；Table 3 仅平均列（全 18 类见原文）；式 1–7（论文式 4–17）· 6 图 | ✅ | ✅ | ✅ arXiv+code+project (200; CVF 404 omitted) |
 | **LLaDA-MedV** | Medical AI (verified) | Medical AI (CVPR 2026) | ✅ | ✅ (no Su corpus hit → no citation) | ✅ 6 表（1 chart fig only; figs 2–5 转写为表） | ✅ | ✅ | ✅ arXiv+CVF+code (200) |
 | **VoxTell** | Medical AI (verified) | Medical AI (CVPR 2026) | ✅ | ✅ (IB 原理引 [archives/6181·6024]) | ✅ 表 1/2/3 转写（fig2 架构转 HTML） | ✅ | ✅ | ✅ arXiv+CVF+code (PDF) |
 | **SPECTRE** | Medical AI (verified) | Medical AI (CVPR 2026) | ✅ | ✅ (稀疏/局部注意力 [archives/6853·9431]、RoPE 位置鲁棒 [archives/9444]) | ✅ 表 1/2/3/4/5 转写（生物标志物无数值表→图 3 柱读数） | ✅ | ✅ | ✅ arXiv+CVF+code (200) |
@@ -201,26 +211,26 @@ Legend: ✅ done · ⬜ todo · flag: 🏆 curator-top · 📢 Oral · 🔥 High
 | # | Paper | arXiv | Flag | Category | Digest |
 |---|---|---|:--:|---|:--:|
 | 1 | Featurising Pixels from Dynamic 3D Scenes with Linear In-Context Learners | [2604.26488](https://arxiv.org/abs/2604.26488) | 📢 | 3D Vision | ⬜ |
-| 2 | MuM: Multi-View Masked Image Modeling for 3D Vision | [2511.17309](https://arxiv.org/abs/2511.17309) | — | 3D Vision | ⬜ |
+| 2 | MuM: Multi-View Masked Image Modeling for 3D Vision | [2511.17309](https://arxiv.org/abs/2511.17309) | — | 3D Vision | ✅ `papers/mum.html` |
 | 3 | Emergent Outlier View Rejection in Visual Geometry Grounded Transformers | [2512.04012](https://arxiv.org/abs/2512.04012) | — | 3D Vision | ⬜ |
-| 4 | AsymLoc: Asymmetric Feature Matching for Efficient Visual Localization | [2604.09445](https://arxiv.org/abs/2604.09445) | 🏆 | 3D Vision | ⬜ |
+| 4 | AsymLoc: Asymmetric Feature Matching for Efficient Visual Localization | [2604.09445](https://arxiv.org/abs/2604.09445) | 🏆 | 3D Vision | ✅ `papers/asymloc.html` |
 | 5 | ActionMesh: Animated 3D Mesh Generation with Temporal 3D Diffusion | [2601.16148](https://arxiv.org/abs/2601.16148) | — | 3D Vision | ⬜ |
 | 6 | Depth Any Panoramas: Foundation Model for Panoramic Depth Estimation | [2512.16913](https://arxiv.org/abs/2512.16913) | — | Depth Estimation | ⬜ |
 | 7 | EgoX: Egocentric Video Generation from a Single Exocentric Video | [2512.08269](https://arxiv.org/abs/2512.08269) | — | Generative Models | ⬜ |
 | 8 | Back to Basics: Let Denoising Generative Models Denoise | [2511.13720](https://arxiv.org/abs/2511.13720) | — | Generative Models | ⬜ |
 | 9 | ARC Is a Vision Problem! | [2511.14761](https://arxiv.org/abs/2511.14761) | — | Image-to-Image | ⬜ |
 | 10 | Envisioning the Future, One Step at a Time | [2604.09527](https://arxiv.org/abs/2604.09527) | — | Motion Prediction | ⬜ |
-| 11 | V2-SAM: Marrying SAM2 with Multi-Prompt Experts for Cross-View Object Correspondence | [2511.20886](https://arxiv.org/abs/2511.20886) | 🏆 | Object Tracking | ⬜ |
-| 12 | Real-World Point Tracking with Verifier-Guided Pseudo-Labeling | [2603.12217](https://arxiv.org/abs/2603.12217) | 🏆 | Object Tracking | ⬜ |
+| 11 | V2-SAM: Marrying SAM2 with Multi-Prompt Experts for Cross-View Object Correspondence | [2511.20886](https://arxiv.org/abs/2511.20886) | 🏆 | Object Tracking | ✅ `papers/v2sam.html` |
+| 12 | Real-World Point Tracking with Verifier-Guided Pseudo-Labeling | [2603.12217](https://arxiv.org/abs/2603.12217) | 🏆 | Object Tracking | ✅ `papers/rwpt.html` |
 | 13 | FMPose3D: Monocular 3D Pose Estimation via Flow Matching | [2602.05755](https://arxiv.org/abs/2602.05755) | — | Pose Estimation | ⬜ |
-| 14 | MAMMA: Markerless Accurate Multi-person Motion Acquisition | [2506.13040](https://arxiv.org/abs/2506.13040) | 🏆 | Pose Estimation | ⬜ |
+| 14 | MAMMA: Markerless Accurate Multi-person Motion Acquisition | [2506.13040](https://arxiv.org/abs/2506.13040) | 🏆 | Pose Estimation | ✅ `papers/mamma.html` |
 | 15 | VidEoMT: Your ViT is Secretly Also a Video Segmentation Model | [2602.17807](https://arxiv.org/abs/2602.17807) | — | Segmentation | ⬜ |
 | 16 | MatAnyone 2: Scaling Video Matting via a Learned Quality Evaluator | [2512.11782](https://arxiv.org/abs/2512.11782) | 🏆 | Segmentation | ✅ `papers/matanyone2.html` |
-| 17 | INSID3: Training-Free In-Context Segmentation with DINOv3 | [2603.28480](https://arxiv.org/abs/2603.28480) | 📢 | Segmentation | ⬜ |
-| 18 | The SA-FARI Dataset: Segment Anything in Footage of Animals | [2511.15622](https://arxiv.org/abs/2511.15622) | 🏆 | Segmentation | ⬜ |
-| 19 | MARCO: Navigating the Unseen Space of Semantic Correspondence | [2604.18267](https://arxiv.org/abs/2604.18267) | 📢 | Segmentation | ⬜ |
-| 20 | VGGT-Segmentor: Geometry-Enhanced Cross-View Segmentation | [2604.13596](https://arxiv.org/abs/2604.13596) | 🏆 | Segmentation | ⬜ |
-| 21 | Retrieve and Segment: Open-Vocabulary Segmentation | [2602.23339](https://arxiv.org/abs/2602.23339) | 🏆 | Segmentation | ⬜ |
+| 17 | INSID3: Training-Free In-Context Segmentation with DINOv3 | [2603.28480](https://arxiv.org/abs/2603.28480) | 📢 | Segmentation | ✅ `papers/insid3.html` |
+| 18 | The SA-FARI Dataset: Segment Anything in Footage of Animals | [2511.15622](https://arxiv.org/abs/2511.15622) | 🏆 | Segmentation | ✅ `papers/safari.html` |
+| 19 | MARCO: Navigating the Unseen Space of Semantic Correspondence | [2604.18267](https://arxiv.org/abs/2604.18267) | 📢 | Semantic Correspondence | ✅ `papers/marco.html` |
+| 20 | VGGT-Segmentor: Geometry-Enhanced Cross-View Segmentation | [2604.13596](https://arxiv.org/abs/2604.13596) | 🏆 | Segmentation | ✅ `papers/vggtseg.html` |
+| 21 | Retrieve and Segment: Open-Vocabulary Segmentation | [2602.23339](https://arxiv.org/abs/2602.23339) | 🏆 | Segmentation | ✅ `papers/retseg.html` |
 | 22 | VideoNet: Large-Scale Dataset for Domain-Specific Action Recognition | [2605.02834](https://arxiv.org/abs/2605.02834) | 🔥 | Video Understanding | ⬜ |
 | 23 | TIPSv2: Vision-Language Pretraining with Enhanced Patch-Text Alignment | [2604.12012](https://arxiv.org/abs/2604.12012) | — | Vision-Language | ⬜ |
 | 24 | Molmo2: Open Weights and Data for Vision-Language Models | [2601.10611](https://arxiv.org/abs/2601.10611) | 🏆 | Vision-Language | ✅ `papers/molmo2.html` |

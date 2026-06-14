@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AsymLoc 深读：地图图像可以离线用大模型算，那查询图像为什么还要被大模型的算力账单绑死？——非对称视觉定位</title>
+<meta name="description" content="AsymLoc 深读：视觉定位里，地图库图像是离线预处理的、不受端侧算力约束，而查询图像要在智能眼镜这类边缘设备上实时算。本文据此提出非对称视觉定位：用大教师模型离线抽地图特征、用 0.04M 参数的小学生模型在线抽查询特征，再用零参数的互最近邻匹配把两者对上。难点在于两个不同模型抽的特征天生不兼容、又不想引入 LightGlue 这种 13M 参数的重匹配器。AsymLoc 的答案是把对齐放进检测器-描述子联合空间：几何匹配损失 L_match 用已知单应约束软对应，联合检测-描述子蒸馏损失 L_KD 用行/列双向 KL 把教师的联合可匹配性分布灌给学生。SiLK 教师下 0.13M 学生在 Aachen 上达教师 95.5% 精度、25× 更小的学生保留 96%+ 教师精度。CVPR 2026 Top Paper（候选）。">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>3D Vision / Visual Localization · 把端侧算力账单从查询模型上卸下来</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs"><a href="../index.html">首页</a> &gt; CVPR 2026 &gt; 3D Vision / Visual Localization &gt; AsymLoc</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">AsymLoc 深读：地图图像可以离线用大模型慢慢算，那查询图像为什么还要被同一份算力账单绑死？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>CVPR 2026 · Top Paper (candidate) · UT Austin / Amazon</span><span>来源：arXiv:2604.09445 v1 PDF（正文 + 附录）</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Visual Localization</span><span class="tag green">Asymmetric Matching</span><span class="tag">Detector–Descriptor</span><span class="tag">Knowledge Distillation</span><span class="tag">Mutual Nearest Neighbor</span><span class="tag">Edge / On-device</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>视觉定位（从一张查询图像估计 6-DoF 相机位姿）的标准流水线里，藏着一个被长期忽略的<strong>不对称性</strong>：<strong>地图库（database）图像是离线建好的</strong>——你可以在服务器上用任意大的模型、花任意多的时间去抽它的特征；而<strong>查询（query）图像必须在端侧实时处理</strong>——智能眼镜、无人机、单板机上，算力被电池和散热死死卡住。既然两端的算力预算根本不在一个量级，为什么还要逼它们用<em>同一个</em>模型？AsymLoc 的回答是<strong>非对称视觉定位</strong>：地图端用大教师模型 $T$ 离线抽特征，查询端用<strong>小到 0.04M 参数</strong>的学生模型 $S$ 在线抽特征，再用<strong>零参数、零学习的互最近邻匹配</strong>把两边对上。难点随之而来：两个<em>不同</em>模型抽出的特征天生不在一个空间里、对不上；而要补这道缝，最省事的办法是塞一个 LightGlue 这样的学习型匹配器——可它光自己就有 ~13M 参数，比特征提取器还重一个量级，端侧根本背不动。AsymLoc 不走这条路，它把<strong>对齐</strong>这件事直接做进<strong>检测器–描述子联合空间</strong>：一个几何匹配损失 $\mathcal{L}_{\text{match}}$ 借已知单应（homography）强制空间对应，一个<strong>联合检测–描述子蒸馏损失</strong> $\mathcal{L}_{\text{KD}}$ 用行/列双向 KL 把教师的<em>联合可匹配性分布</em>（哪里该被检测 × 描述子有多像，两件事耦合在一起）灌给学生。结果：SiLK 当教师时，0.13M 的学生在 Aachen 上达到教师 <strong>95.5%</strong> 的定位精度、推理量却低一个数量级；25× 更小的学生仍保留 <strong>96%+</strong> 的教师精度，全面压过对称基线与改编自图像检索的非对称蒸馏方法。</p>
+
+<figure>
+  <a href="../assets/figures/asymloc/asymloc_fig1.png"><img src="../assets/figures/asymloc/asymloc_fig1.png" alt="AsymLoc 总览：地图端大教师离线、查询端小学生在线，只有 Large(map)+Small(query) 这一格同时满足 Performance 与 Efficiency"></a>
+  <figcaption><strong>图 1（论文 Fig. 1，teaser）：把不对称写进流水线。</strong>上半（Off-line）地图库图像由大教师 $T$ 处理，下半（On-line）查询图像由 25× 更小的学生 $S$ 处理，两路特征做匹配。底部三行表是全文的动机锚点：地图大/查询大（对称大）性能好但效率差；地图小/查询小（对称小）效率好但性能差；<strong>地图大 + 查询小</strong>是唯一同时拿到 ✅ 性能与 ✅ 效率的格子——这正是 AsymLoc 要做成的那一格。看图时盯住"哪一端被算力约束"：被约束的只有查询端，地图端的成本是离线一次性付清的。</figcaption>
+</figure>
+
+<section id="motivation">
+<h2>一、核心问题：被算力账单绑在一起的两端，本就不该共用一个模型</h2>
+
+<p><strong>问题。</strong>视觉定位的典型流水线 [43, 45] 分两步：先用 GPS 先验或视觉地点识别（VPR）从地图库里召回一小撮邻近图像，再在查询图像与这撮地图图像之间做<strong>特征匹配</strong>，由匹配解相对位姿。匹配这一步的效率是关键瓶颈，尤其在智能眼镜这类边缘设备上——算力被电池续航和散热实打实地卡死。</p>
+
+<p><strong>常规解法为什么不够。</strong>最直接的省算力办法是<em>把模型整体换小</em> [22, 42]。但小模型会带来不可忽略的精度掉点 [58, 72]：你省了算力，却把定位质量也一起砍了。AsymLoc 想要的是<strong>逼近大模型的精度、又保留小模型的效率</strong>——常规的"一刀切换小"做不到，因为它默认查询端和地图端必须用<em>同一个</em>模型。</p>
+
+<p><strong>引导：被忽略的那条免费午餐。</strong>这里有一个被前人在<em>匹配步骤</em>上集体漏掉的事实——<strong>地图库图像可以离线预处理</strong>。建图是一次性的、在服务器上做的，那里没有电池、没有散热约束。换句话说，<strong>地图端的算力是"免费"的</strong>（已经付过一次、可以无限重用），真正受约束的只有查询端。那么自然的问题是：<em>既然两端的算力预算根本不对称，为什么要用对称的模型？</em></p>
+
+<div class="callout">
+<p><strong>核心张力（一句话）。</strong>地图端算力免费、查询端算力昂贵——这是一个天然的<strong>非对称</strong>结构；可现有的局部特征（SuperPoint、SiLK 等）全都假设<strong>对称部署</strong>（两端同一模型），于是把地图端那份免费算力白白浪费掉了。AsymLoc 要做的，就是把这份不对称<em>显式地</em>用起来：地图端尽管上大模型，查询端尽管缩到极小，难点只剩一个——<strong>两个不同模型抽的特征怎么对得上</strong>。</p>
+</div>
+
+<p><strong>为什么"对不上"是真问题。</strong>大模型 $T$ 和小模型 $S$ 各自独立训练，它们的描述子落在<em>不同的</em>表示空间里：同一个物理 3D 点，$T$ 给的 128 维向量和 $S$ 给的向量没有任何理由指向同一个方向，互最近邻匹配（mutual nearest neighbor, MNN）会大面积失配。补缝最省事的办法是塞一个学习型匹配器（SuperGlue [46] / LightGlue [32]），让它用两张图的全局信息去鲁棒地配对——但 LightGlue 自己就有 ~13M 参数（SuperPoint 才 1.3M），推理时间从 ~10ms 涨到 ~93ms [6]。这把"省下来的算力"又全吐回去了，端侧背不动。<strong>所以 AsymLoc 的目标被精确地框死：让 $T$、$S$ 的特征<em>天生兼容</em>，匹配步骤回落到零参数、零学习的 MNN。</strong></p>
+</section>
+
+<section id="contribution">
+<h2>二、贡献拆解：一个新任务 + 一个联合蒸馏目标 + 一份全面验证</h2>
+
+<p>论文把贡献明确列为三条（§1 Contributions），我按"它各自回答了上面的哪一半问题"来转述：</p>
+
+<ol>
+<li><strong>提出"非对称视觉定位"这个任务。</strong>由真实端侧约束驱动：大模型处理地图图像、轻量模型处理查询图像。论文自陈，非对称设定在<em>图像检索（全局描述子）</em>里被充分研究过 [9,16,23,53,65,68]，但<strong>从没有人在图像匹配（局部检测器–描述子）这一步上做非对称</strong>——这是本文宣称的"首次"。<span class="reader">（读者注：这条是任务层面的 framing，价值在于把"地图离线"这个免费午餐摆上桌；下面两条才是技术内核。）</span></li>
+<li><strong>提出 AsymLoc：联合检测器–描述子蒸馏框架。</strong>核心机制——把<em>检测器置信度</em>与<em>描述子相似度</em>整合进<strong>统一的概率对齐目标</strong>，再配一个几何匹配损失。关键洞见（§2 末、§3 开头反复强调）：对齐应当发生在<strong>联合（joint）检测器–描述子空间</strong>里，因为"该不该在这里检测"会调制"这里的描述子有多可信"——两者不该像前人那样<em>独立</em>对齐。</li>
+<li><strong>全面实验。</strong>四个跨域基准（HPatches/ScanNet/IMC2022/Aachen）、两种教师架构（SiLK、SuperPoint）、四档学生尺寸（0.04M–0.13M，最小者比教师小 25×）。结论：同等推理成本下，AsymLoc 一致地压过所有替代方案；在 Aachen 上达到标准流水线 95.5%（SiLK 教师）/ 93%（SuperPoint 教师）的精度，而推理成本低一个数量级。</li>
+</ol>
+
+<p><strong>读者视角的一句提炼。</strong>真正新的不是"用蒸馏压缩模型"（那是老话题），而是<strong>蒸馏的目标变了</strong>：不再让学生去复刻教师的<em>原始特征向量</em>（朴素蒸馏，下文会看到它几乎无效），而是让学生去复刻教师的<strong>联合可匹配性分布</strong>——即"在教师眼里，谁该和谁匹配、以多大概率匹配"这整套软分配结构。学生只要把这套<em>关系</em>学像，它的特征自然就能和教师的特征做 MNN。</p>
+</section>
+
+<section id="datasets">
+<h2>三、数据：训练用 COCO 合成单应对，评测覆盖四个跨域基准</h2>
+
+<p><strong>训练数据（合成单应对）。</strong>所有模型都在 <strong>COCO [31]</strong> 上训练，沿用 SiLK [20] 的做法：从 COCO 采一张图，对它施加一个随机单应变换得到第二个视角，凑成一对 $(a,b)$，<strong>单应矩阵已知</strong>。已知单应 $\Rightarrow$ 像素级 ground-truth 对应 $M_{ab}$ 可直接算出来——这就是几何匹配损失的监督来源，<em>不需要任何人工标注</em>。<span class="reader">（读者注：这一步很关键——单应给的是"哪个像素对应哪个像素"的硬真值，省掉了 3D 重建/SfM 的麻烦，也让训练可以无限合成。）</span></p>
+
+<p><strong>评测基准（四个，论文 §4.1 + Fig. 3）。</strong>覆盖平面单应 / 室内 / 室外、白天/夜晚变化、小到大尺度：</p>
+
+<figure>
+  <a href="../assets/figures/asymloc/asymloc_fig3.png"><img src="../assets/figures/asymloc/asymloc_fig3.png" alt="四个评测基准各取一例：HPatches 平面场景、ScanNet 室内、IMC2022 地标、Aachen 室外昼夜"></a>
+  <figcaption><strong>图 3（论文 Fig. 3）：四个评测域各一例。</strong>HPatches（平面单应、光照/视角变化）→ 测单应估计；ScanNet（室内扫描）→ 测相对位姿 AUC；IMC2022（著名地标）→ 测平均定位精度 MLA；Aachen（室外、白天↔夜晚剧烈外观变化）→ 接进 HLoc 完整定位流水线。四域分别压住"几何稳定性 / 室内位姿 / 室外大尺度 / 昼夜鲁棒"四个不同的失败模式，单点好不算数。</figcaption>
+</figure>
+
+<table>
+<thead><tr><th>基准</th><th>域 / 特点</th><th>评测指标</th></tr></thead>
+<tbody>
+<tr><td><strong>HPatches</strong> [3]</td><td>平面单应对，光照 + 视角变化</td><td>单应估计精度（HEA，阈值 $\epsilon=1,3$ 像素）</td></tr>
+<tr><td><strong>ScanNet</strong> [14]</td><td>室内环境扫描</td><td>位姿精度 AUC @10°/20°（角度阈值）</td></tr>
+<tr><td><strong>IMC2022</strong> [37]</td><td>著名地标，建好的参考地图</td><td>平均定位精度 MLA（多位置/朝向阈值平均）</td></tr>
+<tr><td><strong>Aachen Day-Night</strong> [51]</td><td>室外，白天↔夜晚剧烈外观变化</td><td>定位精度（0.5m,5° / 5m,10°），接入 HLoc [44]</td></tr>
+</tbody>
+</table>
+<p class="note">附录另有 Megadepth [30] 与 XFeat [38] 教师的补充结果（论文 §A.6），此处不展开。所有跨库实验中——IMC2022 / ScanNet / Aachen——<strong>地图用教师处理、查询用学生处理</strong>；HPatches 是图像对，则随机指定哪张喂教师、哪张喂学生。</p>
+</section>
+
+<section id="pipeline">
+<h2>四、Pipeline / 架构：一对已知单应的图，喂出两条损失</h2>
+
+<p><strong>先看全局再拆零件。</strong>训练时每次取一对单应已知的图 $(A,B)$。<strong>教师 $T$ 处理 $A$；图 $B$ 同时被教师 $T$ 和学生 $S$ 处理。</strong>每个网络对每张图输出 $N$ 个关键点，各带一个检测器置信度 $w$ 和一个描述子 $d$。这些输出被组织成两条平行的监督：</p>
+
+<figure>
+  <a href="../assets/figures/asymloc/asymloc_fig2.png"><img src="../assets/figures/asymloc/asymloc_fig2.png" alt="AsymLoc 训练流水线：教师处理 A、学生与教师都处理 B；T(A)+S(B) 组成互匹配矩阵给几何匹配损失，T(A)+S(B) 与 T(A)+T(B) 两个检测器加权相似度矩阵的分布做蒸馏对齐"></a>
+  <figcaption><strong>图 2（论文 Fig. 2，训练流水线）：两条损失的数据流。</strong>左侧：$A$ 走教师（蓝雪花=冻结），$B$ 走学生（火苗=可训练）+ 教师（冻结）。<strong>上路（几何匹配损失）：</strong>用 $T(A)$ 的输出 + $S(B)$ 的输出拼出<em>互匹配矩阵</em>（Mutual Matching Matrix, §3.2），按已知单应给的对应 $M_{ab}$ 监督。<strong>下路（联合检测–描述子蒸馏损失）：</strong>构造两个<em>检测器加权相似度矩阵</em>——一个用 $T(A)$+$S(B)$（学生–教师），一个用 $T(A)$+$T(B)$（教师–教师）——这两个矩阵各自是一个"联合检测–描述子相似度空间"，再用 KL 把<strong>学生–教师</strong>的分布对齐到<strong>教师–教师</strong>的分布（§3.3）。看图要点：教师全程冻结，唯一被训练的是学生 $S$；教师–教师那一路是学生要去模仿的"金标准目标"。</figcaption>
+</figure>
+
+<p><strong>推理时（部署）。</strong>训练完后，地图库每张图离线过一遍教师、存下 $\{(w^T,d^T)\}$；查询图来了，在端侧过一遍学生得 $\{(w^S,d^S)\}$；两边描述子直接做<strong>互最近邻匹配</strong>解位姿。没有学习型匹配器、没有教师参与在线计算——查询端的全部成本就是那 0.04M–0.13M 学生的一次前向。</p>
+</section>
+
+<section id="method">
+<h2>五、方法 / 两条损失：把"哪里检测"和"描述子多像"耦合起来对齐</h2>
+
+<p>这一节是全文的机制核心。我按 kexue 的姿态来：先讲<em>为什么需要</em>每一步，每个近似/假设显式标出，关键结论从两个角度交叉验证。</p>
+
+<h3>5.0 记号与"软分配"为什么是对的抽象层级</h3>
+<p>教师对地图图 $I_d$ 输出 $\{(w_i^T, d_i^T)\}_{i=1}^{N}$，学生对查询图 $I_q$ 输出 $\{(w_j^S, d_j^S)\}_{j=1}^{N}$，其中 $w\in(0,1)$ 是检测器置信度、$d$ 是描述子（式 1–2）。非对称定位就是：用这两套特征算匹配、再解查询相对地图的位姿 $T_{S(I_q)\to T(I_d)}\in SE(3)$（式 3）；而<em>对称参照</em>是两张图都过教师得到 $T_{T(I_q)\to T(I_d)}$（式 4）。<strong>训练目标的灵魂就是让式 3 逼近式 4</strong>——让学生抽的特征"表现得像教师抽的一样"，这样它和教师建的地图才兼容。</p>
+<p><strong>为什么不直接回归描述子？</strong>论文明确说：朴素地把两个网络的输出向量拉近（naive distillation），实测效果很差（见下文实验），这与图像检索里的非对称文献 [17] 一致。<strong>关键认识：定位真正在乎的不是描述子向量本身长什么样，而是它们<em>诱导出的匹配</em>对不对。</strong>所以 AsymLoc 把监督抬到"<strong>概率匹配（软分配）</strong>"这一层——检测器分数和描述子相似度<em>共同</em>决定软分配，对齐软分配而非原始向量。这是整篇文章方法论上的第一个杠杆。</p>
+
+<h3>5.1 几何匹配损失 $\mathcal{L}_{\text{match}}$：用已知单应钉住"谁该匹配谁"</h3>
+<p><strong>动机。</strong>先得有一个把"空间对应"灌进去的信号——告诉学生：单应说 $A$ 的第 $i$ 点对应 $B$ 的第 $j$ 点，那它俩的匹配概率就该高。</p>
+<p><strong>构造（式 5–8）。</strong>先定义两图描述子的相似度矩阵（带温度 $\tau$ 控制锐度）：</p>
+<div class="equation">$$ S^{TS}_{ij} = \frac{\langle d_i^T(a),\, d_j^S(b)\rangle}{\tau} $$<div class="eq-caption">式 5：教师（图 $a$）描述子与学生（图 $b$）描述子的点积相似度；上标 $TS$ 标明"第一张图走教师、第二张走学生"。$\tau$ 越小、相似度分布越尖。</div></div>
+<p>再把检测器置信度乘进来、并用行/列双向 softmax 做<strong>互</strong>归一化，得到<strong>互匹配矩阵</strong>：</p>
+<div class="equation">$$ P^{TS}_{ij} = w_i^T(a)\, w_j^S(b)\, \sigma_r\!\big(S^{TS}\big)_{ij}\, \sigma_c\!\big(S^{TS}\big)_{ij} $$<div class="eq-caption">式 6：互匹配矩阵。$w_i^T(a)w_j^S(b)$ 是两端检测器置信度的乘积（双方都觉得"这是个好点"才算数）；$\sigma_r,\sigma_c$ 分别是行、列方向的 softmax（式 7–8），两者相乘 $\approx$ "$i$ 在 $j$ 这一行里最像 × $j$ 在 $i$ 这一列里最像"，即软化版的<strong>互</strong>最近邻。</div></div>
+<p><strong>公式读法（要点）。</strong>式 6 把<em>三件事</em>压进一个标量：①两端检测器都自信（$w^T w^S$ 大）；②$i$ 把 $j$ 看作行内最佳（$\sigma_r$）；③$j$ 把 $i$ 看作列内最佳（$\sigma_c$）。三者皆高，$P_{ij}$ 才大——这正是"互"最近邻的可微近似。<strong>注意这就是推理时 MNN 的训练期对应物</strong>：训练用的软分配和部署用的硬 MNN 是同一套逻辑的两端，所以学生学到的东西在部署时不打折。</p>
+<p><strong>损失（式 9）。</strong>给定单应导出的真对应集合 $M_{ab}$，对其中每个 $(i,j)$ 最大化匹配概率（双向）：</p>
+<div class="equation">$$ \mathcal{L}_{\text{match}} = -\!\!\!\sum_{\substack{(i,j)\in M_{ab}\\ w_i^T(a)>\tau_d}}\!\!\! \log P^{TS}_{ij}\;\; -\!\!\!\sum_{\substack{(i,j)\in M_{ab}\\ w_i^T(b)>\tau_d}}\!\!\! \log P^{ST}_{ij} $$<div class="eq-caption">式 9：几何匹配损失。只对教师认为可靠的点（$w^T>\tau_d$，置信阈值 $\tau_d$）算损失——监督只来自教师有把握的检测，避免低置信关键点带来的噪声。$P^{TS}$ 与 $P^{ST}$ 是把"哪张图走教师"互换后的两个方向，保证对称地约束两个匹配方向。</div></div>
+<p><strong>显式假设 / 边界。</strong>这里有一个隐含近似：用<strong>$\tau_d$ 门控</strong>等于假设"教师高置信处的对应可信、低置信处不可信"。论文的消融揭示了它的副作用——见 5.3：$\mathcal{L}_{\text{match}}$ 单独用<em>反而有害</em>，因为它对检测器<strong>没有负信号</strong>，本质上更像一个"把损失重加权到教师自信区域"的正则项，而不是一个完整的学习目标。这是一个诚实且重要的自我揭示。</p>
+
+<h3>5.2 联合检测–描述子蒸馏损失 $\mathcal{L}_{\text{KD}}$：让学生复刻教师的"联合可匹配性分布"</h3>
+<p><strong>动机（也是全文最关键的一步）。</strong>仅有几何匹配还不够——它只约束了<em>真对应</em>那几个点，没有把教师对"<strong>整张相似度图谱</strong>"的判断传过去。前人 [38] 的做法是把检测器和描述子<em>分开</em>对齐；AsymLoc 主张<strong>联合</strong>对齐，因为"检测器可靠性会调制描述子相似度该被多信任"——这两件事在匹配里本就是耦合的。</p>
+<p><strong>构造（式 10）。</strong>把原始相似度矩阵 $S^{ST},S^{TT}$ 用两端检测器置信度加权，得到两个"检测器加权相似度矩阵"：</p>
+<div class="equation">$$ \bar S^{ST}_{ij} = \Big(\tfrac{w_i^S}{\tau_s}\Big)\Big(\tfrac{w_j^T}{\tau_t}\Big) S^{ST}_{ij}, \qquad \bar S^{TT}_{ij} = \Big(\tfrac{w_i^T}{\tau_t}\Big)\Big(\tfrac{w_j^T}{\tau_t}\Big) S^{TT}_{ij} $$<div class="eq-caption">式 10：两个联合检测–描述子空间。左边 $\bar S^{ST}$ 是<strong>学生–教师</strong>对（学生抽的查询 × 教师抽的地图），右边 $\bar S^{TT}$ 是<strong>教师–教师</strong>对（金标准）。$\tau_s,\tau_t$ 是分别控制学生/教师检测器置信度影响力的温度，经验选取（附录 A.1 有消融）。把 $w$ 乘进相似度，等于说"描述子有多像，要按两端各自有多想检测这里来打折"。</div></div>
+<p><strong>蒸馏损失（式 11–12）。</strong>把两个加权相似度矩阵各自经行/列 softmax 变成概率分布，再用<strong>行、列双向 KL 散度</strong>把学生–教师分布对齐到教师–教师分布：</p>
+<div class="equation">$$ \mathcal{L}_{\text{KD}}^{ST} = \mathrm{KL}\!\big(\sigma_r(\bar S^{ST})\,\Vert\,\sigma_r(\bar S^{TT})\big) + \mathrm{KL}\!\big(\sigma_c(\bar S^{ST})\,\Vert\,\sigma_c(\bar S^{TT})\big) $$<div class="eq-caption">式 11：联合蒸馏损失（学生–教师方向）。$\sigma_r,\sigma_c$ 是行、列 softmax；行方向 $\approx$ 查询→地图的相似结构，列方向 $\approx$ 地图→查询。两个 KL 都要小，才保证<strong>双向</strong>的相似度结构一致。把 $TS$ 方向也算一遍，合成 $\mathcal{L}_{\text{KD}}=\mathcal{L}_{\text{KD}}^{ST}+\mathcal{L}_{\text{KD}}^{TS}$（式 12）。</div></div>
+<p><strong>公式读法。</strong>$\bar S^{TT}$ 是"两边都用教师时、教师眼中该有的匹配分布"——这是学生<em>本可达到</em>的天花板（因为地图端本来就是教师抽的）。让 $\bar S^{ST}$（学生当查询端）去逼近它，等于直接命令学生："你抽出来的查询特征，要让它和教师的地图特征算出的相似度分布，跟教师自己算出来的那份一模一样。"这比"复刻教师的描述子向量"宽松得多也对得多——学生不必复刻向量，只需复刻<strong>向量之间的关系</strong>。</p>
+<p><strong>两角度交叉验证这步为什么 work。</strong></p>
+<ul>
+<li><strong>自上而下（目标对齐角度）：</strong>部署时用的是 MNN，MNN 只看相似度矩阵的行列极值结构，<em>不看</em>描述子向量的绝对方向。所以训练就该直接对齐"相似度分布的行列结构"——式 11 对齐的恰好就是它。训练目标和部署目标在同一个量上，没有 train-test gap。</li>
+<li><strong>自下而上（信息论角度）：</strong>KL$(\sigma(\bar S^{ST})\Vert\sigma(\bar S^{TT}))=0 \Leftrightarrow$ 两个 softmax 分布逐元素相等。由于 $\bar S^{TT}$ 用的是教师在两端的真实输出，逼近它就是逼近"教师–教师可达的最优软分配"——学生能拿到的最好结果，正是把自己伪装成"地图端那个教师"。两条路殊途同归：对齐<em>关系</em>比对齐<em>向量</em>更贴近定位真正要的东西。</li>
+</ul>
+
+<h3>5.3 总目标（式 13）</h3>
+<div class="equation">$$ \mathcal{L}_{\text{AsymLoc}} = \mathcal{L}_{\text{match}} + \lambda_{\text{KD}}\,\mathcal{L}_{\text{KD}} $$<div class="eq-caption">式 13：总损失。$\lambda_{\text{KD}}$ 平衡"几何监督"与"跨模型概率对齐"，经验取 2。$\mathcal{L}_{\text{match}}$ 提供空间对应的硬骨架、$\mathcal{L}_{\text{KD}}$ 提供联合分布的软肌肉，两者协同（消融见下）。</div></div>
+<p><strong>诚实的内部张力。</strong>论文消融（表 2）显示：$\mathcal{L}_{\text{match}}$ 单独用是<em>有害</em>的（它缺检测器负信号、退化成正则）；$\mathcal{L}_{\text{KD}}$ 单独用就有大幅提升；两者合用最好。这说明<strong>真正的主力是联合蒸馏 $\mathcal{L}_{\text{KD}}$，几何匹配是协同增益而非独立贡献</strong>——这是一个比"两个损失都重要"更精确、也更可证伪的论断。</p>
+</section>
+
+<section id="training">
+<h2>六、训练配置：教师冻结，只训学生</h2>
+<table>
+<thead><tr><th>项</th><th>设置（论文 §4.1 + §A.3）</th></tr></thead>
+<tbody>
+<tr><td>训练数据</td><td>COCO [31] 单图 + 随机单应生成第二视角 → 已知单应对 $(a,b)$</td></tr>
+<tr><td>教师 / 学生</td><td>教师预训练后<strong>冻结</strong>；只优化学生 $S$（非对称目标）</td></tr>
+<tr><td>教师架构</td><td>SiLK [20]（1M 参数）、SuperPoint [15]（1.3M）；附录另含 XFeat [38]</td></tr>
+<tr><td>学生四档</td><td>0.13M（7 层 CNN）/ 0.08M（7 层减通道）/ 0.06M（6 层）/ 0.04M（6 层减通道）；CNN backbone + 检测/描述头</td></tr>
+<tr><td>训练轮数 / 优化器</td><td>50 epochs，Adam [28]，初始学习率 $1\times10^{-3}$</td></tr>
+<tr><td>关键超参</td><td>检测置信阈值 $\tau_d=0.65$；蒸馏权重 $\lambda_{\text{KD}}=2$（均经验设定）</td></tr>
+<tr><td>数据增强</td><td>随机亮度、旋转、缩放、高斯噪声</td></tr>
+<tr><td>GPU-hours</td><td><strong>论文未说明</strong>具体训练时长 / 硬件账单（"完整实现细节见附录 A.3"，正文未给小时数）。</td></tr>
+</tbody>
+</table>
+<p class="note">论文未在正文披露 GPU 型号与训练总时长，故此处不做任何 GPU-hours 估算。对称基线（Standard / Naive Distillation）则两张图用同一网络编码，遵循 SuperPoint/SiLK 标准流程。</p>
+</section>
+
+<section id="experiments">
+<h2>七、实验结果：同等推理成本下逼近教师，且全面压过非对称基线</h2>
+
+<p><strong>主表（论文 Table 1，完整转写）。</strong>下表逐行转写论文主结果：蓝区为 SiLK 教师、橙区为 SuperPoint 教师，外加 LoFTR、SuperPoint+LightGlue 作为重量级参照。指标见列头。关注两组对比：①每档学生的 <em>Standard（对称小）</em> vs <em>AsymLoc</em>——同尺寸、同推理成本，只差训练方式；②AsymLoc vs 教师 Oracle——精度逼近到什么程度。</p>
+
+<div style="overflow-x:auto">
+<table class="dense">
+<thead>
+<tr><th>方法</th><th>Asym?</th><th>在线<br>参数</th><th>离线<br>参数</th><th>GFLOPs<br>(1图)</th><th>HPatches<br>HEA ε=1</th><th>HPatches<br>HEA ε=3</th><th>ScanNet<br>@10°</th><th>ScanNet<br>@20°</th><th>IMC2022<br>MLA</th><th>Aachen Day<br>(0.5m,5°/5m,10°)</th><th>Aachen Night</th></tr>
+</thead>
+<tbody>
+<tr><td colspan="12" style="background:#eaf4fb"><strong>SiLK 教师 · Backbone 0.13M</strong></td></tr>
+<tr><td>Standard</td><td>✗</td><td>0.13M</td><td>0.13M</td><td>6.6</td><td>0.56</td><td>0.80</td><td>29.7</td><td>45.2</td><td>0.45</td><td>80.2 / 85.2</td><td>69.7 / 80.0</td></tr>
+<tr><td>Naive distill (Symm)</td><td>✗</td><td>0.13M</td><td>0.13M</td><td>6.6</td><td>0.56</td><td>0.79</td><td>29.5</td><td>44.2</td><td>0.44</td><td>80.0 / 85.1</td><td>69.9 / 81.0</td></tr>
+<tr><td>Naive distill (Asym)</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.80</td><td>30.5</td><td>45.1</td><td>0.45</td><td>80.0 / 85.1</td><td>70.1 / 81.4</td></tr>
+<tr><td>AML</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.81</td><td>30.7</td><td>46.2</td><td>0.46</td><td>80.6 / 85.5</td><td>70.1 / 81.4</td></tr>
+<tr><td>RKD</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.56</td><td>0.81</td><td>31.1</td><td>47.4</td><td>0.46</td><td>81.0 / 85.3</td><td>70.0 / 81.2</td></tr>
+<tr><td>CSD</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.83</td><td>32.1</td><td>47.5</td><td>0.48</td><td>81.2 / 85.6</td><td>71.0 / 82.4</td></tr>
+<tr><td>D3Still</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.82</td><td>32.9</td><td><strong>49.0</strong></td><td>0.47</td><td>81.5 / 86.0</td><td>71.0 / 82.4</td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc (Ours)</strong></td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td><strong>0.60</strong></td><td><strong>0.84</strong></td><td><strong>32.9</strong></td><td>48.9</td><td><strong>0.51</strong></td><td><strong>83.3 / 87.8</strong></td><td><strong>71.2 / 84.4</strong></td></tr>
+<tr><td colspan="12" style="background:#eaf4fb"><strong>SiLK 教师 · 更小学生（仅列 Standard vs Ours）</strong></td></tr>
+<tr><td>Standard (0.08M)</td><td>✗</td><td>0.08M</td><td>0.08M</td><td>4.87</td><td>0.55</td><td>0.79</td><td>27.6</td><td>44.6</td><td>0.43</td><td>79.1 / 83.2</td><td>67.9 / 78.8</td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc (0.08M)</strong></td><td>✓</td><td>0.08M</td><td>1M</td><td>4.87</td><td>0.59</td><td>0.83</td><td>31.5</td><td>48.5</td><td>0.50</td><td>82.1 / 86.0</td><td>71.0 / 83.2</td></tr>
+<tr><td>Standard (0.06M)</td><td>✗</td><td>0.06M</td><td>0.06M</td><td>3.27</td><td>0.52</td><td>0.76</td><td>24.2</td><td>38.9</td><td>0.39</td><td>75.0 / 80.5</td><td>64.5 / 75.4</td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc (0.06M)</strong></td><td>✓</td><td>0.06M</td><td>1M</td><td>3.27</td><td>0.58</td><td>0.83</td><td>31.0</td><td>47.4</td><td>0.48</td><td>80.6 / 85.1</td><td>69.2 / 82.0</td></tr>
+<tr><td>Standard (0.04M)</td><td>✗</td><td>0.04M</td><td>0.04M</td><td>1.97</td><td>0.49</td><td>0.72</td><td>22.1</td><td>35.5</td><td>0.37</td><td>73.7 / 78.0</td><td>60.0 / 73.8</td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc (0.04M)</strong></td><td>✓</td><td>0.04M</td><td>1M</td><td>1.97</td><td>0.56</td><td>0.82</td><td>30.1</td><td>45.8</td><td>0.47</td><td>80.1 / 84.8</td><td>69.0 / 81.2</td></tr>
+<tr style="background:#fff7ee"><td><strong>SiLK (Teacher · Oracle)</strong></td><td>✗</td><td>1M</td><td>1M</td><td>47.3</td><td>0.62</td><td>0.86</td><td>34.1</td><td>50.2</td><td>0.56</td><td>87.2 / 91.5</td><td>74.5 / 86.8</td></tr>
+<tr><td colspan="12" style="background:#fff7ee"><strong>SuperPoint 教师（橙区，节选 Standard vs Ours + Oracle）</strong></td></tr>
+<tr><td>Standard (0.08M)</td><td>✗</td><td>0.08M</td><td>0.08M</td><td>4.87</td><td>0.38</td><td>0.74</td><td>17.5</td><td>31.0</td><td>0.38</td><td>78.5 / 82.1</td><td>53.0 / 70.2</td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc (0.08M)</strong></td><td>✓</td><td>0.08M</td><td>1M</td><td>4.87</td><td>0.41</td><td>0.76</td><td>18.3</td><td>33.5</td><td>0.39</td><td>80.7 / 84.5</td><td>56.6 / 72.1</td></tr>
+<tr><td>Standard (0.06M)</td><td>✗</td><td>0.06M</td><td>0.06M</td><td>3.27</td><td>0.33</td><td>0.71</td><td>12.3</td><td>26.6</td><td>0.35</td><td>73.9 / 78.2</td><td>51.3 / 68.1</td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc (0.06M)</strong></td><td>✓</td><td>0.06M</td><td>1M</td><td>3.27</td><td>0.39</td><td>0.75</td><td>16.9</td><td>31.4</td><td>0.37</td><td>77.9 / 83.0</td><td>55.8 / 71.5</td></tr>
+<tr style="background:#fff7ee"><td><strong>SuperPoint (Teacher · Oracle)</strong></td><td>✗</td><td>1.3M</td><td>1.3M</td><td>26.1</td><td>0.43</td><td>0.80</td><td>21.5</td><td>36.4</td><td>0.49</td><td>86.8 / 90.0</td><td>59.2 / 74.5</td></tr>
+<tr><td colspan="12"><strong>重量级参照（对称大模型 + 学习型匹配器）</strong></td></tr>
+<tr><td>LoFTR</td><td>✗</td><td>28M</td><td>28M</td><td>223</td><td>0.65</td><td>0.87</td><td>40.8</td><td>57.6</td><td>0.66</td><td>94.4 / 97.7</td><td>91.8 / 98.0</td></tr>
+<tr><td>SuperPoint + LightGlue</td><td>✗</td><td>14M</td><td>14M</td><td>63.3</td><td>0.47</td><td>0.82</td><td>35.3</td><td>53.3</td><td>0.61</td><td>95.4 / 98.3</td><td>91.8 / 100.0</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">表格为论文 Table 1 的完整转写（数值照录，含原文中 0.04M 行的 ScanNet 等）。"在线参数"=查询端实际承载的模型；"离线参数"=地图端教师（成本离线一次性付清）。对称设置（Standard / Naive）学生即教师，故两列参数相同。</p>
+
+<p><strong>怎么读这张表（三句话）。</strong></p>
+<ol>
+<li><strong>同尺寸、同 GFLOPs，AsymLoc 一致碾压 Standard。</strong>0.13M：HEA ε=1 从 0.56→0.60、IMC2022 MLA 0.45→0.51、Aachen Night 80.0→84.4。<em>推理成本一分钱没多花</em>（在线参数与 GFLOPs 完全相同），差别全来自训练方式——这是"非对称训练免费午餐"的直接证据。</li>
+<li><strong>逼近教师。</strong>论文正文给的招牌数字：0.13M 学生在 HPatches 上仅比默认 SiLK 低 2%，却小 8×、省 7× FLOPs；Aachen 上达教师 95.5%（SiLK）/ 93%（SuperPoint）精度。注意 LoFTR / LightGlue 那两行——精度更高，但参数 14M–28M、GFLOPs 63–223，是端侧背不动的量级；它们标的是"上限在哪"，不是同台竞争对象。</li>
+<li><strong>压过所有改编自检索的非对称蒸馏。</strong>AML / RKD / CSD / D3Still 都是把图像检索里的非对称方法搬过来的强基线；AsymLoc 几乎在每个指标上更优，唯一例外是 D3Still 在 ScanNet@20° 上以 0.1 分微弱领先（49.0 vs 48.9）——论文如实指出了这一点。</li>
+</ol>
+
+<figure>
+  <a href="../assets/figures/asymloc/asymloc_fig4.png"><img src="../assets/figures/asymloc/asymloc_fig4.png" alt="三联匹配可视化：左对称学生-学生匹配失败、中 AsymLoc 学生-教师匹配成功、右对称教师-教师匹配（金标准）"></a>
+  <figcaption><strong>图 4（论文 Fig. 4）：为什么"非对称"必须显式建模。</strong>同一对图、三种匹配方式的绿色对应线：<strong>左</strong>对称学生–学生（两端都用小模型）匹配稀疏且杂乱——这是把模型一刀切小的下场；<strong>中</strong> AsymLoc 学生–教师匹配又密又准；<strong>右</strong>对称教师–教师（金标准）。中、右两图肉眼几乎一致——这正是 $\mathcal{L}_{\text{KD}}$ 要学生复刻的目标：让"学生当查询端"产出的匹配，逼近"教师当查询端"的匹配。</figcaption>
+</figure>
+
+<figure>
+  <a href="../assets/figures/asymloc/asymloc_fig5.png"><img src="../assets/figures/asymloc/asymloc_fig5.png" alt="四联效率-精度权衡曲线：AsymLoc 的 Pareto 前沿明显更平、参数效率更高，逼近教师虚线"></a>
+  <figcaption><strong>图 5（论文 Fig. 5）：更平的 Pareto 前沿 = 更好的尺度可扩展性。</strong>(A) HPatches 上 HEA vs GFLOPs：绿（AsymLoc）随算力下降时精度掉得比红（Standard）慢得多，几乎贴着教师虚线。(B) HEA/GFLOP vs 参数量：参数越小、单位算力效率越高（机器学习常态），但 AsymLoc 的提升速率远快于 Standard。(C)(D) 在 IMC2022 的 MLA 上重复同样的结论。一句话：<strong>把算力砍小，AsymLoc 的精度损失率远低于对称训练</strong>——它不是在某个点上赢，而是整条曲线都更靠右上。</figcaption>
+</figure>
+
+<figure>
+  <a href="../assets/figures/asymloc/asymloc_fig6.png"><img src="../assets/figures/asymloc/asymloc_fig6.png" alt="附录宽范围 Pareto：0.005M 到 0.5M 学生，AsymLoc 绿线全程在 Standard 红线之上、贴近 Teacher(SiLK) 虚线"></a>
+  <figcaption><strong>图 6（论文附录 Pareto，0.005M–0.5M 宽范围）：极小模型处差距最大。</strong>横轴 GFLOPs、纵轴 HEA，箭头标出各档参数量。越往左（模型越小）绿红两线的竖直间距越大——在 <strong>0.005M</strong> 这个极端处，非对称训练把 HEA 从 ~0.60 拉到 ~0.75。这呼应正文论断：模型越小、对称训练掉得越狠，而 AsymLoc 恰好在最受约束的端侧场景里收益最大。</figcaption>
+</figure>
+</section>
+
+<section id="ablations">
+<h2>八、消融：到底是哪条损失在起作用？</h2>
+<p><strong>损失分解（论文 Table 2）。</strong>在 HPatches（HEA）与 ScanNet（RP-AUC）上拆 $\mathcal{L}_{\text{match}}$ 与 $\mathcal{L}_{\text{KD}}$：</p>
+<table>
+<thead><tr><th>$\mathcal{L}_{\text{match}}$</th><th>$\mathcal{L}_{\text{KD}}$</th><th>HPatches HEA ε=1</th><th>HEA ε=3</th><th>ScanNet @10°</th><th>@20°</th></tr></thead>
+<tbody>
+<tr><td>✓</td><td>—</td><td>0.53</td><td>0.70</td><td>21.6</td><td>35.8</td></tr>
+<tr><td>—</td><td>✓</td><td>0.57</td><td>0.82</td><td>30.0</td><td>46.9</td></tr>
+<tr style="background:#eef7f1"><td>✓</td><td>✓</td><td><strong>0.59</strong></td><td><strong>0.83</strong></td><td><strong>31.5</strong></td><td><strong>48.5</strong></td></tr>
+</tbody>
+</table>
+<p><strong>三点结论（论文 §4.3 原文 + 我的读法）。</strong></p>
+<ul>
+<li><strong>$\mathcal{L}_{\text{match}}$ 单独用是有害的。</strong>第 1 行甚至低于纯 $\mathcal{L}_{\text{KD}}$。论文给的机理：$\mathcal{L}_{\text{match}}$ 对检测器<em>没有负信号</em>，它退化成一个"把损失重加权到教师自信区"的正则项，而非完整目标。这条澄清了一个容易误判的点——几何匹配不是越多越好。</li>
+<li><strong>$\mathcal{L}_{\text{KD}}$ 是主力。</strong>单独用就拿到绝大部分增益（@20° 35.8→46.9）。这与 §5.2 的双角度论证一致：定位真正在乎的是"相似度分布的行列结构"，而 $\mathcal{L}_{\text{KD}}$ 直接对齐它。</li>
+<li><strong>两者协同。</strong>合用再升一档（@20° 48.5），说明几何骨架与分布肌肉互补——$\mathcal{L}_{\text{match}}$ 钉住真对应的位置，$\mathcal{L}_{\text{KD}}$ 抹平整张分布。</li>
+</ul>
+<p class="note">温度 $\tau_s,\tau_t$、$\mathcal{L}_{\text{KD}}$ 的进一步消融与更宽参数范围/ResNet backbone 实验在附录 A.1/A.2/A.4，正文未给完整数表，此处不逐项转写。另一条正文结论：朴素蒸馏（直接拉近描述子向量）相对 Standard 几乎无改善——再次印证"对齐关系 ≫ 对齐向量"。</p>
+</section>
+
+<section id="limitations">
+<h2>九、局限与复现门槛</h2>
+<ul>
+<li><strong>需要已知单应/对极几何的训练对。</strong>$\mathcal{L}_{\text{match}}$ 的真对应 $M_{ab}$ 来自已知单应（COCO 合成）。这让训练免标注、可无限合成，但也意味着监督信号建立在"单应能描述视角变化"的前提上；对单应无法刻画的强 3D 视差/遮挡，合成对的覆盖是有上限的（论文用真实基准评测来缓解，但训练分布仍是合成单应）。</li>
+<li><strong>精度天花板被教师锁死。</strong>学生最好也只能逼近"教师当查询端"的表现（图 4 右、$\bar S^{TT}$）。要更高精度只能换更强教师——AsymLoc 解决的是"在给定教师下、查询端省到极致"，不是"突破教师上限"。与 LoFTR/LightGlue 的差距（表 1）正是教师档次的差距，而非方法缺陷。</li>
+<li><strong>非对称的代价转移到了地图端。</strong>"查询端便宜"的另一面是"地图端要存教师特征、且换教师要重建库"。论文的设定假设地图离线、可一次性付清；在地图频繁更新或存储受限的场景，这笔账需要单独评估（论文未展开该成本分析）。</li>
+<li><strong>D3Still 在 ScanNet@20° 上仍以 0.1 分微弱领先</strong>（49.0 vs 48.9）——论文如实承认，并非全指标横扫。</li>
+<li><strong>正文未披露训练时长 / 硬件，</strong>故本文不做 GPU-hours 估算（见 §训练配置）。代码仓库：检索（arXiv、OpenReview、GitHub）<strong>未找到</strong>官方开源链接，复现需自行实现；本文所有数字均以 arXiv:2604.09445 v1 PDF 为准。</li>
+</ul>
+</section>
+
+<section id="summary">
+<h2>十、总结：把"地图离线"这条免费午餐吃干净</h2>
+<p>AsymLoc 的洞见小而锋利：<strong>视觉定位的两端算力预算本就不对称</strong>（地图离线免费、查询在线昂贵），那就别再用对称模型把它们捆在一起。它把"对齐"做进<strong>检测器–描述子联合空间</strong>——用 $\mathcal{L}_{\text{KD}}$ 让学生复刻教师的<em>联合可匹配性分布</em>（对齐关系而非向量），用 $\mathcal{L}_{\text{match}}$ 借已知单应钉住空间对应——使得 0.04M 的学生抽出的查询特征，能和 1M 教师建的地图直接做<strong>零参数互最近邻匹配</strong>。代价：查询端 25× 更小、推理量低一个数量级；回报：保留 96%+ 教师精度，全面压过对称基线与改编自图像检索的非对称蒸馏。</p>
+<p><strong>一句话 Takeaway。</strong>当一个流水线里"有的部分可以离线、有的必须在线"时，<em>不对称是结构性的免费午餐</em>——AsymLoc 给出的范式是：把昂贵那一端蒸馏成廉价那一端，但蒸馏的目标要对齐"<strong>部署时真正会用到的那个量</strong>"（这里是 MNN 的相似度行列结构），而不是图省事去对齐原始特征。这个思路的适用面远不止视觉定位。</p>
+</section>
+
+<section id="references">
+<h2>参考与署名</h2>
+<ul>
+<li><strong>原文：</strong>Mohammad Omama, Gabriele Berton, Eric Foxlin, Yelin Kim. <em>AsymLoc: Towards Asymmetric Feature Matching for Efficient Visual Localization.</em> arXiv:2604.09445 v1（2026-04-10）。UT Austin / Amazon。CVPR 2026 · Top Paper（候选，来自 SkalskiP/top-cvpr-2026-papers 策展榜单，非官方奖项）。</li>
+<li><strong>本文依据：</strong>全部数值、公式（式 1–13）、表格（Table 1 完整转写、Table 2）均以 arXiv:2604.09445 v1 PDF 正文 + 附录为准；论文未说明处已标注"论文未说明"。</li>
+<li><strong>代码：</strong>检索 arXiv / OpenReview / GitHub 未找到官方开源仓库（none found）；CVF CVPR 2026 openaccess 页面当前 404，故未链接。</li>
+<li><strong>方法论署名（红线说明）：</strong>本文的机制写作（动机先行、每个假设显式标出、关键结论从 ≥2 角度交叉验证）采用了 <strong>苏剑林 / kexue.fm 的科学推导方法论</strong>。但本次 <code>kexue:su</code> 语料检索返回的卡片（扩散模型恒等式蒸馏 [archives/10085, 10567]、BERT-of-Theseus 模块替换压缩 [archives/7575]、CUR 分解检索 [archives/9336] 等）<strong>均与"局部检测器–描述子联合蒸馏 / 互最近邻匹配 / 视觉定位"主题不吻合</strong>，按归因红线，<strong>不</strong>对本文任何具体技术主张做 <code>[archives/XXXX]</code> 苏剑林引用——仅应用其方法论姿态，特此说明。</li>
+<li><strong>关键参照文献（论文引用，原编号）：</strong>SiLK [20]、SuperPoint [15]、LightGlue [32]、SuperGlue [46]、LoFTR [55]、XFeat [38]、D3Still [67]、CSD [66]、AML [10]、RKD [36]；基准 HPatches [3]、ScanNet [14]、IMC2022 [37]、Aachen [51]、HLoc [44]、COCO [31]。</li>
+</ul>
+</section>
+
+</main>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline / 架构</a></li><li><a href="#method">方法 / 两条损失</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>AsymLoc: Towards Asymmetric Feature Matching for Efficient Visual Localization</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper (candidate)</dd><dt>机构</dt><dd>UT Austin / Amazon</dd><dt>任务</dt><dd>非对称视觉定位（地图离线大教师 + 查询在线小学生）</dd><dt>arXiv</dt><dd>2604.09445 v1</dd><dt>Topic</dt><dd>Visual Localization · Asymmetric Feature Matching</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：地图大+查询小 = 唯一双 ✅ 的格子</li><li>图 2：两条损失的数据流（教师冻结）</li><li>式 6：互匹配矩阵 = 软化版 MNN</li><li>式 11：行/列双向 KL 对齐联合分布</li><li>表 1：0.13M 学生达教师 95.5%（Aachen）</li><li>图 4：学生–教师匹配 ≈ 教师–教师金标准</li><li>表 2：$\mathcal{L}_{\text{KD}}$ 是主力，$\mathcal{L}_{\text{match}}$ 单用有害</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> AsymLoc 深读</p><p><span class="status-good">figures</span> 6 张 PNG（fig1/2/3/4/5/6，原生分辨率）</p><p><span class="status-good">tables</span> Table 1 完整转写 + Table 2</p><p><span class="status-good">formula</span> 式 1–13（式 5/6/9/10/11/13 重点转写）</p><p><span class="status-warn">scope</span> 精度被教师档次锁定；训练依赖已知单应；无官方开源</p></div></section></aside></div>
+</body>
+</html>

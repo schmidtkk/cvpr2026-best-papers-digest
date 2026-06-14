@@ -22,7 +22,7 @@
     "chordedit_author_award": "https://cnshiyang.github.io/"
   },
   "status_summary": {
-    "completed_pages": 28,
+    "completed_pages": 39,
     "pending_pages": 0,
     "completed_ids": [
       "d4rt",
@@ -52,9 +52,35 @@
       "ibisagent",
       "care",
       "molmo2",
-      "matanyone2"
+      "matanyone2",
+      "vggtseg",
+      "mum",
+      "v2sam",
+      "insid3",
+      "rwpt",
+      "asymloc",
+      "retseg",
+      "mamma",
+      "safari",
+      "marco",
+      "btb3d"
     ],
     "pending_ids": []
+  },
+  "issues": {
+    "main": {
+      "output": "index.html",
+      "markers": "PAPERS",
+      "status_markers": "STATUS",
+      "group_by": "category"
+    },
+    "medical": {
+      "output": "medical.html",
+      "markers": "MEDPAPERS",
+      "status_markers": "MEDSTATUS",
+      "group_by": "subtopic",
+      "tag_field": "subtopic_key"
+    }
   },
   "papers": [
     {
@@ -326,7 +352,12 @@
       "status": "completed",
       "figures_count": 7,
       "formula_check": "passed",
-      "missing_info": "训练总时长、steps/epochs、完整 LR schedule 等已标注论文未说明"
+      "missing_info": "训练总时长、steps/epochs、完整 LR schedule 等已标注论文未说明",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "医学 VLM / 多模态理解",
+      "subtopic_key": "med-vlm"
     },
     {
       "id": "voxtell",
@@ -348,7 +379,12 @@
       "status": "completed",
       "figures_count": 9,
       "formula_check": "passed",
-      "missing_info": "总训练 steps/epochs、完整 LR schedule、表 1/表 3 个别数据集精确名置于附录（正文按模态行+点名数值核对）"
+      "missing_info": "总训练 steps/epochs、完整 LR schedule、表 1/表 3 个别数据集精确名置于附录（正文按模态行+点名数值核对）",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "影像分割 / 像素级推理",
+      "subtopic_key": "med-seg"
     },
     {
       "id": "spectre",
@@ -370,7 +406,12 @@
       "status": "completed",
       "figures_count": 13,
       "formula_check": "passed",
-      "missing_info": "总 GPU 卡数/墙钟时间论文未披露（仅给 batch/steps/epoch）；生物标志物 AUC 正文无数值表（图 3 柱高为图中读数）；表 1/3 个别数据集精确名以附录为准"
+      "missing_info": "总 GPU 卡数/墙钟时间论文未披露（仅给 batch/steps/epoch）；生物标志物 AUC 正文无数值表（图 3 柱高为图中读数）；表 1/3 个别数据集精确名以附录为准",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "3D 基础模型 / 表征与生成",
+      "subtopic_key": "med-foundation"
     },
     {
       "id": "xpcr",
@@ -392,7 +433,12 @@
       "status": "completed",
       "figures_count": 8,
       "formula_check": "passed",
-      "missing_info": "具体 GPU 小时数/墙钟时间论文未披露（仅给 A100 单卡/多卡分工与零样本确定性解码）；表 2/3/4 为原 21 行表的代表性节选转写（完整行见原文）"
+      "missing_info": "具体 GPU 小时数/墙钟时间论文未披露（仅给 A100 单卡/多卡分工与零样本确定性解码）；表 2/3/4 为原 21 行表的代表性节选转写（完整行见原文）",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "评测基准",
+      "subtopic_key": "med-benchmark"
     },
     {
       "id": "surgcot",
@@ -414,7 +460,12 @@
       "status": "completed",
       "figures_count": 8,
       "formula_check": "passed",
-      "missing_info": "评测总耗时/API 成本/数据集是否完整公开放出论文未披露；图 3 数据分布正文无数值表；正文写评测 12 模型而主表实测 10 个、开源模型命名（Intern3.5-VL-8B / InternVL-8B）不完全一致，本页以表头实测为准"
+      "missing_info": "评测总耗时/API 成本/数据集是否完整公开放出论文未披露；图 3 数据分布正文无数值表；正文写评测 12 模型而主表实测 10 个、开源模型命名（Intern3.5-VL-8B / InternVL-8B）不完全一致，本页以表头实测为准",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "外科 / 内窥镜",
+      "subtopic_key": "med-surgical"
     },
     {
       "id": "unihema",
@@ -435,7 +486,12 @@
       "status": "completed",
       "figures_count": 8,
       "formula_check": "passed",
-      "missing_info": "Step 2 的 epoch/batch 与各阶段 LR/优化器等细节在附录（本页未取得补充材料，标论文未说明）；总训练仅给“约 8 天/单卡 4090”，GPU-小时为粗略估算；Table 1 含更多数据集行，本页保留代表行 + Mean；CVF 页未上线，仅 arXiv + 代码链接"
+      "missing_info": "Step 2 的 epoch/batch 与各阶段 LR/优化器等细节在附录（本页未取得补充材料，标论文未说明）；总训练仅给“约 8 天/单卡 4090”，GPU-小时为粗略估算；Table 1 含更多数据集行，本页保留代表行 + Mean；CVF 页未上线，仅 arXiv + 代码链接",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "病理 / 组织",
+      "subtopic_key": "med-pathology"
     },
     {
       "id": "lemon",
@@ -456,7 +512,12 @@
       "status": "completed",
       "figures_count": 11,
       "formula_check": "passed",
-      "missing_info": "预训练端到端墙钟总时长论文未披露（仅给 8×V100、batch、epoch 与 per-step 训练时间表 12）；图 1 雷达为按轴刻度的图中读数，精确数值以表 3/4 为准；LEMON 数据靠 YouTube 链接分发，原视频被删则条目失效，无法保证逐帧完全复现"
+      "missing_info": "预训练端到端墙钟总时长论文未披露（仅给 8×V100、batch、epoch 与 per-step 训练时间表 12）；图 1 雷达为按轴刻度的图中读数，精确数值以表 3/4 为准；LEMON 数据靠 YouTube 链接分发，原视频被删则条目失效，无法保证逐帧完全复现",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "外科 / 内窥镜",
+      "subtopic_key": "med-surgical"
     },
     {
       "id": "octomed",
@@ -477,7 +538,12 @@
       "status": "completed",
       "figures_count": 13,
       "formula_check": "passed",
-      "missing_info": "无公开训练/数据代码仓库（仅放出 HF 模型权重 OctoMed/OctoMed-7B）；teacher 调用总量、GPU 卡数、墙钟时间、API 成本论文未披露，故不做算力估算；8M 数据集的具体混合比例/采样配额/teacher prompt 仅给框架，逐项复现需自行重建；图 4/图 8 因 caption 紧贴正文未被 caption-anchored 抽取器命中，改用 PyMuPDF 按页坐标裁剪同区域（非盲裁页面渲染）；附录定性图 S1–S3 未抽取，相关三条特性据论文文字转述。"
+      "missing_info": "无公开训练/数据代码仓库（仅放出 HF 模型权重 OctoMed/OctoMed-7B）；teacher 调用总量、GPU 卡数、墙钟时间、API 成本论文未披露，故不做算力估算；8M 数据集的具体混合比例/采样配额/teacher prompt 仅给框架，逐项复现需自行重建；图 4/图 8 因 caption 紧贴正文未被 caption-anchored 抽取器命中，改用 PyMuPDF 按页坐标裁剪同区域（非盲裁页面渲染）；附录定性图 S1–S3 未抽取，相关三条特性据论文文字转述。",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "医学 VLM / 多模态理解",
+      "subtopic_key": "med-vlm"
     },
     {
       "id": "medmo",
@@ -499,7 +565,12 @@
       "status": "completed",
       "figures_count": 10,
       "formula_check": "passed",
-      "missing_info": "各模态在 26M 语料中的精确占比表、Stage 4 的 λ_FP/λ_FN 取值与各阶段 epoch 数论文未说明；表 1/2 为节选转写（完整逐基准数值见原文）；训练 GPU·小时为按披露数字粗略估算"
+      "missing_info": "各模态在 26M 语料中的精确占比表、Stage 4 的 λ_FP/λ_FN 取值与各阶段 epoch 数论文未说明；表 1/2 为节选转写（完整逐基准数值见原文）；训练 GPU·小时为按披露数字粗略估算",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "医学 VLM / 多模态理解",
+      "subtopic_key": "med-vlm"
     },
     {
       "id": "medcmr",
@@ -520,7 +591,12 @@
       "status": "completed",
       "figures_count": 6,
       "formula_check": "passed",
-      "missing_info": "评测 GPU 卡数/墙钟时间论文未披露（纯评测无训练，不做 GPU-hours 估算）；无可运行的独立代码仓/数据下载（仅核到项目主页 github.com/LsmnBmnc/Med-CMR）；表 2/3 为完整 18 行转写，图 3 的 r/p 取自图内标注，无独立病灶级 mask/bbox 视觉接地核验"
+      "missing_info": "评测 GPU 卡数/墙钟时间论文未披露（纯评测无训练，不做 GPU-hours 估算）；无可运行的独立代码仓/数据下载（仅核到项目主页 github.com/LsmnBmnc/Med-CMR）；表 2/3 为完整 18 行转写，图 3 的 r/p 取自图内标注，无独立病灶级 mask/bbox 视觉接地核验",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "评测基准",
+      "subtopic_key": "med-benchmark"
     },
     {
       "id": "orapo",
@@ -540,7 +616,12 @@
       "status": "completed",
       "figures_count": 9,
       "formula_check": "passed",
-      "missing_info": "无公开代码仓（已核查 arXiv/GitHub，仅 awesome-RRG 列表收录，无官方实现）；CVF 2026 proceedings 页尚未上线（核查 403）；完整超参/LR/优化器/步数论文称见 Supplementary，正文未全列；训练总 GPU 卡时/墙钟时间与 FactS 的 GPT-4.1 调用成本论文未披露，不做 GPU-hours 估算；表 1/表 2 为代表性节选转写（原文 20+/16 行），表 3/4/5 为完整转写；附录图 3 定性例为整页文本对照表，按惯例转写为表格而非贴图"
+      "missing_info": "无公开代码仓（已核查 arXiv/GitHub，仅 awesome-RRG 列表收录，无官方实现）；CVF 2026 proceedings 页尚未上线（核查 403）；完整超参/LR/优化器/步数论文称见 Supplementary，正文未全列；训练总 GPU 卡时/墙钟时间与 FactS 的 GPT-4.1 调用成本论文未披露，不做 GPU-hours 估算；表 1/表 2 为代表性节选转写（原文 20+/16 行），表 3/4/5 为完整转写；附录图 3 定性例为整页文本对照表，按惯例转写为表格而非贴图",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "报告生成",
+      "subtopic_key": "med-report"
     },
     {
       "id": "cure",
@@ -562,7 +643,12 @@
       "status": "completed",
       "figures_count": 14,
       "formula_check": "passed",
-      "missing_info": "GPU 卡数与墙钟时间论文未披露（仅给 LoRA r16/4-bit、有效 batch 25、9000 步）；自适应 α 取值、表 5/表 7 完整列置于附录（正文节选代表性列并注明全表见原文）"
+      "missing_info": "GPU 卡数与墙钟时间论文未披露（仅给 LoRA r16/4-bit、有效 batch 25、9000 步）；自适应 α 取值、表 5/表 7 完整列置于附录（正文节选代表性列并注明全表见原文）",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "报告生成",
+      "subtopic_key": "med-report"
     },
     {
       "id": "ibisagent",
@@ -584,7 +670,12 @@
       "status": "completed",
       "figures_count": 13,
       "formula_check": "passed",
-      "missing_info": "总 GPU 小时/墙钟时间论文未披露（仅给 16×A100、SFT 10ep/RL 12ep、batch 256）；正文未列完整 VQA 数值表（未臆造）；外院 held-out 数据为三家医疗中心私有不公开，该项结果第三方无法直接复现；代码仓库存在但 README releases 标 TODO/部分，端到端复现门槛偏高"
+      "missing_info": "总 GPU 小时/墙钟时间论文未披露（仅给 16×A100、SFT 10ep/RL 12ep、batch 256）；正文未列完整 VQA 数值表（未臆造）；外院 held-out 数据为三家医疗中心私有不公开，该项结果第三方无法直接复现；代码仓库存在但 README releases 标 TODO/部分，端到端复现门槛偏高",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "影像分割 / 像素级推理",
+      "subtopic_key": "med-seg"
     },
     {
       "id": "care",
@@ -606,7 +697,12 @@
       "status": "completed",
       "figures_count": 14,
       "formula_check": "passed",
-      "missing_info": "预训练 GPU 卡数/墙钟/epoch 论文未披露（仅给下游单卡 RTX 4090、关键超参 k=8/λRSL=0.1/E*=0.5/λSPF=0.5）；表 1 为按任务类的平均，33 任务逐项数值在附录（图 4 为热力图）；表 4/表 5 取代表性行并注明完整列见原文"
+      "missing_info": "预训练 GPU 卡数/墙钟/epoch 论文未披露（仅给下游单卡 RTX 4090、关键超参 k=8/λRSL=0.1/E*=0.5/λSPF=0.5）；表 1 为按任务类的平均，33 任务逐项数值在附录（图 4 为热力图）；表 4/表 5 取代表性行并注明完整列见原文",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "病理 / 组织",
+      "subtopic_key": "med-pathology"
     },
     {
       "id": "molmo2",
@@ -649,6 +745,240 @@
       "status": "completed",
       "figures_count": 17,
       "formula_check": "passed"
+    },
+    {
+      "id": "vggtseg",
+      "award": "Top Paper (candidate)",
+      "title": "VGGT-Segmentor: Geometry-Enhanced Cross-View Segmentation",
+      "category": "Segmentation",
+      "short": "VGGT-Segmentor",
+      "topic": "Cross-View Segmentation · Ego–Exo Correspondence",
+      "blurb": "发现 VGGT 在 ego–exo 跨视角分割里逐像素点投影会系统性漂移，但 object-level 注意力仍稳定对齐；据此冻结 VGGT、只加轻量 Union Segmentation Head（Mask Prompt Fusion 做区域共识 → Point-Guided Prediction 把漂移点降级成稀疏 prompt → Mask Refinement 迭代修边），再用单图自监督训练甩掉配对标注。Ego–Exo4D 上 67.7/68.0 IoU 创 SOTA，零配对标注预训练版反超全监督前 SOTA DOMR。",
+      "tags": "Top Paper candidate Segmentation Cross-View VGGT geometry-enhanced Ego-Exo4D Union Segmentation Head point projection drift mask refinement self-supervised single-image Beihang",
+      "authors": "Yulu Gao; Bohao Zhang; Zongheng Tang; Jitong Liao; Wenjun Wu; Si Liu",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2604.13596",
+        "code": "https://github.com/buaa-colalab/VGGT-S",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Gao_VGGT-Segmentor_Geometry-Enhanced_Cross-View_Segmentation_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/vggtseg.html",
+      "thumbnail": "assets/figures/vggtseg/vggtseg_fig1.png",
+      "status": "completed",
+      "figures_count": 10,
+      "formula_check": "passed"
+    },
+    {
+      "id": "mum",
+      "award": "Top Paper (candidate)",
+      "title": "MuM: Multi-View Masked Image Modeling for 3D Vision",
+      "category": "3D Vision",
+      "short": "MuM",
+      "topic": "Multi-View MIM · Geometric Self-Supervision",
+      "blurb": "把 MAE 的统一掩码 + 像素重建原样推广到同一场景的任意多视图：所有视图都掩 75%，共享权重 ViT-L 编码器逐帧独立编码，再用带跨帧注意力的轻量 ViT-B decoder 联合重建——对称、无参考帧，n=1 自动退化为 MAE。几何作为“高掩码下做对多视图重建”的副产品被压进编码器。仅用约 DINOv3 1/30 量级算力，MuM 作为冻结特征编码器在多视图三维重建、稠密匹配、相对位姿等几乎所有几何任务上反超 DINOv3 与 CroCo v2（语义任务仍逊于 DINOv3）。",
+      "tags": "Top Paper candidate 3D Vision Multi-View Masked Image Modeling MIM MAE self-supervised representation geometric features CroCo DINOv3 dense matching feedforward reconstruction relative pose ViT RoPE Chalmers",
+      "authors": "David Nordström; Johan Edstedt; Fredrik Kahl; Georg Bökman",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2511.17309",
+        "code": "https://github.com/davnords/mum"
+      },
+      "page_path": "papers/mum.html",
+      "thumbnail": "assets/figures/mum/mum_fig1.png",
+      "status": "completed",
+      "figures_count": 11,
+      "formula_check": "passed"
+    },
+    {
+      "id": "v2sam",
+      "award": "Top Paper (candidate)",
+      "title": "V²-SAM: Marrying SAM2 with Multi-Prompt Experts for Cross-View Object Correspondence",
+      "category": "Object Tracking / Correspondence",
+      "short": "V²-SAM",
+      "topic": "Cross-View Object Correspondence · Ego–Exo",
+      "blurb": "SAM2 要\"目标视角里的坐标\"才能分割，可跨视角下那个坐标恰好是未知量。V²-SAM 用两个互补的 prompt 生成器把它\"造\"出来：V²-Anchor 借 DINOv3 几何特征做跨视角匹配→前景约束→稀疏分层→质心，首次为 SAM2 解锁跨视角坐标提示（全程不可训练）；V²-Visual 用 VPMatcher 从特征与结构两路映射外观；再以 Anchor/Visual/Fusion 三专家 + 点级循环一致选择器 PCCS 按实例挑最可靠的预测。Ego-Exo4D 48.0 总 IoU、DAVIS-17 78.8 J&F、HANDAL-X 77.2 IoU 三榜 SOTA，仅 15M 可训练参数（约 ObjectRelator 的 1%）。",
+      "tags": "Top Paper candidate SAM2 DINOv3 cross-view correspondence object tracking Ego-Exo Ego-Exo4D multi-prompt experts cyclic consistency PCCS coordinate prompt segmentation HANDAL-X DAVIS INSAIT Tsinghua Fudan",
+      "authors": "Jiancheng Pan; Runze Wang; Tianwen Qian; Yanwei Fu; Xiangyang Xue; Xiaomeng Huang; Luc Van Gool; Danda Pani Paudel; Yuqian Fu",
+      "links": {
+        "project": "https://jianchengpan.space/projects/V2-SAM/",
+        "arxiv": "https://arxiv.org/abs/2511.20886",
+        "code": "https://github.com/jaychempan/V2-SAM",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Pan_V2-SAM_Marrying_SAM2_with_Multi-Prompt_Experts_for_Cross-View_Object_Correspondence_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/v2sam.html",
+      "thumbnail": "assets/figures/v2sam/v2sam_fig1.png",
+      "status": "completed",
+      "figures_count": 19,
+      "formula_check": "passed"
+    },
+    {
+      "id": "insid3",
+      "award": "Top Paper (candidate)",
+      "title": "INSID3: Training-Free In-Context Segmentation with DINOv3",
+      "category": "Segmentation",
+      "short": "INSID3",
+      "topic": "Training-Free In-Context Segmentation · DINOv3",
+      "blurb": "一张标注样例就要在任意域、任意粒度上分割任意概念——这件事同时需要跨图语义匹配与图内区域分组，前人因此要么微调 VFM（毁泛化）要么拼接 DINOv2+SAM（臃肿、粒度被锁）。INSID3 发现一个冻结 DINOv3 本就同时具备这两种能力，唯一拦路虎是一条系统性的位置偏置（不同图同坐标 patch 无视语义虚假高相似）。它用噪声图估出低维位置子空间、再用训练自由的正交投影把它投掉；然后原始特征做凝聚聚类（图内分组）、去偏特征做反向对应+跨图相似选种子、最后跨图语义×图内自相似乘法聚合补全。9 基准四域全面 SOTA，平均 +7.5% mIoU，仅 304M（约 SAM 流水线 1/3），零 mask 监督；去偏迁移到语义对应再涨 +6.6% PCK。",
+      "tags": "Top Paper candidate training-free in-context segmentation DINOv3 feature matching positional debiasing orthogonal projection one-shot segmentation part segmentation personalized segmentation self-supervised VFM agglomerative clustering semantic correspondence SPair-71k COCO LVIS PASCAL-Part Oral",
+      "authors": "Claudia Cuttano; Gabriele Trivigno; Christoph Reich; Daniel Cremers; Carlo Masone; Stefan Roth",
+      "links": {
+        "project": "https://visinf.github.io/INSID3/",
+        "arxiv": "https://arxiv.org/abs/2603.28480",
+        "code": "https://github.com/visinf/INSID3"
+      },
+      "page_path": "papers/insid3.html",
+      "thumbnail": "assets/figures/insid3/insid3_fig1.png",
+      "status": "completed",
+      "figures_count": 15,
+      "formula_check": "passed"
+    },
+    {
+      "id": "rwpt",
+      "award": "Top Paper (candidate)",
+      "title": "Real-World Point Tracking with Verifier-Guided Pseudo-Labeling",
+      "category": "Object Tracking / Point Tracking",
+      "short": "RWPT (Verifier-Guided)",
+      "topic": "Point Tracking · Verifier-Guided Pseudo-Labeling",
+      "blurb": "长时点跟踪几乎全在合成数据上训练，搬到真实视频会因 sim-to-real 域差掉点；自训练用伪标签是出路，但单个 teacher 的可靠性逐帧波动、不同 teacher 误差弱相关，朴素地随机选/平均会把噪声放大成漂移。本文把问题重定义为逐帧可靠性估计，提出 verifier——一个不直接预测坐标的 meta-model：它用冻结 CoTracker3 特征比较 query 局部外观与各候选局部外观，经 Candidate Transformer（受限 cross-attn + 时序 self-attn）输出逐帧候选可靠性分布，用候选到 GT 距离的负 softmax 做软对比目标训练，全程仅需合成标注。verifier 既能当推理集成、也能引导真实世界微调。基座 Track-On2 → Track-On-R：EgoPoints、RoboTAP、Kinetics、DAVIS 四基准全 SOTA（EgoPoints δ_avg 61.7→67.3），且用数据更少。",
+      "tags": "Top Paper candidate point tracking TAP track any point verifier verifier-guided pseudo-labeling self-training teacher ensemble Track-On-R Track-On2 CoTracker3 BootsTAPIR EgoPoints RoboTAP DAVIS Kinetics reliability estimation sim-to-real Koc University Shanghai Jiao Tong",
+      "authors": "Görkay Aydemir; Fatma Güney; Weidi Xie",
+      "links": {
+        "project": "https://kuis-ai.github.io/track_on_r/",
+        "arxiv": "https://arxiv.org/abs/2603.12217",
+        "code": "https://github.com/gorkaydemir/track_on"
+      },
+      "page_path": "papers/rwpt.html",
+      "thumbnail": "assets/figures/rwpt/rwpt_fig1.png",
+      "status": "completed",
+      "figures_count": 7,
+      "formula_check": "passed"
+    },
+    {
+      "id": "asymloc",
+      "award": "Top Paper (candidate)",
+      "title": "AsymLoc: Towards Asymmetric Feature Matching for Efficient Visual Localization",
+      "category": "3D Vision / Visual Localization",
+      "short": "AsymLoc",
+      "topic": "Visual Localization · Asymmetric Feature Matching",
+      "blurb": "视觉定位的两端算力预算本就不对称：地图库图像离线建好、可任意用大模型，查询图像却要在智能眼镜这类边缘设备上实时算。AsymLoc 据此提出非对称视觉定位——地图端用大教师 T 离线抽特征、查询端用小到 0.04M 参数的学生 S 在线抽特征，再用零参数互最近邻匹配把两边对上。难点是两个不同模型的特征天生不兼容、又不想塞 LightGlue 这类 13M 重匹配器。AsymLoc 把对齐做进检测器-描述子联合空间：几何匹配损失 L_match 借已知单应钉住空间对应，联合检测-描述子蒸馏损失 L_KD 用行/列双向 KL 让学生复刻教师的联合可匹配性分布（对齐关系而非向量）。SiLK 教师下 0.13M 学生在 Aachen 达教师 95.5% 精度、推理量低一个数量级；25× 更小学生仍保留 96%+ 教师精度，全面压过对称基线与改编自图像检索的非对称蒸馏方法。",
+      "tags": "Top Paper candidate Visual Localization Asymmetric Feature Matching detector descriptor knowledge distillation mutual nearest neighbor camera pose 6-DoF retrieval edge on-device SuperPoint SiLK LightGlue HPatches ScanNet IMC2022 Aachen UT-Austin Amazon",
+      "authors": "Mohammad Omama; Gabriele Berton; Eric Foxlin; Yelin Kim",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2604.09445"
+      },
+      "page_path": "papers/asymloc.html",
+      "thumbnail": "assets/figures/asymloc/asymloc_fig1.png",
+      "status": "completed",
+      "figures_count": 10,
+      "formula_check": "passed"
+    },
+    {
+      "id": "retseg",
+      "award": "Top Paper (candidate)",
+      "title": "Retrieve and Segment: Are a Few Examples Enough to Bridge the Supervision Gap in Open-Vocabulary Segmentation?",
+      "category": "Segmentation",
+      "short": "Retrieve & Segment",
+      "topic": "Open-Vocabulary Segmentation · Retrieval-Augmented Test-Time Adaptation",
+      "blurb": "开放词表分割落后全监督，根因是 VLM 只有图像级监督、加上语言本身有歧义。RNS 给每个类补上几张像素标注图当视觉支撑，把零样本改造成少样本，核心问题随之变成——文本支撑和视觉支撑怎么融合。与 kNN-CLIP / FREEDA 的后期手工相加不同，RNS 在原型层先把两种模态融成 f=λt+(1-λ)v，再用检索（每个 query patch 从视觉支撑取 k 近邻）为每张测试图现搭训练集，per-image 训一个轻量线性分类器、A100 上 <1 秒。图 5 检索消融、表 1 去组件、图 3/4 full/partial 支撑三路独立验证。DINOv3.txt+SAM、每类 20 张图把与全监督的差距压到 11.5 mIoU，比零样本 +34，且只用约 964 张标注（全监督用 20k）。",
+      "tags": "Top Paper candidate open-vocabulary segmentation retrieval-augmented few-shot test-time adaptation test-time training modality fusion prototype fusion VLM CLIP DINOv3 SAM zero-shot personalized segmentation Highlight",
+      "authors": "Tilemachos Aravanis; Vladan Stojnić; Bill Psomas; Nikos Komodakis; Giorgos Tolias",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2602.23339",
+        "code": "https://github.com/TilemahosAravanis/Retrieve-and-Segment"
+      },
+      "page_path": "papers/retseg.html",
+      "thumbnail": "assets/figures/retseg/retseg_fig1.png",
+      "status": "completed",
+      "figures_count": 9,
+      "formula_check": "passed"
+    },
+    {
+      "id": "mamma",
+      "award": "Top Paper (candidate)",
+      "title": "MAMMA: Markerless Accurate Multi-person Motion Acquisition",
+      "category": "Pose Estimation / Motion Capture",
+      "short": "MAMMA",
+      "topic": "Markerless Multi-Person Motion Capture · SMPL-X",
+      "blurb": "Vicon 这类基于标记的系统是动捕金标准，却要贴反光球、逐段手工清洗噪声标记，多人贴身时尤其崩。MAMMA 把监督信号从稀疏关键点升级为 512 个密集 2D 表面地标——用 ViT + mask-CNN + 每个地标一个可学习 query 的 transformer decoder（MammaNet），每帧每视角吐出地标位置/不确定度/可见性/接触；再用 SAM2 mask 条件 + 对称极线距离做 100% 跨视角认人，最后无姿态先验、无初始化地多视角重投影拟合 SMPL-X。全程仅用合成数据 MammaSyn（BEDLAM 扩到 32 相机 + 互动/手部）训练。Hi4D 19 关节 MPJPE 12.44mm（前 SOTA AvatarPose 32.10），对 Vicon+MoSh 的留出标记误差只差 0.862mm、动画肉眼难辨，并把采集到 SMPL-X 全流程从约 72 小时压到 26 小时。",
+      "tags": "Top Paper candidate markerless mocap motion capture multi-person multi-view keypoints dense 2D landmarks surface landmarks SMPL-X SMPL pose estimation triangulation epipolar correspondence SAM2 mask conditioning landmark queries transformer decoder BEDLAM MammaSyn Vicon Harmony4D Hi4D CHI3D MOYO contact reprojection optimization Max Planck CMU",
+      "authors": "Hanz Cuevas-Velasquez; Anastasios Yiannakidis; Soyong Shin; Giorgio Becherini; Markus Höschle; Joachim Tesch; Taylor Obersat; Tsvetelina Alexiadis; Eni Halilaj; Michael J. Black",
+      "links": {
+        "project": "https://mamma.is.tue.mpg.de/",
+        "arxiv": "https://arxiv.org/abs/2506.13040",
+        "code": "https://github.com/cuevhv/mamma"
+      },
+      "page_path": "papers/mamma.html",
+      "thumbnail": "assets/figures/mamma/mamma_fig1.png",
+      "status": "completed",
+      "figures_count": 14,
+      "formula_check": "passed"
+    },
+    {
+      "id": "safari",
+      "award": "Top Paper (candidate)",
+      "title": "The SA-FARI Dataset: Segment Anything in Footage of Animals for Recognition and Identification",
+      "category": "Segmentation",
+      "short": "SA-FARI",
+      "topic": "Multi-Animal Tracking Dataset · Camera Trap Video Segmentation",
+      "blurb": "野生动物多目标追踪（MAT）是物种/个体/行为识别的底座，却十年没起飞——瓶颈不在模型，而在数据集：现有数据集几乎总要牺牲规模（<1h 标注）、物种多样性（≤5 种）、时空多样性（单保护区几天）或标注质量（mask 多自动生成、无人工核验）之一。SA-FARI 一次做齐这四件互斥的事：741 个独立采样点、4 大洲、10 年（2014–2024）、99 个物种、11,609 段相机陷阱视频，做出 16,224 条逐帧人工核验的 masklet 和 942,702 个框/mask（约 46 小时）——总时长 5×、物种多样性 2× 于此前任何 MAT 数据集，且是首个大规模带人工核验时空分割的野生 MAT 数据集。关键机制是借 SAM 3 data engine 的 human-AI-in-the-loop（自动伪标注→双人 + SAM2 在环修正→穷举性检查）把穷举标注成本压下来。两条独立验证：把训练集喂给 SOTA 模型 HOTA 涨 20+ 点、微调 SAM 3 三倍提升（训练价值）；按 small-mask/challenging/multi/night 切 test 集暴露失败模式——小目标拖检测、遮挡运动拖关联（诊断价值）。",
+      "tags": "Top Paper candidate dataset benchmark multi-animal tracking MAT video segmentation SAM SAM 3 camera trap wildlife conservation animal masklet tracking spatio-temporal segmentation open-vocabulary HOTA long-tail re-identification Conservation X Labs Meta",
+      "authors": "Dante Francisco Wasmuht; Otto Brookes; Maximillian Schall; Pablo Palencia; Chris Beirne; Tilo Burghardt; Majid Mirmehdi; Hjalmar Kühl; Mimi Arandjelovic; Sam Pottie; Peter Bermant; Brandon Asheim; Yi Jin Toh; Adam Elzinga; Jason Holmberg; Andrew Whitworth; Eleanor Flatt; Laura Gustafson; Chaitanya Ryali; Yuan-Ting Hu; Baishan Guo; Andrew Westbury; Kate Saenko; Didac Surís",
+      "links": {
+        "project": "https://www.conservationxlabs.com/sa-fari",
+        "arxiv": "https://arxiv.org/abs/2511.15622",
+        "cvf": "https://openaccess.thecvf.com/content/CVPR2026/html/Wasmuht_The_SA-FARI_Dataset_Segment_Anything_in_Footage_of_Animals_for_CVPR_2026_paper.html"
+      },
+      "page_path": "papers/safari.html",
+      "thumbnail": "assets/figures/safari/safari_fig1.png",
+      "status": "completed",
+      "figures_count": 10,
+      "formula_check": "passed"
+    },
+    {
+      "id": "marco",
+      "award": "Top Paper (candidate)",
+      "title": "MARCO: Navigating the Unseen Space of Semantic Correspondence",
+      "category": "Semantic Correspondence",
+      "short": "MARCO",
+      "topic": "Semantic Correspondence · 单 DINOv2 主干 + 稠密化自蒸馏",
+      "blurb": "语义对应的主流配方是 DINOv2+Stable Diffusion 双编码器，准但近 10 亿参数，且用稀疏关键点（每图 ≤20 点）训出来的模型一换没见过的关键点/类别就塌方（Fig.2b：监督把满屏对得上的流收缩到标注点附近）。MARCO 只用单个 DINOv2 主干（+<5% 参数的 adapter+上采样头），靠一套训练框架补这道缝：① coarse-to-fine 的高斯 RBF 分布匹配，余弦退火把核宽 σ 从 3 缩到 1，先区域级对齐再逼 subpatch 级精度，避开 soft-argmax L2 在多模态下被拉向均值；② dense self-distillation via flow anchoring——EMA 教师挖互最近邻 seed，Delaunay 三角剖分+分片仿射 warp densify 成稠密位移场，再在位移空间聚类、用 GT 关键点 anchor 过滤对称/遮挡错配，把一把关键点变成数千条可靠伪对应，让稀疏监督铺满整块物体表面。SPair-71k/AP-10K/PF-PASCAL 全面 SOTA，最严格阈值 PCK@0.01 +8.9，未见关键点 SPair-U +5.1、未见类别 MP-100 +4.7，且比扩散双编码器小 3×、快 10×。消融阶梯（SPair-U @0.10）：无稠密 loss 41.8→MNN 52.5→+Delaunay 64.7→+GT anchor 67.5。",
+      "tags": "Top Paper candidate Semantic Correspondence feature matching DINOv2 generalization unseen keypoints unseen categories self-distillation EMA teacher coarse-to-fine Gaussian RBF dense pseudo-labels mutual nearest neighbor Delaunay triangulation piecewise-affine warp flow anchoring SPair-71k AP-10K PF-PASCAL MP-100 SPair-U single-backbone Politecnico di Torino TU Darmstadt hessian.AI",
+      "authors": "Claudia Cuttano; Gabriele Trivigno; Carlo Masone; Stefan Roth",
+      "links": {
+        "project": "https://visinf.github.io/MARCO/",
+        "arxiv": "https://arxiv.org/abs/2604.18267",
+        "code": "https://github.com/visinf/MARCO"
+      },
+      "page_path": "papers/marco.html",
+      "thumbnail": "assets/figures/marco/marco_fig1.png",
+      "status": "completed",
+      "figures_count": 11,
+      "formula_check": "passed",
+      "missing_info": "训练总 GPU 卡数/墙钟时间论文未披露（仅给 10 epochs/batch 16/Adam/LR 1e-4），不做 GPU-hours 估算；σ 退火总步 T、adapter 瓶颈维 d、MP-100 完整统计置于 Supp. Material；Table 1 代表性节选转写、Table 3 仅平均列（全 18 类见原文），Table 2/4 完整转写；CVF CVPR 2026 页 404（未上线）故未链接"
+    },
+    {
+      "id": "btb3d",
+      "award": "Medical AI (NeurIPS 2025)",
+      "title": "Better Tokens for Better 3D: Advancing Vision-Language Modeling in 3D Medical Imaging",
+      "category": "Medical AI (NeurIPS 2025)",
+      "short": "BTB3D",
+      "topic": "Medical AI · 3D 医学影像 VLM tokenizer / 小波频域 + 因果卷积 + LFQ + 三阶段课程",
+      "blurb": "把 3D 医学 VLM 的瓶颈从「语言主干大小」重新定位到「体素 token 的保真与可扩展」：3D Haar 小波频域压缩 + 因果 3D 卷积 + lookup-free 量化 + 三阶段课程，在 >300 切片上不增显存地泛化，报告生成临床 F1 +40%、text-to-CT 的 FID −75%。",
+      "tags": "Medical Medical AI 3D medical imaging CT VLM tokenizer wavelet causal convolution lookup-free quantization LFQ three-stage curriculum report generation text-to-CT CT-RATE RadChestCT LLaMA flow matching NeurIPS 2025",
+      "authors": "Ibrahim Ethem Hamamci; Sezgin Er; Suprosanna Shit; Hadrien Reynaud; Dong Yang; Pengfei Guo; Marc Edgar; Daguang Xu; Bernhard Kainz; Bjoern Menze",
+      "links": {
+        "arxiv": "https://arxiv.org/abs/2510.20639",
+        "code": "https://github.com/ibrahimethemhamamci/BTB3D"
+      },
+      "page_path": "papers/btb3d.html",
+      "thumbnail": "assets/figures/btb3d/btb3d_thumb.png",
+      "status": "completed",
+      "issues": [
+        "medical"
+      ],
+      "subtopic": "3D 基础模型 / 表征与生成",
+      "subtopic_key": "med-foundation",
+      "figures_count": 12,
+      "formula_check": "passed",
+      "missing_info": "训练总 GPU 小时/墙钟时间未披露；未做因果 vs 双向卷积对照；仅胸部 CT 验证"
     }
   ]
 }

@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INSID3 深读：上下文分割明明同时需要"跨图语义匹配"和"图内区域分组"，为什么一个冻结的 DINOv3 就能把两件事都办了——还不用任何解码器、微调或 SAM？</title>
+<meta name="description" content="INSID3（CVPR 2026 Oral / Top Paper candidate）深读：一张标注样例就要在任意域、任意粒度上分割任意概念，这件事的硬约束是——既要跨图建立语义对应（找到目标图里同一概念），又要图内把像素聚成连贯区域（把概念补全成完整 mask）。前人要么微调 VFM（毁掉泛化），要么把 DINOv2 + SAM 拼起来（架构臃肿、粒度被 SAM 锁死）。本文用 kexue:su 方法论拆解 INSID3 如何只靠一个冻结 DINOv3 同时拿下这两件事：先诊断出 DINOv3 特征里一条系统性的'位置偏置'（不同图同坐标的 patch 会无视语义地虚假互相匹配），再用一个训练自由的正交投影把它从噪声图估出的低维位置子空间里投掉；然后用原始特征做凝聚聚类（图内分组）、用去偏特征做反向对应 + 跨图相似度选种子、最后把跨图语义×图内自相似相乘做聚合补全。9 个基准、四个域全面 SOTA，平均 +7.5% mIoU，参数只有 304M（约 SAM 流水线的 1/3），去偏还能迁移到语义对应任务上拿 +6.6% PCK。">
+<script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+:root{
+  --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
+  --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
+  --line:#e6edf3;--line-strong:#d3dee7;
+  --brand:#1b6fa8;--brand-deep:#155a87;--brand-soft:#eaf4fb;
+  --accent:#c2772a;--accent-soft:#fff7ee;--green:#3f7a5f;--green-soft:#eef7f1;
+  --code-bg:#f4f7f9;
+  --shadow-sm:0 1px 2px rgba(20,60,90,.05);
+  --shadow:0 8px 28px rgba(20,60,90,.07);
+  --radius:12px;--radius-sm:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --font-serif:"Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:linear-gradient(180deg,var(--bg-top) 0,var(--bg) 260px,#f4f7fa 100%);background-attachment:fixed;color:var(--ink);font-family:var(--font-sans);font-size:17px;line-height:1.85;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+a:hover{color:var(--brand-deep);border-bottom-color:rgba(27,111,168,.4)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:2px}
+
+/* reading-progress bar */
+#read-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--brand),#4aa3d6);z-index:60;transition:width .08s linear}
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1f78b4,#19618f);color:#fff;box-shadow:0 2px 14px rgba(16,60,90,.18)}
+.site-header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.site-title{margin:0;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.01em}
+.site-title small{display:block;margin-top:3px;font-size:12.5px;font-weight:400;opacity:.85;letter-spacing:0}
+.site-title.linked{cursor:pointer}
+.site-title.linked:hover{opacity:.92;text-decoration:underline;text-underline-offset:3px}
+.top-nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;font-size:13.5px}
+.top-nav a{color:#fff;border:0;padding:6px 11px;background:rgba(255,255,255,.12);border-radius:999px}
+.top-nav a:hover{background:rgba(255,255,255,.24);color:#fff}
+
+/* layout */
+.wrap{max-width:1200px;margin:24px auto 72px;padding:0 20px;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:30px;align-items:start}
+.breadcrumbs{grid-column:1/-1;color:var(--muted);font-size:13px;margin:0 2px 2px}
+.breadcrumbs a{color:var(--muted)}
+
+/* article card */
+.article{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.article-head{padding:34px 40px 26px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fafcfe)}
+.date-card{float:left;width:56px;margin:4px 20px 10px 0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;text-align:center;background:var(--paper);color:var(--brand-deep);font-family:var(--font-mono);box-shadow:var(--shadow-sm)}
+.date-card .day{display:block;font-size:26px;line-height:1.1;padding:9px 0 4px;font-weight:700}
+.date-card .month{display:block;color:#fff;background:var(--brand);font-size:11px;padding:3px 0;letter-spacing:.1em;text-transform:uppercase}
+h1{margin:0;color:#1b2a35;font-size:clamp(25px,3.4vw,35px);line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.article-meta{clear:both;margin-top:16px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.article-meta span::after{content:"·";margin-left:10px;color:#b6c3cc}
+.article-meta span:last-child::after{content:"";margin:0}
+.tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;background:var(--brand-soft);border:1px solid #cfe6f4;color:var(--brand-deep);font-size:12px;line-height:1.5;border-radius:999px}
+.tag.orange{background:var(--accent-soft);border-color:#ecd2ad;color:#8a4f13}
+.tag.green{background:var(--green-soft);border-color:#cbe1d3;color:#35664e}
+
+/* content */
+.content{padding:30px 40px 42px}
+.lead{margin:0 0 26px;padding:18px 22px;background:linear-gradient(180deg,#f3f9fd,#fbfdff);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius-sm);color:var(--ink-soft);font-size:17.5px;line-height:1.8}
+section{margin-top:44px;scroll-margin-top:84px}
+h2{margin:0 0 18px;padding-bottom:.42em;color:var(--brand-deep);font-size:clamp(21px,2.5vw,27px);line-height:1.35;font-weight:700;border-bottom:1px solid var(--line);position:relative}
+h2::after{content:"";position:absolute;left:0;bottom:-1px;width:58px;height:3px;background:var(--brand);border-radius:3px}
+h2 .anchor{margin-left:.4em;color:#a9c1d2;border:0;font-size:.72em;opacity:0;transition:opacity .15s}
+h2:hover .anchor{opacity:1}
+h3{margin:30px 0 10px;color:#2c3f4b;font-size:19px;line-height:1.45;font-weight:700}
+p{margin:14px 0}
+ul,ol{padding-left:1.5em}li{margin:7px 0}
+strong{color:#1f2e38;font-weight:700}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);border:1px solid #e2e8ed;padding:.1em .36em;border-radius:5px;color:#2c4a5c}
+pre{overflow:auto;padding:15px 18px;background:#f7fafb;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;line-height:1.7}
+pre code{background:none;border:0;padding:0}
+
+/* call-out boxes */
+.note,.socratic,.formula-note{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--soft);padding:16px 20px;box-shadow:var(--shadow-sm)}
+.note-title,.qa-label{color:var(--brand-deep);font-weight:700;margin-bottom:5px}
+.socratic{border:1px solid #eddfca;border-left:4px solid var(--accent);background:var(--accent-soft)}
+.socratic .question{margin:0 0 7px;color:#8a4f13;font-weight:700}
+.socratic .guide{margin:4px 0;color:#7c6244}
+.socratic .answer{margin:7px 0 0}
+.takeaway{margin-top:12px;padding:10px 13px;background:#fff;border:1px solid #e8d3b1;border-left:3px solid var(--accent);border-radius:var(--radius-sm);color:#6f4a1c}
+.formula-note{background:#f4f9fd;border-color:#dcebf5}
+
+/* equations */
+.equation{margin:24px 0;padding:18px 16px;overflow-x:auto;text-align:center;background:#f7fbfe;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:17px}
+.equation .eq-caption{margin-top:10px;color:var(--muted);font-size:12px;text-align:right;font-family:var(--font-mono)}
+
+/* figures */
+figure{margin:28px 0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:14px;box-shadow:var(--shadow-sm)}
+figure img{display:block;max-width:100%;height:auto;border-radius:var(--radius-sm);background:#fff;margin:0 auto}
+figure a{border:0;display:block}
+figure a img{cursor:zoom-in;transition:filter .15s,transform .15s}
+figure a:hover img{filter:brightness(.97)}
+figcaption{margin-top:12px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.figure-placeholder{min-height:240px;display:grid;place-items:center;background:linear-gradient(90deg,rgba(27,111,168,.07) 1px,transparent 1px),linear-gradient(0deg,rgba(27,111,168,.07) 1px,transparent 1px),#f3f8fb;background-size:24px 24px;border:1px dashed var(--line-strong);border-radius:var(--radius-sm);color:var(--muted);text-align:center;padding:20px}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fig-grid figure{margin:0}
+.fig-grid figcaption{grid-column:1/-1}
+.fig-wide{margin:32px 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:26px 0;border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.6}
+caption{caption-side:top;text-align:left;color:var(--muted);margin:0 0 10px;padding:0 2px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:10px 13px;vertical-align:top;text-align:left}
+th:last-child,td:last-child{border-right:0}
+thead th{background:var(--brand-soft);color:#1f4a63;font-weight:700;border-bottom:2px solid var(--line-strong);position:sticky;top:0}
+tbody tr:nth-child(even) td{background:#fafcfe}
+tbody tr:hover td{background:#f2f8fc}
+tbody tr:last-child td{border-bottom:0}
+
+/* sidebar */
+.sidebar{position:sticky;top:84px;display:grid;gap:16px}
+.side-card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius);overflow:hidden}
+.side-title{margin:0;padding:11px 14px;color:var(--brand-deep);background:linear-gradient(180deg,#f0f7fc,#e9f3fb);border-bottom:1px solid var(--line);font-size:14px;line-height:1.35;font-weight:700}
+.side-body{padding:13px 15px;font-size:13.5px;color:var(--ink-soft)}
+.side-body ol,.side-body ul{margin:0;padding-left:1.2em}
+.side-body li{margin:6px 0;line-height:1.5}
+.side-body a{border-bottom:0;color:var(--ink-soft)}
+.side-body a:hover{color:var(--brand)}
+.side-body .toc-active>a,.side-body a.toc-active{color:var(--brand-deep);font-weight:700}
+.side-body .toc-active{list-style:none}
+.side-body .toc-active::marker{color:var(--brand)}
+.meta-list{display:grid;gap:9px;margin:0}
+.meta-list dt{color:var(--muted);font-size:12px}
+.meta-list dd{margin:-7px 0 0;font-weight:600}
+.search-box{display:flex;gap:6px}
+.search-box input{width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px;font:inherit;font-size:13px}
+.search-box button{border:0;border-radius:var(--radius-sm);background:var(--brand);color:#fff;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}
+
+/* quick links (project/code/arxiv…) on a paper page */
+.quick-links{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.quick-links .ql-label{font-size:12px;color:var(--muted);margin-right:2px}
+.quick-links a,.quick-links-side a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600;border-bottom:1px solid var(--line-strong)}
+.quick-links a:hover,.quick-links-side a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick-links-side{display:flex;flex-wrap:wrap;gap:8px}
+
+.references ol{padding-left:1.35em}
+.references li{margin:11px 0;word-break:break-word}
+.article-footer{border-top:1px solid var(--line);background:#fafcfe;padding:18px 40px;color:var(--muted);font-size:13px}
+.clearfix::after{content:"";display:table;clear:both}
+
+/* hero (paper pages) */
+.hero-split{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;align-items:center;margin:26px 0}
+.hero-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);margin:0}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.kv{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius-sm);padding:13px 14px}
+.kv b{display:block;color:var(--brand-deep);font-size:13px;margin-bottom:3px}
+.mini{font-size:13px;color:var(--muted);line-height:1.6}
+.status-good{color:var(--green);font-weight:700}
+.status-warn{color:#8a4f13;font-weight:700}
+.img-caption-marker{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* home / index */
+.home{max-width:1200px;margin:24px auto 72px;padding:0 20px}
+.home-panel{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:28px}
+.home-panel h2{margin-top:0}
+.home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.filterbar button{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;color:var(--brand-deep);cursor:pointer;font:inherit;font-size:13.5px;transition:background .15s,color .15s}
+.filterbar button:hover{background:var(--brand-soft)}
+.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.search{width:100%;max-width:560px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 14px;font:inherit}
+.card-grid{display:flex;flex-wrap:wrap;gap:18px;align-items:stretch}
+.paper-card{flex:1 1 320px;max-width:440px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
+.paper-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-strong)}
+.paper-card.is-linked{cursor:pointer}
+.paper-card.is-linked:hover{border-color:var(--brand)}
+.paper-card.is-linked:hover h3{color:var(--brand-deep)}
+.paper-card img{width:100%;height:170px;object-fit:cover;background:#f3f8fb;border:0;border-bottom:1px solid var(--line);border-radius:0;display:block}
+.paper-card>div{padding:15px 17px 16px;display:flex;flex-direction:column;flex:1}
+.paper-card h3{margin:0 0 6px;font-size:17px;line-height:1.4;transition:color .15s}
+.paper-card p{margin:6px 0;font-size:14px;line-height:1.55}
+.card-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:auto;padding-top:12px;position:relative;z-index:1}
+.card-links a{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid var(--line-strong);border-radius:999px;background:var(--soft);color:var(--brand-deep);font-size:13px;font-weight:600}
+.card-links a:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta{background:var(--brand);border-color:var(--brand);color:#fff}
+.card-links a.blog-cta:hover{background:var(--brand-deep)}
+.pending{opacity:.7}
+.source-note{font-size:13px;color:var(--muted)}
+
+/* image lightbox */
+.lb-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(16,28,38,.86);backdrop-filter:blur(3px);padding:28px;cursor:zoom-out}
+.lb-overlay.open{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lb-stage{max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:default}
+.lb-stage img{max-width:96vw;max-height:80vh;border-radius:var(--radius-sm);box-shadow:0 24px 70px rgba(0,0,0,.5);background:#fff}
+.lb-cap{color:#dde7ee;font-size:13.5px;line-height:1.6;max-width:880px;text-align:center}
+.lb-close{position:fixed;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#9fb1bd;font-size:12px;pointer-events:none}
+body.lb-lock{overflow:hidden}
+
+/* responsive */
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:22px}
+  .sidebar{position:static;top:auto;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .site-header-inner,.home-hero{grid-template-columns:1fr;align-items:start}
+  .top-nav{justify-content:flex-start}
+  .hero-split,.fig-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{font-size:16px;line-height:1.78}
+  .wrap,.home{padding:0 12px;margin-top:14px}
+  .article-head,.content{padding:22px 18px}
+  .article-footer{padding:15px 18px}
+  .home-panel{padding:20px}
+  .date-card{float:none;margin:0 0 14px}
+  .site-title{font-size:20px}
+  .paper-card{max-width:none}
+  .paper-card img{height:150px}
+}
+@media print{
+  #read-progress,.site-header,.breadcrumbs,.sidebar,.lb-overlay{display:none}
+  body{background:#fff;font-size:12pt}
+  .wrap{display:block;max-width:none;margin:0;padding:0}
+  .article{border:0;box-shadow:none}
+  .article-head,.content,.article-footer{padding:0}
+  a{color:inherit;border:0}
+  figure,table,.note,.socratic,.lead,.equation{break-inside:avoid}
+  @page{margin:18mm 16mm}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* ===== interaction polish · focus-visible rings + tactile :active ===== */
+.filterbar button,.top-nav a,.quick-links a,.quick-links-side a,.card-links a,.search-box button{transition:background .15s,color .15s,border-color .15s,transform .12s ease}
+.filterbar button:focus-visible,.top-nav a:focus-visible,.quick-links a:focus-visible,.quick-links-side a:focus-visible,.card-links a:focus-visible,.search-box button:focus-visible,.search-box input:focus-visible,.lb-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top-nav a:focus-visible{outline-color:#fff;outline-offset:3px}
+.filterbar button:active,.quick-links a:active,.quick-links-side a:active,.card-links a:active,.search-box button:active,.top-nav a:active{transform:translateY(1px)}
+.paper-card:active{transform:translateY(0)}
+</style>
+<script defer>
+(function(){
+  "use strict";
+  function ready(fn){if(document.readyState!=="loading")fn();else document.addEventListener("DOMContentLoaded",fn);}
+  ready(function(){
+    /* reading-progress bar */
+    var bar=document.createElement("div");bar.id="read-progress";document.body.appendChild(bar);
+    function onScroll(){
+      var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;
+      bar.style.width=(Math.min(1,h.scrollTop/max)*100)+"%";
+    }
+    document.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+    /* image lightbox — intercept clicks on <a> wrapping an <img> that points to an image */
+    var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
+    var overlay=document.createElement("div");
+    overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+      '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
+      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+    document.body.appendChild(overlay);
+    var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
+    function openLB(src,cap){
+      lbImg.src=src;lbCap.textContent=cap||"";lbCap.style.display=cap?"":"none";
+      overlay.classList.add("open");document.body.classList.add("lb-lock");
+    }
+    function closeLB(){overlay.classList.remove("open");document.body.classList.remove("lb-lock");lbImg.src="";}
+    document.addEventListener("click",function(e){
+      var a=e.target.closest&&e.target.closest("a");
+      if(!a)return;
+      var href=a.getAttribute("href")||"";
+      var img=a.querySelector("img");
+      if(!img||!IMG_RE.test(href))return;
+      e.preventDefault();
+      var fig=a.closest("figure");
+      var cap=fig?(fig.querySelector("figcaption")||{}).textContent:"";
+      openLB(img.currentSrc||img.src||href,(cap||img.alt||"").trim());
+    });
+    /* any click inside the overlay (image included) just closes it — never navigate */
+    overlay.addEventListener("click",function(){closeLB();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&overlay.classList.contains("open"))closeLB();});
+
+    /* make a paper card's body open its blog page; explicit links keep working */
+    [].forEach.call(document.querySelectorAll(".paper-card"),function(card){
+      var blog=null,blogA=null;
+      [].forEach.call(card.querySelectorAll("a"),function(a){
+        var h=a.getAttribute("href")||"";
+        if(/\.html(\?|#|$)/i.test(h)&&!/^https?:/i.test(h)){blog=h;blogA=a;}
+      });
+      if(!blog)return;
+      if(blogA)blogA.classList.add("blog-cta");
+      card.classList.add("is-linked");
+      card.addEventListener("click",function(e){
+        if(e.target.closest("a"))return;
+        window.location.href=blog;
+      });
+    });
+
+    /* sidebar TOC scrollspy */
+    var links=[].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+    if(links.length){
+      var map=links.map(function(a){var id=a.getAttribute("href").slice(1);return{a:a,el:document.getElementById(id)};}).filter(function(m){return m.el;});
+      var spy=function(){
+        var cur=null;
+        map.forEach(function(m){if(m.el.getBoundingClientRect().top-100<=0)cur=m;});
+        if(!cur)cur=map[0];
+        links.forEach(function(a){(a.closest("li")||a).classList.remove("toc-active");a.classList.remove("toc-active");});
+        (cur.a.closest("li")||cur.a).classList.add("toc-active");cur.a.classList.add("toc-active");
+      };
+      document.addEventListener("scroll",spy,{passive:true});spy();
+    }
+
+    /* clickable site title -> home */
+    (function(){
+      var title=document.querySelector(".site-title");if(!title)return;
+      var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
+      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      if(hp)home=hp.getAttribute("href");
+      else if(document.querySelector(".home"))home="index.html";
+      if(!home)return;
+      title.classList.add("linked");title.setAttribute("role","link");title.setAttribute("tabindex","0");
+      title.addEventListener("click",function(){window.location.href=home;});
+      title.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();window.location.href=home;}});
+    })();
+
+    /* paper-page quick links (project/code/arxiv…) — appendable from manifest entry */
+    (function(){
+      var head=document.querySelector(".article-head");if(!head)return; // paper pages only
+      var ORDER=[["project","Project"],["code","Code"],["arxiv","arXiv"],["cvf","CVF"],["pdf","PDF"],["author_page","Author Page"]];
+      function render(links){
+        var items=ORDER.filter(function(o){return links[o[0]];});if(!items.length)return;
+        function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
+        if(!head.querySelector(".quick-links")){
+          var bar=document.createElement("div");bar.className="quick-links";
+          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+        }
+        var sb=document.querySelector(".sidebar");
+        if(sb&&!sb.querySelector(".quick-links-side")){
+          var card=document.createElement("section");card.className="side-card";
+          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          sb.insertBefore(card,sb.firstChild);
+        }
+      }
+      var meta=document.querySelector('meta[name="paper-links"]');
+      if(meta){try{render(JSON.parse(meta.getAttribute("content")));return;}catch(e){}}
+      if(!window.fetch)return;
+      var file=location.pathname.split("/").pop();
+      fetch("../manifest.json").then(function(r){return r.json();}).then(function(m){
+        var e=(m.papers||[]).filter(function(p){return (p.page_path||"").split("/").pop()===file;})[0];
+        if(e&&e.links)render(e.links);
+      }).catch(function(){});
+    })();
+  });
+})();
+</script>
+</head>
+<body>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">CVPR 2026 Best Papers Digest<small>Segmentation · 一个冻结的 DINOv3，把"跨图语义匹配"与"图内区域分组"合并到同一套特征里</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs"><a href="../index.html">首页</a> &gt; CVPR 2026 &gt; Segmentation &gt; INSID3</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">INSID3 深读：上下文分割明明同时需要"跨图语义匹配"和"图内区域分组"，为什么一个冻结的 DINOv3 就能把两件事都办了——还不用任何解码器、微调或 SAM？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>CVPR 2026 Oral · Top Paper (candidate) · Politecnico di Torino / TU Darmstadt / TU Munich</span><span>来源：arXiv:2603.28480 v1 PDF（正文 + 补充材料）</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Training-Free</span><span class="tag green">In-Context Segmentation</span><span class="tag">DINOv3</span><span class="tag">Feature Matching</span><span class="tag">Positional Debiasing</span><span class="tag">MathJax checked</span></div></header>
+<main class="content">
+
+<p id="abstract" class="lead"><strong>导读。</strong>上下文分割（in-context segmentation, ICS）的任务设定很苛刻：只给<strong>一张标注样例</strong>（参考图 + 它上面的一个二值 mask），就要在目标图里把<strong>同一个概念</strong>抠出来——而这个"概念"可以是整只狗（语义）、狗的耳朵（部件）、或者"我家那只狗"（个体）；目标域还可能是自然图、医学 X 光、水下、航拍。这件事的底层约束是<strong>两件必须同时成立的事</strong>：① <strong>跨图语义匹配</strong>——在目标图里找到和参考概念语义对应的位置；② <strong>图内区域分组</strong>——把这些位置补全成一块空间连贯、粒度正确的 mask。前人要么<strong>微调</strong> VFM 装一个分割解码器（in-domain 涨点但泛化崩盘、粒度被训练分布锁死），要么把 <strong>DINOv2 + SAM</strong> 拼成多阶段流水线（泛化好但架构臃肿、mask 粒度被 SAM 的先验锁死）。本文的核心张力是：<strong>这两件事真的需要两套模型、外加 mask 监督吗？</strong>INSID3 的答案是——<strong>一个冻结的 DINOv3 就够了</strong>。它发现 DINOv3 的稠密特征本就同时具备强<strong>图内自相似</strong>（天然把同一物体/部件聚在一起）和<strong>跨图语义对应</strong>，唯一的拦路虎是一条隐蔽的<strong>位置偏置</strong>（不同图里相同坐标的 patch 会无视语义地虚假高相似）。INSID3 用一个<strong>训练自由的正交投影</strong>把位置成分投掉，再用"原始特征做图内聚类、去偏特征做跨图匹配"的分工，把两件事统一进同一套表征。结果：语义/部件/个体三类一共 9 个基准全面领先，平均 <strong>+7.5% mIoU</strong>，参数 <strong>304M</strong>（约 SAM 流水线 945M 的 1/3），<strong>零 mask 监督、零微调</strong>；顺手把去偏迁移到语义对应任务上还能拿 <strong>+6.6% PCK</strong>。</p>
+
+<figure id="fig-teaser"><a href="../assets/figures/insid3/insid3_fig1.png"><img src="../assets/figures/insid3/insid3_fig1.png" alt="INSID3 总览：左侧一张标注样例驱动任意概念分割（物体/部件/医学/航拍），右侧雷达图对比泛化性"></a><figcaption><strong>图 1（teaser）：一张样例驱动一切，且泛化吊打两条旧路线。</strong>左：单张标注样例就能把概念从整物体、到部件、再到医学/航拍图里抠出来。右雷达图是关键论据——橙色（微调方法，如 SegIC/DiffewS）只在自家训练域（灰底标注）里强，一出分布就塌（如 iSAID、X-Ray）；蓝色（SAM 流水线，如 Matcher/GF-SAM）泛化更稳但靠大而多阶段的架构；紫色 INSID3 用<strong>单一 backbone</strong> 把雷达图撑到最外圈，说明"鲁棒分割"可以直接从 DINOv3 的自监督稠密表征里<strong>涌现</strong>，而不必靠 mask 监督喂出来。</figcaption></figure>
+
+<aside class="note"><div class="note-title">方法论说明（kexue:su）</div>本文的机制部分用 <code>kexue:su</code> 的科学推导姿态来组织：先讲"为什么需要"再讲"是什么"、每个近似/假设显式标出、关键结论从 ≥2 条独立路径交叉验证。检索 <code>kexue:su</code> 语料库时<strong>未命中任何与"位置偏置 / 正交投影去偏 / DINO 特征匹配 / 上下文分割"主题相关的卡片</strong>，因此全文<strong>不</strong>对苏剑林做任何 <code>[archives/XXXX]</code> 归因——只借用方法论，不虚构引用（详见 §参考与诚实边界）。</aside>
+
+<section id="motivation">
+<h2>核心问题：ICS 的两个矛盾需求，为什么逼出了"两套模型"——而它们真的必须吗？<a class="anchor" href="#motivation">#</a></h2>
+
+<p>先把任务讲清楚。给参考图 $I^r$ 和它的二值 mask $M^r$，再给目标图 $I^t$，要在 $I^t$ 里输出"同一概念"的 mask。注意"概念"的粒度是开放的：可以是语义类（"狗"，分割目标图里所有狗）、部件（"狗耳朵"）、个体（"我家这只狗"）。这意味着任何把粒度写死的设计都会在某个设定上翻车。</p>
+
+<div class="socratic">
+<p class="question">问：要完成这件事，最少需要哪几种能力？</p>
+<p class="guide">引导：把"从一张样例到一张目标 mask"拆成必经的两步。第一步，你得在目标图里<strong>找到</strong>概念在哪——这需要跨两张图建立语义对应（参考概念 ↔ 目标位置）。第二步，找到的位置往往只是概念的一部分（比如只命中了狗头），你得把它<strong>补全</strong>成一块完整、连贯、粒度正确的区域——这需要在目标图<strong>图内</strong>判断"哪些像素属于同一概念"。</p>
+<p class="answer">答：① <strong>跨图语义匹配</strong>（cross-image correspondence）+ ② <strong>图内区域分组</strong>（intra-image grouping）。前者要求特征"无视位置、只看语义"地跨图对齐；后者要求特征"位置连贯地"把同物体/部件聚团。这两个需求<strong>对特征的诉求恰好相反</strong>——一个要抹掉空间、一个要利用空间。前人之所以走向"两套模型"，正是因为他们手里的 VFM 没法同时满足这两条。</p>
+<div class="takeaway">Takeaway：ICS 的难不在"分割"本身，而在"<strong>同一套特征要同时服务两个相反诉求</strong>"。谁能用一套表征兼顾，谁就能甩掉外挂。</div>
+</div>
+
+<p>顺着这个矛盾看前人两条路线，就知道它们各自的代价：</p>
+<ul>
+<li><strong>路线 A：微调 VFM 装解码器</strong>（SegIC 在 DINOv2 上训分割头、DiffewS 微调 Stable Diffusion）。它把"分割"显式地教给模型，in-domain 涨点很猛（SegIC 在 COCO-20$^i$ 上 76.1 mIoU），但代价是<strong>把模型绑死在训练分布上</strong>：换到 iSAID（航拍）、X-Ray（医学）就大幅掉点，粒度也被训练标注锁死。本质上是<strong>用监督把泛化换成了 in-domain 精度</strong>。</li>
+<li><strong>路线 B：拼接冻结 VFM</strong>（Matcher / GF-SAM = DINOv2 找对应 + SAM 出 mask）。它保住了泛化（都是冻结的预训练模型），但<strong>语义匹配和 mask 生成分属两个特征空间</strong>，必须靠点选、prompt 工程、mask 过滤、打分这些胶水步骤来协调；架构臃肿（945M）、推理慢（GF-SAM 1030ms vs INSID3 302ms），且 mask 的粒度被 SAM 的预训练先验锁死，做不好部件级。</li>
+</ul>
+
+<p>那么真正的问题来了：<strong>有没有一个 backbone，本身就同时具备"图内连贯分组"和"跨图语义对应"？</strong>本文押注 DINOv3 [56]。它是纯自监督 VFM，用 Gram anchoring 目标 + 高分辨率后训练，被显式设计成产出稠密、局部化的特征。论文 Fig. 2 给出第一条直觉证据：对 DINOv3 稠密特征做凝聚聚类，得到的簇<strong>天然贴合物体级和部件级的连贯区域</strong>——也就是说"图内分组"这件事 DINOv3 已经免费送了。</p>
+
+<figure id="fig-cluster"><a href="../assets/figures/insid3/insid3_fig2.png"><img src="../assets/figures/insid3/insid3_fig2.png" alt="对 DINOv3 稠密特征做凝聚聚类，每对图左为输入、右为聚类图，簇贴合物体与部件级区域"></a><figcaption><strong>图 2：DINOv3 的图内分组是免费的。</strong>每对图左为输入、右为对 DINOv3 稠密特征做凝聚聚类的结果。簇边界自发贴合物体与部件——披萨被切成连贯块、人/家具各成一团。这是 INSID3 敢只用一个 backbone 的底气：能力 ②（图内分组）不需要任何监督，已经写在 DINOv3 的特征里。剩下的问题只在能力 ①（跨图匹配）。</figcaption></figure>
+</section>
+
+<section id="contribution">
+<h2>贡献拆解：三句话，但每一句都对应一个可独立验证的主张<a class="anchor" href="#contribution">#</a></h2>
+<p>论文自陈三条贡献，我按"主张 → 它要证明什么 → 用什么证据"重排，方便后面逐条核对（避免把营销当结论）：</p>
+<div class="table-wrap"><table>
+<caption>表 A：贡献 → 主张 → 验证证据（reader 重排，便于核对）</caption>
+<thead><tr><th>贡献</th><th>它声称什么</th><th>用什么证据验证（本文后续章节）</th></tr></thead>
+<tbody>
+<tr><td>① 单一自监督 VFM 足以做训练自由 ICS</td><td>不需要解码器/微调/模型拼接，DINOv3 一个就够</td><td>表 1（9 基准全面领先且仅 304M）；Fig. 2（图内分组免费）；表 8（换掉 DINOv3 即崩）</td></tr>
+<tr><td>② 跨域跨粒度泛化更强</td><td>对微调法与 SAM 流水线平均 +7.5% mIoU</td><td>表 1（语义/部件/个体三类）；表 7（5-shot）；Fig. 5/10（定性）</td></tr>
+<tr><td>③ 揭示并修正 DINOv3 的位置偏置</td><td>一个训练自由的正交投影，且能迁移到 ICS 之外</td><td>Fig. 4/8（相似图）；表 2/4（SPair-71k 语义对应 +6.6% PCK）；Fig. 9（PCA 不伤语义）</td></tr>
+</tbody>
+</table></div>
+<aside class="note"><div class="note-title">作者声称 vs reader 推断（不可混淆）</div>"分割可以从自监督表征中涌现"是<strong>作者的核心论点</strong>，证据是表 1 + 表 8。reader 该补的一句谨慎话：表 8 只在 COCO-20$^i$ 上做了 backbone 替换，证明的是"<strong>在该基准上</strong>，DINOv3 的双重特性是 INSID3 成立的<strong>必要条件</strong>"；它没有声称别的自监督模型经过专门适配后绝无可能——这一点论文也没夸大。</aside>
+</section>
+
+<section id="datasets">
+<h2>数据与评测：9 个基准横跨四个域，全在"分布外"考泛化<a class="anchor" href="#datasets">#</a></h2>
+<p>INSID3 训练自由，所以"数据"指的全是<strong>评测</strong>基准。它把 ICS 统一成三类任务、9 个数据集，且关键在于这些数据集大多<strong>不是任何方法的训练域</strong>，专门拷问泛化：</p>
+<div class="table-wrap"><table>
+<caption>表 B：评测基准一览（据论文 §4 转写）</caption>
+<thead><tr><th>任务</th><th>数据集</th><th>规模 / 域</th></tr></thead>
+<tbody>
+<tr><td rowspan="6">语义（一类的所有实例）</td><td>COCO-20$^i$</td><td>80 类物体（常见自然图）</td></tr>
+<tr><td>LVIS-92$^i$</td><td>920 类，强长尾</td></tr>
+<tr><td>ISIC2018</td><td>皮肤病灶（医学）</td></tr>
+<tr><td>Chest X-Ray</td><td>肺部筛查 X 光（医学）</td></tr>
+<tr><td>iSAID-5$^i$</td><td>15 类，遥感/航拍</td></tr>
+<tr><td>SUIM</td><td>8 类，水下成像</td></tr>
+<tr><td rowspan="2">部件（同一物体部件）</td><td>PASCAL-Part</td><td>15 类共 56 个部件</td></tr>
+<tr><td>PACO-Part</td><td>75 类共 303 个部件</td></tr>
+<tr><td>个体（同一实例）</td><td>PerMIS</td><td>16 类，存在大量视觉相似干扰实例</td></tr>
+</tbody>
+</table></div>
+<p>评测协议：每个设定给<strong>一张</strong>标注参考 mask（1-shot；补充材料另测 5-shot），主指标 mIoU。语义对应迁移实验用 SPair-71k，指标 PCK@T。实现细节：DINOv3-Large 编码器，输入 resize 到 $1024\times1024$（对齐 SAM 类方法），mask 在 patch 分辨率预测后双线性插值回原图，并按 [21,22,40,60] 用一个 CRF [36] 做后处理精修。</p>
+</section>
+
+<section id="pipeline">
+<h2>Pipeline 全景：一条"去偏 → 聚类 → 选种子 → 聚合"的单 backbone 流水线<a class="anchor" href="#pipeline">#</a></h2>
+<p>先给整体地图，再逐块拆机制。INSID3 在<strong>同一个冻结 DINOv3 特征空间</strong>里串起四步，没有第二个网络：</p>
+<figure id="fig-pipeline" class="fig-wide"><a href="../assets/figures/insid3/insid3_fig3.png"><img src="../assets/figures/insid3/insid3_fig3.png" alt="INSID3 全管线：参考图与目标图过 DINOv3，位置去偏，目标图聚类得候选簇，反向对应+参考原型选种子簇，跨图相似度×自相似度聚合出最终 mask"></a><figcaption><strong>图 3：INSID3 全管线。</strong>从左到右：参考图与目标图各过一次冻结 DINOv3 →（关键）对特征做<strong>位置去偏</strong>，专供跨图匹配用 → 目标图按<strong>原始</strong>特征做凝聚聚类，分成连贯候选簇 → 用<strong>反向对应</strong>在去偏空间筛出与参考重叠的候选簇，并用参考原型按<strong>跨图相似度</strong>选出最对齐的"种子簇" → 最后把<strong>跨图相似度（语义对齐）×自相似度（图内结构一致）</strong>相乘，从种子簇向外聚合出空间完整的 mask。注意分工：<strong>原始特征</strong>用于图内（聚类/自相似），<strong>去偏特征</strong>用于跨图（匹配/种子选择）。</figcaption></figure>
+
+<div class="socratic">
+<p class="question">问：为什么是"去偏特征做跨图、原始特征做图内"这样反着用？</p>
+<p class="guide">引导：回到 §核心问题那对相反诉求。跨图匹配要"无视位置只看语义"——位置信息是<strong>有害</strong>的，要投掉。图内分组要"位置连贯地聚团"——空间结构是<strong>有益</strong>的，要留着。</p>
+<p class="answer">答：所以 INSID3 把 DINOv3 特征的两种成分<strong>按用途分离</strong>：cross-image 用去偏特征（消位置）、intra-image 用原始特征（留结构）。这正是它能用"一套表征服务两个相反诉求"的关键工程决策——不是换模型，而是<strong>对同一组特征做两种读法</strong>。</p>
+<div class="takeaway">Takeaway：INSID3 真正的"算法"不是某个新网络，而是一个<strong>关于"何时该信任 DINOv3 的位置信息、何时该投掉它"的认识论决策</strong>。</div>
+</div>
+</section>
+
+<section id="method">
+<h2>方法 / 四个机制：从"位置偏置诊断"到"乘法聚合"，每步都先讲动机<a class="anchor" href="#method">#</a></h2>
+
+<h3>机制 0：诊断——DINOv3 特征里藏着一条"位置偏置"</h3>
+<p><strong>动机先行。</strong>能力 ①（跨图匹配）若直接用 DINOv3 原始特征做，会出什么问题？论文用一个诊断工具回答：给参考 mask 算一个<strong>参考原型</strong> $p^r$（前景 patch 特征的均值），再算它和每个目标 patch 的相似度，可视化成相似图。</p>
+<div class="equation">$$p^r=\frac{1}{|R|}\sum_{j\in R}F^r_j,\qquad \mathrm{sim}(i)=\langle F^t_i,\,p^r\rangle$$<div class="eq-caption">式 1：参考原型与跨图相似图（$R$ 为前景 patch 索引集，$F^r,F^t$ 为参考/目标稠密特征）</div></div>
+<p class="formula-note"><strong>公式读法。</strong>$p^r$ 把参考概念压成一个 $D$ 维向量（"这个概念长什么样"的语义指纹）；$\mathrm{sim}(i)$ 是目标图每个位置和这个指纹的内积。理想情况下，只有目标图里语义对应的位置才该高亮。</p>
+<p>但 Fig. 4 暴露了问题：相似图除了正确的语义高亮外，还<strong>稳定地在"与参考相同的绝对坐标"处虚假高亮</strong>，与语义无关——尤其在目标图语义稀薄处（如均匀背景）。也就是说"参考概念在左上 → 目标图左上无脑亮一片"。</p>
+<figure id="fig-bias"><a href="../assets/figures/insid3/insid3_fig4.png"><img src="../assets/figures/insid3/insid3_fig4.png" alt="位置偏置：用物体区域(a)和关键点(b)做参考，原始DINOv3相似图在相同坐标处虚假高亮，去偏后被抑制；(c)噪声/平坦图的PCA揭示稳定的低维位置子空间"></a><figcaption><strong>图 4：位置偏置的证据与根因。</strong>(a) 用物体区域、(b) 用单个关键点做参考，原始 DINOv3 相似图都出现<strong>与参考坐标对齐</strong>的结构化高亮（无视语义）；去偏后被抑制。(c) 对<strong>低语义复杂度</strong>输入（噪声、平坦纹理）做 PCA，揭示出一个<strong>稳定的低维位置子空间</strong>——这正是偏置的载体。作者假设它源于 DINOv3 的 Gram anchoring：该目标约束 patch 嵌入的协方差/全局统计稳定，提升了空间一致性，却可能"误放大"绝对空间相关，在语义弱处残留成位置偏置。（DINOv2 几乎没有这条偏置，见 §消融。）</figcaption></figure>
+
+<aside class="socratic">
+<p class="question">问：怎么把一个"看不见摸不着"的位置偏置<strong>估计</strong>出来，还不用训练？</p>
+<p class="guide">引导：偏置的特征是"和语义无关、只和坐标有关"。那就喂一张<strong>没有任何语义</strong>的图——纯高斯噪声——它过 DINOv3 后剩下的结构性成分，只可能来自位置。</p>
+<p class="answer">答：用噪声图 $I^{noise}\sim\mathcal N(0,1)$ 的特征 $F^{noise}=\Phi(I^{noise})$ 做 SVD，取前 $s$ 个右奇异向量当作<strong>位置子空间的基</strong> $B$。这是一个干净的"控制变量"实验：剥掉语义这个混淆变量，留下的就是位置子空间。</p>
+</aside>
+<div class="equation">$$F^{noise}=U\Sigma V^{\top},\quad B=V_{[:,1:s]};\qquad \tilde F^{r}=F^{r}\!\left(\mathbb{1}_D-BB^{\top}\right),\;\; \tilde F^{t}=F^{t}\!\left(\mathbb{1}_D-BB^{\top}\right)$$<div class="eq-caption">式 2：从噪声图估位置子空间基 $B$，再把参考/目标特征投到 $B$ 的正交补，得去偏特征 $\tilde F$</div></div>
+<p class="formula-note"><strong>公式读法。</strong>$BB^{\top}$ 是投影到位置子空间的投影矩阵；$\mathbb{1}_D-BB^{\top}$ 就是投到它的<strong>正交补</strong>。一句话：把每个 patch 特征里"位置说了算"的那几个方向减掉，剩下"语义说了算"的部分。整个 $B$ 离线算一次、存起来，推理时只多一次矩阵乘——几乎零开销（补充材料表 12：去偏并入 forward 共 78ms）。</p>
+<div class="note"><div class="note-title">这里有两个被显式标出的近似（kexue:su 第 2 条）</div>
+<strong>近似 1：</strong>用<strong>一张</strong>噪声图估的子空间，就当作所有图共享的位置子空间。成立条件——位置编码是输入无关的、低维且稳定的。论文用补充表 5 验证：用 5 张/10 张噪声图、甚至黑/白/渐变图估，结果几乎不变（57.6 vs 57.7 mIoU），说明子空间确实稳定。<br>
+<strong>近似 2：</strong>被投掉的方向<strong>不含语义</strong>。这不是默认成立的——万一投掉了有用的语义维度呢？论文用 Fig. 9 / 表 2 验证：去偏后 PCA 压缩反而<strong>更</strong>利于语义对应（Debias+PCA 全程优于 PCA-original），说明被投掉的确实主要是位置而非语义。这两条验证下面 §消融会再展开。</div>
+
+<h3>机制 1：图内分组——凝聚聚类，而不是 K-means / DBSCAN</h3>
+<p><strong>动机先行。</strong>ICS 粒度是开放的，所以聚类<strong>不能预设簇数</strong>。K-means 要先定 $K$（与开放世界冲突）；DBSCAN 在高维特征里"密度"概念失效、且常需先降维。INSID3 选<strong>凝聚聚类</strong>（agglomerative）：自底向上逐步合并局部相似 patch，天然契合 DINOv3 特征的空间平滑性，且只有一个阈值 $\tau$ 直观地控制粒度——不固定簇数。</p>
+<div class="equation">$$\bigcup_{k=1}^{K}G_k=\Omega,\qquad G_i\cap G_j=\varnothing\;\;\forall i\neq j$$<div class="eq-caption">式 3：用（原始）目标特征把 patch 集 $\Omega$ 划成 $K$ 个互不相交的连贯簇 $\{G_1,\dots,G_K\}$</div></div>
+<p class="formula-note"><strong>公式读法。</strong>这一步刻意用<strong>原始</strong>特征（不去偏）——因为图内分组要的就是空间结构。$\tau$ 大→簇细（利于部件），$\tau$ 小→簇粗（利于整物体），论文固定 $\tau=0.6$ 取折中。</p>
+
+<h3>机制 2：选种子——反向对应 + 跨图相似度，在去偏空间里挑</h3>
+<p><strong>动机先行。</strong>直接拿式 1 的相似图阈值化为什么不行？因为参考原型常常"过度激活"相关概念：拿"人头"的原型去匹配，会把整个人都点亮。要在<strong>正确粒度</strong>上匹配，需要更克制的机制。INSID3 用<strong>反向对应</strong>（backward correspondence）：对每个目标 patch $i$，反过来找它在参考图里<strong>最像</strong>的 patch；只有当这个最近邻落在参考 mask 内，才保留 $i$。</p>
+<div class="equation">$$\mathrm{NN}(i)=\arg\max_{j\in\Omega}\langle \tilde F^{t}_i,\tilde F^{r}_j\rangle,\qquad C_{NN}=\{\,i\mid M^{r}_{\mathrm{NN}(i)}=1\,\}$$<div class="eq-caption">式 4：反向对应——目标 patch $i$ 的参考最近邻须落在 mask 内，才算候选（在去偏空间 $\tilde F$ 里算）</div></div>
+<p class="formula-note"><strong>公式读法。</strong>"反向"的妙处在于<strong>隐式利用了参考图里没标的负样本</strong>：如果目标 patch 更像参考图里的背景（mask 外），它就被否决。这把"过度激活"自然压住了。再把候选 $C_{NN}$ 与预先算好的簇取交，得到候选簇集合 $C_{cand}=\{G_k\mid G_k\cap C_{NN}\neq\varnothing\}$。</p>
+<p>然后在<strong>去偏</strong>空间为每个候选簇 $G_k$ 和参考区域各算原型，用跨图相似度选出最对齐的<strong>种子簇</strong>：</p>
+<div class="equation">$$s^{cross}_k=\langle\tilde p^{t}_k,\tilde p^{r}\rangle,\qquad G^{*}=\arg\max_{G_k\in C_{cand}}s^{cross}_k$$<div class="eq-caption">式 5：种子簇 = 在去偏空间里与参考原型跨图相似度最高的候选簇</div></div>
+
+<h3>机制 3：聚合补全——跨图语义 × 图内自相似的乘法门</h3>
+<p><strong>动机先行。</strong>种子簇 $G^{*}$ 通常只覆盖概念<strong>最具判别力的一部分</strong>（人头、长颈鹿的脖子）。要补全成完整概念，得决定"还该并入哪些簇"。只靠跨图相似度 $s^{cross}$ 不稳——遮挡/视角变化下，语义相关区域可能反而不相似。所以 INSID3 引入<strong>第二条独立线索</strong>：图内自相似——DINOv3 同图内同概念的簇在特征空间里彼此靠近。两条线索<strong>相乘</strong>：</p>
+<div class="equation">$$s^{intra}_k=\langle\bar p^{t}_k,\bar p^{t}_{*}\rangle,\qquad S_k=s^{cross}_k\cdot s^{intra}_k,\qquad M_{final}=G^{*}\cup\{\,G_k\in C_{cand}\mid S_k\ge\alpha\,\}$$<div class="eq-caption">式 6：自相似（候选簇 vs 种子簇，原始特征）× 跨图语义，超阈值 $\alpha$ 的簇并入种子，得最终 mask</div></div>
+<p class="formula-note"><strong>公式读法。</strong>$s^{intra}_k$ 在<strong>原始</strong>特征里算（图内要结构）、$s^{cross}_k$ 在<strong>去偏</strong>空间里算（跨图要语义）——又一次"两种读法"。<strong>乘法</strong>是关键：一个簇必须<strong>既</strong>语义对得上参考、<strong>又</strong>结构上贴着种子，才会被并入；任一条接近 0，乘积就被否决。这是个"双门 AND"，比加法/单线索都更稳。</p>
+<div class="takeaway">机制总结：去偏（消位置）→ 原始特征聚类（图内分组）→ 反向对应+跨图相似选种子（克制的定位）→ 跨图×自相似聚合（补全）。全程一个冻结 DINOv3、三个标量超参（$\tau{=}0.6,\alpha{=}0.2,s{=}500$），零训练。</div>
+</section>
+
+<section id="training">
+<h2>训练配置：没有训练——但"零超参调优"这件事本身要被验证<a class="anchor" href="#training">#</a></h2>
+<p>INSID3 <strong>训练自由</strong>，所以这一节谈的是"超参与算力"，而不是优化器/学习率。论文的核心声明是：<strong>只有三个标量超参，且一次性在 COCO-20$^i$ 训练集上用 3 折交叉验证选定后，跨所有数据集/域/任务全部固定，不做任何 dataset/task 特定调优。</strong></p>
+<div class="table-wrap"><table>
+<caption>表 C：INSID3 的全部超参（补充材料表 6）</caption>
+<thead><tr><th>超参</th><th>含义</th><th>取值</th></tr></thead>
+<tbody>
+<tr><td>$\tau$</td><td>凝聚聚类敏感度（控粒度）</td><td>0.6</td></tr>
+<tr><td>$\alpha$</td><td>聚合阈值（控并簇严格度）</td><td>0.2</td></tr>
+<tr><td>$s$</td><td>去偏秩（投掉的位置方向数）</td><td>500</td></tr>
+</tbody>
+</table></div>
+<p><strong>算力 / 推理成本（补充材料表 11–13）。</strong>单张 RTX 4090、$1024\times1024$ 下，INSID3 单样例推理 <strong>302ms</strong>，而最强基线 GF-SAM 要 1030ms、Matcher 要 9000ms。细分（表 12）：编码+去偏 78ms、相似度与簇打分 3ms、凝聚聚类 166ms（主成本，token 数二次复杂度）、CRF 精修 55ms。论文坦言所有计时为 32 位精度、100 次平均，半精度还能更快。<em>本文不涉及训练算力，故无 GPU-hours；上述推理时延为论文披露数字，不等同于你机器上的实际账单。</em></p>
+<aside class="note"><div class="note-title">为什么"零调优"是个需要被验证的主张</div>训练自由方法最容易被质疑的就是"是不是偷偷为每个数据集调了 $\tau/\alpha$"。论文用<strong>固定三超参 + 跨 9 基准全面领先</strong>来正面回应；补充材料 5-shot（表 7）更进一步——直接复用 1-shot 的全部超参、不引入任何新组件，仍稳涨，说明这套配置确实通用而非过拟合到某个基准。</aside>
+</section>
+
+<section id="experiments">
+<h2>实验结果：9 基准全面领先，且赢在"分布外"<a class="anchor" href="#experiments">#</a></h2>
+<p>主结果是表 1（1-shot，mIoU%）。我把原表完整转写（这是论文最核心的论据，不做"按表 1"式略写）。灰底=该方法在对应数据集训练集上训过；INSID3 是表中<strong>唯一</strong>既不预训练用 mask 监督、也不微调的方法。</p>
+<div class="table-wrap"><table>
+<caption>表 1（完整转写）：1-shot 语义/部件/个体分割对比（mIoU %, ↑）。最佳加粗。† 为用 DINOv3 特征的 GF-SAM 变体。</caption>
+<thead><tr><th>方法</th><th>Encoder</th><th>#Param</th><th>LVIS-92$^i$</th><th>COCO-20$^i$</th><th>ISIC</th><th>SUIM</th><th>iSAID</th><th>X-Ray</th><th>PASCAL</th><th>PACO</th><th>PerMIS</th><th>Avg</th></tr></thead>
+<tbody>
+<tr><td colspan="13" style="background:#eef3f7;font-style:italic">任务特定微调：语义 + mask 监督</td></tr>
+<tr><td>Painter</td><td>ViT</td><td>354M</td><td>10.5</td><td>33.1</td><td>–</td><td>–</td><td>–</td><td>–</td><td>30.4</td><td>14.1</td><td>–</td><td>–</td></tr>
+<tr><td>SegGPT</td><td>ViT</td><td>354M</td><td>18.6</td><td>56.1</td><td>37.5</td><td>34.9</td><td>30.9</td><td>87.5</td><td>35.8</td><td>13.5</td><td>18.7</td><td>37.1</td></tr>
+<tr><td>SINE</td><td>DINOv2</td><td>373M</td><td>31.2</td><td>64.5</td><td>25.8</td><td>50.7</td><td>38.3</td><td>39.8</td><td>36.2</td><td>23.3</td><td>42.5</td><td>39.1</td></tr>
+<tr><td>DiffewS</td><td>Stable Diffusion</td><td>890M</td><td>31.4</td><td>71.3</td><td>27.8</td><td>48.9</td><td>47.5</td><td>41.6</td><td>34.0</td><td>22.8</td><td>35.2</td><td>40.1</td></tr>
+<tr><td>SegIC</td><td>DINOv2</td><td>310M</td><td>44.6</td><td>76.1</td><td>25.3</td><td>52.5</td><td>46.1</td><td>34.5</td><td>39.9</td><td>25.9</td><td>51.8</td><td>44.1</td></tr>
+<tr><td>SegIC (COCO)</td><td>DINOv2</td><td>310M</td><td>35.7</td><td>75.6</td><td>22.5</td><td>52.9</td><td>40.8</td><td>30.8</td><td>38.6</td><td>25.1</td><td>44.9</td><td>40.8</td></tr>
+<tr><td colspan="13" style="background:#eef3f7;font-style:italic">训练自由：mask 监督预训练（SAM 系）</td></tr>
+<tr><td>PerSAM</td><td>SAM</td><td>640M</td><td>11.5</td><td>23.0</td><td>23.9</td><td>28.7</td><td>19.2</td><td>31.7</td><td>32.5</td><td>22.5</td><td>48.6</td><td>26.8</td></tr>
+<tr><td>Matcher</td><td>DINOv2 + SAM</td><td>945M</td><td>33.0</td><td>52.7</td><td>38.6</td><td>44.1</td><td>33.3</td><td>70.8</td><td>42.9</td><td>34.7</td><td>63.8</td><td>46.0</td></tr>
+<tr><td>GF-SAM</td><td>DINOv2 + SAM</td><td>945M</td><td>35.2</td><td>58.7</td><td>48.7</td><td>53.1</td><td>47.1</td><td>51.0</td><td>44.5</td><td>36.3</td><td>54.1</td><td>47.6</td></tr>
+<tr><td>GF-SAM†</td><td>DINOv3 + SAM</td><td>945M</td><td>31.8</td><td>54.8</td><td>50.9</td><td>50.5</td><td>46.7</td><td>56.1</td><td>44.9</td><td>34.4</td><td>52.6</td><td>47.0</td></tr>
+<tr><td>† + 本文去偏</td><td>DINOv3 + SAM</td><td>945M</td><td>34.6</td><td>55.9</td><td>51.8</td><td>52.9</td><td>47.6</td><td>60.0</td><td>46.2</td><td>36.1</td><td>54.5</td><td>48.8</td></tr>
+<tr><td colspan="13" style="background:#eef3f7;font-style:italic">训练自由：无监督预训练</td></tr>
+<tr><td><strong>INSID3 (ours)</strong></td><td><strong>DINOv3</strong></td><td><strong>304M</strong></td><td><strong>41.8</strong></td><td><strong>57.6</strong></td><td><strong>54.4</strong></td><td><strong>54.9</strong></td><td><strong>52.1</strong></td><td><strong>78.8</strong></td><td><strong>50.5</strong></td><td><strong>38.7</strong></td><td><strong>67.0</strong></td><td><strong>55.1</strong></td></tr>
+</tbody>
+</table></div>
+<p>读这张表要看三件事：</p>
+<ul>
+<li><strong>平均分。</strong>INSID3 55.1，比最强训练自由基线 GF-SAM（47.6）高 7.5，比最强微调法 SegIC（44.1）高 11。且参数 304M ≈ SAM 流水线 945M 的 1/3。</li>
+<li><strong>"训练域陷阱"。</strong>微调法 SegIC 在 COCO-20$^i$ 上 76.1（最高），但一出域就塌——iSAID 比 INSID3 低 6、X-Ray 只有 34.5（INSID3 78.8）。这正是 Fig. 1 雷达图橙色"内圈强外圈塌"的数字版。</li>
+<li><strong>去偏的可移植性。</strong>看 GF-SAM† 那两行：把 DINOv2 换成 DINOv3 本身没多大用（因为 GF-SAM 只用稀疏匹配点去 prompt SAM，丢掉了大部分稠密信息）；但加上<strong>本文去偏</strong>，GF-SAM 平均涨到 48.8——去偏是个可以<strong>插到别人方法上</strong>的独立增益。</li>
+</ul>
+
+<p><strong>部件与个体。</strong>部件分割上 INSID3 比 GF-SAM 高 +6.0（PASCAL）/ +2.4（PACO），比微调法 SegIC/DiffewS 高 +10.6/+16.5（PASCAL）。个体分割（PerMIS）INSID3 67.0，超 GF-SAM +12.9、SegIC +15.2、DiffewS +31.8——个体任务最难在"多个视觉相似干扰实例"，INSID3 靠式 4 的反向对应吃到了<strong>负证据</strong>来压住无关实例，这是只看正激活的旧方法做不到的。</p>
+
+<figure id="fig-qual"><a href="../assets/figures/insid3/insid3_fig5.png"><img src="../assets/figures/insid3/insid3_fig5.png" alt="定性对比：语义/部件/个体三类上 INSID3 vs GF-SAM vs SegIC vs GT"></a><figcaption><strong>图 5：定性对比印证表 1 的机制解释。</strong>SegIC（微调）in-domain 好但跨域/跨粒度发僵；GF-SAM 靠 SAM 先验出 mask 质量高，但"对应"与"分割"解耦，常<strong>过分割/欠分割</strong>（粒度被 SAM 锁死）；INSID3 仅靠自监督特征就做到<strong>精准定位 + 有竞争力的 mask 质量</strong>，尤其部件级粒度更贴。</figcaption></figure>
+
+<figure id="fig-gallery" class="fig-wide"><a href="../assets/figures/insid3/insid3_fig10.png"><img src="../assets/figures/insid3/insid3_fig10.png" alt="INSID3 在航拍、水下、医学、日常图等多域上的定性结果画廊，左为参考(浅蓝)右为预测(紫)"></a><figcaption><strong>图 10：跨域画廊。</strong>每对左为参考图+标注区域（浅蓝），右为目标图预测（紫）。从整物体到细部件、从航拍/水下/医学到日常图，INSID3 在有干扰物、相似类、大外观变化时仍能锁定正确概念——这是"单 backbone 训练自由"能撑起的泛化广度的直观证据。</figcaption></figure>
+
+<h3>去偏迁移到语义对应：一个独立的、与分割解耦的验证</h3>
+<p>这是 §贡献③的关键交叉验证：把去偏单独拎到 <strong>SPair-71k 语义对应</strong>任务上测——这个任务<strong>不含分割</strong>，直接在 backbone 特征上量跨图对齐（PCK@T），从而把"去偏改善的到底是不是对应能力"这件事和分割流水线<strong>解耦</strong>。</p>
+<div class="table-wrap"><table>
+<caption>表 2（转写）：SPair-71k 语义对应（PCK@T %, ↑），跨 DINOv3 三个尺寸、去偏前后</caption>
+<thead><tr><th>T</th><th>Small 原始</th><th>Small 去偏</th><th>Base 原始</th><th>Base 去偏</th><th>Large 原始</th><th>Large 去偏</th></tr></thead>
+<tbody>
+<tr><td>0.05</td><td>26.8</td><td>27.9</td><td>29.2</td><td>32.3</td><td>32.7</td><td>33.6</td></tr>
+<tr><td>0.10</td><td>43.8</td><td>45.7</td><td>45.0</td><td>50.0</td><td>50.6</td><td>52.0</td></tr>
+<tr><td>0.15</td><td>53.2</td><td>55.6</td><td>54.0</td><td>59.9</td><td>60.3</td><td>62.1</td></tr>
+<tr><td>0.20</td><td>59.8</td><td>62.6</td><td>59.8</td><td>66.4</td><td>66.4</td><td>68.6</td></tr>
+</tbody>
+</table></div>
+<p>去偏在三个尺寸上一致涨 +0.9~6.6 PCK，且<strong>越严格的阈值（T 小）相对增益越大</strong>。结合补充材料表 4（DINOv2 去偏只涨 ≤+0.3，DINOv3 涨 +3.1~+6.6），这条对照非常干净地证明：<strong>位置偏置是 DINOv3 特有的、且去偏修正的确实是"跨图对应"这个能力本身</strong>，而非分割流水线里的某个副作用。</p>
+</section>
+
+<section id="ablations">
+<h2>消融：每个设计选择都被"留一法"逐一拷问<a class="anchor" href="#ablations">#</a></h2>
+
+<h3>消融 1：聚类 + 聚合（表 3）——为什么不能只阈值化相似图？</h3>
+<div class="table-wrap"><table>
+<caption>表 3（转写）：聚类与聚合的作用（mIoU %, ↑）；所有阈值/粒度均按各自最优调过以求公平</caption>
+<thead><tr><th>变体</th><th>COCO-20$^i$</th><th>PASCAL-Part</th></tr></thead>
+<tbody>
+<tr><td>阈值化相似图 @0.55（式 1，无聚类）</td><td>44.2</td><td>35.4</td></tr>
+<tr><td>粗聚类 $\tau{=}0.5$（无聚合）</td><td>50.6</td><td>31.1</td></tr>
+<tr><td>细聚类 $\tau{=}0.6$（无聚合）</td><td>42.8</td><td>36.2</td></tr>
+<tr><td>本文：聚类 + 聚合，仅跨图相似</td><td>54.6</td><td>48.5</td></tr>
+<tr><td><strong>本文：聚类 + 聚合，自相似 + 跨图（式 6）</strong></td><td><strong>57.6</strong></td><td><strong>50.5</strong></td></tr>
+</tbody>
+</table></div>
+<p>这张表把"为什么需要聚合"讲透了：单纯阈值化最差；只聚类不聚合会陷入"<strong>粒度两难</strong>"——$\tau{=}0.5$ 利于整物体（COCO 50.6）却毁部件（PASCAL 31.1），$\tau{=}0.6$ 反之。INSID3 固定一个中间 $\tau$，把粒度难题交给<strong>聚合</strong>解决：加上跨图聚合就跳到 54.6/48.5，再叠上<strong>自相似</strong>（式 6 的乘法门）到 57.6/50.5。这正面证明了式 6 里"两条线索相乘"不是装饰，而是各贡献了一截。</p>
+
+<h3>消融 2：去偏秩 $s$ 与聚类粒度 $\tau$（图 7）</h3>
+<figure id="fig-hyper"><a href="../assets/figures/insid3/insid3_fig7.png"><img src="../assets/figures/insid3/insid3_fig7.png" alt="超参曲线：左为去偏秩s对COCO/PASCAL-Part的影响，右为聚类粒度tau的影响"></a><figcaption><strong>图 7：两个超参的行为都符合机制预期。</strong>左（去偏秩 $s$）：相对 $s{=}0$（no debias）单调改善，中段后饱和，投太多维（$s$ 过大）反而开始伤语义——印证"位置子空间低维"的假设。右（聚类粒度 $\tau$）：$\tau$ 大→细分利于部件，但<strong>过聚类</strong>会把整物体打碎、伤语义级任务。$s{=}500,\tau{=}0.6$ 是两条曲线的折中点。</figcaption></figure>
+
+<h3>消融 3：去偏真没伤语义吗？（补充 Fig. 8 / 表 5）</h3>
+<figure id="fig-v2v3"><a href="../assets/figures/insid3/insid3_fig8.png"><img src="../assets/figures/insid3/insid3_fig8.png" alt="DINOv2 vs DINOv3 位置偏置对比：DINOv3 原始特征有强坐标对齐伪影，去偏后抑制；DINOv2 几乎没有偏置"></a><figcaption><strong>图 8（补充）：偏置是 DINOv3 专属。</strong>同一参考关键点 → 目标相似图：DINOv3 原始特征在"与参考相同绝对坐标"处出现强伪影（尤其背景区），去偏后被抑制而物体上的语义响应保留；DINOv2 几乎没有这种坐标对齐结构。这解释了为什么去偏对 DINOv3 大涨、对 DINOv2 几乎无感（表 4），也佐证了"偏置源于 DINOv3 的 Gram anchoring/局部一致约束"这一根因假设。</figcaption></figure>
+<p><strong>去偏策略本身的消融（表 5，COCO-20$^i$ mIoU）：</strong>无去偏 54.5；用多视图增强平均（4 视图 55.7、12 视图 56.5）能减位置敏感但要 $n$ 次 forward；<strong>本文（1 张噪声图 SVD）57.6</strong>，且只多一次矩阵乘；用 5/10 张低语义图估也是 57.7——再次确认位置子空间稳定、单张噪声足矣。这条消融的价值在于：它排除了"是不是只是多次前向平滑带来的增益"这一替代解释，把功劳干净地归给"正交投影去偏"。</p>
+
+<h3>消融 4：换掉 DINOv3 就崩（表 8）——"是 DINOv3 而非别的"的必要性验证</h3>
+<div class="table-wrap"><table>
+<caption>表 8（转写）：把 INSID3 的 backbone 换成别的 VFM（COCO-20$^i$ mIoU %, ↑），算法不变、各自调最优超参</caption>
+<thead><tr><th>DINOv3</th><th>DINOv2</th><th>Franca</th><th>Perception Enc.</th><th>Stable Diff.</th></tr></thead>
+<tbody><tr><td><strong>57.6</strong></td><td>45.1</td><td>39.2</td><td>48.4</td><td>33.2</td></tr></tbody>
+</table></div>
+<p>这是全篇最关键的"必要条件"实验：保持 INSID3 算法不动，只换 backbone，其余 VFM 全部显著掉点。它把贡献①的因果落实了——<strong>不是 INSID3 的流水线随便配个 VFM 都行，而是 DINOv3"同时具备强语义对应 + 稠密局部结构"这一双重特性，才让 ICS 能从单一冻结 backbone 涌现</strong>。</p>
+
+<h3>消融 5：对照 SAM 3、空 mask 角例、5-shot（补充表 7/9/10）</h3>
+<ul>
+<li><strong>vs SAM 3（表 9，COCO-20$^i$）：</strong>把最新的 SAM 3 适配到 ICS——视频式传播 26.7、图像拼接式 52.9，而 INSID3 <strong>57.6</strong>，在不用任何分割监督的情况下仍高 4.7。</li>
+<li><strong>空 mask 角例（表 10）：</strong>目标图<strong>不含</strong>参考概念时该输出空 mask。INSID3 靠把式 6 的聚合判据同样施加到种子簇上，正确判空率 <strong>85%</strong>；而 PerSAM/Matcher/GF-SAM 这类 SAM 法<strong>设计上无法输出空 mask</strong>（总返回非空，实际 0%）。这是单 backbone 统一空间的一个意外红利。</li>
+<li><strong>5-shot（表 7）：</strong>只把对应阶段改成"多数投票 + 原型平均"、其余全不动，平均从 1-shot 稳涨到 59.9，比最强基线高 +6.1——证明方法<strong>即插即用</strong>地吃多样例。</li>
+</ul>
+</section>
+
+<section id="limitations">
+<h2>局限与复现门槛：作者自陈 + reader 补刀<a class="anchor" href="#limitations">#</a></h2>
+<p><strong>作者自陈（补充 §F）：</strong></p>
+<ul>
+<li><strong>一次只处理一个目标概念。</strong>目标图里有多个概念时要分别给参考 prompt，缺一个"一次推理同时推理多概念"的机制。</li>
+<li><strong>依赖 mask 形式的 prompt。</strong>不像 SAM 能用点/框这类更轻的标注；而 mask 更贵更慢，限制了交互式部署的便利性。论文把"支持更轻 prompt"和"实例级推理"列为未来方向。</li>
+</ul>
+<p><strong>reader 补刀（基于论文文本的推断，非作者声称）：</strong></p>
+<ul>
+<li><strong>性能上限被冻结 DINOv3 锁死。</strong>表 8 已表明全靠 DINOv3 的特征质量；DINOv3 本身在某个域弱，INSID3 在该域就弱，无法靠训练补救。</li>
+<li><strong>凝聚聚类是 token 数二次复杂度。</strong>补充表 12 显示聚类 166ms 是单步最大成本；虽然表 13 表明高分辨率下仍可用（$1760^2$ 约 1.1s），但相对"一次矩阵乘"的去偏，这是真正的算力瓶颈。</li>
+<li><strong>三超参虽"一次定终身"，但都在 COCO 上选的。</strong>论文用跨域泛化结果间接说明其通用性；严格说，$\tau/\alpha/s$ 是否对某些极端域（如非自然图像）仍最优，是个开放问题——论文未对此逐域消融。</li>
+</ul>
+<p><strong>复现门槛：</strong>无需训练，门槛主要是 ① 拿到 DINOv3-Large 权重；② 一张噪声图离线估 $B$（一次性）；③ 一个 GPU 加速 dense CRF 做后处理。三超参公开（$\tau{=}0.6,\alpha{=}0.2,s{=}500$），官方代码已开源（见侧栏）。</p>
+</section>
+
+<section id="summary">
+<h2>总结：一个"认识论"贡献——分割不必被监督喂出来，它能从自监督表征里被"读"出来<a class="anchor" href="#summary">#</a></h2>
+<p>INSID3 把一句直觉做成了系统：<strong>当一个自监督 backbone 同时拥有"图内连贯结构"和"跨图语义对应"，上下文分割就不再需要解码器、微调或 SAM——只需要正确地区分"何时该信任它的位置信息、何时该投掉它"。</strong>它的三个可独立验证的支点是：</p>
+<ol>
+<li><strong>位置偏置的发现与训练自由修正</strong>——用噪声图估低维位置子空间、正交投影投掉；并用 SPair-71k（解耦于分割）证明改善的是对应能力本身（+6.6 PCK），还能插到 GF-SAM 上涨点。</li>
+<li><strong>"两种读法"的分工</strong>——原始特征做图内聚类、去偏特征做跨图匹配，把 ICS 的两个相反诉求统一进一套表征。</li>
+<li><strong>乘法聚合</strong>——跨图语义 × 图内自相似的双门，把"克制定位 + 完整补全"这对张力解开。</li>
+</ol>
+<p>结果是 9 基准、四域、三粒度全面 SOTA（平均 +7.5 mIoU），参数仅 1/3、推理快 3 倍以上、零 mask 监督，外加 85% 的空 mask 判空率这种 SAM 系做不到的红利。它最值得带走的，不是某个 SOTA 数字，而是那条<strong>认识论</strong>主张：<em>随着自监督表征变强，"分割"这类下游能力可以从表征里直接涌现，而减少监督反而可能换来更鲁棒、更可迁移的表征。</em></p>
+</section>
+
+<section id="references">
+<h2>参考与诚实边界<a class="anchor" href="#references">#</a></h2>
+<ul>
+<li><strong>原始论文：</strong>Cuttano, Trivigno, Reich, Cremers, Masone, Roth. <em>INSID3: Training-Free In-Context Segmentation with DINOv3.</em> CVPR 2026（Oral）. arXiv:2603.28480v1. 项目页 <a href="https://visinf.github.io/INSID3/">visinf.github.io/INSID3</a>，代码 <a href="https://github.com/visinf/INSID3">github.com/visinf/INSID3</a>。</li>
+<li><strong>关键引用方法：</strong>DINOv3 [56]、DINOv2 [47]、SAM [33]、Matcher [39]、GF-SAM [69]、SegIC [41]、DiffewS [74]、PerSAM [72]、SegGPT/Painter [64,63]、SPair-71k [42]、凝聚聚类 [43]、CRF [36]。完整文献见原文 References。</li>
+<li><strong>kexue:su 归因红线：</strong>本页用 <code>kexue:su</code> 的科学推导方法论（动机先行、假设显式、≥2 路交叉验证、重新推导）组织机制部分；但检索其语料库时<strong>未命中任何与"位置偏置 / 正交投影去偏 / DINO 特征匹配 / 上下文分割"主题相关的卡片</strong>（返回的是 GAN 级联抑制、中文分词、Muon 优化器、Embedding 共享等无关条目）。按归因红线，<strong>全文不对苏剑林做任何 [archives/XXXX] 引用</strong>——只借方法、不虚构出处。</li>
+<li><strong>诚实边界：</strong>所有数字（表 1–13、PCK、参数量、时延）均转写自论文正文与补充材料；推理时延为论文披露数字、不等同于读者机器上的实际账单；"reader 补刀"一节明确标注为基于论文文本的推断而非作者声称；论文未逐项说明之处（如三超参对极端域是否仍最优）已写"论文未说明 / 未逐域消融"。</li>
+</ul>
+</section>
+
+</main>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与评测</a></li><li><a href="#pipeline">Pipeline 全景</a></li><li><a href="#method">方法 / 四机制</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>INSID3: Training-Free In-Context Segmentation with DINOv3</dd><dt>Venue</dt><dd>CVPR 2026 · Oral · Top Paper (candidate)</dd><dt>机构</dt><dd>Politecnico di Torino / TU Darmstadt / TU Munich / hessian.AI / ELIZA / MCML</dd><dt>基座</dt><dd>冻结 DINOv3-Large（304M），零训练</dd><dt>arXiv</dt><dd>2603.28480 v1</dd><dt>Topic</dt><dd>Training-Free In-Context Segmentation</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：三态泛化雷达图（单 backbone 撑最外圈）</li><li>图 3：去偏→聚类→选种子→聚合 全管线</li><li>式 2：噪声图估位置子空间 + 正交投影去偏</li><li>式 4：反向对应（吃负证据）</li><li>式 6：跨图语义 × 图内自相似 乘法聚合</li><li>表 1：9 基准全面 SOTA，平均 +7.5 mIoU、304M</li><li>表 2：SPair-71k 去偏迁移 +6.6 PCK</li><li>表 8：换掉 DINOv3 即崩（必要性）</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> INSID3 深读</p><p><span class="status-good">figures</span> 8 张 PNG（fig1/2/3/4/5/7/8/10，原生分辨率）</p><p><span class="status-good">tables</span> 表 1/2/3/8 全转写 + 表 5/7/9/10/11/12/13 数字引用</p><p><span class="status-good">formula</span> 式 1–6 待 MathJax 预检</p><p><span class="status-warn">scope</span> 训练自由；性能受冻结 DINOv3 上限锁定，一次一概念，依赖 mask prompt</p></div></section></aside></div>
+</body>
+</html>
