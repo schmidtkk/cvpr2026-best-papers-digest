@@ -38,7 +38,8 @@ const expected = [
   ['Neural PDE', 'Neural PDE / Physics'],
   ['Human Mesh', 'Human Mesh / Pose'],
   ['Vision-Language', 'Vision-Language Models'],
-  ['Video Matting', 'Video Matting']
+  ['Video Matting', 'Video Matting'],
+  ['Colonoscopy', 'Virtual Colonoscopy / CTC']
 ];
 
 const actualValues = filters.map((filter) => filter.value);

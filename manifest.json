@@ -22,7 +22,7 @@
     "chordedit_author_award": "https://cnshiyang.github.io/"
   },
   "status_summary": {
-    "completed_pages": 39,
+    "completed_pages": 42,
     "pending_pages": 0,
     "completed_ids": [
       "d4rt",
@@ -63,7 +63,10 @@
       "mamma",
       "safari",
       "marco",
-      "btb3d"
+      "btb3d",
+      "colonflat",
+      "cadctc",
+      "eversion"
     ],
     "pending_ids": []
   },
@@ -979,6 +982,66 @@
       "figures_count": 12,
       "formula_check": "passed",
       "missing_info": "训练总 GPU 小时/墙钟时间未披露；未做因果 vs 双向卷积对照；仅胸部 CT 验证"
+    },
+    {
+      "id": "colonflat",
+      "award": "CMPB 2014",
+      "title": "Virtual colon flattening method based on colonic outer surface",
+      "category": "Virtual Colonoscopy / CTC",
+      "short": "ColonFlatten",
+      "topic": "虚拟结肠镜 · 结肠展平 / 形变矫正",
+      "blurb": "把展平的形变矫正基准从毛糙的结肠内表面换成光滑的外表面：用测地距离场的“球内极差”切肠壁粘连(OSE)、用“等距面 velocity”自动分弯道(DCA)。60 例 CT 上检出率 79.6% vs 67.1/71.9/72.7%，每例假阳性 0.16 vs 0.32/0.21/0.26。",
+      "tags": "Colonoscopy CTC Colon Flattening Medical virtual colonoscopy outer surface geodesic distortion correction SJTU Jun Zhao CMPB",
+      "authors": "Lin Lu; Jun Zhao",
+      "links": {
+        "pdf": "https://www.sciencedirect.com/science/article/pii/S0169260714003496"
+      },
+      "page_path": "papers/colonflat.html",
+      "thumbnail": "assets/figures/colonflat/colonflat_thumb.png",
+      "status": "completed",
+      "figures_count": 19,
+      "formula_check": "passed",
+      "missing_info": "端到端用时、各阈值敏感性分析、子模块独立消融论文未说明"
+    },
+    {
+      "id": "cadctc",
+      "award": "IEEE TBME 2016",
+      "title": "High-Performance CAD-CTC Scheme Using Shape Index, Multiscale Enhancement Filters, and Radiomic Features",
+      "category": "Virtual Colonoscopy / CTC",
+      "short": "CAD-CTC",
+      "topic": "虚拟结肠镜 · 息肉 CAD / CTC",
+      "blurb": "把 Shape Index 与 dot/line/plane 多尺度增强滤波器搬到“高斯平滑测地距离场(GDF)”上生成息肉候选，再用 640 维 radiomics + Random Forests 削减假阳性。≥5mm 达 98.1% by-polyp / 95.3% per-scan @1.3 FP/例；换坐标系使候选 FP 从 104.5 降到 58.8。",
+      "tags": "Colonoscopy CTC CAD polyp detection Medical radiomics geodesic distance field shape index random forests false positive reduction SJTU Jun Zhao IEEE TBME",
+      "authors": "Yacheng Ren; Jingchen Ma; Junfeng Xiong; Lin Lu; Jun Zhao",
+      "links": {
+        "pdf": "https://ieeexplore.ieee.org/document/7752772"
+      },
+      "page_path": "papers/cadctc.html",
+      "thumbnail": "assets/figures/cadctc/cadctc_thumb.png",
+      "status": "completed",
+      "figures_count": 16,
+      "formula_check": "passed",
+      "missing_info": "训练/推理用时与硬件、SMOTE 倍率、阈值敏感性分析论文未说明；无外部测试集"
+    },
+    {
+      "id": "eversion",
+      "award": "Medical Physics 2010",
+      "title": "Virtual eversion and rotation of colon based on outer surface centerline",
+      "category": "Virtual Colonoscopy / CTC",
+      "short": "Virtual Eversion",
+      "topic": "虚拟结肠镜 · 结肠外翻 / CTC",
+      "blurb": "把结肠“翻过来看”(虚拟外翻)：采样中心线从锯齿状内表面中心线换成光滑外表面中心线，外翻=沿采样线对外表面做保距反射 E=2R-I。翻坏区域 6.8→1.9 个/例(少71%)，外翻计算 983s→75s(少92%)，阅片比 VC 省约 77%。",
+      "tags": "Colonoscopy CTC virtual eversion rotation Medical visualization outer surface centerline level set electric field sampling SJTU Jun Zhao Medical Physics",
+      "authors": "Danfeng Zhang; Jun Zhao; Lin Lu; Lei Li; Zhizhong Wang",
+      "links": {
+        "pdf": "https://aapm.onlinelibrary.wiley.com/doi/10.1118/1.3490084"
+      },
+      "page_path": "papers/eversion.html",
+      "thumbnail": "assets/figures/eversion/eversion_thumb.png",
+      "status": "completed",
+      "figures_count": 16,
+      "formula_check": "passed",
+      "missing_info": "阅片对比样本小(20套/2医生)；部分VE绝对阅片时间原文排版无法逐格还原；参数敏感性分析未给；无外部测试集"
     }
   ]
 }
