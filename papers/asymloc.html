@@ -375,7 +375,7 @@ body.lb-lock{overflow:hidden}
 <p><strong>核心张力（一句话）。</strong>地图端算力免费、查询端算力昂贵——这是一个天然的<strong>非对称</strong>结构；可现有的局部特征（SuperPoint、SiLK 等）全都假设<strong>对称部署</strong>（两端同一模型），于是把地图端那份免费算力白白浪费掉了。AsymLoc 要做的，就是把这份不对称<em>显式地</em>用起来：地图端尽管上大模型，查询端尽管缩到极小，难点只剩一个——<strong>两个不同模型抽的特征怎么对得上</strong>。</p>
 </div>
 
-<p><strong>为什么"对不上"是真问题。</strong>大模型 $T$ 和小模型 $S$ 各自独立训练，它们的描述子落在<em>不同的</em>表示空间里：同一个物理 3D 点，$T$ 给的 128 维向量和 $S$ 给的向量没有任何理由指向同一个方向，互最近邻匹配（mutual nearest neighbor, MNN）会大面积失配。补缝最省事的办法是塞一个学习型匹配器（SuperGlue [46] / LightGlue [32]），让它用两张图的全局信息去鲁棒地配对——但 LightGlue 自己就有 ~13M 参数（SuperPoint 才 1.3M），推理时间从 ~10ms 涨到 ~93ms [6]。这把"省下来的算力"又全吐回去了，端侧背不动。<strong>所以 AsymLoc 的目标被精确地框死：让 $T$、$S$ 的特征<em>天生兼容</em>，匹配步骤回落到零参数、零学习的 MNN。</strong></p>
+<p><strong>为什么"对不上"是真问题。</strong>大模型 $T$ 和小模型 $S$ 各自独立训练，它们的描述子落在<em>不同的</em>表示空间里：同一个物理 3D 点，$T$ 给的 128 维向量和 $S$ 给的向量没有任何理由指向同一个方向，互最近邻匹配（mutual nearest neighbor, MNN）会大面积失配。补缝最省事的办法是塞一个学习型匹配器（SuperGlue [46] 和 LightGlue [32]），让它用两张图的全局信息去鲁棒地配对——但 LightGlue 自己就有 ~13M 参数（SuperPoint 才 1.3M），推理时间从 ~10ms 涨到 ~93ms [6]。这把"省下来的算力"又全吐回去了，端侧背不动。<strong>所以 AsymLoc 的目标被精确地框死：让 $T$、$S$ 的特征<em>天生兼容</em>，匹配步骤回落到零参数、零学习的 MNN。</strong></p>
 </section>
 
 <section id="contribution">
@@ -397,11 +397,11 @@ body.lb-lock{overflow:hidden}
 
 <p><strong>训练数据（合成单应对）。</strong>所有模型都在 <strong>COCO [31]</strong> 上训练，沿用 SiLK [20] 的做法：从 COCO 采一张图，对它施加一个随机单应变换得到第二个视角，凑成一对 $(a,b)$，<strong>单应矩阵已知</strong>。已知单应 $\Rightarrow$ 像素级 ground-truth 对应 $M_{ab}$ 可直接算出来——这就是几何匹配损失的监督来源，<em>不需要任何人工标注</em>。<span class="reader">（读者注：这一步很关键——单应给的是"哪个像素对应哪个像素"的硬真值，省掉了 3D 重建/SfM 的麻烦，也让训练可以无限合成。）</span></p>
 
-<p><strong>评测基准（四个，论文 §4.1 + Fig. 3）。</strong>覆盖平面单应 / 室内 / 室外、白天/夜晚变化、小到大尺度：</p>
+<p><strong>评测基准（四个，论文 §4.1 + Fig. 3）。</strong>覆盖平面单应、室内/室外、白天/夜晚变化、小到大尺度：</p>
 
 <figure>
   <a href="../assets/figures/asymloc/asymloc_fig3.png"><img src="../assets/figures/asymloc/asymloc_fig3.png" alt="四个评测基准各取一例：HPatches 平面场景、ScanNet 室内、IMC2022 地标、Aachen 室外昼夜"></a>
-  <figcaption><strong>图 3（论文 Fig. 3）：四个评测域各一例。</strong>HPatches（平面单应、光照/视角变化）→ 测单应估计；ScanNet（室内扫描）→ 测相对位姿 AUC；IMC2022（著名地标）→ 测平均定位精度 MLA；Aachen（室外、白天↔夜晚剧烈外观变化）→ 接进 HLoc 完整定位流水线。四域分别压住"几何稳定性 / 室内位姿 / 室外大尺度 / 昼夜鲁棒"四个不同的失败模式，单点好不算数。</figcaption>
+  <figcaption><strong>图 3（论文 Fig. 3）：四个评测域各一例。</strong>HPatches（平面单应、光照/视角变化）→ 测单应估计；ScanNet（室内扫描）→ 测相对位姿 AUC；IMC2022（著名地标）→ 测平均定位精度 MLA；Aachen（室外、白天↔夜晚剧烈外观变化）→ 接进 HLoc 完整定位流水线。四域分别压住"几何稳定性、室内位姿、室外大尺度、昼夜鲁棒"四个不同的失败模式，单点好不算数。</figcaption>
 </figure>
 
 <table>
@@ -413,17 +413,17 @@ body.lb-lock{overflow:hidden}
 <tr><td><strong>Aachen Day-Night</strong> [51]</td><td>室外，白天↔夜晚剧烈外观变化</td><td>定位精度（0.5m,5° / 5m,10°），接入 HLoc [44]</td></tr>
 </tbody>
 </table>
-<p class="note">附录另有 Megadepth [30] 与 XFeat [38] 教师的补充结果（论文 §A.6），此处不展开。所有跨库实验中——IMC2022 / ScanNet / Aachen——<strong>地图用教师处理、查询用学生处理</strong>；HPatches 是图像对，则随机指定哪张喂教师、哪张喂学生。</p>
+<p class="note">附录另有 Megadepth [30] 与 XFeat [38] 教师的补充结果（论文 §A.6），此处不展开。所有跨库实验中——IMC2022、ScanNet、Aachen——<strong>地图用教师处理、查询用学生处理</strong>；HPatches 是图像对，则随机指定哪张喂教师、哪张喂学生。</p>
 </section>
 
 <section id="pipeline">
 <h2>四、Pipeline / 架构：一对已知单应的图，喂出两条损失</h2>
 
-<p><strong>先看全局再拆零件。</strong>训练时每次取一对单应已知的图 $(A,B)$。<strong>教师 $T$ 处理 $A$；图 $B$ 同时被教师 $T$ 和学生 $S$ 处理。</strong>每个网络对每张图输出 $N$ 个关键点，各带一个检测器置信度 $w$ 和一个描述子 $d$。这些输出被组织成两条平行的监督：</p>
+<p><strong>先看全局再拆零件。</strong>训练时每次取一对单应已知的图 $(A,B)$。<strong>教师 $T$ 处理 $A$；图 $B$ 同时被教师 $T$ 和学生 $S$ 处理。</strong>每个网络对每张图输出 $N$ 个关键点，各带一个检测器置信度 $w$ 和一个描述子 $d$。这些输出形成两条平行的监督：</p>
 
 <figure>
   <a href="../assets/figures/asymloc/asymloc_fig2.png"><img src="../assets/figures/asymloc/asymloc_fig2.png" alt="AsymLoc 训练流水线：教师处理 A、学生与教师都处理 B；T(A)+S(B) 组成互匹配矩阵给几何匹配损失，T(A)+S(B) 与 T(A)+T(B) 两个检测器加权相似度矩阵的分布做蒸馏对齐"></a>
-  <figcaption><strong>图 2（论文 Fig. 2，训练流水线）：两条损失的数据流。</strong>左侧：$A$ 走教师（蓝雪花=冻结），$B$ 走学生（火苗=可训练）+ 教师（冻结）。<strong>上路（几何匹配损失）：</strong>用 $T(A)$ 的输出 + $S(B)$ 的输出拼出<em>互匹配矩阵</em>（Mutual Matching Matrix, §3.2），按已知单应给的对应 $M_{ab}$ 监督。<strong>下路（联合检测–描述子蒸馏损失）：</strong>构造两个<em>检测器加权相似度矩阵</em>——一个用 $T(A)$+$S(B)$（学生–教师），一个用 $T(A)$+$T(B)$（教师–教师）——这两个矩阵各自是一个"联合检测–描述子相似度空间"，再用 KL 把<strong>学生–教师</strong>的分布对齐到<strong>教师–教师</strong>的分布（§3.3）。看图要点：教师全程冻结，唯一被训练的是学生 $S$；教师–教师那一路是学生要去模仿的"金标准目标"。</figcaption>
+  <figcaption><strong>图 2（论文 Fig. 2，训练流水线）：两条损失的数据流。</strong>左侧：$A$ 走教师（蓝雪花=冻结），$B$ 走学生（火苗=可训练）+ 教师（冻结）。<strong>上路（几何匹配损失）：</strong>用 $T(A)$ 的输出 + $S(B)$ 的输出拼出<em>互匹配矩阵</em>（Mutual Matching Matrix，§3.2），按已知单应给的对应 $M_{ab}$ 监督。<strong>下路（联合检测–描述子蒸馏损失）：</strong>构造两个<em>检测器加权相似度矩阵</em>——一个用 $T(A)$+$S(B)$（学生–教师），一个用 $T(A)$+$T(B)$（教师–教师）——这两个矩阵各自是一个"联合检测–描述子相似度空间"，再用 KL 把<strong>学生–教师</strong>的分布对齐到<strong>教师–教师</strong>的分布（§3.3）。看图要点：教师全程冻结，唯一被训练的是学生 $S$；教师–教师那一路是学生要去模仿的"金标准目标"。</figcaption>
 </figure>
 
 <p><strong>推理时（部署）。</strong>训练完后，地图库每张图离线过一遍教师、存下 $\{(w^T,d^T)\}$；查询图来了，在端侧过一遍学生得 $\{(w^S,d^S)\}$；两边描述子直接做<strong>互最近邻匹配</strong>解位姿。没有学习型匹配器、没有教师参与在线计算——查询端的全部成本就是那 0.04M–0.13M 学生的一次前向。</p>
@@ -432,7 +432,7 @@ body.lb-lock{overflow:hidden}
 <section id="method">
 <h2>五、方法 / 两条损失：把"哪里检测"和"描述子多像"耦合起来对齐</h2>
 
-<p>这一节是全文的机制核心。我按 kexue 的姿态来：先讲<em>为什么需要</em>每一步，每个近似/假设显式标出，关键结论从两个角度交叉验证。</p>
+<p>这一节是全文的机制核心。我按 kexue 的姿态来：先讲<em>为什么需要</em>每一步，每个近似和假设显式标出，关键结论从两个角度交叉验证。</p>
 
 <h3>5.0 记号与"软分配"为什么是对的抽象层级</h3>
 <p>教师对地图图 $I_d$ 输出 $\{(w_i^T, d_i^T)\}_{i=1}^{N}$，学生对查询图 $I_q$ 输出 $\{(w_j^S, d_j^S)\}_{j=1}^{N}$，其中 $w\in(0,1)$ 是检测器置信度、$d$ 是描述子（式 1–2）。非对称定位就是：用这两套特征算匹配、再解查询相对地图的位姿 $T_{S(I_q)\to T(I_d)}\in SE(3)$（式 3）；而<em>对称参照</em>是两张图都过教师得到 $T_{T(I_q)\to T(I_d)}$（式 4）。<strong>训练目标的灵魂就是让式 3 逼近式 4</strong>——让学生抽的特征"表现得像教师抽的一样"，这样它和教师建的地图才兼容。</p>
@@ -447,12 +447,12 @@ body.lb-lock{overflow:hidden}
 <p><strong>公式读法（要点）。</strong>式 6 把<em>三件事</em>压进一个标量：①两端检测器都自信（$w^T w^S$ 大）；②$i$ 把 $j$ 看作行内最佳（$\sigma_r$）；③$j$ 把 $i$ 看作列内最佳（$\sigma_c$）。三者皆高，$P_{ij}$ 才大——这正是"互"最近邻的可微近似。<strong>注意这就是推理时 MNN 的训练期对应物</strong>：训练用的软分配和部署用的硬 MNN 是同一套逻辑的两端，所以学生学到的东西在部署时不打折。</p>
 <p><strong>损失（式 9）。</strong>给定单应导出的真对应集合 $M_{ab}$，对其中每个 $(i,j)$ 最大化匹配概率（双向）：</p>
 <div class="equation">$$ \mathcal{L}_{\text{match}} = -\!\!\!\sum_{\substack{(i,j)\in M_{ab}\\ w_i^T(a)>\tau_d}}\!\!\! \log P^{TS}_{ij}\;\; -\!\!\!\sum_{\substack{(i,j)\in M_{ab}\\ w_i^T(b)>\tau_d}}\!\!\! \log P^{ST}_{ij} $$<div class="eq-caption">式 9：几何匹配损失。只对教师认为可靠的点（$w^T>\tau_d$，置信阈值 $\tau_d$）算损失——监督只来自教师有把握的检测，避免低置信关键点带来的噪声。$P^{TS}$ 与 $P^{ST}$ 是把"哪张图走教师"互换后的两个方向，保证对称地约束两个匹配方向。</div></div>
-<p><strong>显式假设 / 边界。</strong>这里有一个隐含近似：用<strong>$\tau_d$ 门控</strong>等于假设"教师高置信处的对应可信、低置信处不可信"。论文的消融揭示了它的副作用——见 5.3：$\mathcal{L}_{\text{match}}$ 单独用<em>反而有害</em>，因为它对检测器<strong>没有负信号</strong>，本质上更像一个"把损失重加权到教师自信区域"的正则项，而不是一个完整的学习目标。这是一个诚实且重要的自我揭示。</p>
+<p><strong>显式假设与边界。</strong>这里有一个隐含近似：用<strong>$\tau_d$ 门控</strong>等于假设"教师高置信处的对应可信、低置信处不可信"。论文的消融揭示了它的副作用——见 5.3：$\mathcal{L}_{\text{match}}$ 单独用<em>反而有害</em>，因为它对检测器<strong>没有负信号</strong>，更像一个"把损失重加权到教师自信区域"的正则项，而不是一个完整的学习目标。这是一个诚实且重要的自我揭示。</p>
 
 <h3>5.2 联合检测–描述子蒸馏损失 $\mathcal{L}_{\text{KD}}$：让学生复刻教师的"联合可匹配性分布"</h3>
 <p><strong>动机（也是全文最关键的一步）。</strong>仅有几何匹配还不够——它只约束了<em>真对应</em>那几个点，没有把教师对"<strong>整张相似度图谱</strong>"的判断传过去。前人 [38] 的做法是把检测器和描述子<em>分开</em>对齐；AsymLoc 主张<strong>联合</strong>对齐，因为"检测器可靠性会调制描述子相似度该被多信任"——这两件事在匹配里本就是耦合的。</p>
 <p><strong>构造（式 10）。</strong>把原始相似度矩阵 $S^{ST},S^{TT}$ 用两端检测器置信度加权，得到两个"检测器加权相似度矩阵"：</p>
-<div class="equation">$$ \bar S^{ST}_{ij} = \Big(\tfrac{w_i^S}{\tau_s}\Big)\Big(\tfrac{w_j^T}{\tau_t}\Big) S^{ST}_{ij}, \qquad \bar S^{TT}_{ij} = \Big(\tfrac{w_i^T}{\tau_t}\Big)\Big(\tfrac{w_j^T}{\tau_t}\Big) S^{TT}_{ij} $$<div class="eq-caption">式 10：两个联合检测–描述子空间。左边 $\bar S^{ST}$ 是<strong>学生–教师</strong>对（学生抽的查询 × 教师抽的地图），右边 $\bar S^{TT}$ 是<strong>教师–教师</strong>对（金标准）。$\tau_s,\tau_t$ 是分别控制学生/教师检测器置信度影响力的温度，经验选取（附录 A.1 有消融）。把 $w$ 乘进相似度，等于说"描述子有多像，要按两端各自有多想检测这里来打折"。</div></div>
+<div class="equation">$$ \bar S^{ST}_{ij} = \Big(\tfrac{w_i^S}{\tau_s}\Big)\Big(\tfrac{w_j^T}{\tau_t}\Big) S^{ST}_{ij}, \qquad \bar S^{TT}_{ij} = \Big(\tfrac{w_i^T}{\tau_t}\Big)\Big(\tfrac{w_j^T}{\tau_t}\Big) S^{TT}_{ij} $$<div class="eq-caption">式 10：两个联合检测–描述子空间。左边 $\bar S^{ST}$ 是<strong>学生–教师</strong>对（学生抽的查询 × 教师抽的地图），右边 $\bar S^{TT}$ 是<strong>教师–教师</strong>对（金标准）。$\tau_s,\tau_t$ 是分别控制学生/教师检测器置信度影响力的温度，经验选取（附录 A.1 有消融）。把 $w$ 乘进相似度，等于说"描述子有多像，要按两端各自的检测置信度来打折"。</div></div>
 <p><strong>蒸馏损失（式 11–12）。</strong>把两个加权相似度矩阵各自经行/列 softmax 变成概率分布，再用<strong>行、列双向 KL 散度</strong>把学生–教师分布对齐到教师–教师分布：</p>
 <div class="equation">$$ \mathcal{L}_{\text{KD}}^{ST} = \mathrm{KL}\!\big(\sigma_r(\bar S^{ST})\,\Vert\,\sigma_r(\bar S^{TT})\big) + \mathrm{KL}\!\big(\sigma_c(\bar S^{ST})\,\Vert\,\sigma_c(\bar S^{TT})\big) $$<div class="eq-caption">式 11：联合蒸馏损失（学生–教师方向）。$\sigma_r,\sigma_c$ 是行、列 softmax；行方向 $\approx$ 查询→地图的相似结构，列方向 $\approx$ 地图→查询。两个 KL 都要小，才保证<strong>双向</strong>的相似度结构一致。把 $TS$ 方向也算一遍，合成 $\mathcal{L}_{\text{KD}}=\mathcal{L}_{\text{KD}}^{ST}+\mathcal{L}_{\text{KD}}^{TS}$（式 12）。</div></div>
 <p><strong>公式读法。</strong>$\bar S^{TT}$ 是"两边都用教师时、教师眼中该有的匹配分布"——这是学生<em>本可达到</em>的天花板（因为地图端本来就是教师抽的）。让 $\bar S^{ST}$（学生当查询端）去逼近它，等于直接命令学生："你抽出来的查询特征，要让它和教师的地图特征算出的相似度分布，跟教师自己算出来的那份一模一样。"这比"复刻教师的描述子向量"宽松得多也对得多——学生不必复刻向量，只需复刻<strong>向量之间的关系</strong>。</p>
@@ -530,8 +530,8 @@ body.lb-lock{overflow:hidden}
 <p><strong>怎么读这张表（三句话）。</strong></p>
 <ol>
 <li><strong>同尺寸、同 GFLOPs，AsymLoc 一致碾压 Standard。</strong>0.13M：HEA ε=1 从 0.56→0.60、IMC2022 MLA 0.45→0.51、Aachen Night 80.0→84.4。<em>推理成本一分钱没多花</em>（在线参数与 GFLOPs 完全相同），差别全来自训练方式——这是"非对称训练免费午餐"的直接证据。</li>
-<li><strong>逼近教师。</strong>论文正文给的招牌数字：0.13M 学生在 HPatches 上仅比默认 SiLK 低 2%，却小 8×、省 7× FLOPs；Aachen 上达教师 95.5%（SiLK）/ 93%（SuperPoint）精度。注意 LoFTR / LightGlue 那两行——精度更高，但参数 14M–28M、GFLOPs 63–223，是端侧背不动的量级；它们标的是"上限在哪"，不是同台竞争对象。</li>
-<li><strong>压过所有改编自检索的非对称蒸馏。</strong>AML / RKD / CSD / D3Still 都是把图像检索里的非对称方法搬过来的强基线；AsymLoc 几乎在每个指标上更优，唯一例外是 D3Still 在 ScanNet@20° 上以 0.1 分微弱领先（49.0 vs 48.9）——论文如实指出了这一点。</li>
+<li><strong>逼近教师。</strong>论文正文给的招牌数字：0.13M 学生在 HPatches 上仅比默认 SiLK 低 2%，却小 8×、省 7× FLOPs；Aachen 上达教师 95.5%（SiLK）/ 93%（SuperPoint）精度。注意 LoFTR 和 LightGlue 那两行——精度更高，但参数 14M–28M、GFLOPs 63–223，是端侧背不动的量级；它们标的是"上限在哪"，不是同台竞争对象。</li>
+<li><strong>压过所有改编自检索的非对称蒸馏。</strong>AML、RKD、CSD、D3Still 都是把图像检索里的非对称方法搬过来的强基线；AsymLoc 几乎在每个指标上更优，唯一例外是 D3Still 在 ScanNet@20° 上以 0.1 分微弱领先（49.0 vs 48.9）——论文如实指出了这一点。</li>
 </ol>
 
 <figure>
@@ -541,7 +541,7 @@ body.lb-lock{overflow:hidden}
 
 <figure>
   <a href="../assets/figures/asymloc/asymloc_fig5.png"><img src="../assets/figures/asymloc/asymloc_fig5.png" alt="四联效率-精度权衡曲线：AsymLoc 的 Pareto 前沿明显更平、参数效率更高，逼近教师虚线"></a>
-  <figcaption><strong>图 5（论文 Fig. 5）：更平的 Pareto 前沿 = 更好的尺度可扩展性。</strong>(A) HPatches 上 HEA vs GFLOPs：绿（AsymLoc）随算力下降时精度掉得比红（Standard）慢得多，几乎贴着教师虚线。(B) HEA/GFLOP vs 参数量：参数越小、单位算力效率越高（机器学习常态），但 AsymLoc 的提升速率远快于 Standard。(C)(D) 在 IMC2022 的 MLA 上重复同样的结论。一句话：<strong>把算力砍小，AsymLoc 的精度损失率远低于对称训练</strong>——它不是在某个点上赢，而是整条曲线都更靠右上。</figcaption>
+  <figcaption><strong>图 5（论文 Fig. 5）：更平的 Pareto 前沿 = 更好的尺度可扩展性。</strong>（A）HPatches 上 HEA vs GFLOPs：绿（AsymLoc）随算力下降时精度掉得比红（Standard）慢得多，几乎贴着教师虚线。（B）HEA/GFLOP vs 参数量：参数越小、单位算力效率越高（机器学习常态），但 AsymLoc 的提升速率远快于 Standard。（C）（D）在 IMC2022 的 MLA 上重复同样的结论。一句话：<strong>把算力砍小，AsymLoc 的精度损失率远低于对称训练</strong>——它不是在某个点上赢，而是整条曲线都更靠右上。</figcaption>
 </figure>
 
 <figure>
@@ -577,7 +577,7 @@ body.lb-lock{overflow:hidden}
 <li><strong>精度天花板被教师锁死。</strong>学生最好也只能逼近"教师当查询端"的表现（图 4 右、$\bar S^{TT}$）。要更高精度只能换更强教师——AsymLoc 解决的是"在给定教师下、查询端省到极致"，不是"突破教师上限"。与 LoFTR/LightGlue 的差距（表 1）正是教师档次的差距，而非方法缺陷。</li>
 <li><strong>非对称的代价转移到了地图端。</strong>"查询端便宜"的另一面是"地图端要存教师特征、且换教师要重建库"。论文的设定假设地图离线、可一次性付清；在地图频繁更新或存储受限的场景，这笔账需要单独评估（论文未展开该成本分析）。</li>
 <li><strong>D3Still 在 ScanNet@20° 上仍以 0.1 分微弱领先</strong>（49.0 vs 48.9）——论文如实承认，并非全指标横扫。</li>
-<li><strong>正文未披露训练时长 / 硬件，</strong>故本文不做 GPU-hours 估算（见 §训练配置）。代码仓库：检索（arXiv、OpenReview、GitHub）<strong>未找到</strong>官方开源链接，复现需自行实现；本文所有数字均以 arXiv:2604.09445 v1 PDF 为准。</li>
+<li><strong>正文未披露训练时长和硬件，</strong>故本文不做 GPU-hours 估算（见 §训练配置）。代码仓库：检索（arXiv、OpenReview、GitHub）<strong>未找到</strong>官方开源链接，复现需自行实现；本文所有数字均以 arXiv:2604.09445 v1 PDF 为准。</li>
 </ul>
 </section>
 
@@ -592,8 +592,8 @@ body.lb-lock{overflow:hidden}
 <ul>
 <li><strong>原文：</strong>Mohammad Omama, Gabriele Berton, Eric Foxlin, Yelin Kim. <em>AsymLoc: Towards Asymmetric Feature Matching for Efficient Visual Localization.</em> arXiv:2604.09445 v1（2026-04-10）。UT Austin / Amazon。CVPR 2026 · Top Paper（候选，来自 SkalskiP/top-cvpr-2026-papers 策展榜单，非官方奖项）。</li>
 <li><strong>本文依据：</strong>全部数值、公式（式 1–13）、表格（Table 1 完整转写、Table 2）均以 arXiv:2604.09445 v1 PDF 正文 + 附录为准；论文未说明处已标注"论文未说明"。</li>
-<li><strong>代码：</strong>检索 arXiv / OpenReview / GitHub 未找到官方开源仓库（none found）；CVF CVPR 2026 openaccess 页面当前 404，故未链接。</li>
-<li><strong>方法论署名（红线说明）：</strong>本文的机制写作（动机先行、每个假设显式标出、关键结论从 ≥2 角度交叉验证）采用了 <strong>苏剑林 / kexue.fm 的科学推导方法论</strong>。但本次 <code>kexue:su</code> 语料检索返回的卡片（扩散模型恒等式蒸馏 [archives/10085, 10567]、BERT-of-Theseus 模块替换压缩 [archives/7575]、CUR 分解检索 [archives/9336] 等）<strong>均与"局部检测器–描述子联合蒸馏 / 互最近邻匹配 / 视觉定位"主题不吻合</strong>，按归因红线，<strong>不</strong>对本文任何具体技术主张做 <code>[archives/XXXX]</code> 苏剑林引用——仅应用其方法论姿态，特此说明。</li>
+<li><strong>代码：</strong>检索 arXiv、OpenReview、GitHub 未找到官方开源仓库（none found）；CVF CVPR 2026 openaccess 页面当前 404，故未链接。</li>
+<li><strong>方法论署名（红线说明）：</strong>本文的机制写作（动机先行、每个假设显式标出、关键结论从 ≥2 角度交叉验证）采用了 <strong>苏剑林 / kexue.fm 的科学推导方法论</strong>。但本次 <code>kexue:su</code> 语料检索返回的卡片（扩散模型恒等式蒸馏 [archives/10085, 10567]、BERT-of-Theseus 模块替换压缩 [archives/7575]、CUR 分解检索 [archives/9336] 等）<strong>均与"局部检测器–描述子联合蒸馏、互最近邻匹配、视觉定位"主题不吻合</strong>，按归因红线，<strong>不</strong>对本文任何具体技术主张做 <code>[archives/XXXX]</code> 苏剑林引用——仅应用其方法论姿态，特此说明。</li>
 <li><strong>关键参照文献（论文引用，原编号）：</strong>SiLK [20]、SuperPoint [15]、LightGlue [32]、SuperGlue [46]、LoFTR [55]、XFeat [38]、D3Still [67]、CSD [66]、AML [10]、RKD [36]；基准 HPatches [3]、ScanNet [14]、IMC2022 [37]、Aachen [51]、HLoc [44]、COCO [31]。</li>
 </ul>
 </section>

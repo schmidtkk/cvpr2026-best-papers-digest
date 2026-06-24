@@ -358,7 +358,7 @@ body.lb-lock{overflow:hidden}
 <p id="abstract" class="lead"><strong>导读。</strong>MedMO 要解决的是一个很实际的冲突：医学 MLLM 既要<strong>看懂影像并回答临床问题</strong>，又要<strong>把答案落到可核验的空间位置</strong>。这两类能力的数据条件相反——理解数据多而便宜，框选标注少、贵，并且依赖高分辨率。MedMO 的答案是四阶段后训练：先用 18.5M 低分辨率样本打底，再用 3M 高分辨率 grounding 数据补空间能力，随后指令微调，最后用 GRPO 和纯几何 bbox 奖励打磨定位。本文按“问题 → 配方 → 奖励 → 证据 → 边界”组织，先看为什么顺序重要，再检查实验是否真的支持这个主张。</p>
 
 <div id="reader-map" class="reader-map" aria-label="阅读路线">
-  <div class="map-step"><span class="step">01 / Problem</span><b>为什么不能一锅端？</b><p>理解监督海量，grounding 标注稀缺；低分辨率足够对齐语义，却不够框小病灶。</p></div>
+  <div class="map-step"><span class="step">01 / Problem</span><b>为什么不能一锅端？</b><p>理解监督海量，grounding 标注稀缺；低分辨率足够对齐语义，却不够框准小病灶。</p></div>
   <div class="map-step"><span class="step">02 / Recipe</span><b>四阶段怎么排？</b><p>低分辨率先学跨模态对齐，高分辨率再注入框选，指令与 RL 放在后面收口。</p></div>
   <div class="map-step"><span class="step">03 / Reward</span><b>奖励如何可验证？</b><p>GIoU、归一化 L1、匈牙利匹配与 FP/FN 惩罚只看几何，不奖励漂亮但错的文本。</p></div>
   <div class="map-step"><span class="step">04 / Evidence</span><b>证据强在哪里？</b><p>VQA、报告和 grounding 分开验；grounding 均分 56.8 是主战场，局限也要逐项看。</p></div>
@@ -375,10 +375,10 @@ body.lb-lock{overflow:hidden}
 
 <section id="datasets"><h2>3. 数据：26M+ / 45 个数据集，但 18.5M 压在单一 MedTrinity 上</h2><p>语料统一了放射、病理、眼科、皮肤科与外科影像，共 26M+ 样本，含图文对与纯文本，覆盖多模态成像（X-ray、CT、MRI、超声、光学、核医学）与多生物系统（胸、脑、心、肝、肾、眼、结肠、组织）。其中<strong>MedTrinity 一家贡献 18.5M 公开指令对，是 Stage 1 的全部主力</strong>；grounding 部分另用带框标注的数据集（Chest X-ray、Wrist X-ray、Cell microscopy、CT）。作者还自建了 Cell Benchmark（DeepCell、Bacteria 等显微镜图像）评测检测。</p>
 <figure><a href="../assets/figures/medmo/medmo_fig4.png"><img src="../assets/figures/medmo/medmo_fig4.png" alt="MedMO 统一多模态医学数据集的成像模态与生物系统构成 sunburst 图"></a><figcaption><strong>图 4 · 语料构成（成像模态 × 生物系统）。</strong>内圈是成像模态（X-ray / CT / MRI / 超声 / 核医学 / 病理光学等），外圈是对应的生物系统/器官（胸、脑、脊髓、肝、肾、眼、结肠……）。这张图要支撑的结论是“MedMO 的语料在<em>模态</em>和<em>解剖系统</em>两个维度都铺得很开”——这正是它敢主张“跨模态统一”的数据底气；但也要对照看：覆盖广 ≠ 分布均，18.5M 集中在 MedTrinity，放射类占比偏重（见 §9 复现门槛）。</figcaption></figure>
-<div class="note"><div class="note-title">数据的角色（按阶段）</div>Stage 1：18.5M @ 768²，学全局图文对齐（captioning + VQA + 通用多模态，记 $D_{\text{stage1}}=D_{\text{caption}}\cup D_{\text{vqa}}\cup D_{\text{general-mm}}$）；Stage 2：3M @ 1280² 高质量 + 带框标注，注入 grounding；Stage 3：4.3M 指令–响应对（captioning / 诊断问答 / 报告摘要 / 检索推理）；Stage 4：300K 用于 GRPO。<strong>论文未说明</strong>各模态在 26M 中的精确占比表。</div></section>
+<div class="note"><div class="note-title">数据的角色（按阶段）</div>Stage 1：18.5M @ 768²，学全局图文对齐（captioning + VQA + 通用多模态，记 $D_{\text{stage1}}=D_{\text{caption}}\cup D_{\text{vqa}}\cup D_{\text{general-mm}}$）；Stage 2：3M @ 1280² 高质量 + 带框标注，注入 grounding；Stage 3：4.3M 指令–响应对（captioning / 诊断问答 / 报告摘要 / 检索推理）；Stage 4：300K 用于 GRPO。<strong>论文未说明</strong>各模态在 26M 中的精确占比。</div></section>
 
-<section id="pipeline"><h2>4. Pipeline：从 Qwen3-VL-8B 出发的四级渐进后训练</h2><p>图 2（论文 Figure 2，矢量排版，提取器跳过，此处转写其结构）给出全流程。底座是 <strong>Qwen3-VL-8B-Instruct</strong>，其三件套为：视觉编码器 $E_v$、把多层 ViT 特征经 <em>DeepStack</em> 融合投影进语言空间的视觉-语言适配器 $A$、以及语言解码器 $D$。在此之上做四个<strong>顺序</strong>后训练阶段：</p>
-<div class="table-wrap"><table><caption><strong>表（转写自图 2）.</strong> 四阶段后训练的规模、分辨率、目标与时长。训练时长按论文图 2 / §4.1 披露数字，<strong>属粗略估算，不等同于实际账单</strong>。</caption><thead><tr><th>阶段</th><th>数据量</th><th>分辨率 / 配置</th><th>目标</th><th>时长</th></tr></thead><tbody>
+<section id="pipeline"><h2>4. Pipeline：从 Qwen3-VL-8B 出发的四阶段渐进后训练</h2><p>图 2（论文 Figure 2，矢量排版，提取器跳过，此处转写其结构）给出全流程。底座是 <strong>Qwen3-VL-8B-Instruct</strong>，其三件套为：视觉编码器 $E_v$、把多层 ViT 特征经 <em>DeepStack</em> 融合投影进语言空间的视觉-语言适配器 $A$、以及语言解码器 $D$。在此之上做四个<strong>顺序</strong>后训练阶段：</p>
+<div class="table-wrap"><table><caption><strong>表（转写自图 2）.</strong> 四阶段后训练的规模、分辨率、目标与时长。训练时长<strong>按论文披露数字粗略估算，不等同于实际账单</strong>（见图 2 / §4.1）。</caption><thead><tr><th>阶段</th><th>数据量</th><th>分辨率 / 配置</th><th>目标</th><th>时长</th></tr></thead><tbody>
 <tr><td><strong>1 · 大规模通用医学 SFT</strong></td><td>18.5M（MedTrinity）</td><td>768×768；BS=10，LR=1e-5，cosine，grad accum=2</td><td>学全局图文对齐，打底医学知识</td><td>225 h</td></tr>
 <tr><td><strong>2 · 高质量医学影像 + grounding SFT</strong></td><td>3M</td><td>1280×1280；BS=2，LR=8e-6，cosine，grad accum=8</td><td>升分辨率，加入空间定位与细粒度框选</td><td>155 h</td></tr>
 <tr><td><strong>3 · 指令微调</strong></td><td>4.3M</td><td>BS=10，LR=5e-6，grad accum=2</td><td>对齐人类风格的医学指令跟随</td><td>110 h</td></tr>
@@ -430,7 +430,7 @@ R_{\text{bbox}}&=\operatorname{clip}_{[0,1]}\big(B-\text{Pen}\big)
 \end{aligned}\tag{7}
 $$<div class="eq-caption">式 7：覆盖归一的 bbox 奖励 + FP/FN 惩罚</div></div>
 <div class="formula-note"><strong>为什么要 FP/FN 惩罚。</strong>没有它，模型可以靠“宁滥勿缺、撒一堆框”来碰运气提高重叠——这就是 reward hacking。$\lambda_{\text{FP}}$ 罚多余框、$\lambda_{\text{FN}}$ 罚漏掉的真值框，把“撒框”和“漏框”都明码标价。于是这个奖励<strong>只在“框得准、不多不少”时给高分</strong>，纯几何、可核验、与语言流畅度正交。</div>
-<div class="note"><div class="note-title">两条独立路径的交叉验证（本文按 kexue:su 方法重推，未作 [archives] 归因）</div><strong>路径一（自上而下，设计意图）：</strong>RL 要“可验证”→ 奖励必须规则可核验且与语言能力正交 → 选纯几何信号 → 但几何信号需克服三个工程缺陷：尺度依赖（→对角线归一 L1）、非重叠零梯度（→GIoU）、多目标指派（→匈牙利）、刷框漏洞（→FP/FN 惩罚）。每个组件都对应一个具体失败模式。<br><strong>路径二（自下而上，证据）：</strong>表 4 显示加入该奖励后 IoU 在 NIH/DeepLesion/Bacteria 上<em>一致</em>上升（+4.5 / +0.4 / +0.4）。增益“小但稳”恰好印证机制定位——重活已由 Stage 2 的高分辨率 grounding 做完，<strong>RL 只是打磨</strong>，所以幅度小、却跨数据集稳定为正，且 QA/VQA 没有因 RL 而塌（图 6 stage3 仍在升），说明奖励确实<em>没毒化语言能力</em>。</div></section>
+<div class="note"><div class="note-title">两条独立路径的交叉验证（本文按 kexue:su 方法重推，未作 [archives] 归因）</div><strong>路径一（自上而下，设计意图）：</strong>RL 要“可验证”→ 奖励必须规则可核验且与语言能力正交 → 选纯几何信号 → 但几何信号需克服三个工程缺陷：尺度依赖（→对角线归一 L1）、非重叠零梯度（→GIoU）、多目标指派（→匈牙利）、刷框漏洞（→FP/FN 惩罚）。每个组件都对应一个具体失败模式。<br><strong>路径二（自下而上，证据）：</strong>表 4 显示加入该奖励后 IoU 在 NIH/DeepLesion/Bacteria 上<em>一致</em>上升（+4.5 / +0.4 / +0.4）。增益“小但稳”恰好印证机制定位——重活已由 Stage 2 的高分辨率 grounding 做完，<strong>RL 只是打磨</strong>，所以幅度小、却跨数据集稳定为正，且 QA/VQA 没有因 RL 而塌（图 6 Stage 3 仍在升），说明奖励确实<em>没毒化语言能力</em>。</div></section>
 
 <section id="training"><h2>6. 训练账本：64× MI210 训 25 天，四阶段 225/155/110/98 小时</h2><p>MedMO 在 <strong>64× AMD Instinct MI210（64GB）</strong>上训练，总时长约 <strong>25 天</strong>，遵循四阶段流水线（§4.1）：Stage 1 大规模 SFT（18.5M @ 768²，225 h）→ Stage 2 高分辨率微调（3M @ 1280²，155 h）→ Stage 3 指令微调（4.3M，110 h）→ Stage 4 医学导向 RL（300K，98 h）。训练用 TRL 框架；超参见 §4.1（Stage 1：BS=10/LR=1e-5；Stage 2：BS=2/LR=8e-6/grad accum=8；Stage 3：BS=10/LR=5e-6）。</p>
 <div class="note"><div class="note-title">复现门槛提示</div>四段时长合计约 225+155+110+98 = 588 GPU·小时<em>每卡</em>口径——乘 64 卡约 3.8 万 GPU·小时，<strong>按论文披露数字粗略估算，不等同于实际账单</strong>（未含失败重跑、数据预处理、评测）。Stage 4 的 $\lambda_{\text{FP}},\lambda_{\text{FN}}$ 具体取值、各阶段 epoch 数<strong>论文未说明</strong>。底座 Qwen3-VL-8B 公开可得，配方与模型权重已开源，复现的硬门槛主要在算力与 26M 语料的拼装。</div></section>
@@ -447,18 +447,18 @@ $$<div class="eq-caption">式 7：覆盖归一的 bbox 奖励 + FP/FN 惩罚</di
 <tr><td>MedMO-8B</td><td>64.6</td><td>72.3/64.7</td><td>70.6/70.0</td><td>26.2</td><td>63.2</td><td>81.0</td><td>66.5/60.2</td><td><strong>61.3</strong></td></tr>
 <tr><td><strong>MedMO-8B-Next</strong></td><td><strong>69.3</strong></td><td>86.4/68.0</td><td>83.0/81.6</td><td>42.9</td><td><strong>72.7</strong></td><td>80.2</td><td>65.2/57.8</td><td>60.1</td></tr>
 </tbody></table></div>
-<p>这张表要支撑的结论是：<strong>MedMO-8B-Next 在开源阵营里 VQA 均分最高（72.7%），超 Fleming-VL-8B（64.3%）+6.6、超 Lingshu-7B +17.6</strong>；连小一号的 4B-Next（68.5%）也压过 Fleming。一个有意思的细节——<strong>MedMO-8B（base，未走 Next 的 RL）反而拿下全体最高 QA 均分 61.3%</strong>，在 MedQA(84.3)、Medbullets 上领先，提示“base 指令微调已给出很强的纯推理，RL 主要帮 VQA/grounding”。</p>
+<p>这张表要支撑的结论是：<strong>MedMO-8B-Next 在开源阵营里 VQA 均分最高（72.7%），超 Fleming-VL-8B（64.3%）+6.6、超 Lingshu-7B +17.6</strong>；连小一号的 4B-Next（68.5%）也压过 Fleming。一个有意思的细节——<strong>MedMO-8B（base，未走 Next 的 RL）反而拿下全体最高 QA 均分 61.3%</strong>，在 MedQA（84.3）、Medbullets 上领先，提示“base 指令微调已给出很强的纯推理，RL 主要帮 VQA/grounding”。</p>
 <h3>7.2 医学报告生成（表 2）</h3>
-<div class="table-wrap"><table><caption><strong>表 2（节选）.</strong> 报告生成，CIDEr / RaTE / Semb 三项代表性指标，四数据集。绿色行为 MedMO。完整 ROUGE-L 等以论文表 2 为准；此处取每数据集的 CIDEr 列 + MIMIC-CXR 的语义指标为代表。</caption><thead><tr><th>Model</th><th>MIMIC-CXR CIDEr</th><th>MIMIC RaTE</th><th>MIMIC Semb</th><th>CheXpert CIDEr</th><th>IU-Xray CIDEr</th><th>Med-Trinity CIDEr</th></tr></thead><tbody>
+<div class="table-wrap"><table><caption><strong>表 2（节选）.</strong> 报告生成，CIDEr / RaTE / Semb 三项代表性指标，四数据集。绿色行是 MedMO。完整 ROUGE-L 等以论文表 2 为准；此处取每数据集的 CIDEr 列 + MIMIC-CXR 的语义指标为代表。</caption><thead><tr><th>Model</th><th>MIMIC-CXR CIDEr</th><th>MIMIC RaTE</th><th>MIMIC Semb</th><th>CheXpert CIDEr</th><th>IU-Xray CIDEr</th><th>Med-Trinity CIDEr</th></tr></thead><tbody>
 <tr><td>Lingshu-7B</td><td>109.4</td><td>52.1</td><td>30.0</td><td>79.0</td><td>180.7</td><td>74.5</td></tr>
 <tr><td>Fleming-VL-8B</td><td>132.5</td><td>56.7</td><td>33.6</td><td>82.2</td><td><strong>198.6</strong></td><td>35.8</td></tr>
 <tr><td>MedMO-4B-Next</td><td>96.7</td><td>52.0</td><td>34.3</td><td>74.5</td><td>147.8</td><td>183.8</td></tr>
 <tr><td>MedMO-8B</td><td>140.0</td><td>57.1</td><td>50.0</td><td>87.5</td><td>169.7</td><td>270.4</td></tr>
 <tr><td><strong>MedMO-8B-Next</strong></td><td><strong>143.4</strong></td><td><strong>57.7</strong></td><td><strong>51.5</strong></td><td><strong>88.3</strong></td><td>171.9</td><td><strong>272.1</strong></td></tr>
 </tbody></table></div>
-<p>MedMO-8B-Next 在 MIMIC-CXR、CheXpert、Med-Trinity 的 CIDEr 与语义指标（RaTE/Semb）多数第一；尤其 <strong>Med-Trinity CIDEr 272.1，超次优开源（Qwen2.5VL-7B 的 81.5）3 倍以上</strong>。要诚实的是：<strong>IU-Xray 上 Fleming-VL-8B 仍以 CIDEr 198.6 领先</strong>，MedMO-8B-Next 171.9 居其后——并非全面碾压。</p>
+<p>MedMO-8B-Next 在 MIMIC-CXR、CheXpert、Med-Trinity 的 CIDEr 与语义指标（RaTE/Semb）多数第一；尤其 <strong>Med-Trinity CIDEr 272.1，超次优开源（Qwen2.5VL-7B 的 81.5）3 倍以上</strong>。也要如实说明：<strong>IU-Xray 上 Fleming-VL-8B 仍以 CIDEr 198.6 领先</strong>，MedMO-8B-Next 171.9 居其后——并非全面碾压。</p>
 <h3>7.3 医学 grounding（表 3）——MedMO 最硬的一场</h3>
-<div class="table-wrap"><table><caption><strong>表 3.</strong> 医学 grounding 六任务的 IoU(%)。NIH=胸片定位；DeepLesion=病灶检测；Bacteria=显微镜检测；MedSG 三子任务=多视图 / 目标跟踪 / 指代。</caption><thead><tr><th>Model</th><th>NIH</th><th>DeepLesion</th><th>Bacteria</th><th>MedSG 多视图</th><th>MedSG 跟踪</th><th>MedSG 指代</th><th>Avg.</th></tr></thead><tbody>
+<div class="table-wrap"><table><caption><strong>表 3.</strong> 医学 grounding 六任务的 IoU（%）。NIH=胸片定位；DeepLesion=病灶检测；Bacteria=显微镜检测；MedSG 三子任务=多视图 / 目标跟踪 / 指代。</caption><thead><tr><th>Model</th><th>NIH</th><th>DeepLesion</th><th>Bacteria</th><th>MedSG 多视图</th><th>MedSG 跟踪</th><th>MedSG 指代</th><th>Avg.</th></tr></thead><tbody>
 <tr><td>InternVL3-8B</td><td>10.1</td><td>0.00</td><td>0.7</td><td>6.3</td><td>13.0</td><td>3.3</td><td>5.6</td></tr>
 <tr><td>Fleming-VL-8B</td><td>0.00</td><td>0.00</td><td>8.3</td><td>42.0</td><td>36.7</td><td>16.6</td><td>17.2</td></tr>
 <tr><td>Lingshu-7B</td><td>5.3</td><td>0.7</td><td>10.8</td><td>28.3</td><td>38.7</td><td>10.4</td><td>13.9</td></tr>
@@ -467,7 +467,7 @@ $$<div class="eq-caption">式 7：覆盖归一的 bbox 奖励 + FP/FN 惩罚</di
 <tr><td>MedMO-8B</td><td>8.83</td><td>38.5</td><td>54.6</td><td>75.8</td><td>77.2</td><td>70.1</td><td>54.2</td></tr>
 <tr><td><strong>MedMO-8B-Next</strong></td><td>15.9</td><td><strong>40.5</strong></td><td><strong>56.1</strong></td><td><strong>77.5</strong></td><td><strong>78.8</strong></td><td><strong>71.9</strong></td><td><strong>56.8</strong></td></tr>
 </tbody></table></div>
-<p>这是 MedMO 与基线<strong>差距最悬殊</strong>的一场。均分 56.8% vs 最强基线 Fleming-VL-8B 的 17.2%。两个尖锐对比值得点出：<strong>(1) DeepLesion 上 Fleming/InternVL3/Qwen3VL 全是 0.00 IoU</strong>——病灶检测是多个医学 VLM 的盲区，而 MedMO-8B-Next 达 40.5；<strong>(2) MedMO 在 MedSG 三子任务上甚至超过专用模型 MedSG-Bench</strong>（如指代 71.9 vs 60.4）。这把“四阶段 + 高分辨率 grounding + bbox 奖励”的价值落到了实处。<strong>诚实点：NIH 胸片定位上 MedMO-8B-Next 15.9，略低于底座 Qwen3VL-8B 的 16.4</strong>——并非每个 grounding 任务都赢。</p>
+<p>这是 MedMO 与基线<strong>差距最悬殊</strong>的一场。均分 56.8% vs 最强基线 Fleming-VL-8B 的 17.2%。两个尖锐对比值得点出：<strong>(1) DeepLesion 上 Fleming/InternVL3/Qwen3VL 全是 0.00 IoU</strong>——病灶检测是多个医学 VLM 的盲区，而 MedMO-8B-Next 达 40.5；<strong>(2) MedMO 在 MedSG 三子任务上甚至超过专用模型 MedSG-Bench</strong>（如指代 71.9 vs 60.4）。这把“四阶段 + 高分辨率 grounding + bbox 奖励”的价值落到了实处。<strong>但也要说明：NIH 胸片定位上 MedMO-8B-Next 15.9，略低于底座 Qwen3VL-8B 的 16.4</strong>——并非每个 grounding 任务都赢。</p>
 <figure><a href="../assets/figures/medmo/medmo_fig5.png"><img src="../assets/figures/medmo/medmo_fig5.png" alt="放射数据集上随后训练阶段的性能曲线，Stage 2 出现陡升"></a><figcaption><strong>图 5 · 阶段消融（放射数据集）。</strong>IU-Xray / MIMIC-CXR / Chexpert / MedTrinity 及其平均，随 Initial→Stage1→Stage2→Stage3 的得分。重点要看的是<strong>平均线（紫）在 Stage 2 的陡升（46.2→56.8→72.9）</strong>——这正对应 §1 的论断：grounding/高分辨率注入发生在 Stage 2，是性能跃迁的来源。也要注意 MedTrinity（红）在 Stage1 冲到高位后 Stage2 回落——单一数据集过拟合在升分辨率、补多样数据后被“拉平”，是阶段式训练的典型副作用（见图 6 的 QA 同款现象）。</figcaption></figure></section>
 
 <section id="ablations"><h2>8. 消融：阶段曲线证明机制，bbox 奖励“小而稳”地补刀</h2><p>论文给两组消融：阶段式贡献（图 5、6）与 bbox 可验证奖励（表 4）。</p>
@@ -488,7 +488,7 @@ $$<div class="eq-caption">式 7：覆盖归一的 bbox 奖励 + FP/FN 惩罚</di
 <tr><td>算力门槛</td><td>64× MI210 训 25 天；四阶段 225/155/110/98 h。</td><td>工业级硬件；学术小组难以原样复现全流程，但底座 + 配方 + 权重开源，可在更小规模上验证单阶段。</td></tr>
 </tbody></table></div></section>
 
-<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>MedMO 把“医学 MLLM 又要看懂、又要框准”这对数据经济学相反的需求，拆成<strong>四阶段课程 + 分辨率从 768 升到 1280 的渐进后训练</strong>——便宜的理解数据先打底、稀缺且需高分辨率的 grounding 后注入；再用一个<strong>纯几何、可验证</strong>的 bbox 奖励（对角线归一 L1 + GIoU + 匈牙利匹配 + FP/FN 惩罚）把定位接进 GRPO，让 RL 只打磨空间精度而不碰语言流畅度。于是一个从 Qwen3-VL-8B 后训练而来、<em>仅用公开数据</em>的开源模型，能同时在 VQA、文本 QA、报告生成与 grounding 四类任务上压过同档开源基线，尤其在 grounding（均分 56.8% vs 17.2%）上拉开断层式差距。</p>
+<section id="summary"><h2>结语：几点学术判断</h2><p><strong>一句话总结：</strong>MedMO 把“医学 MLLM 又要看懂、又要框准”这对数据经济学相反的需求，拆成<strong>四阶段课程 + 分辨率从 768 升到 1280 的渐进后训练</strong>——便宜的理解数据先打底、稀缺且需高分辨率的 grounding 后注入；再用一个<strong>纯几何、可验证</strong>的 bbox 奖励（对角线归一 L1 + GIoU + 匈牙利匹配 + FP/FN 惩罚）把定位接进 GRPO，让 RL 只打磨空间精度而不碰语言流畅度。于是，一个从 Qwen3-VL-8B 后训练而来、<em>仅用公开数据</em>的开源模型，能同时在 VQA、文本 QA、报告生成与 grounding 四类任务上压过同档开源基线。尤其在 grounding（均分 56.8% vs 17.2%）上拉开断层式差距。</p>
 <div class="guide"><strong>三个 takeaway：</strong><ol><li><strong>“先喂什么、何时升分辨率”是真正的设计变量</strong>：理解便宜→先大规模低分辨率打底；grounding 贵且需细节→后小批量高分辨率注入。图 5 在 Stage 2 的陡升、图 6 中 QA 的“先抑后扬”，都是这条课程逻辑的可见指纹。</li><li><strong>“可验证”是奖励设计的红线，几何信号天然满足</strong>：bbox 奖励的每个组件都对应一个失败模式——尺度依赖（对角线归一）、非重叠零梯度（GIoU）、多目标指派（匈牙利）、刷框漏洞（FP/FN 惩罚）；纯几何使它规则可核验、与语言能力正交，于是 RL 提升定位（表 4 跨集恒正）而 QA/VQA 不塌。</li><li><strong>增益的“大小”本身在讲故事</strong>：grounding 的断层式领先来自 Stage 2 的高分辨率注入，而 RL 的 ∆ 只有零点几到几个点——主引擎是课程与分辨率，RL 是打磨。把“哪一步贡献多少”分清楚，才不会把整体战绩错记到某个单一组件上。</li></ol></div>
 <p>留给后续的两条反驳/验证路径：<strong>(a)</strong> 把 18.5M 的 MedTrinity 占比降下来、补齐病理/皮肤等欠覆盖模态，验证“跨模态统一”是真泛化还是放射数据撑出来的；<strong>(b)</strong> 做“去掉 Stage 2 高分辨率 / 去掉 RL”的等算力对照，量化分辨率升级相对 RL 各自对 grounding 的净贡献——表 4 暗示 RL 边际很小，但需在控制其它阶段不变时直接对比才坐实。</p></section>
 

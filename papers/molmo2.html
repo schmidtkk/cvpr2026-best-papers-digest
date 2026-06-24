@@ -364,7 +364,7 @@ body.lb-lock{overflow:hidden}
 <section id="motivation"><h2>一、核心问题：为什么“开源视频 VLM”这件事，绕不开“数据从哪来”和“grounding 怎么进视频”</h2>
 
 <div class="socratic"><p class="q"><strong>问题。</strong>视频已经是手机、家用摄像头、自动驾驶里最普遍的数据形态，可最强的视频-语言模型（GPT-5、Gemini、Claude）全是闭源的——权重、数据、配方都不公开。那为什么开源社区一直追不上？</p>
-<p class="guide"><strong>引导。</strong>表面看是“算力差距”，但论文指出更深的两道坎。第一道是<strong>数据的“原罪”</strong>：现有大规模视频指令数据，绝大多数是“先把视频切片、用一个强 VLM 给每片配字幕、再让 LLM 合成 QA”——而那个“强 VLM”往往是 GPT-4 这类闭源模型。于是所谓开源数据其实是<strong>闭源模型的蒸馏产物</strong>，把闭源模型的偏置原封不动灌进了开源训练集，社区既无法审计、也无法真正超越源头。第二道坎是<strong>能力缺口</strong>：当前 VLM（连闭源的）都缺 <em>grounding</em>。“机器人抓了几次红色方块？”需要在<strong>空间+时间</strong>上为每次抓取吐出一个点；“杯子什么时候掉下桌的？”需要返回一条轨迹。图像 grounding 已是标配，视频 grounding 只有少数闭源系统支持，且形式很受限。</p>
+<p class="guide"><strong>引导。</strong>表面看是“算力差距”，但论文指出更深的两道坎。第一道是<strong>数据的“原罪”</strong>：现有大规模视频指令数据，绝大多数是“先把视频切片、用一个强 VLM 给每片配字幕、再让 LLM 合成 QA”——而那个“强 VLM”往往是 GPT-4 这类闭源模型。于是所谓开源数据是<strong>闭源模型的蒸馏产物</strong>，把闭源模型的偏置原封不动灌进了开源训练集，社区既无法审计、也无法真正超越源头。第二道坎是<strong>能力缺口</strong>：当前 VLM（连闭源的）都缺 <em>grounding</em>。“机器人抓了几次红色方块？”需要在<strong>空间+时间</strong>上为每次抓取吐出一个点；“杯子什么时候掉下桌的？”需要返回一条轨迹。图像 grounding 已是标配，视频 grounding 只有少数闭源系统支持，且形式很受限。</p>
 <p class="a"><strong>回答。</strong>所以核心问题不是“再训一个更大的视频 VLM”，而是：<strong>能不能在完全不蒸馏闭源模型的前提下，自建一套足够强、且带时空 grounding 的视频数据与训练配方，让社区拿到一个可审计、可接续的地基？</strong>这把问题从“刷榜”转成了“造地基”，也解释了为什么本文的主体是<strong>数据工程 + 训练系统</strong>，而不是某个新网络结构——架构上 Molmo2 反而刻意走“最标准”的 ViT+connector+LLM。</p>
 <p class="takeaway"><strong>Takeaway。</strong>“开源”有三个层级：开权重、开数据、开配方。多数“开源 VLM”只开权重；少数开数据的又被闭源蒸馏污染。Molmo2 要的是三层全开 + 数据不蒸馏，并顺手把 grounding 这块连闭源都没做好的硬骨头啃下来。</p></div>
 </section>
@@ -480,12 +480,12 @@ body.lb-lock{overflow:hidden}
 <h3>5.3 视觉 token 双向注意力：为什么让帧之间互相“看”有用</h3>
 <div class="socratic"><p class="q"><strong>问题（动机）。</strong>LLM 默认是<strong>因果（单向）</strong>注意力：第 $t$ 个 token 只能看它之前的。可视觉 token 不是“按时间生成的语言”，而是“同时摆在那里的画面”——强行让前面的帧看不到后面的帧，合理吗？</p>
 <p class="guide"><strong>引导（机制）。</strong>Molmo2 允许图像 token（哪怕来自不同帧/图像）<strong>相互前向注意</strong>，即在视觉 token 内部开<strong>双向注意力</strong>，文本端仍保持因果。直觉：视频理解常需“后面的帧帮忙解释前面的帧”（动作的结果回看动作的起因），双向注意让每个视觉 token 都能聚合<strong>整段时间窗</strong>的上下文，而不只是过去。</p>
-<p class="a"><strong>回答 + 交叉验证。</strong>(角度一，原理) 因果掩码是为“自回归生成文本”设计的，对“一次性给定的视觉证据”并无必要——去掉它等于把视觉 token 之间的全部成对关系都放开，表达力只增不减。(角度二，消融) 表 8(b) 里 “No bidir” 让 QA 从 64.8 掉到 <strong>64.4</strong>、字幕 F1 从 39.5 掉到 <strong>38.5</strong>，<strong>两个指标同时下降</strong>——说明双向注意力的增益不是某个任务的偏好，而是“视觉证据该被双向聚合”这一结构性事实。</p>
+<p class="a"><strong>回答 + 交叉验证。</strong>（角度一，原理）因果掩码是为“自回归生成文本”设计的，对“一次性给定的视觉证据”并无必要——去掉它等于把视觉 token 之间的全部成对关系都放开，表达力只增不减。（角度二，消融）表 8(b) 里 “No bidir” 让 QA 从 64.8 掉到 <strong>64.4</strong>、字幕 F1 从 39.5 掉到 <strong>38.5</strong>，<strong>两个指标同时下降</strong>——说明双向注意力的增益不是某个任务的偏好，而是“视觉证据该被双向聚合”这一结构性事实。</p>
 <p class="takeaway"><strong>Takeaway。</strong>把“语言模型的因果先验”不假思索地套到视觉 token 上，是一种隐藏的次优；双向注意力只是把这个不该有的约束去掉。</p></div>
 
 <h3>5.4 Point-then-count：为什么“先点再数”胜过“直接吐一个整数”</h3>
 <div class="socratic"><p class="q"><strong>问题。</strong>计数任务最直接的做法是让模型直接输出一个整数。为什么 Molmo2 偏要先把每个目标都点出来、再数点数？</p>
-<p class="a"><strong>回答 + 交叉验证。</strong>(角度一，机制) 直接预测整数把“感知（每个目标在哪）”和“计数（共几个）”塞进一个黑箱回归，模型容易靠数据集先验“蒙一个常见数”；先指点则把任务分解成“逐个定位 → 数点”，<strong>每个目标都要有空间证据支撑</strong>，计数成了指点的副产品。这也解释了为什么 AskModelAnything 在采集时<em>刻意剔除计数题</em>——计数被交给了 pointing 这条更可靠的路径。(角度二，消融) 表 9(a)：直接 “Count” 在 Molmo2-VideoCount 上只有 <strong>28.1</strong>，“Point then count” 达 <strong>34.5</strong>（BURST-VC 两者都约 61，但 MVC 差距显著）。同时表 9(b) 显示，去掉指点数据后（不在此列），计数与指点能力一并塌掉。两路（“分解任务消除蒙猜”的机制 + 消融数字）一致：<strong>pointing 是计数的底座</strong>。</p></div>
+<p class="a"><strong>回答 + 交叉验证。</strong>（角度一，机制）直接预测整数把“感知（每个目标在哪）”和“计数（共几个）”塞进一个黑箱回归，模型容易靠数据集先验“蒙一个常见数”；先指点则把任务分解成“逐个定位 → 数点”，<strong>每个目标都要有空间证据支撑</strong>，计数成了指点的副产品。这也解释了为什么 AskModelAnything 在采集时<em>刻意剔除计数题</em>——计数被交给了 pointing 这条更可靠的路径。（角度二，消融）表 9(a)：直接 “Count” 在 Molmo2-VideoCount 上只有 <strong>28.1</strong>，“Point then count” 达 <strong>34.5</strong>（BURST-VC 两者都约 61，但 MVC 差距显著）。同时表 9(b) 显示，去掉指点数据后（不在此列），计数与指点能力一并塌掉。两路（“分解任务消除蒙猜”的机制 + 消融数字）一致：<strong>pointing 是计数的底座</strong>。</p></div>
 <p class="note">把 5.1–5.4 串起来看：Molmo2 的“方法创新”几乎全是<strong>系统与表示</strong>层面的——怎么打包、怎么算损失、怎么定义坐标、怎么把计数还原成指点。架构主干始终是最朴素的那一条，这正是“为可复现性而设计”的体现。</p>
 </section>
 
@@ -551,7 +551,7 @@ body.lb-lock{overflow:hidden}
 <tr><td><strong>Molmo2-O-7B</strong></td><td>53.7</td><td>54.2</td><td>54.2</td></tr>
 </tbody>
 </table></div>
-<p>追踪同样压过所有基线，包括专门的分割/追踪模型（Sa2VA、SAM 3、VideoMolmo）。尤其 F1（逐帧点准）这一列：API 模型与专用模型大多个位数到 30 出头，Molmo2 直接 57——因为它原生输出点轨迹，而 API 模型只能吐框再取中心点凑。学术榜（表 4，MeViS/Ref-YT-VOS/Ref-Davis/ReasonVOS）上 Molmo2 在 J&amp;F/F1/HOTA 三项几乎全面第一，ReasonVOS（需复杂推理与遮挡处理）尤其突出。</p>
+<p>追踪同样压过所有基线，包括专门的分割/追踪模型（Sa2VA、SAM 3、VideoMolmo）。尤其 F1（逐帧点准）这一列：API 模型与专用模型大多在个位数到 30 出头，Molmo2 直接 57——因为它原生输出点轨迹，而 API 模型只能吐框再取中心点凑。学术榜（表 4，MeViS/Ref-YT-VOS/Ref-Davis/ReasonVOS）上 Molmo2 在 J&amp;F/F1/HOTA 三项几乎全面第一，ReasonVOS（需复杂推理与遮挡处理）尤其突出。</p>
 
 <h3>7.4 图像与多图（表 6）、图像指点（表 7）</h3>
 <p>视频强不代表图像退化。表 6：Molmo2 稳超此前开数据模型，单图 11 项均（8B 81.7）追平多数开权重模型；强项是<strong>VQA v2.0、RealWorldQA（SoTA）与计数（PixMo-Count）</strong>；弱项诚实承认——OCR 重的 DocVQA/InfoQA 略逊，推理重的 MathVista/MMMU 落后（缺多模态推理训练数据）。表 7（Point-Bench 图像指点）Molmo2 综合 67–69，超过所有对手与专用指点模型 Poivre，作者把增益归因于<strong>更好的视觉编码器 + 指点预训练 + token 加权</strong>。</p>
@@ -576,7 +576,7 @@ body.lb-lock{overflow:hidden}
 <p>逐行解读，正好印证第五节的机制：<strong>去双向注意力</strong>两个指标齐降（64.4 / 38.5）；<strong>去 token 加权</strong>QA 降但字幕反升（64.0 / 40.0）——证实“长字幕本会主导损失”；<strong>去时间戳</strong>两项齐降、字幕掉得更狠（37.4），说明时序信息对细粒度字幕尤其关键；<strong>把视频池化窗从 3×3 加到 4×4</strong>（token 更少）QA 几乎不变、字幕大跌（37.0）——因为视频 QA 榜偏高层、不需小细节，而字幕需要。这条还顺带说明：<strong>只盯 QA 榜会掩盖细粒度退化，必须同时盯字幕 F1</strong>。</p>
 
 <h3>8.2 数据互迁移（表 8a/8c/8d）</h3>
-<p>表 8c：从纯学术数据（QA 均 62.9 / 字幕 F1 5.0）开始，加 QA 升到 64.5/17.2、再加 Cap 升到 65.3/38.4——<strong>QA 与字幕互相帮忙</strong>。表 8d：字幕数据里，<strong>“视频+帧合并字幕（VF）是关键</strong>（F1 从纯视频转写 V 的 22.1 跳到 35.5）”，但再叠加单独的视频/帧字幕（VF+V/+F）几乎不再涨——印证 Molmo2-Cap 那条“先口述、再用 Molmo 补帧、合并”的管线设计是对的。</p>
+<p>表 8c：从纯学术数据（QA 均 62.9 / 字幕 F1 5.0）开始，加 QA 升到 64.5/17.2、再加 Cap 升到 65.3/38.4——<strong>QA 与字幕互相帮忙</strong>。表 8d：字幕数据里，<strong>“视频+帧合并字幕（VF）是关键”</strong>（F1 从纯视频转写 V 的 22.1 跳到 35.5），但再叠加单独的视频/帧字幕（VF+V/+F）几乎不再涨——印证 Molmo2-Cap 那条“先口述、再用 Molmo 补帧、合并”的管线设计是对的。</p>
 
 <h3>8.3 计数与追踪（表 9 / 表 10）</h3>
 <p>表 9 已在 5.4 用过：<strong>point-then-count（34.5）远胜 count（28.1）</strong>；两路指点数据互补（表 9b，Both 同时拿下 BVC/MVC/MVP 的均衡最优）；上采样高频计数样本同时提升计数与指点（表 9c）。表 10（追踪）：加入<strong>指点</strong>任务提升追踪（10a，J&amp;F 64.9→65.7，说明 pointing→tracking 正迁移）；数据源从学术 VOS→框追踪→Molmo2-VideoTrack 逐级提升（10b）；时间定位子任务有用、而单点单物体追踪反而略降（10c）。</p>

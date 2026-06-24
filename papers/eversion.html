@@ -356,23 +356,23 @@ body.lb-lock{overflow:hidden}
 <main class="content">
 
 <!-- LEAD -->
-<p id="abstract" class="lead"><strong>导读。</strong>虚拟结肠外翻（Virtual Eversion, VE）是一种很反直觉的可视化：把结肠的内表面（黏膜面）<strong>翻到外面</strong>，同时保持结肠原来的弯曲走形——像把袜子外翻但不拉直。这样一来，整段黏膜面既能在全局视角一次看全、又能局部放大细看，不必像虚拟结肠镜那样沿管腔一路"飞越"。它和虚拟结肠镜（VC）、虚拟展平（VF）是三种互补的看结肠方式。麻烦在于：外翻的采样要沿"中心线"建电场来一对一地把内表面点翻到参考面外侧，而传统用的<strong>内表面中心线</strong>因为黏膜皱襞而<u>蜿蜒锯齿</u>，建出的电场线不规则、相互交叉，于是高曲率处出现"翻坏的区域"（皱襞重叠、表面撕裂），息肉藏在里面找不到。本文的回答是：改用结肠<strong>外表面中心线</strong>——外表面光滑、没有皱襞，中心线随之光滑，电场线均匀，外翻就忠实了。配套三件事：用<u>并联双 sigmoid</u>的改进 GAC 水平集把真外表面（连造影剂区）抠出来；用<u>电场线 + 双线性插值</u>的混合采样把外翻提速；用<u>虚拟旋转</u>把高曲率处挤成一团的结构转开看清。结果：外翻基于外表面中心线，比基于内表面的"翻坏区域"少 71%（6.8→1.9 个/例）；CT 上外翻计算耗时从 983 s 降到 75 s（少 92%）；阅片时间比虚拟结肠镜少约 77%，检出率持平。</p>
+<p id="abstract" class="lead"><strong>导读。</strong>虚拟结肠外翻（Virtual Eversion，VE）是一种很反直觉的可视化：把结肠的内表面（黏膜面）<strong>翻到外面</strong>，同时保持结肠原来的弯曲走形——像把袜子外翻但不拉直。这样一来，整段黏膜面既能在全局视角一次看全、又能局部放大细看，不必像虚拟结肠镜那样沿管腔一路"飞越"。它和虚拟结肠镜（VC）、虚拟展平（VF）是三种互补的看结肠方式。麻烦在于：外翻的采样要沿"中心线"建电场来一对一地把内表面点翻到参考面外侧，而传统用的<strong>内表面中心线</strong>因为黏膜皱襞而<u>蜿蜒锯齿</u>，建出的电场线不规则、相互交叉，于是高曲率处出现"翻坏的区域"（皱襞重叠、表面撕裂），息肉藏在里面找不到。本文的回答是：改用结肠<strong>外表面中心线</strong>——外表面光滑、没有皱襞，中心线随之光滑，电场线均匀，外翻就忠实了。配套三件事：用<u>并联双 sigmoid</u>的改进 GAC 水平集把真外表面（连造影剂区）抠出来；用<u>电场线 + 双线性插值</u>的混合采样把外翻提速；用<u>虚拟旋转</u>把高曲率处挤成一团的结构转开看清。结果：外翻基于外表面中心线，比基于内表面的"翻坏区域"少 71%（6.8→1.9 个/例）；CT 上外翻计算耗时从 983 s 降到 75 s（少 92%）；阅片时间比虚拟结肠镜少约 77%，检出率持平。</p>
 
 <!-- HERO -->
-<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>把虚拟外翻的采样中心线从锯齿状的<strong>内表面中心线</strong>换成光滑的<strong>外表面中心线</strong>，让"把肠子翻过来看"在高曲率处不再翻坏。</div><div class="kv"><b>关键机制</b>外翻=沿采样线把内表面点关于参考（外）面做保测地距离的反射 $E=2R-I$；光滑外中心线 → 均匀电场线 → 忠实反射。配并联 sigmoid 抠外表面、混合采样提速、虚拟旋转看背面。</div><div class="kv"><b>核心证据</b>翻坏区域 6.8→1.9 个/例（少 71%）；外翻计算 983 s→75 s（少 92%）；阅片 CT 98 s vs VC 434 s（少 77%），检出 36/46 vs 37/46。</div><div class="kv"><b>复现门槛</b>87 套 CT + 2 个体模；阅片样本小（20 套做性能对比）；电场/采样参数 $k{=}10,n{=}40,m{=}10$ 等经验设定；2010 年单机 CPU；代码未开源。</div></div></div><figure class="hero-card"><a href="../assets/figures/eversion/eversion_fig8.png"><img src="../assets/figures/eversion/eversion_fig8.png" alt="体模外翻结果：外表面中心线 vs 内表面中心线"></a><figcaption><strong>图 8 · 外翻效果对比（论文 Fig. 8）。</strong>(a) 体模 A、(d) 体模 B；(b)(e) 基于<strong>外表面中心线</strong>的外翻——皱襞规整、表面完整；(c)(f) 基于<strong>内表面中心线</strong>的外翻——皱襞与息肉被翻坏。同一根肠子、同一套外翻算法，只换了"沿哪条中心线采样"，结果天差地别。这就是全文的赌注。</figcaption></figure></div>
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>把虚拟外翻的采样中心线从锯齿状的<strong>内表面中心线</strong>换成光滑的<strong>外表面中心线</strong>，让"把肠子翻过来看"在高曲率处不再翻坏。</div><div class="kv"><b>关键机制</b>外翻=沿采样线把内表面点关于参考（外）面做保测地距离的反射 $E=2R-I$；光滑外中心线 → 均匀电场线 → 忠实反射。配并联 sigmoid 抠外表面、混合采样提速、虚拟旋转看背面。</div><div class="kv"><b>核心证据</b>翻坏区域 6.8→1.9 个/例（少 71%）；外翻计算 983 s→75 s（少 92%）；阅片 CT 98 s vs VC 434 s（少 77%），检出 36/46 vs 37/46。</div><div class="kv"><b>复现门槛</b>87 套 CT + 2 个体模；阅片样本小（20 套做性能对比）；电场/采样参数 $k{=}10,n{=}40,m{=}10$ 等经验设定；2010 年单机 CPU；代码未开源。</div></div></div><figure class="hero-card"><a href="../assets/figures/eversion/eversion_fig8.png"><img src="../assets/figures/eversion/eversion_fig8.png" alt="体模外翻结果：外表面中心线 vs 内表面中心线"></a><figcaption><strong>图 8 · 外翻效果对比（论文 Fig. 8）。</strong>（a）体模 A、（d）体模 B；（b）（e）基于<strong>外表面中心线</strong>的外翻——皱襞规整、表面完整；（c）（f）基于<strong>内表面中心线</strong>的外翻——皱襞与息肉被翻坏。同一根肠子、同一套外翻算法，只换了"沿哪条中心线采样"，结果天差地别。这就是全文的赌注。</figcaption></figure></div>
 
 <!-- MOTIVATION -->
 <section id="motivation"><h2>1. 核心问题：要"把肠子翻过来看"，沿哪条线采样？</h2>
 <p>虚拟结肠镜（VC）让医生沿管腔"飞越"检查，视野小、易把息肉漏在皱襞背面，且耗时。虚拟外翻是另一条路：把内表面（黏膜）翻到外侧、serosa 翻到内侧，同时<strong>保持结肠原本的弯曲路径</strong>。好处是两点——① 外翻后的肠子可以用全局视角快速浏览、再用局部视角精看；② 外翻保留了解剖结构的骨架、形状与空间关系。它不像展平那样把肠子摊平丢掉走形，而是"原地翻面"。</p>
 <p>但外翻怎么实现？经典做法是在中心线上建一个"局部电场模型"：把中心线点当正电荷，放出电场线作采样线，沿采样线把内表面上的点逐点翻到参考面外侧。问题就卡在<strong>用哪条中心线</strong>：传统用<strong>内表面中心线</strong>，而内表面布满皱襞，导致中心线呈<u>锯齿状蜿蜒</u>。中心线越锯齿，建出的电场越不规则、电场线越容易相互交叉，外翻就越扭曲——高曲率处出现"翻坏的区域"（皱襞重叠、表面撕裂），息肉就藏在这些坏区里。</p>
-<figure class="fig-wide"><a href="../assets/figures/eversion/eversion_fig3.png"><img src="../assets/figures/eversion/eversion_fig3.png" alt="内表面 vs 外表面中心线及其电场线"></a><figcaption><strong>图 3 · 病根的可视化（论文 Fig. 3）。</strong>(a) <strong>内表面</strong>中心线（受皱襞影响而锯齿）→ 电场线不规则、易交叉；(b) <strong>外表面</strong>中心线（光滑）→ 电场线均匀。采样线一旦不规则，"把点翻到外侧"的反射就会错位——这正是高曲率处翻坏的直接原因。</figcaption></figure>
+<figure class="fig-wide"><a href="../assets/figures/eversion/eversion_fig3.png"><img src="../assets/figures/eversion/eversion_fig3.png" alt="内表面 vs 外表面中心线及其电场线"></a><figcaption><strong>图 3 · 病根的可视化（论文 Fig. 3）。</strong>（a）<strong>内表面</strong>中心线（受皱襞影响而锯齿）→ 电场线不规则、易交叉；（b）<strong>外表面</strong>中心线（光滑）→ 电场线均匀。采样线一旦不规则，"把点翻到外侧"的反射就会错位——这正是高曲率处翻坏的直接原因。</figcaption></figure>
 <div class="socratic"><p class="question">问：为什么"中心线锯齿"会直接翻译成"外翻翻坏"？中间的因果链是什么？</p><p class="guide">引导：外翻 = 沿采样线做反射；采样线 = 中心线上的电场线。把这条链一节一节接起来。</p><p class="answer">答：链是这样的——皱襞让<u>内表面</u>凹凸 → 内表面中心线被带得<u>锯齿</u> → 以锯齿中心线点为电荷的<u>局部电场不规则</u> → 放出的<u>电场（采样）线相互交叉、疏密不均</u> → 沿这些线把内表面点反射到外侧时<u>错位</u> → 高曲率处出现皱襞重叠/表面撕裂的"翻坏区域"。换成<strong>外表面</strong>：外表面没有皱襞、本就光滑 → 外表面中心线光滑 → 电场均匀、电场线不交叉 → 反射忠实。一句话：<u>外翻的质量，被采样中心线的光滑度决定，而光滑度由"沿内还是外表面"决定。</u></p><p class="takeaway"><strong>Takeaway：</strong>翻坏不是外翻算法本身的毛病，而是"沿锯齿内表面中心线采样"的后果。换成光滑外表面中心线，是从源头治。这与同组《结肠展平（外表面法）》是同一思想的两次应用。</p></div>
 </section>
 
 <!-- CONTRIBUTION -->
 <section id="contribution"><h2>2. 整体解读与贡献：一个核心 + 两个工程支撑 + 一个观察工具</h2>
-<p><strong>作者明确提出的贡献。</strong>针对外翻临床化的三个痛点逐一作答：(1) <strong>翻坏区域多</strong> → 改用<strong>外表面中心线</strong>做外翻采样，并提出改进的 GAC 水平集来抠出真外表面（连造影剂区也准）。(2) <strong>外翻太慢</strong> → 设计<strong>混合采样</strong>（电场线 + 双线性插值），用廉价插值替换 99% 的电场采样线。(3) <strong>看不全（背面/聚拢区）</strong> → 提出<strong>虚拟旋转</strong>与两条导航路径（PNP、SNP）。在 2 个体模 + 87 套 CT 上验证。</p>
-<p><strong>读者能进一步推断的是</strong>——四个阶段看似各管一段，主线其实只有一条：<em>让"沿中心线的采样"既忠实又便宜</em>。外表面中心线负责"忠实"（光滑→电场均匀→反射不错位），混合采样负责"便宜"（插值代替电场计算）。改进水平集是为前者服务（先得有真外表面才能算外表面中心线），虚拟旋转是为后者收尾（再忠实也总有高曲率处聚拢，转开看）。所以这是一篇"把一个核心想法（外表面更光滑）配齐工程链路、做到能临床用"的系统论文，而不是四个独立技巧的拼盘。</p>
+<p><strong>作者明确提出的贡献。</strong>针对外翻临床化的三个痛点逐一作答：（1）<strong>翻坏区域多</strong> → 改用<strong>外表面中心线</strong>做外翻采样，并提出改进的 GAC 水平集来抠出真外表面（连造影剂区也准）。（2）<strong>外翻太慢</strong> → 设计<strong>混合采样</strong>（电场线 + 双线性插值），用廉价插值替换 99% 的电场采样线。（3）<strong>看不全（背面/聚拢区）</strong> → 提出<strong>虚拟旋转</strong>与两条导航路径（PNP、SNP）。在 2 个体模 + 87 套 CT 上验证。</p>
+<p><strong>读者能进一步推断的是</strong>——四个阶段看似各管一段，主线只有一条：<em>让"沿中心线的采样"既忠实又便宜</em>。外表面中心线负责"忠实"（光滑→电场均匀→反射不错位），混合采样负责"便宜"（插值代替电场计算）。改进水平集是为前者服务（先得有真外表面才能算外表面中心线），虚拟旋转是为后者收尾（再忠实也总有高曲率处聚拢，转开看）。所以这是一篇"把一个核心想法（外表面更光滑）配齐工程链路、做到能临床用"的系统论文，而不是四个独立技巧的拼盘。</p>
 <div class="table-wrap"><table><caption><strong>表 A.</strong> 三个痛点 → 三个对策（外加一个核心）。</caption><thead><tr><th>痛点</th><th>本文对策</th><th>机制</th></tr></thead><tbody>
 <tr><td>高曲率处翻坏区域多</td><td><strong>外表面中心线</strong>做外翻（核心）</td><td>光滑中心线 → 均匀电场 → 忠实反射</td></tr>
 <tr><td>抠不到真外表面（造影剂区失准）</td><td>并联双 sigmoid 的改进 GAC 水平集</td><td>同时满足空气区与造影剂区两种边界趋势</td></tr>
@@ -418,7 +418,7 @@ $$S\approx0\iff f_1{\approx}1\ \text{且}\ f_2{\approx}1\iff a<x<b,$$
 即 $S$ 是一个中心落在外表面方向导数带 $(a,b)$ 上的<strong>软带通（smoothed top-hat）</strong>。空气区与造影剂区的外表面只要方向导数都落进 $(a,b)$，就被<u>同时</u>判成 $S\approx0$。反观<strong>串联</strong> $f_1\!\circ\!f_2$：两个单调 sigmoid 复合仍是单调软台阶，只有<u>一个</u>阈值、只能贴一侧趋势——这正是 Van Uitert 法在造影剂区失准（图 2b）的根。（注：式 1 中 $\alpha,\beta$ 由原文给定，其符号约定使带 $(a,b)$ 恰好罩住方向导数约 20–50 的外表面。）</p></div>
 <figure class="fig-grid">
 <figure><a href="../assets/figures/eversion/eversion_fig1.png"><img src="../assets/figures/eversion/eversion_fig1.png" alt="空气区与造影剂区边界的不同趋势"></a><figcaption><strong>图 1 · 两种边界趋势不同（论文 Fig. 1）。</strong>空气区边界与造影剂区边界在方向导数上趋势相反——这就是串联 sigmoid 只能照顾一种、必须并联的根由。</figcaption></figure>
-<figure><a href="../assets/figures/eversion/eversion_fig2.png"><img src="../assets/figures/eversion/eversion_fig2.png" alt="不同方法的 speed image"></a><figcaption><strong>图 2 · speed image 对比（论文 Fig. 2）。</strong>(a) 原始 CT；(b) Van Uitert 串联法：低速黑区错标在内表面附近（水平集会停在内表面）；(c) 本文并联法：黑区正确落在外表面，水平集停在外表面。</figcaption></figure>
+<figure><a href="../assets/figures/eversion/eversion_fig2.png"><img src="../assets/figures/eversion/eversion_fig2.png" alt="不同方法的 speed image"></a><figcaption><strong>图 2 · speed image 对比（论文 Fig. 2）。</strong>（a）原始 CT；（b）Van Uitert 串联法：低速黑区错标在内表面附近（水平集会停在内表面）；（c）本文并联法：黑区正确落在外表面，水平集停在外表面。</figcaption></figure>
 </figure>
 
 <h3>5.2 混合采样：电场线打底，双线性插值提速</h3>
@@ -445,7 +445,7 @@ $$\underbrace{\,|E-R|=|I-R|\,}_{\text{保距}}\ \text{且}\ \underbrace{\,\mathr
 <div class="equation">$$j'=\Big(j+\frac{\theta}{2\pi}\,kn\Big)\bmod kn$$<div class="eq-caption">式 15：虚拟旋转。$kn$ 为一个中心线点上的采样线数。转 $\theta$ 即把每个外翻点沿环向移动相应下标。</div></div>
 <p>配合两条导航路径（图 7）：PNP（平行于结肠，配相机距离参数 CD，观察时转动看背面）与 SNP（螺旋绕行，移动相机即可看遍正背面）。旋转 30°/90°/180° 后，原本叠在一起的皱襞被转开，藏在其中的息肉得以辨认（图 6）。</p>
 <figure class="fig-grid">
-<figure><a href="../assets/figures/eversion/eversion_fig6.png"><img src="../assets/figures/eversion/eversion_fig6.png" alt="虚拟旋转结果"></a><figcaption><strong>图 6 · 虚拟旋转（论文 Fig. 6）。</strong>(a) 外翻肠的放大；(b) 旋转 30°；(c) 90°；(d) 180°。(d) 中箭头指向一颗在 (a) 里几乎无法辨认、转开聚拢皱襞后才显形的息肉。</figcaption></figure>
+<figure><a href="../assets/figures/eversion/eversion_fig6.png"><img src="../assets/figures/eversion/eversion_fig6.png" alt="虚拟旋转结果"></a><figcaption><strong>图 6 · 虚拟旋转（论文 Fig. 6）。</strong>（a）外翻肠的放大；（b）旋转 30°；（c）90°；（d）180°。（d）中箭头指向一颗在（a）里几乎无法辨认、转开聚拢皱襞后才显形的息肉。</figcaption></figure>
 <figure><a href="../assets/figures/eversion/eversion_fig7.png"><img src="../assets/figures/eversion/eversion_fig7.png" alt="PNP 与 SNP 导航路径"></a><figcaption><strong>图 7 · 两条导航路径（论文 Fig. 7）。</strong>PNP 平行结肠（看时旋转见背面），SNP 螺旋绕行（移动相机见正背面）。选哪条取决于医生习惯。</figcaption></figure>
 </figure>
 </section>
@@ -466,9 +466,9 @@ $$\underbrace{\,|E-R|=|I-R|\,}_{\text{保距}}\ \text{且}\ \underbrace{\,\mathr
 <!-- EXPERIMENTS -->
 <section id="experiments"><h2>7. 主实验：翻坏少 71%、计算快 92%、阅片省 77%</h2>
 <p>实验分两层。第一层<strong>忠实度</strong>：数"翻坏区域"的个数（外中心线 vs 内中心线，体模 + CT）；第二层<strong>可用性</strong>：阅片时间与检出率（外翻 vs 虚拟结肠镜）。</p>
-<figure class="fig-wide"><a href="../assets/figures/eversion/eversion_fig10.png"><img src="../assets/figures/eversion/eversion_fig10.png" alt="CT 外翻细节：外表面 vs 内表面中心线"></a><figcaption><strong>图 10 · CT 外翻细节（论文 Fig. 10）。</strong>(a)(c) 基于<strong>外表面中心线</strong>——皱襞规整、外翻准确；(b)(d) 基于<strong>内表面中心线</strong>——黑箭头处是翻坏的伪影（皱襞叠错、表面撕裂）。这与图 8 的体模结论一致：换中心线，翻坏立减。</figcaption></figure>
+<figure class="fig-wide"><a href="../assets/figures/eversion/eversion_fig10.png"><img src="../assets/figures/eversion/eversion_fig10.png" alt="CT 外翻细节：外表面 vs 内表面中心线"></a><figcaption><strong>图 10 · CT 外翻细节（论文 Fig. 10）。</strong>（a）（c）基于<strong>外表面中心线</strong>——皱襞规整、外翻准确；（b）（d）基于<strong>内表面中心线</strong>——黑箭头处是翻坏的伪影（皱襞叠错、表面撕裂）。这与图 8 的体模结论一致：换中心线，翻坏立减。</figcaption></figure>
 <p>定量上，CT 数据里"翻坏区域"从旧法（内中心线）平均 <strong>6.8 个/例</strong> 降到本文（外中心线）<strong>1.9 个/例</strong>，少 <strong>71%</strong>；剩下的少量翻坏都集中在高曲率处，可用虚拟旋转逐个看清。阅片性能：</p>
-<div class="table-wrap"><table><caption><strong>表 II（论文）.</strong> 体模上虚拟结肠镜（VC）vs 虚拟外翻（VE）阅片对比。</caption><thead><tr><th>体模 · 医生</th><th>VC 阅片(s)</th><th>VE 阅片(s)</th><th>时间缩减</th><th>VC 检出</th><th>VE 检出</th><th>真实息肉</th></tr></thead><tbody>
+<div class="table-wrap"><table><caption><strong>表 II（论文）.</strong> 体模上虚拟结肠镜（VC）vs 虚拟外翻（VE）阅片对比。</caption><thead><tr><th>体模 · 医生</th><th>VC 阅片（s）</th><th>VE 阅片（s）</th><th>时间缩减</th><th>VC 检出</th><th>VE 检出</th><th>真实息肉</th></tr></thead><tbody>
 <tr><td>A · No.1</td><td>84</td><td>28</td><td>67%</td><td>19</td><td>20</td><td>20</td></tr>
 <tr><td>A · No.2</td><td>68</td><td>28</td><td>59%</td><td>16</td><td>19</td><td>20</td></tr>
 <tr><td>B · No.1</td><td>164</td><td>52</td><td>62%</td><td>12</td><td>13</td><td>13</td></tr>
@@ -480,7 +480,7 @@ $$\underbrace{\,|E-R|=|I-R|\,}_{\text{保距}}\ \text{且}\ \underbrace{\,\mathr
 <tr><td>外翻计算耗时</td><td>983 ± 264 s（旧法）</td><td>75 ± 14 s（本文）</td><td>少约 92%</td></tr>
 <tr><td>翻坏区域</td><td>6.8 个/例（内中心线）</td><td>1.9 个/例（外中心线）</td><td>少约 71%</td></tr>
 </tbody></table></div>
-<figure><a href="../assets/figures/eversion/eversion_fig9.png"><img src="../assets/figures/eversion/eversion_fig9.png" alt="体模与 CT 的内外表面中心线"></a><figcaption><strong>图 9 · 内/外中心线对照（论文 Fig. 9）。</strong>(a) 体模、(b) 分割后的 CT。光滑实线是外表面中心线，蜿蜒虚线是内表面中心线——后者的锯齿正是翻坏的源头。</figcaption></figure>
+<figure><a href="../assets/figures/eversion/eversion_fig9.png"><img src="../assets/figures/eversion/eversion_fig9.png" alt="体模与 CT 的内外表面中心线"></a><figcaption><strong>图 9 · 内/外中心线对照（论文 Fig. 9）。</strong>（a）体模、（b）分割后的 CT。光滑实线是外表面中心线，蜿蜒虚线是内表面中心线——后者的锯齿正是翻坏的源头。</figcaption></figure>
 <div class="socratic"><p class="question">问：体模和 CT 这两组实验，能不能算"换中心线"这一变量的干净对照？</p><p class="answer">答：能。体模与 CT 上都做了"同一外翻算法 + 仅切换内/外中心线"的对照（图 8 体模、图 10 CT）：外中心线下皱襞规整、内中心线下翻坏。量化指标（翻坏区域 6.8→1.9，少 71%）只随"沿哪条中心线"改变，其它环节不变——这是对核心设计的纯净消融。可用性指标（阅片 77% 省时、检出持平；计算 92% 提速）则验证"外翻 + 混合采样"作为系统相对 VC 的价值。需诚实标注：阅片对比只用了 20 套 CT、2 位医生，样本偏小，检出率"持平"的统计显著性论文未给。</p><p class="takeaway"><strong>Takeaway：</strong>"换外中心线"由翻坏计数（6.8→1.9）干净验证；"外翻系统好用"由阅片/计算时间验证。前者是机制证据，后者是可用性证据，分层清晰。</p></div>
 </section>
 
@@ -511,7 +511,7 @@ $$\underbrace{\,|E-R|=|I-R|\,}_{\text{保距}}\ \text{且}\ \underbrace{\,\mathr
 <li><strong>忠实与便宜可以分开拿。</strong>外表面中心线保证"忠实"（均匀电场），双线性插值保证"便宜"（替换 99% 电场线），外翻计算从 983 s 降到 75 s。</li>
 <li><strong>同一思想的系统化。</strong>"外表面更光滑"在这里催生外翻/旋转系统，在同组《结肠展平（外表面法）》里催生展平矫正——两篇是一条主线的两次落地，互为印证。</li>
 </ol></div>
-<p>阅读路径建议：先看首图 Fig.8 直观感受"换中心线，翻坏立减" → 图 3 看锯齿内中心线如何把电场线弄乱 → 图 5 抓住外翻的反射本质 $E=2R-I$ → 第 5 节跟着式 1–3、12、15 重推抠外表面/混合采样/旋转 → 表 II/III 看忠实度与可用性 → 第 9 节校准边界。</p>
+<p>阅读路径建议：先看首图 Fig. 8 直观感受"换中心线，翻坏立减" → 图 3 看锯齿内中心线如何把电场线弄乱 → 图 5 抓住外翻的反射本质 $E=2R-I$ → 第 5 节跟着式 1–3、12、15 重推抠外表面/混合采样/旋转 → 表 II/III 看忠实度与可用性 → 第 9 节校准边界。</p>
 </section>
 
 <!-- REFERENCES -->

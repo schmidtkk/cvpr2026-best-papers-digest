@@ -423,7 +423,7 @@ body.lb-lock{overflow:hidden}
 <li><strong>采集参数：</strong>分辨率 320×194 至 2688×1234；帧率 10–60 FPS（多数 30 FPS）；视频长 0.5–90 秒（多数 15 秒）；夜间用对目标物种不可见的红外闪光录制；所有视频含音频（本工作未使用）。</li>
 </ul>
 
-<figure id="fig-longtail"><a href="../assets/figures/safari/safari_fig5.png"><img src="../assets/figures/safari/safari_fig5.png" alt="SA-FARI 各物种类别视频数分布柱状图，按训练/测试划分着色，呈长尾分布"></a><figcaption><strong>图 5（转写自论文 Fig. 5）：物种类别分布（按 split 着色）。</strong>每根柱是一个物种类别的视频数，粉色为测试视频。分布呈典型长尾——少数主导物种 + 大量罕见物种。值得注意的是<strong>有些物种（如 Saki monkey）只出现在测试集</strong>，这刻意保留了相机陷阱部署的"开放世界"性质：评测时会遇到训练里没见过的物种。</figcaption></figure>
+<figure id="fig-longtail"><a href="../assets/figures/safari/safari_fig5.png"><img src="../assets/figures/safari/safari_fig5.png" alt="SA-FARI 各物种类别视频数分布柱状图，按训练/测试划分着色，呈长尾分布"></a><figcaption><strong>图 5（转写自论文 Fig. 5）：物种类别分布（按 split 着色）。</strong>每根柱是一个物种类别的视频数，粉色为测试视频。分布呈典型长尾——少数主导物种 + 大量罕见物种。<strong>有些物种（如 Saki monkey）只出现在测试集</strong>，这刻意保留了相机陷阱部署的"开放世界"性质：评测时会遇到训练里没见过的物种。</figcaption></figure>
 
 <figure id="fig-masklet"><a href="../assets/figures/safari/safari_fig4.png"><img src="../assets/figures/safari/safari_fig4.png" alt="SA-FARI masklet 级统计四联图：平均 masklet 尺寸、帧间平均 IoU、masklet 数、遮挡次数的分布"></a><figcaption><strong>图 4（转写自论文 Fig. 4）：masklet 级统计。</strong>四联分布——平均 masklet 尺寸（占帧面积比，对数轴）、帧间平均 IoU、每视频 masklet 数、遮挡次数；蓝=训练、粉=测试，虚线为中位数。平均 masklet 尺寸跨越约三个数量级（很多动物在画面里非常小），帧间 IoU 很多落在 0.5–0.9（即动物在动），遮挡呈长尾——这三张分布图正是后面 §难度分析里 small-mask / challenging 子集的统计来源。</figcaption></figure>
 

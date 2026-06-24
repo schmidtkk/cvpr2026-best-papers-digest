@@ -395,7 +395,7 @@ body.lb-lock{overflow:hidden}
 <tr><td>掩码语言建模（V-MLM）</td><td>—</td><td>≈7K 样本</td><td>由 Gemini 1.5 在 LeukemiaAttri[61] 全视野形态学标注上半合成，生成被遮挡/完整描述</td></tr>
 </tbody>
 </table></div>
-<div class="note"><div class="note-title">关于自建文本数据的诚实标注</div>VQA 与 V-MLM 数据集（命名为 WBCAtt-VQA、LeukemiaAttri-MLM）是<strong>半合成</strong>的：用真实的形态学 ground-truth 标注作为 prompt，引导大模型生成描述，再做基于上下文的一致性校验。论文明确写道，<strong>该数据集"仅为实验目的构造，不建议用于医疗用途"</strong>——这条边界本页原样保留。各任务图像总量论文给"≈70 万"，分类细目在不同段落分别写 320K 与 350K，本页两处都如实列出、不强行统一。</div>
+	<div class="note"><div class="note-title">关于自建文本数据的诚实标注</div>VQA 与 V-MLM 数据集（命名为 WBCAtt-VQA、LeukemiaAttri-MLM）是<strong>半合成</strong>的：用真实的形态学 ground-truth 标注作为 prompt，引导大模型生成描述，再做上下文一致性校验。论文明确写道，<strong>该数据集"仅为实验目的构造，不建议用于医疗用途"</strong>——这条边界本页原样保留。各任务图像总量论文给"≈70 万"，分类细目在不同段落分别写 320K 与 350K，本页两处都如实列出、不强行统一。</div>
 </section>
 
 <section id="pipeline"><h2>4. Pipeline：一张图看清"两条并行网络 + 一个混合器 + 多个任务头"</h2>
@@ -416,7 +416,7 @@ body.lb-lock{overflow:hidden}
 
 <section id="method"><h2>5. 方法：Hema-Former 四子模块逐个拆开（机制核心）</h2>
 <p>Hema-Former $\mathcal{H}$ 接住两路多层级特征，按任务粒度产出四种融合表示，由四个子模块实现（图 3）。本节按 kexue:su 的方式逐个推导：先讲<strong>每个子模块为什么需要</strong>，再写它的<strong>算子</strong>，并指出<strong>去掉它会坏在哪</strong>。</p>
-<figure><a href="../assets/figures/unihema/unihema_fig3.png"><img src="../assets/figures/unihema/unihema_fig3.png" alt="Hema-Former 四个子模块：(a) Cross-Modal Fusion, (b) Text-Guided Refinement, (c) Single Cell Feature Extractor, (d) Query-Guided Mask Former"></a><figcaption><strong>图 3 · Hema-Former 四子模块。</strong>(a) <strong>CMF 跨模态融合</strong>：文本特征 $\mathcal{E}_E^{T}$ 与图像 backbone 特征 $\mathcal{E}_B^{I}$ 经可学习 query $Q_1$ 两段 cross-attention 对齐，输出 $\mathcal{E}_W^{T}$（喂给文本解码器做 VQA/MLM）。(b) <strong>TGVR 文本引导细化</strong>：从 $\mathcal{E}_E^{I}$ 按 objectness 取 <strong>top-K</strong> 视觉 query，与投影后的文本 query 做 cross-attention 再拼接，得 $\mathcal{E}_X^{I}$（喂给图像解码器做检测/形态学）。(c) <strong>SCFE 单细胞特征</strong>：把 $\mathcal{E}_E^{I}$ 池化后与可学习 query $Q_2$ 拼接、投影，得图像级特征 $\mathcal{E}_Z$（<strong>不吃文本</strong>，做分类）。(d) <strong>QGMF 掩码生成</strong>：浅层 $\mathcal{F}_1$ + 投影编码器特征融合成 $G_{\text{proj}}$，病灶对象嵌入 $\mathcal{E}_D^{I}$ 过 MLP/转置/投影后与之做 <strong>Einstein 求和</strong>，输出分割 logits $Y$。读图要点：四条路对应"语言 / 实例 / 图像 / 像素"四种粒度。</figcaption></figure>
+	<figure><a href="../assets/figures/unihema/unihema_fig3.png"><img src="../assets/figures/unihema/unihema_fig3.png" alt="Hema-Former 四个子模块：(a) Cross-Modal Fusion, (b) Text-Guided Refinement, (c) Single Cell Feature Extractor, (d) Query-Guided Mask Former"></a><figcaption><strong>图 3 · Hema-Former 四子模块。</strong>（a）<strong>CMF 跨模态融合</strong>：文本特征 $\mathcal{E}_E^{T}$ 与图像 backbone 特征 $\mathcal{E}_B^{I}$ 经可学习 query $Q_1$ 两段 cross-attention 对齐，输出 $\mathcal{E}_W^{T}$（喂给文本解码器做 VQA/MLM）。（b）<strong>TGVR 文本引导细化</strong>：从 $\mathcal{E}_E^{I}$ 按 objectness 取 <strong>top-K</strong> 视觉 query，与投影后的文本 query 做 cross-attention 再拼接，得 $\mathcal{E}_X^{I}$（喂给图像解码器做检测/形态学）。（c）<strong>SCFE 单细胞特征</strong>：把 $\mathcal{E}_E^{I}$ 池化后与可学习 query $Q_2$ 拼接、投影，得图像级特征 $\mathcal{E}_Z$（<strong>不吃文本</strong>，做分类）。（d）<strong>QGMF 掩码生成</strong>：浅层 $\mathcal{F}_1$ + 投影编码器特征融合成 $G_{\text{proj}}$，病灶对象嵌入 $\mathcal{E}_D^{I}$ 过 MLP/转置/投影后与之做 <strong>Einstein 求和</strong>，输出分割 logits $Y$。读图要点：四条路对应"语言 / 实例 / 图像 / 像素"四种粒度。</figcaption></figure>
 
 <h3>5.1 CMF：跨模态融合（给语言任务）</h3>
 <p><strong>为什么需要：</strong>VQA 和掩码语言建模要让文本解码器"看着图说话"，必须先把文本 query 和图像特征对齐到同一空间。CMF 用两段 cross-attention 做这件事。设文本嵌入 $\mathcal{E}_E^{T}\in\mathbb{R}^{L\times N_t}$、视觉特征 $\mathcal{E}_B^{I}\in\mathbb{R}^{L\times M}$、可学习 query $Q_1\in\mathbb{R}^{L\times M}$。先把文本投影 $\mathcal{E}_E^{T\prime}=P(\mathcal{E}_E^{T})$，让 $Q_1$ 去 attend 文本：</p>
@@ -426,8 +426,8 @@ body.lb-lock{overflow:hidden}
 <div class="formula-note"><strong>公式读法。</strong>$\operatorname{CrossAttn}(q,k,v)$ 中 $q$ 提问、$k/v$ 是被查的内容。式 1 让"问题 query"先理解<em>文本</em>（你问的是胞质还是核形），式 2 再让它去图像里<em>找证据</em>。两段顺序不能反：先定问题、再找答案，正是 VQA 的因果方向。$\operatorname{Norm}+$ 残差是为了稳定分布、避免融合把原信号冲掉。输出 $\mathcal{E}_W^{T}$ 交给文本解码器 $\mathcal{D}_T$ 自回归生成答案/补全句子。<strong>去掉 CMF</strong>：文本解码器只能盲解码，VQA/MLM 退化成无视觉条件的语言模型。</div>
 
 <h3>5.2 TGVR：文本引导的视觉细化（给检测 / 形态学）</h3>
-<p><strong>为什么需要：</strong>不同病种的图要按疾病类型区分着看（"这是疟疾视野"还是"白血病视野"），检测/形态学需要<strong>被文本调制过的</strong>实例 query。做法是：先从编码器特征 $\mathcal{E}_E^{I}$ 里按 objectness 选出 <strong>top-K 个视觉 query</strong> $k$（与 DINO[90] 同思路——大部分 token 是背景，只留最可能是细胞的那几个）；再把文本投影 $\mathcal{E}_E^{T\prime}=P(\mathcal{E}_E^{T})$ 当 key/value，用 $k$ 当 query 做 cross-attention，结果与 $k$ 拼接、再投影：</p>
-<div class="equation">$$\mathcal{E}_X^{I}=P\big[\,k\;\|\;\operatorname{CrossAttn}(k,\,\mathcal{E}_E^{T\prime},\,\mathcal{E}_E^{T\prime})\,\big]$$<div class="eq-caption">式 3：top-K 视觉 query 被文本调制后拼接投影（论文式 (3)；$\|$ 表拼接）</div></div>
+	<p><strong>为什么需要：</strong>不同病种的图要按疾病类型区分着看（"这是疟疾视野"还是"白血病视野"），检测/形态学需要<strong>经文本调制的</strong>实例 query。做法是：先从编码器特征 $\mathcal{E}_E^{I}$ 里按 objectness 选出 <strong>top-K 个视觉 query</strong> $k$（与 DINO[90] 同思路——大部分 token 是背景，只留最可能是细胞的那几个）；再把文本投影 $\mathcal{E}_E^{T\prime}=P(\mathcal{E}_E^{T})$ 当 key/value，用 $k$ 当 query 做 cross-attention，结果与 $k$ 拼接、再投影：</p>
+	<div class="equation">$$\mathcal{E}_X^{I}=P\big[\,k\;\|\;\operatorname{CrossAttn}(k,\,\mathcal{E}_E^{T\prime},\,\mathcal{E}_E^{T\prime})\,\big]$$<div class="eq-caption">式 3：top-K 视觉 query 经文本调制后拼接投影（论文式 (3)；$\|$ 表拼接）</div></div>
 <div class="formula-note"><strong>公式读法。</strong>$\mathcal{E}_X^{I}\in\mathbb{R}^{D\times M_t}$ 是"<strong>疾病引导的 top-K 对象 query</strong>"，喂给图像解码器 $\mathcal{D}_I$ 产出病灶对象嵌入 $\mathcal{E}_D^{I}$，再驱动检测与形态学预测。关键设计是 <strong>top-K 而非全量</strong>：把注意力预算集中到"最像细胞"的少数 query 上，既省算力又抑制背景假阳。拼接 $k\,\|\,\text{(attended)}$ 保留原始视觉证据、不让文本调制把它冲没。<strong>去掉 TGVR</strong>：检测 query 失去疾病先验，跨病种时容易混淆（疟疾原虫 vs 白细胞）。</div>
 
 <h3>5.3 SCFE：单细胞特征（给分类，故意不吃文本）</h3>
@@ -468,7 +468,7 @@ body.lb-lock{overflow:hidden}
 <p class="guide">引导：注意每个 step 训练谁、冻结谁——这是一条<strong>从稳到不稳、从共享到专用</strong>的退火路径。</p>
 <p class="answer">回答：端到端联合训练在多任务初期最危险——各 head 的梯度都还很噪，会把共享主干推向互相打架的方向。渐进式的逻辑是：<strong>先用最干净的信号（单细胞分类）把视觉底座练稳</strong>（Step 1），文本支路独立预热（Step 2）；<strong>再让视觉子模块在已稳底座上联合学共享语义</strong>（Step 3）；然后<strong>逐个 head 精修</strong>检测/形态学（Step 4）、分割（Step 5），此时底座基本冻住，精修不会反噬其它任务；<strong>最后才接语言</strong>（Step 6），因为 VQA/MLM 依赖前面所有视觉特征都已就位。每一步只解一个子问题、冻住已解的部分，正是在资源受限（单卡）下控制多任务训练不发散的工程化兜底。</p>
 <div class="takeaway">Takeaway：六阶段不是凑出来的流程，而是把"多任务训练的梯度冲突"在<strong>时间维度上</strong>错开——空间维度靠 Hema-Former 分流，时间维度靠渐进式冻结，两者合力。</div></div>
-<div class="note"><div class="note-title">复现门槛（诚实标注）</div>完整训练<strong>约 8 天、单块 NVIDIA RTX 4090</strong>（论文原话"the best available resource that we have"）。各阶段更细的配置作者放到附录（本页未取得补充材料，故 Step 2 的 epoch/batch 等标"论文未给具体数"）。<strong>GPU-小时</strong>若按"8 天 × 24 h ≈ 192 GPU-小时"估，属<em>按论文披露数字粗略估算，不等同于实际账单</em>（分阶段实际占用、是否含调参均未披露）。分割因算力限制：Step 3 用简单 mask 上采样、Step 5 才接小上采样器，作者承认这"可能略损边缘清晰度"。</div>
+	<div class="note"><div class="note-title">复现门槛（诚实标注）</div>完整训练<strong>约 8 天、单块 NVIDIA RTX 4090</strong>（论文原话"the best available resource that we have"）。作者把各阶段更细的配置放到附录（本页未取得补充材料，故 Step 2 的 epoch/batch 等标"论文未给具体数"）。<strong>GPU-小时</strong>若按"8 天 × 24 h ≈ 192 GPU-小时"估，<em>（按论文披露数字粗略估算，不等同于实际账单）</em>（分阶段实际占用、是否含调参均未披露）。分割因算力限制：Step 3 用简单 mask 上采样、Step 5 才接小上采样器，作者承认这"可能略损边缘清晰度"。</div>
 </section>
 
 <section id="experiments"><h2>7. 实验：一次训练的统一模型，对上逐个训练的单任务 SOTA</h2>
@@ -505,13 +505,13 @@ body.lb-lock{overflow:hidden}
 <p class="guide">引导：盯三处——检测/分类/形态学的 <strong>Mean</strong> 行，以及 Uni-Hema <em>没</em>赢的那几行。</p>
 <p class="answer">回答：核心断言是"<strong>一次联合训练 ≥ 逐个单训</strong>"。检测 Mean 61.1 略压 DINO(60.4)/YOLO(59.4)，分类 Mean 92.5 &gt; DinoBloom(91.5)，形态学 Mean 77.2 大幅超多任务 baseline AttriDet(62.6)——形态学涨幅最大（L-100x 从 61.8 到 83.6），说明<strong>共享主干对"读属性"这种依赖丰富上下文的任务帮助最显著</strong>。但也别只看赢的：Sickle Cell(67.0 vs DINO 73.6)、BCCD(87.8 vs 89.5)、malaria 分割 MD-2019(77.6 vs TransNetR 86.7) Uni-Hema 落后。作者的解释很坦白——<strong>这些是小样本任务，在大语料里学不出数据集专属的细节；单训时复杂度低反而学得更透</strong>。分割 Mean 91.7 略低于 TransNetR(93.7)，与"为省算力用简单上采样、边缘略糊"一致。</p>
 <div class="takeaway">Takeaway：统一模型的优势在<strong>需要跨任务上下文的任务</strong>（形态学、分类）上最明显；在<strong>小样本、需数据集专精</strong>的任务上会被单训模型反超——这是"统一"的代价，论文没有藏。</div></div>
-<figure class="fig-wide"><a href="../assets/figures/unihema/unihema_fig4.png"><img src="../assets/figures/unihema/unihema_fig4.png" alt="定性结果：(a) TransNetR 与 Uni-Hema 分割对比、(b) VQA 预测与 GT 对比、(c) DinoBloom 与 Uni-Hema 特征 t-SNE"></a><figcaption><strong>图 4 · 定性证据三联。</strong>(a) <strong>分割</strong>：贫血/疟疾/白细胞图上对比 TransNetR 与 Uni-Hema（TP/FP/FN 用浅黄/蓝/红标），Uni-Hema 减少误检、定位更准（贫血、WBC 尤其明显，疟疾稳健）。(b) <strong>VQA</strong>：预测与 ground-truth 对齐（如"无可见胞质空泡""小而圆的中性粒细胞"）。(c) <strong>t-SNE</strong>：在 Acevedo(8 类)与 Raabin(5 类)上，Uni-Hema 特征的类间分离比 DinoBloom-S 更清晰——这张图要支撑的是"<strong>统一训练学到的单细胞表示判别性更强</strong>"，呼应表 2 分类领先。</figcaption></figure>
+	<figure class="fig-wide"><a href="../assets/figures/unihema/unihema_fig4.png"><img src="../assets/figures/unihema/unihema_fig4.png" alt="定性结果：(a) TransNetR 与 Uni-Hema 分割对比、(b) VQA 预测与 GT 对比、(c) DinoBloom 与 Uni-Hema 特征 t-SNE"></a><figcaption><strong>图 4 · 定性证据三联。</strong>（a）<strong>分割</strong>：贫血/疟疾/白细胞图上对比 TransNetR 与 Uni-Hema（TP/FP/FN 用浅黄/蓝/红标），Uni-Hema 减少误检、定位更准（贫血、WBC 尤其明显，疟疾稳健）。（b）<strong>VQA</strong>：预测与 ground-truth 对齐（如"无可见胞质空泡""小而圆的中性粒细胞"）。（c）<strong>t-SNE</strong>：在 Acevedo（8 类）与 Raabin（5 类）上，Uni-Hema 特征的类间分离比 DinoBloom-S 更清晰——这张图要支撑的是"<strong>统一训练学到的单细胞表示判别性更强</strong>"，呼应表 2 分类领先。</figcaption></figure>
 </section>
 
 <section id="ablations"><h2>8. 消融与未见域：分流机制真的在起作用吗？</h2>
-<p>表 2 把模型放到<strong>训练时没见过的数据集</strong>上，检验"统一表示是否更泛化"；同时论文给了两组针对性消融，验证 SCFE 的特征融合与 QGMF 的上采样器各自的增益。</p>
+	<p>表 2 记录模型在<strong>训练时没见过的数据集</strong>上的表现，用来检验"统一表示是否更泛化"；同时论文给了两组针对性消融，验证 SCFE 的特征融合与 QGMF 的上采样器各自的增益。</p>
 <div class="table-wrap"><table>
-<caption>表 2（完整转写）· 未见数据集上的跨域适应（论文 Table 2）。分类/形态学为 F1，检测 mAP<sub>50</sub>，分割 Dice。"–"表对应方法不报该任务。</caption>
+	<caption>表 2（完整转写）· 未见数据集上的跨域适应（论文 Table 2）。分类/形态学为 F1，检测 mAP<sub>50</sub>，分割 Dice。"–"表示对应方法不报该任务。</caption>
 <thead><tr><th>数据集 · 任务</th><th>DinoBloomS</th><th>Dinov2S</th><th>Dinov3S</th><th>ResNet</th><th>Uni-Hema</th></tr></thead>
 <tbody>
 <tr><th colspan="6" style="text-align:left;background:#eef4f9">单细胞分类 F1</th></tr>
@@ -534,7 +534,7 @@ body.lb-lock{overflow:hidden}
 <strong>QGMF 的上采样器：</strong>把简单插值上采样换成<strong>小型可学习上采样器</strong>，分割持续提升——贫血集 91.8%→93.4%、健康集 92.8%→94.1%，其它数据集有类似增益。</div>
 <div class="socratic"><p class="question">问题：表 2 与这两组消融，分别证伪了什么"替代解释"？</p>
 <p class="guide">引导：表 2 的潜在质疑是"统一模型只是过拟合了训练分布"；消融的潜在质疑是"增益来自更多参数而非设计"。</p>
-<p class="answer">回答：表 2 在<strong>未见数据集</strong>上 Uni-Hema 分类 Mean 90.8 仍领先所有专用特征提取器（含血液专用 DinoBloom 89.9），<strong>排除了"靠记住训练分布"的解释</strong>——若是过拟合，跨域应明显掉点。两组消融则是<strong>控制变量</strong>：只改"是否融合 backbone 特征"或"插值 vs 可学习上采样器"，单一变量带来一致正向增益，<strong>把增益归到具体设计而非泛泛的参数量</strong>。C-NMC 这种域偏移大的集上增益更大（+4 点），进一步支持"融合多层级特征提升的是<strong>泛化</strong>而非拟合"。</p>
+	<p class="answer">回答：表 2 显示，Uni-Hema 在<strong>未见数据集</strong>上分类 Mean 90.8 仍领先所有专用特征提取器（含血液专用 DinoBloom 89.9），<strong>排除了"靠记住训练分布"的解释</strong>——若是过拟合，跨域应明显掉点。两组消融则是<strong>控制变量</strong>：只改"是否融合 backbone 特征"或"插值 vs 可学习上采样器"，单一变量带来一致正向增益，<strong>把增益归到具体设计而非泛泛的参数量</strong>。C-NMC 这种域偏移大的集上增益更大（+4 点），进一步支持"融合多层级特征提升的是<strong>泛化</strong>而非拟合"。</p>
 <div class="takeaway">Takeaway：跨域不掉点 + 单变量消融一致正向，两条独立证据共同支撑 §5 的机制断言——层级特征分流提升的是可迁移的细胞表示，而非对单数据集的记忆。</div></div>
 </section>
 
@@ -543,7 +543,7 @@ body.lb-lock{overflow:hidden}
 <li><strong>小样本任务被联合训练拖累。</strong>镰刀细胞、寄生虫检测、malaria 分割等样本极少的任务上，Uni-Hema 不如单数据集专精模型（表 1 中 Sickle Cell 67.0 vs DINO 73.6 等）。作者归因于大语料的平均化效应——这是"统一"的固有代价。</li>
 <li><strong>分割边缘偏糊。</strong>受单卡算力限制，未用 SOTA 上采样解码器，Step 3 简单上采样、Step 5 才接小上采样器；Dice Mean 91.7 略低于 TransNetR 93.7，论文承认"可能略损边缘清晰度"。</li>
 <li><strong>文本数据是半合成、且声明不可临床用。</strong>VQA/MLM 的问答与描述由 BioMistral-7B / Gemini 1.5 在形态学标注上生成，论文明确"仅供实验、不建议医疗用途"。BLEU-4 衡量的是文本重合度，不直接等于临床正确性。</li>
-<li><strong>训练细节依赖附录。</strong>本页未取得补充材料，故 Step 2 的 epoch/batch、各阶段学习率/优化器等标"论文未说明"；总训练时长仅给"约 8 天/单卡 4090"，GPU-小时为粗略估算。</li>
+	<li><strong>训练细节依赖附录。</strong>本页未取得补充材料，故 Step 2 的 epoch/batch、各阶段学习率/优化器等标"论文未说明"；总训练时长仅给"约 8 天/单卡 4090"，GPU-小时按论文披露数字粗略估算，不等同于实际账单。</li>
 <li><strong>表格为代表性转写。</strong>原 Table 1 含更多检测/分割数据集行，本页每任务保留若干代表行 + Mean，完整数据以原文为准；图 1/图 4 中的若干小图为定性示意，非可量化指标。</li>
 <li><strong>CVF 链接未解析。</strong>CVPR 2026 论文页尚未上线 CVF（与本站其它 CVPR 2026 条目一致），本页只提供 arXiv + 代码链接。代码仓 <code>intelligentMachines-ITU/Uni-Hema</code> HTTP 200，但论文写"code will be made publicly available"，发布完整度以仓库实际为准。</li>
 </ul>

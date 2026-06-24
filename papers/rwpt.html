@@ -350,55 +350,55 @@ body.lb-lock{overflow:hidden}
 </script>
 </head>
 <body>
-<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>Object Tracking / Point Tracking · 用"逐帧验证器"把多个 teacher 的伪标签筛干净</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>Object Tracking / Point Tracking · 用“逐帧验证器”把多个 teacher 的伪标签筛干净</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
 <div class="wrap"><div class="breadcrumbs"><a href="../index.html">首页</a> &gt; CVPR 2026 &gt; Object Tracking / Point Tracking &gt; Track-On-R</div>
-<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">Track-On-R / Verifier 深读：合成数据训练的点跟踪器一进真实视频就掉点，自训练又被"逐帧波动的 teacher"反噬——能不能学一个"逐帧判断该信谁"的验证器？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>CVPR 2026 · Top Paper (candidate) · Koç University KUIS AI · Shanghai Jiao Tong University</span><span>来源：arXiv:2603.12217 v1 PDF（正文 + 补充材料图）</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Point Tracking / TAP</span><span class="tag green">Verifier-Guided Pseudo-Labeling</span><span class="tag">Self-Training</span><span class="tag">Teacher Ensemble</span><span class="tag">Track-On-R</span><span class="tag">MathJax checked</span></div></header>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">Track-On-R / Verifier 深读：合成数据训练的点跟踪器一进真实视频就掉点，自训练又被“逐帧波动的 teacher”反噬——能不能学一个“逐帧判断该信谁”的验证器？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>CVPR 2026 · Top Paper (candidate) · Koç University KUIS AI · Shanghai Jiao Tong University</span><span>来源：arXiv:2603.12217 v1 PDF（正文 + 补充材料图）</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Point Tracking / TAP</span><span class="tag green">Verifier-Guided Pseudo-Labeling</span><span class="tag">Self-Training</span><span class="tag">Teacher Ensemble</span><span class="tag">Track-On-R</span><span class="tag">MathJax checked</span></div></header>
 <main class="content">
 
-<p id="abstract" class="lead"><strong>导读。</strong>长时点跟踪（point tracking / TAP）的模型几乎清一色在<strong>合成数据</strong>（TAP-Vid Kubric 等）上训练——因为给真实视频做逐帧、像素级的长程轨迹标注代价高到不现实。结果是一道顽固的 <strong>sim-to-real 域差</strong>：真实视频里的外观统计、非刚性运动、遮挡模式、光照与传感器噪声，会让这些模型在长序列上越跑越不准。自训练（拿预训练 tracker 的预测当伪标签去真实视频上微调）是一条公认的出路，但它有个软肋：<strong>伪标签的质量取决于 teacher 的可靠性，而可靠性是逐帧、逐场景波动的</strong>——有的 tracker 抗快速运动却在低纹理处漂移，有的扛遮挡却爱发生身份切换。固定阈值或全局置信度无法调和这些<em>异质</em>的误差模式，反而会在微调里把系统性错误放大。本文的核心张力就在这：<strong>真实世界的点跟踪训练，瓶颈不是"再造一个更强的 tracker"，而是"逐帧判断该信谁"——可靠性估计</strong>。作者的答案是一个叫 <strong>verifier</strong> 的 meta-model：它<em>不直接预测坐标</em>，而是给定 query 点与多个 off-the-shelf teacher 的候选轨迹，逐帧打出可靠性分数、挑出最可信的那条，拼成干净的伪标签。verifier 全程只在<strong>合成数据</strong>上用"故意扰动的候选"训练（无需任何真实标注），却学到了能跨域迁移的一致性线索。把它用来微调 Track-On2，得到 <strong>Track-On-R</strong>：EgoPoints、RoboTAP、Kinetics、DAVIS 四个真实基准全 SOTA，EgoPoints 的 $\delta^x_{avg}$ 从 61.7 抬到 <strong>67.3</strong>，且用的数据比此前自训练方法更少。</p>
+<p id="abstract" class="lead"><strong>导读。</strong>长时点跟踪（point tracking / TAP）的模型几乎清一色在<strong>合成数据</strong>（TAP-Vid Kubric 等）上训练——因为给真实视频做逐帧、像素级的长程轨迹标注代价高到不现实。结果是一道顽固的 <strong>sim-to-real 域差</strong>：真实视频里的外观统计、非刚性运动、遮挡模式、光照与传感器噪声，会让这些模型在长序列上越跑越不准。自训练（拿预训练 tracker 的预测当伪标签去真实视频上微调）是一条公认的出路，但它有个软肋：<strong>伪标签的质量取决于 teacher 的可靠性，而可靠性是逐帧、逐场景波动的</strong>——有的 tracker 抗快速运动却在低纹理处漂移，有的扛遮挡却爱发生身份切换。固定阈值或全局置信度无法调和这些<em>异质</em>的误差模式，反而会在微调里把系统性错误放大。本文的核心张力就在这：<strong>真实世界的点跟踪训练，瓶颈不是“再造一个更强的 tracker”，而是“逐帧判断该信谁”——可靠性估计</strong>。作者的答案是一个叫 <strong>verifier</strong> 的 meta-model：它<em>不直接预测坐标</em>，而是给定 query 点与多个 off-the-shelf teacher 的候选轨迹，逐帧打出可靠性分数、挑出最可信的那条，拼成干净的伪标签。verifier 全程只在<strong>合成数据</strong>上用“故意扰动的候选”训练（无需任何真实标注），却学到了能跨域迁移的一致性线索。把它用来微调 Track-On2，得到 <strong>Track-On-R</strong>：EgoPoints、RoboTAP、Kinetics、DAVIS 四个真实基准全 SOTA，EgoPoints 的 $\delta^x_{avg}$ 从 61.7 抬到 <strong>67.3</strong>，且用的数据比此前自训练方法更少。</p>
 
 <figure>
 <a href="../assets/figures/rwpt/rwpt_fig1.png"><img src="../assets/figures/rwpt/rwpt_fig1.png" alt="左：query 点 + 多个 off-the-shelf tracker 给出不同候选轨迹，verifier 逐帧选最可靠的拼成伪标签；右：verifier 引导的自训练 vs 随机选 teacher"></a>
-<figcaption><strong>图 1（论文 Fig.1，本页 hero）：一眼看懂整套机制。</strong>（左）真实视频里给定一个 query 点，多个现成 tracker 各给一条候选轨迹（彩色虚线）；verifier 逐帧评估这些预测、选出最可靠的（实心红点），拼成一条<strong>精修后的伪标签轨迹</strong>。（右）与"朴素自训练随机抽一个 teacher 当老师"不同，verifier <strong>自适应地融合多个 teacher</strong>，给 student tracker 提供更干净的监督，再做真实世界微调（$\mathcal{L}_{\text{self-train}}$）。注意 verifier 是个旁路裁判，teacher 与 student 都不改结构。</figcaption>
+<figcaption><strong>图 1（论文 Fig. 1，本页 hero）：一眼看懂整套机制。</strong>（左）真实视频里给定一个 query 点，多个现成 tracker 各给一条候选轨迹（彩色虚线）；verifier 逐帧评估这些预测、选出最可靠的（实心红点），拼成一条<strong>精修后的伪标签轨迹</strong>。（右）与“朴素自训练随机抽一个 teacher 当老师”不同，verifier <strong>自适应地融合多个 teacher</strong>，给 student tracker 提供更干净的监督，再做真实世界微调（$\mathcal{L}_{\text{self-train}}$）。注意 verifier 是个旁路裁判，teacher 与 student 都不改结构。</figcaption>
 </figure>
 
 <section id="motivation">
-<h2>核心问题：为什么"再强的单 teacher"也救不了真实世界微调？<a class="anchor" href="#motivation">#</a></h2>
+<h2>核心问题：为什么“再强的单 teacher”也救不了真实世界微调？<a class="anchor" href="#motivation">#</a></h2>
 
-<p>先把动机讲透，再谈机制。点跟踪要在长视频里维持对"任意一个物理点"的细粒度对应，穿过运动、遮挡、再出现。短程对应光流就能解决，但长时程（几十到上千帧）一直是难点。问题在于：</p>
+<p>先把动机讲透，再谈机制。点跟踪要在长视频里维持对“任意一个物理点”的细粒度对应，穿过运动、遮挡、再出现。短程对应光流就能解决，但长时程（几十到上千帧）一直是难点。问题在于：</p>
 
 <ul>
-<li><strong>训练几乎全在合成数据上</strong>。给真实视频做密集长程轨迹标注代价过高，于是 TAPIR、CoTracker、Track-On 系列都在 Kubric 这类合成集训练。模型默认"合成→真实"能泛化，但纹理、光照、运动、遮挡分布一变，性能就退化。</li>
+<li><strong>训练几乎全在合成数据上</strong>。给真实视频做密集长程轨迹标注代价过高，于是 TAPIR、CoTracker、Track-On 系列都在 Kubric 这类合成集训练。模型默认“合成→真实”能泛化，但纹理、光照、运动、遮挡分布一变，性能就退化。</li>
 <li><strong>自训练的伪标签不是均匀可靠的</strong>。朴素做法（论文记作 naïve self-training）是：采一段真实视频 $V\sim\mathcal{D}_{real}$，从 $M$ 个预训练模型里<em>随机</em>挑一个 teacher $\Phi^{(m)}$，让它对 query 点 $q_{t_0}$ 生成伪标签 $\tilde{Y}=\{(\hat{p}_t,\hat{v}_t)\}_{t=1}^{T}$ 当监督。可单个 teacher 很少能在整段视频里保持均匀可靠——准确度逐帧抖动，时好时坏。</li>
-<li><strong>不同 teacher 的误差只是"弱相关"，不是"互补"</strong>。直接从这些预测里采样、或对它们做平均，倾向于<em>放大噪声与漂移</em>，反而抵消了自训练的收益。固定启发式或全局置信阈值，调和不了这些异质误差。</li>
+<li><strong>不同 teacher 的误差只是“弱相关”，不是“互补”</strong>。直接从这些预测里采样、或对它们做平均，倾向于<em>放大噪声与漂移</em>，反而抵消了自训练的收益。固定启发式或全局置信阈值，调和不了这些异质误差。</li>
 </ul>
 
 <div class="socratic">
-<p class="question">问：那"逐帧挑一个最准的 teacher"到底有多大空间？这值得专门学一个模型吗？</p>
-<p class="guide">引导：先别急着造模型——先做一个<strong>oracle 实验</strong>把"上限"量出来。oracle 在每一帧都偷看 ground truth，选离 GT 最近的那个 teacher 预测。如果 oracle 跟"任何单 teacher / 随机选"之间差距很小，那这条路不值得走；如果差距巨大，说明"逐帧选择"这个动作本身藏着大量未被利用的 headroom。</p>
-<p class="answer">答：论文 Fig.2(a) 给出了答案——在 4 个真实数据集上，6 个现成 teacher（彩色圈）全都<strong>明显低于</strong> oracle（菱形），而"随机选 teacher"（黑色横线）更低。这个差距在所有数据集上都<em>一致存在</em>，在挑战性最强的第一人称视频 EgoPoints 上尤其夸张。结论：最好的 teacher 是<strong>逐帧、逐场景变化的</strong>，静态或随机选择都次优——"逐帧选择"确实值得专门学一个模型来逼近。</p>
-<p class="takeaway">Takeaway：本文不是要发明新的 tracker 架构，而是把问题重新定义为<strong>可靠性估计</strong>——学一个 meta-model，逼近那个"逐帧选最准 teacher"的 oracle，但<em>不偷看 GT</em>。这是全文机制的起点。</p>
+<p class="question">问：那“逐帧挑一个最准的 teacher”到底有多大空间？这值得专门学一个模型吗？</p>
+<p class="guide">引导：先别急着造模型——先用<strong>oracle 实验</strong>把“上限”量出来。oracle 在每一帧都偷看 ground truth，选离 GT 最近的那个 teacher 预测。如果 oracle 跟“任何单 teacher / 随机选”之间差距很小，那这条路不值得走；如果差距巨大，说明“逐帧选择”这个动作本身藏着大量未被利用的 headroom。</p>
+<p class="answer">答：论文 Fig. 2(a) 给出了答案——在 4 个真实数据集上，6 个现成 teacher（彩色圈）全都<strong>明显低于</strong> oracle（菱形），而“随机选 teacher”（黑色横线）更低。这个差距在所有数据集上都<em>一致存在</em>，在挑战性最强的第一人称视频 EgoPoints 上尤其夸张。结论：最好的 teacher 是<strong>逐帧、逐场景变化的</strong>，静态或随机选择都次优——“逐帧选择”确实值得专门学一个模型来逼近。</p>
+<p class="takeaway">Takeaway：本文不是要发明新的 tracker 架构，而是把问题重新定义为<strong>可靠性估计</strong>——学一个 meta-model，逼近那个“逐帧选最准 teacher”的 oracle，但<em>不偷看 GT</em>。这是全文机制的起点。</p>
 </div>
 
-<p>把这条思路压成一句话：<strong>verifier 要做的，就是在没有真实标注的前提下，逐帧近似 oracle 的选择。</strong>它怎么在没有 GT 时判断"谁最准"？靠的是<em>外观一致性</em>——一个候选点周围的局部视觉证据，是否还像在延续 query 点最初的外观与运动。这就是后面 §method 的全部机制核心。</p>
+<p>把这条思路压成一句话：<strong>verifier 要做的，就是在没有真实标注的前提下，逐帧近似 oracle 的选择。</strong>它怎么在没有 GT 时判断“谁最准”？靠的是<em>外观一致性</em>——一个候选点周围的局部视觉证据，是否还像在延续 query 点最初的外观与运动。这就是后面 §method 的全部机制核心。</p>
 </section>
 
 <section id="contribution">
-<h2>贡献拆解：三件事，且都建立在"不碰 teacher/student 结构"之上<a class="anchor" href="#contribution">#</a></h2>
-<p>作者自陈三点贡献，这里逐条标出"它解决上面哪个痛点"，并把作者主张与读者可推断的边界分开：</p>
+<h2>贡献拆解：三件事，且都建立在“不碰 teacher/student 结构”之上<a class="anchor" href="#contribution">#</a></h2>
+<p>作者自陈三点贡献，这里逐条标出“它解决上面哪个痛点”，并把作者主张与读者可推断的边界分开：</p>
 <ol>
-<li><strong>verifier（一个可靠性打分的 meta-model）</strong>。给多 teacher 的逐帧预测打分、选可靠的——既能在<em>训练时</em>当"监督选择器"挑伪标签，也能在<em>推理时</em>当"即插即用集成模块"。对应痛点②③：把"该信谁"显式建模。</li>
-<li><strong>verifier-guided pseudo-labeling 框架</strong>。用 verifier 生成的伪标签，把真实视频上的微调规模化，同时绕开朴素伪标签的失败模式（噪声放大、漂移、坍缩）。对应痛点①：把合成→真实的域差用"干净伪标签"补上。</li>
+<li><strong>verifier（一个可靠性打分的 meta-model）</strong>。给多 teacher 的逐帧预测打分、选可靠的——既能在<em>训练时</em>当“监督选择器”挑伪标签，也能在<em>推理时</em>当“即插即用集成模块”。对应痛点②③：把“该信谁”显式建模。</li>
+<li><strong>verifier-guided pseudo-labeling 框架</strong>。用 verifier 生成的伪标签，把真实视频上的微调规模化，同时绕开朴素伪标签的失败模式（噪声放大、漂移、坍缩）。对应痛点①：把合成→真实的域差用“干净伪标签”补上。</li>
 <li><strong>系统的实验与消融</strong>：四个真实点跟踪基准上 SOTA，且强调<strong>数据效率</strong>（用更少真实视频）。</li>
 </ol>
-<div class="note"><p class="note-title">读者侧边界（非作者主张）</p><p>verifier 是个<strong>旁路裁判</strong>：它本身不预测坐标，最终轨迹仍来自 teacher 候选。因此（作者在 §limitation 也承认）<strong>verifier 的上限被 teacher 池的质量锁死</strong>——再聪明的裁判也只能在给定的候选里选。这是它"轻、可迁移、即插即用"的代价。本文 student/base 模型固定为 Track-On2，teacher 池固定为 6 个现成模型。</p></div>
+<div class="note"><p class="note-title">读者侧边界（非作者主张）</p><p>verifier 是个<strong>旁路裁判</strong>：它本身不预测坐标，最终轨迹仍来自 teacher 候选。因此（作者在 §limitation 也承认）<strong>verifier 的上限被 teacher 池的质量锁死</strong>——再聪明的裁判也只能在给定的候选里选。这是它“轻、可迁移、即插即用”的代价。本文 student/base 模型固定为 Track-On2，teacher 池固定为 6 个现成模型。</p></div>
 </section>
 
 <section id="datasets">
-<h2>数据：verifier 用合成集训练，伪标签在"野生"真实视频上生成，最后在四个公开基准上评<a class="anchor" href="#datasets">#</a></h2>
+<h2>数据：verifier 用合成集训练，伪标签在“野生”真实视频上生成，最后在四个公开基准上评<a class="anchor" href="#datasets">#</a></h2>
 <p>这套方法横跨三类数据，分工要分清楚：</p>
 <ul>
-<li><strong>verifier 训练（合成，带 GT）</strong>：用 <strong>K-EPIC</strong>——11K 段、每段 24 帧的合成视频，物体与 TAP-Vid Kubric 类似。verifier 在这里学"怎么从局部外观一致性判断候选可靠性"，监督信号来自候选到 GT 的距离（式10）。<strong>关键：训练全程只用合成标注，不碰任何真实标注。</strong></li>
+<li><strong>verifier 训练（合成，带 GT）</strong>：用 <strong>K-EPIC</strong>——11K 段、每段 24 帧的合成视频，物体与 TAP-Vid Kubric 类似。verifier 在这里学“怎么从局部外观一致性判断候选可靠性”，监督信号来自候选到 GT 的距离（式 10）。<strong>关键：训练全程只用合成标注，不碰任何真实标注。</strong></li>
 <li><strong>真实世界微调（无标注，野生视频）</strong>：$\mathcal{D}_{real}$ 由现成的物体跟踪/分割数据集拼成——<strong>TAO、OVIS、VSPW</strong>，只保留长度 &gt; 48 帧的视频、不做额外筛选，得到 <strong>4864</strong> 段真实序列（实际微调用其中 8K 视频的过滤集合；论文此处给出的是过滤后的序列数）。这些视频<em>没有任何轨迹标注</em>，伪标签全由 verifier + teacher 池生成。</li>
 <li><strong>评测（四个公开真实基准）</strong>：<br>
 &nbsp;&nbsp;· <strong>TAP-Vid DAVIS</strong>：30 段真实视频；<br>
@@ -410,84 +410,84 @@ body.lb-lock{overflow:hidden}
 </section>
 
 <section id="pipeline">
-<h2>Pipeline：从"野生视频"到"干净伪标签"再到"微调好的 Track-On-R"<a class="anchor" href="#pipeline">#</a></h2>
+<h2>Pipeline：从“野生视频”到“干净伪标签”再到“微调好的 Track-On-R”<a class="anchor" href="#pipeline">#</a></h2>
 <p>把整条链路按数据流走一遍（对照图 1 右 + 图 3）：</p>
 <ol>
-<li><strong>采 query 点</strong>。对每段野生视频 $V\sim\mathcal{D}_{real}$，按外观 + 运动两类线索采 query：2/3 来自 SIFT 检测点，1/3 来自"运动显著区"（灰度帧差 + 轻度空间平滑）。query 只从视频前半段、4 个均匀间隔帧（如第 1、5……帧）采。</li>
+<li><strong>采 query 点</strong>。对每段野生视频 $V\sim\mathcal{D}_{real}$，按外观 + 运动两类线索采 query：2/3 来自 SIFT 检测点，1/3 来自“运动显著区”（灰度帧差 + 轻度空间平滑）。query 只从视频前半段、4 个均匀间隔帧（如第 1、5……帧）采。</li>
 <li><strong>teacher 池生成候选</strong>。每个 query 被 <strong>M=6 个现成 teacher</strong> 各跟一遍：Track-On2、BootsTAPIR、BootsTAPNext、Anthro-LocoTrack、AllTracker、CoTracker3（window 变体）。于是同一目标得到 $C\in\mathbb{R}^{L\times M\times 2}$ 条候选轨迹。</li>
 <li><strong>verifier 逐帧裁决</strong>。verifier 对每帧每条候选打可靠性分 $\hat{s}_t\in\mathbb{R}^{M}$，每帧选 $\arg\max_m \hat{s}_t^{(m)}$ 对应的预测当伪标签坐标；可见性用 teacher 预测的<strong>多数投票</strong>定。逐帧拼起来就是一条精修伪标签轨迹。</li>
 <li><strong>微调 student</strong>。以 Track-On2（在 Kubric 上预训练）为 base，用这些伪标签在 $\mathcal{D}_{real}$ 上微调；实操里<em>同时</em>混入合成集 $\mathcal{D}_{syn}$（带 GT），并按 schedule 逐步抬高真实样本的损失权重、压低合成样本——得到 <strong>Track-On-R</strong>。</li>
 </ol>
-<div class="note"><p class="note-title">一处易混点</p><p>verifier 在<strong>训练时</strong>吃的是"对 GT 轨迹做随机扰动"造出的候选（模拟 drift/遮挡/jitter），在<strong>推理/微调时</strong>吃的是"6 个真 teacher"的候选。两边输入形态一致（都是一束候选轨迹），所以合成训练的 verifier 能直接迁移去裁决真实 teacher——这正是"无需真实标注"的来源。</p></div>
+<div class="note"><p class="note-title">一处易混点</p><p>verifier 在<strong>训练时</strong>吃的是“对 GT 轨迹做随机扰动”造出的候选（模拟 drift/遮挡/jitter），在<strong>推理/微调时</strong>吃的是“6 个真 teacher”的候选。两边输入形态一致（都是一束候选轨迹），所以合成训练的 verifier 能直接迁移去裁决真实 teacher——这正是“无需真实标注”的来源。</p></div>
 </section>
 
 <section id="method">
-<h2>方法核心：verifier 怎样"不偷看 GT"也能逐帧选出最可靠的候选？<a class="anchor" href="#method">#</a></h2>
+<h2>方法核心：verifier 怎样“不偷看 GT”也能逐帧选出最可靠的候选？<a class="anchor" href="#method">#</a></h2>
 
-<p>用 kexue:su 的姿态拆这个机制——先讲"为什么需要"，每一步显式标出假设，并从<strong>两条独立路径</strong>（top-down 直觉 + bottom-up 算法）走到同一结论。</p>
+<p>用 kexue:su 的姿态拆这个机制——先讲“为什么需要”，每一步显式标出假设，并从<strong>两条独立路径</strong>（top-down 直觉 + bottom-up 算法）走到同一结论。</p>
 
-<h3>① 问题形式化：verifier 是 meta-model，输出"逐帧候选可靠性分布"</h3>
+<h3>① 问题形式化：verifier 是 meta-model，输出“逐帧候选可靠性分布”</h3>
 <p>点跟踪本身是 $\{(\hat{p}_t,\hat{v}_t)\}_{t=t_0+1}^{T}=\Phi(V,q_{t_0})$：给定视频和 $t_0$ 时刻的 query 点，预测后续每帧的 2D 坐标 $\hat{p}_t$ 与可见性 $\hat{v}_t$。verifier 则换了个目标——它<strong>不预测坐标</strong>，而是对一束候选打分：</p>
 <div class="equation">$$\hat{S}=\Phi_{ver}(V,\,q_{t_0},\,C),\qquad \hat{S}=\{\hat{s}_t\mid t\in(t_0,T]\},\ \ \hat{s}_t\in\mathbb{R}^{M}$$<div class="eq-caption">式 2：verifier 吃视频 $V$、query 点 $q_{t_0}$、$M$ 条候选轨迹 $C\in\mathbb{R}^{L\times M\times 2}$，对每帧 $t$ 输出一个 $M$ 维可靠性向量 $\hat{s}_t$，第 $m$ 维 $\hat{s}_t^{(m)}$ 是候选 $m$ 在该帧的可靠性分。</div></div>
-<p>公式读法：$L=T-t_0$ 是轨迹长度，$C$ 的每个元素是"候选 $m$ 在帧 $t$ 的 2D 位置"。verifier 的全部产出，就是这套"逐帧、跨候选"的概率分布——逼近 oracle 的逐帧选择。</p>
+<p>公式读法：$L=T-t_0$ 是轨迹长度，$C$ 的每个元素是“候选 $m$ 在帧 $t$ 的 2D 位置”。verifier 的全部产出，就是这套“逐帧、跨候选”的概率分布——逼近 oracle 的逐帧选择。</p>
 
-<h3>② 局部特征提取：把"该信谁"翻译成"谁的局部外观还像 query"</h3>
-<p>动机：在没有 GT 时，唯一能判断候选可靠性的客观证据，是<strong>候选点周围的局部视觉外观，是否还延续着 query 点最初的外观</strong>。所以第一步是把"图像里这些 2D 位置附近的区域"转成可直接比较的紧凑描述子。</p>
-<p>用<strong>冻结的 CoTracker3 CNN encoder</strong> $\phi_{enc}$ 对每帧算稠密特征 $F_t\in\mathbb{R}^{H''\times W''\times D}$（式3）。query 的参考嵌入由在首个可见帧 $t_0$ 处对 $q_{t_0}$ 双线性采样得到（式4）。再用<strong>可变形注意力（deformable attention）</strong>在 query 与候选两处聚合局部上下文：</p>
-<div class="equation">$$h_{t_0}^{q}=\phi_{def}(q_{sample},\,F_{t_0},\,q_{t_0})\in\mathbb{R}^{D},\qquad h_{t}=\phi_{def}(q_{sample},\,F_{t},\,C_{t})\in\mathbb{R}^{M\times D},\ t>t_0$$<div class="eq-caption">式 5–6：$\phi_{def}$ 以参考特征 $q_{sample}$ 作 query 输入、帧特征图作 key–value、候选坐标 $C_t$ 作注意力中心——即"以同一个 query 外观为基准，去看每个候选位置附近的局部邻域长什么样"。这样比的是<strong>局部邻域相似度</strong>，而非单点特征，对噪声更稳。</div></div>
-<p>再补两类嵌入修正"纯视觉特征缺空间上下文"的缺陷：对位移向量 $\Delta_t=C_t-q_{t_0}$ 加正弦位置嵌入 $\eta(\cdot)$，再拼一个可学的<strong>身份嵌入</strong>区分 query（$\text{ID}_0$）与候选（$\text{ID}_1$），过投影 $\phi_{proj}$ 对齐到模型维度，得到 $f_{t_0}^{q}$（式7）与候选特征 $f_t$（式8）。query 特征沿时间复制成 $f^{q}\in\mathbb{R}^{L\times D}$，候选特征堆成 $f\in\mathbb{R}^{L\times M\times D}$。</p>
+<h3>② 局部特征提取：把“该信谁”翻译成“谁的局部外观还像 query”</h3>
+<p>动机：在没有 GT 时，唯一能判断候选可靠性的客观证据，是<strong>候选点周围的局部视觉外观，是否还延续着 query 点最初的外观</strong>。所以第一步是把“图像里这些 2D 位置附近的区域”转成可直接比较的紧凑描述子。</p>
+<p>用<strong>冻结的 CoTracker3 CNN encoder</strong> $\phi_{enc}$ 对每帧算稠密特征 $F_t\in\mathbb{R}^{H''\times W''\times D}$（式 3）。query 的参考嵌入由在首个可见帧 $t_0$ 处对 $q_{t_0}$ 双线性采样得到（式 4）。再用<strong>可变形注意力（deformable attention）</strong>在 query 与候选两处聚合局部上下文：</p>
+<div class="equation">$$h_{t_0}^{q}=\phi_{def}(q_{sample},\,F_{t_0},\,q_{t_0})\in\mathbb{R}^{D},\qquad h_{t}=\phi_{def}(q_{sample},\,F_{t},\,C_{t})\in\mathbb{R}^{M\times D},\ t>t_0$$<div class="eq-caption">式 5–6：$\phi_{def}$ 以参考特征 $q_{sample}$ 作 query 输入、帧特征图作 key–value、候选坐标 $C_t$ 作注意力中心——即“以同一个 query 外观为基准，去看每个候选位置附近的局部邻域长什么样”。这样比的是<strong>局部邻域相似度</strong>，而非单点特征，对噪声更稳。</div></div>
+<p>再补两类嵌入修正“纯视觉特征缺空间上下文”的缺陷：对位移向量 $\Delta_t=C_t-q_{t_0}$ 加正弦位置嵌入 $\eta(\cdot)$，再拼一个可学的<strong>身份嵌入</strong>区分 query（$\text{ID}_0$）与候选（$\text{ID}_1$），过投影 $\phi_{proj}$ 对齐到模型维度，得到 $f_{t_0}^{q}$（式 7）与候选特征 $f_t$（式 8）。query 特征沿时间复制成 $f^{q}\in\mathbb{R}^{L\times D}$，候选特征堆成 $f\in\mathbb{R}^{L\times M\times D}$。</p>
 
 <figure>
 <a href="../assets/figures/rwpt/rwpt_fig5.png"><img src="../assets/figures/rwpt/rwpt_fig5.png" alt="局部特征提取：q_sample 与候选位置 C_t 经可变形注意力 φ_def 得 h_t，再拼位置嵌入 η 与身份嵌入 ID 经 φ_proj 得 f_t"></a>
-<figcaption><strong>图 2（论文补充材料图，对应式 5–8）：局部特征提取的一个候选支路。</strong>左上是首帧特征图 $F_{t_0}$ 上的参考点 $q_{sample}$；下方是帧 $F_t$ 上一束候选 $C_t$（绿/红/蓝三点，画在虚线框里表示"以 query 邻域为基准聚合"）。$\phi_{def}$ 把它们聚合成 $h_t$，再由 $\phi_{proj}$ 拼入位置嵌入 $\eta$ 和身份嵌入 ID，输出候选特征 $f_t$。看这张图就懂：verifier 比较的不是"坐标对不对"，而是"<strong>这个候选位置周围的外观，还像不像最初那个 query 点</strong>"。</figcaption>
+<figcaption><strong>图 2（论文补充材料图，对应式 5–8）：局部特征提取的一个候选支路。</strong>左上是首帧特征图 $F_{t_0}$ 上的参考点 $q_{sample}$；下方是帧 $F_t$ 上一束候选 $C_t$（绿/红/蓝三点，画在虚线框里表示“以 query 邻域为基准聚合”）。$\phi_{def}$ 把它们聚合成 $h_t$，再由 $\phi_{proj}$ 拼入位置嵌入 $\eta$ 和身份嵌入 ID，输出候选特征 $f_t$。这张图要点出的是：verifier 比较的不是“坐标对不对”，而是“<strong>这个候选位置周围的外观，还像不像最初那个 query 点</strong>”。</figcaption>
 </figure>
 
 <h3>③ Candidate Transformer：受限 cross-attn（看候选）+ 时序 self-attn（看上下文）</h3>
-<p>有了 query 描述子 $f^{q}$ 与候选描述子 $f$，Candidate Transformer 把它们解码成"带时序信息的可靠性嵌入"。它在标准 decoder 上做两处改动，各对应一个动机：</p>
+<p>有了 query 描述子 $f^{q}$ 与候选描述子 $f$，Candidate Transformer 把它们解码成“带时序信息的可靠性嵌入”。它在标准 decoder 上做两处改动，各对应一个动机：</p>
 <ul>
-<li><strong>受限 cross-attention（沿候选维 $M$）</strong>：每帧的 query 嵌入 $f_t^{q}$ <em>只</em>注意它自己那一帧的候选 $f_t\in\mathbb{R}^{M\times D}$。此时把时间维 $L$ 当 batch 轴，每帧独立算注意力。动机：让 query 在该帧内"横向比较"所有候选，识别出最一致的运动假设。</li>
+<li><strong>受限 cross-attention（沿候选维 $M$）</strong>：每帧的 query 嵌入 $f_t^{q}$ <em>只</em>注意它自己那一帧的候选 $f_t\in\mathbb{R}^{M\times D}$。此时把时间维 $L$ 当 batch 轴，每帧独立算注意力。动机：让 query 在该帧内“横向比较”所有候选，识别出最一致的运动假设。</li>
 <li><strong>时序 self-attention（沿时间维 $L$）</strong>：再把各帧的 query 嵌入沿时间串起来。动机：<em>消歧</em>——某帧若模棱两可，邻近帧的高置信预测能反过来修正它的可靠性估计。注意此处<strong>不加 attention mask</strong>，遮挡帧的候选也照样参与（遮挡信息本身也是线索）。</li>
 </ul>
 <p>解码后，对每帧算 query 特征与候选特征的温度缩放 cosine softmax：</p>
-<div class="equation">$$\hat{s}_t=\mathrm{Softmax}\!\big(f_t^{q}\cdot f_t/\tau\big),\qquad \hat{s}_t\in\mathbb{R}^{M},\ \ \tau=0.1$$<div class="eq-caption">式 9：$f_t\in\mathbb{R}^{M\times D}$ 是该帧全部候选特征，$f_t^{q}$ 是解码后的 query 特征，"$\cdot$"是逐行 cosine 相似度，温度 $\tau=0.1$。输出就是该帧 $M$ 个候选的可靠性分布。</div></div>
-<p>公式读法：分子是"候选外观 vs query 外观"的相似度，$\tau$ 小（0.1）让分布更尖——倾向于把概率压到"最像 query"的那个候选上，逼近 hard 选择。</p>
+<div class="equation">$$\hat{s}_t=\mathrm{Softmax}\!\big(f_t^{q}\cdot f_t/\tau\big),\qquad \hat{s}_t\in\mathbb{R}^{M},\ \ \tau=0.1$$<div class="eq-caption">式 9：$f_t\in\mathbb{R}^{M\times D}$ 是该帧全部候选特征，$f_t^{q}$ 是解码后的 query 特征，“$\cdot$”是逐行 cosine 相似度，温度 $\tau=0.1$。输出就是该帧 $M$ 个候选的可靠性分布。</div></div>
+<p>公式读法：分子是“候选外观 vs query 外观”的相似度，$\tau$ 小（0.1）让分布更尖——倾向于把概率压到“最像 query”的那个候选上，逼近 hard 选择。</p>
 
-<h3>④ 训练目标：用"候选到 GT 距离的负 softmax"做软对比监督</h3>
-<p>动机：要教 verifier"离 GT 越近的候选越该得高分"。在合成集上有 GT 轨迹 $p\in\mathbb{R}^{L\times 2}$ 与可见性 $v\in\{0,1\}^{L}$，定义逐帧<strong>目标</strong>可靠性分布为候选到 GT 的<em>负距离</em>的 softmax：</p>
-<div class="equation">$$s_t=\mathrm{Softmax}\!\big(-\lVert C_t-p_t\rVert/\tau_s\big),\qquad s_t\in\mathbb{R}^{M},\ \ \tau_s=0.3$$<div class="eq-caption">式 10：$\lVert C_t-p_t\rVert$ 是候选到 GT 点的欧氏距离，$\tau_s=0.3$ 控制目标分布的锐度。距离越小→负距离越大→softmax 概率越高。这是一个"软"目标（不是 one-hot），允许多个接近的候选都分一点概率。</div></div>
+<h3>④ 训练目标：用“候选到 GT 距离的负 softmax”做软对比监督</h3>
+<p>动机：要教 verifier“离 GT 越近的候选越该得高分”。在合成集上有 GT 轨迹 $p\in\mathbb{R}^{L\times 2}$ 与可见性 $v\in\{0,1\}^{L}$，定义逐帧<strong>目标</strong>可靠性分布为候选到 GT 的<em>负距离</em>的 softmax：</p>
+<div class="equation">$$s_t=\mathrm{Softmax}\!\big(-\lVert C_t-p_t\rVert/\tau_s\big),\qquad s_t\in\mathbb{R}^{M},\ \ \tau_s=0.3$$<div class="eq-caption">式 10：$\lVert C_t-p_t\rVert$ 是候选到 GT 点的欧氏距离，$\tau_s=0.3$ 控制目标分布的锐度。距离越小→负距离越大→softmax 概率越高。这是一个“软”目标（不是 one-hot），允许多个接近的候选都分一点概率。</div></div>
 <p>预测分布 $\hat{s}_t$ 用交叉熵对齐目标 $s_t$，并用可见性掩码掉遮挡帧：</p>
 <div class="equation">$$\mathcal{L}=\sum_{t=1}^{L} v_t\,\mathrm{CE}(\hat{s}_t,\,s_t)$$<div class="eq-caption">式（训练损失）：$v_t$ 把不可见帧的损失置零，只让可见点贡献梯度。</div></div>
 
 <div class="socratic">
-<p class="question">问：为什么这个"只在合成数据上学的软对比目标"，能迁移去裁决真实视频里的真 teacher？</p>
-<p class="guide">引导：两条独立验证。<strong>路径 A（极限化简）</strong>——当 $\tau,\tau_s\to 0$，式9/式10 都退化成 hard argmax，verifier 学的正是"逐帧选离 GT 最近的候选"，这就是 §motivation 那个 oracle 选择器的可学近似。<strong>路径 B（迁移机理）</strong>——verifier 的判据是"候选局部外观是否延续 query 外观"，这是个<em>域无关</em>的一致性线索（合成与真实视频里，"同一个点的外观应当连续"这条物理先验都成立）；而训练用的扰动（drift/jump/occlusion/re-appearance）刻意模拟了真实推理时的误差形态，让 verifier 见过"长得像真实失败"的负样本。</p>
-<p class="answer">答：两条路殊途同归——verifier 不是在记"合成数据长什么样"，而是在学"一致性该怎么判"。所以它换到真实 teacher 候选上仍然成立。论文用两组实验把这个推断坐实（见 §experiments）：单独当 inference-ensemble 就超过最强单 teacher（图4），拿去微调则四基准 SOTA（表1）。</p>
-<p class="takeaway">Takeaway：verifier ≈ "可学的、无 GT 的 oracle 逐帧选择器"，其可迁移性来自"判据是外观一致性而非域特定外观" + "训练负样本刻意模拟真实失败"。这是全文最该记住的一句。</p>
+<p class="question">问：为什么这个“只在合成数据上学的软对比目标”，能迁移去裁决真实视频里的真 teacher？</p>
+<p class="guide">引导：两条独立验证。<strong>路径 A（极限化简）</strong>——当 $\tau,\tau_s\to 0$，式 9/式 10 都退化成 hard argmax，verifier 学的正是“逐帧选离 GT 最近的候选”，这就是 §motivation 那个 oracle 选择器的可学近似。<strong>路径 B（迁移机理）</strong>——verifier 的判据是“候选局部外观是否延续 query 外观”，这是个<em>域无关</em>的一致性线索（合成与真实视频里，“同一个点的外观应当连续”这条物理先验都成立）；而训练用的扰动（drift/jump/occlusion/re-appearance）刻意模拟了真实推理时的误差形态，让 verifier 见过“长得像真实失败”的负样本。</p>
+<p class="answer">答：两条路殊途同归——verifier 不是在记“合成数据长什么样”，而是在学“一致性该怎么判”。所以它换到真实 teacher 候选上仍然成立。论文用两组实验把这个推断坐实（见 §experiments）：单独当 inference-ensemble 就超过最强单 teacher（图 4），拿去微调则四基准 SOTA（表 1）。</p>
+<p class="takeaway">Takeaway：verifier ≈ “可学的、无 GT 的 oracle 逐帧选择器”，其可迁移性来自“判据是外观一致性而非域特定外观” + “训练负样本刻意模拟真实失败”。这是全文最该记住的一句。</p>
 </div>
 
 <figure>
 <a href="../assets/figures/rwpt/rwpt_fig3.png"><img src="../assets/figures/rwpt/rwpt_fig3.png" alt="verifier 总览：query 特征 f^q（沿时间复制）+ 各帧候选特征 f_t 经 Candidate Transformer（受限 cross-attn + 时序 self-attn + FFN）输出逐帧候选可靠性分布"></a>
-<figcaption><strong>图 3（论文 Fig.3）：verifier 全貌。</strong>左侧：frame $t_0$ 的 query 点与其候选预测（推理时是 teacher 输出，训练时是扰动轨迹）经局部特征提取，得到沿时间复制的 query 特征 $f^{q}$ 和逐帧候选特征 $f_{t_1},f_{t_2},f_{t_3}$。右侧 Candidate Transformer 自下而上：<strong>Cross-Attention（受限：每帧 query 只看自己的候选）→ Self-Attention（沿时间）→ FFN</strong>，各带 Add&amp;Norm。输出是逐帧候选可靠性分布。对照式 9：最后一步就是 query 特征与候选特征的温度缩放 cosine softmax。</figcaption>
+<figcaption><strong>图 3（论文 Fig. 3）：verifier 全貌。</strong>左侧：frame $t_0$ 的 query 点与其候选预测（推理时是 teacher 输出，训练时是扰动轨迹）经局部特征提取，得到沿时间复制的 query 特征 $f^{q}$ 和逐帧候选特征 $f_{t_1},f_{t_2},f_{t_3}$。右侧 Candidate Transformer 自下而上：<strong>Cross-Attention（受限：每帧 query 只看自己的候选）→ Self-Attention（沿时间）→ FFN</strong>，各带 Add&amp;Norm。输出是逐帧候选可靠性分布。对照式 9：最后一步就是 query 特征与候选特征的温度缩放 cosine softmax。</figcaption>
 </figure>
 </section>
 
 <section id="training">
-<h2>训练配置：verifier 在合成集上学，Track-On-R 在"合成+真实"混合 schedule 下微调<a class="anchor" href="#training">#</a></h2>
+<h2>训练配置：verifier 在合成集上学，Track-On-R 在“合成+真实”混合 schedule 下微调<a class="anchor" href="#training">#</a></h2>
 <ul>
-<li><strong>verifier 训练</strong>：合成集 K-EPIC（11K 段 × 24 帧）。候选由"对 GT 轨迹 $p\in\mathbb{R}^{L\times 2}$ 加随机扰动"生成 $M$ 条（典型 6–12 条），扰动模拟 drift/遮挡/jitter（细节见论文补充材料）。监督用式10 的软目标 + 交叉熵（遮挡帧掩码）。</li>
-<li><strong>Track-On-R 微调</strong>：base = Track-On2（Kubric 预训练）。同时用 $\mathcal{D}_{syn}$（带 GT）与 $\mathcal{D}_{real}$（verifier 伪标签），按 <strong>schedule 逐步抬高真实样本损失权重、压低合成样本</strong>。论文明确：该 schedule 比"只用 $\mathcal{D}_{real}$"略好，但"只用 $\mathcal{D}_{real}$"已是有竞争力的结果（消融见 §ablations 表3）。</li>
-<li><strong>温度等超参</strong>：式9 的 $\tau=0.1$，式10 的 $\tau_s=0.3$。</li>
-<li><strong>算力/GPU-hours</strong>：<strong>论文未说明</strong>具体 GPU 型号、卡数与训练时长（致谢仅提到由 EuroHPC 的 Leonardo Booster 提供算力支持）。因此本页不给 GPU-hours 估算。</li>
+<li><strong>verifier 训练</strong>：合成集 K-EPIC（11K 段 × 24 帧）。候选由“对 GT 轨迹 $p\in\mathbb{R}^{L\times 2}$ 加随机扰动”生成 $M$ 条（典型 6–12 条），扰动模拟 drift/遮挡/jitter（细节见论文补充材料）。监督用式 10 的软目标 + 交叉熵（遮挡帧掩码）。</li>
+<li><strong>Track-On-R 微调</strong>：base = Track-On2（Kubric 预训练）。同时用 $\mathcal{D}_{syn}$（带 GT）与 $\mathcal{D}_{real}$（verifier 伪标签），按 <strong>schedule 逐步抬高真实样本损失权重、压低合成样本</strong>。论文明确：该 schedule 比“只用 $\mathcal{D}_{real}$”略好，但“只用 $\mathcal{D}_{real}$”已是有竞争力的结果（消融见 §ablations 表 3）。</li>
+<li><strong>温度等超参</strong>：式 9 的 $\tau=0.1$，式 10 的 $\tau_s=0.3$。</li>
+<li><strong>算力/GPU-hours</strong>：<strong>论文未说明</strong>具体 GPU 型号、卡数与训练时长（致谢仅提到由 EuroHPC 的 Leonardo Booster 提供算力支持）。因此本页不提供 GPU-hours 数字。</li>
 </ul>
 </section>
 
 <section id="experiments">
-<h2>实验结果：两条独立路径——推理集成（图4）+ 微调 SOTA（表1）<a class="anchor" href="#experiments">#</a></h2>
+<h2>实验结果：两条独立路径——推理集成（图 4）+ 微调 SOTA（表 1）<a class="anchor" href="#experiments">#</a></h2>
 
 <h3>路径 A：verifier 单独当推理集成，就超过最强单 teacher</h3>
-<p>先不微调，只把 verifier 当"即插即用的推理集成模块"，逐帧从 6 个 teacher 里选。论文 Fig.4 用各 teacher 官方 checkpoint 复现的 $\delta^x_{avg}$ 比较 verifier、随机基线与各单 teacher。下表把图 4 的数值<strong>转写</strong>出来（数值读自论文 Fig.4 的柱状标注；同一图同时画了多个数据集，此处按数据集分列）：</p>
+<p>先不微调，只把 verifier 当“即插即用的推理集成模块”，逐帧从 6 个 teacher 里选。论文 Fig. 4 用各 teacher 官方 checkpoint 复现的 $\delta^x_{avg}$ 比较 verifier、随机基线与各单 teacher。下表把图 4 的数值<strong>转写</strong>出来（数值读自论文 Fig. 4 的柱状标注；同一图同时画了多个数据集，此处按数据集分列）：</p>
 <table>
-<caption>表 A（转写自论文 Fig.4，$\delta^x_{avg}$，越高越好；"—"为图中未标注的精确值）。verifier 在四个数据集上一致最高。</caption>
+<caption>表 A（转写自论文 Fig. 4，$\delta^x_{avg}$，越高越好；“—”为图中未标注的精确值）。verifier 在四个数据集上一致最高。</caption>
 <thead><tr><th>方法</th><th>DAVIS</th><th>Kinetics</th><th>RoboTAP</th><th>EgoPoints</th></tr></thead>
 <tbody>
 <tr><td>Track-On2</td><td>79.9</td><td>69.3</td><td>80.5</td><td>61.7</td></tr>
@@ -500,12 +500,12 @@ body.lb-lock{overflow:hidden}
 <tr><td><strong>Verifier（本文）</strong></td><td><strong>81.2</strong></td><td><strong>71.7</strong></td><td><strong>83.5</strong></td><td><strong>66.7</strong></td></tr>
 </tbody>
 </table>
-<p class="note" style="margin-top:6px"><em>说明：图 4 是密集叠放的柱状图，部分单 teacher 在某些数据集上的精确数值未在图中标注（标"—"）；verifier 与 Random、以及关键 teacher 的数值清晰可读，已如实转写。趋势无歧义——verifier 一致超过最强单 teacher 与随机基线，在 EgoPoints 这种可靠性剧烈波动的场景增益最大。</em></p>
+<p class="note" style="margin-top:6px"><em>说明：图 4 是密集叠放的柱状图，部分单 teacher 在某些数据集上的精确数值未在图中标注（标“—”）；verifier 与 Random、以及关键 teacher 的数值清晰可读，已如实转写。趋势无歧义——verifier 一致超过最强单 teacher 与随机基线，在 EgoPoints 这种可靠性剧烈波动的场景增益最大。</em></p>
 
 <h3>路径 B：verifier 引导微调，得到 Track-On-R，四基准全 SOTA</h3>
-<p>论文表 1 是主结果，完整转写如下（AJ / $\delta^x_{avg}$ / OA，越高越好；有官方报告值则用之，否则用作者复现 checkpoint；"—"为缺失 checkpoint）：</p>
+<p>论文表 1 是主结果，完整转写如下（AJ / $\delta^x_{avg}$ / OA，越高越好；有官方报告值则用之，否则用作者复现 checkpoint；“—”为缺失 checkpoint）：</p>
 <table>
-<caption>表 1（论文 Table 1，完整转写）：真实数据集主结果。分"合成预训练"与"真实世界微调"两组。</caption>
+<caption>表 1（论文 Table 1，完整转写）：真实数据集主结果。分“合成预训练”与“真实世界微调”两组。</caption>
 <thead>
 <tr><th rowspan="2">Model</th><th colspan="2">EgoPoints</th><th colspan="3">RoboTAP</th><th colspan="3">Kinetics</th><th colspan="3">DAVIS</th></tr>
 <tr><th>$\delta^x_{avg}$</th><th>OA</th><th>AJ</th><th>$\delta^x_{avg}$</th><th>OA</th><th>AJ</th><th>$\delta^x_{avg}$</th><th>OA</th><th>AJ</th><th>$\delta^x_{avg}$</th><th>OA</th></tr>
@@ -535,14 +535,14 @@ body.lb-lock{overflow:hidden}
 <li><strong>Kinetics</strong>：AJ 比 base <strong>+2.5</strong>，超过 BootsTAPNext 报告的最高 AJ 57.3，且 OA 高 3.1 点（可见性预测更准）。</li>
 <li><strong>DAVIS</strong>：所有指标最高，相对 base Track-On2 的 AJ <strong>+1.1</strong>，刷新该基准 SOTA。</li>
 </ul>
-<p>把路径 A 与 B 合起来看：A 证明"逐帧选择"这个动作（不微调、纯集成）就有效；B 证明"用它生成的伪标签去微调"能把收益固化进单个 student 模型。两条独立证据指向同一机制有效——正是 §method 那条 Takeaway 的实证落地。</p>
+<p>把路径 A 与 B 合起来看：A 证明“逐帧选择”这个动作（不微调、纯集成）就有效；B 证明“用它生成的伪标签去微调”能把收益固化进单个 student 模型。两条独立证据指向同一机制有效——正是 §method 那条 Takeaway 的实证落地。</p>
 </section>
 
 <section id="ablations">
 <h2>消融：teacher 池怎么配、合成 vs 真实数据怎么混<a class="anchor" href="#ablations">#</a></h2>
 
-<h3>消融一：加入"弱 teacher"会不会拖垮 verifier？（表 2）</h3>
-<p>动机：如果 verifier 的增益只是"碰巧池子里有个强 teacher",那它没价值；真正有价值的前提是——<strong>它能利用互补性、且不被弱 teacher 稀释</strong>。表 2 在不同 teacher 子集上比"随机选（round-robin）"与"verifier 选"的 $\delta^x_{avg}$（A–E 依次为 Track-On2、BootsTAPNext、BootsTAPIR、CoTracker3、Anthro-LocoTrack）：</p>
+<h3>消融一：加入“弱 teacher”会不会拖垮 verifier？（表 2）</h3>
+<p>动机：如果 verifier 的增益只是“碰巧池子里有个强 teacher”，那它没价值；真正有价值的前提是——<strong>它能利用互补性、且不被弱 teacher 稀释</strong>。表 2 在不同 teacher 子集上比“随机选（round-robin）”与“verifier 选”的 $\delta^x_{avg}$（A–E 依次为 Track-On2、BootsTAPNext、BootsTAPIR、CoTracker3、Anthro-LocoTrack）：</p>
 <table>
 <caption>表 2（论文 Table 2，完整转写）：teacher 组成对 verifier 的影响，$\delta^x_{avg}$。Rand.=随机基线，Ver.=verifier 选择。</caption>
 <thead><tr><th>配置</th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>DAVIS Rand.</th><th>DAVIS Ver.</th><th>RoboTAP Rand.</th><th>RoboTAP Ver.</th></tr></thead>
@@ -553,7 +553,7 @@ body.lb-lock{overflow:hidden}
 <tr><td>(iv)</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>77.7</td><td><strong>81.1</strong></td><td>78.0</td><td><strong>83.1</strong></td></tr>
 </tbody>
 </table>
-<p>读法：看 (ii)→(iii)——往 {A,B,C} 里加 D，<strong>随机基线</strong>从 79.4 掉到 77.5（被弱 teacher 拉低），但 <strong>verifier</strong> 反而从 80.6 升到 80.8。这正是关键证据：verifier 在<em>利用 teacher 的互补行为</em>，而不是被弱 teacher 稀释——"加一个平均更差的模型，verifier 的准确度要么保持、要么提升"。</p>
+<p>读法：看 (ii)→(iii)——往 {A,B,C} 里加 D，<strong>随机基线</strong>从 79.4 掉到 77.5（被弱 teacher 拉低），但 <strong>verifier</strong> 反而从 80.6 升到 80.8。这正是关键证据：verifier 在<em>利用 teacher 的互补行为</em>，而不是被弱 teacher 稀释——“加一个平均更差的模型，verifier 的准确度要么保持、要么提升”。</p>
 
 <h3>消融二：微调时合成 vs 真实数据怎么配？（表 3）</h3>
 <table>
@@ -568,30 +568,30 @@ body.lb-lock{overflow:hidden}
 <tr><td>Mix + Schedule</td><td><strong>67.3</strong></td><td>90.2</td><td>82.6</td><td><strong>94.0</strong></td><td><strong>71.0</strong></td><td><strong>90.5</strong></td><td>80.3</td><td><strong>92.5</strong></td></tr>
 </tbody>
 </table>
-<p>读法：三种配置的取舍很清楚——<strong>混入合成数据</strong>因为带可见性监督而提升 OA；<strong>只用真实数据</strong>在 $\delta^x_{avg}$（定位）上略好；<strong>Mix+Schedule</strong> 把两者优点合一、整体最佳，但"在 real-only 之上再加合成"的增量其实只是边际。这条消融印证了 §motivation 的数据效率主张：<strong>仅用真实数据已经很有竞争力</strong>，schedule 只是锦上添花。</p>
+<p>读法：三种配置的取舍很清楚——<strong>混入合成数据</strong>因为带可见性监督而提升 OA；<strong>只用真实数据</strong>在 $\delta^x_{avg}$（定位）上略好；<strong>Mix+Schedule</strong> 把两者优点合一、整体最佳，但“在 real-only 之上再加合成”的增量很边际。这条消融印证了 §motivation 的数据效率主张：<strong>仅用真实数据已经很有竞争力</strong>，schedule 只是锦上添花。</p>
 </section>
 
 <section id="limitations">
 <h2>局限与复现门槛：裁判再聪明，也只能在给定候选里选<a class="anchor" href="#limitations">#</a></h2>
 <ul>
-<li><strong>上限被 teacher 池锁死（作者承认）</strong>：verifier 是旁路裁判，最终坐标仍来自某个 teacher 候选。若某帧所有 teacher 都错，verifier 也只能在"一堆错的里选个没那么错的"。作者明确指出未来应聚焦"更强、更鲁棒的预训练模型"来抬高 verifier 的上限。</li>
-<li><strong>依赖真实视频集合的质量与多样性（作者承认）</strong>：微调效果取决于野生视频的质量/多样性，因此"精心整理的真实集合"很重要。</li>
+<li><strong>上限被 teacher 池锁死（作者承认）</strong>：verifier 是旁路裁判，最终坐标仍来自某个 teacher 候选。若某帧所有 teacher 都错，verifier 也只能在“一堆错的里选个没那么错的”。作者明确指出未来应聚焦“更强、更鲁棒的预训练模型”来抬高 verifier 的上限。</li>
+<li><strong>依赖真实视频集合的质量与多样性（作者承认）</strong>：微调效果取决于野生视频的质量/多样性，因此“精心整理的真实集合”很重要。</li>
 <li><strong>verifier 只逐帧选、不创造新轨迹</strong>：它做不出任何 teacher 都给不出的轨迹（读者推断的边界，非作者新主张，但与上一条同源）。</li>
 <li><strong>可见性靠多数投票</strong>：伪标签的可见性由 teacher 多数投票定，而非 verifier 学得——这是工程取舍，论文未深入消融其影响。</li>
-<li><strong>复现门槛</strong>：需要同时跑 6 个现成 teacher（Track-On2 / BootsTAPIR / BootsTAPNext / Anthro-LocoTrack / AllTracker / CoTracker3）生成候选，外加 verifier 训练（K-EPIC）与 student 微调。算力规模论文未给具体 GPU-hours，本页不做估算（致谢仅提及 Leonardo Booster 提供算力）。代码见 track_on 仓库（Track-On-R 分支）。</li>
+<li><strong>复现门槛</strong>：需要同时跑 6 个现成 teacher（Track-On2 / BootsTAPIR / BootsTAPNext / Anthro-LocoTrack / AllTracker / CoTracker3）生成候选，外加 verifier 训练（K-EPIC）与 student 微调。论文未说明具体 GPU-hours，本页不做估算（致谢仅提及 Leonardo Booster 提供算力）。代码见 track_on 仓库（Track-On-R 分支）。</li>
 </ul>
 </section>
 
 <section id="summary">
-<h2>总结：把"自训练的脆弱性"重定义为"可靠性估计",再用一个轻量裁判解决<a class="anchor" href="#summary">#</a></h2>
-<p>这篇工作最值得记住的，是它<strong>换了问题的提法</strong>：真实世界点跟踪的难点不在"造更强 tracker",而在"自训练里该信哪个 teacher、信到哪一帧"。一旦把它定义成<em>逐帧可靠性估计</em>，剩下的就顺了——</p>
+<h2>总结：把“自训练的脆弱性”重定义为“可靠性估计”，再用一个轻量裁判解决<a class="anchor" href="#summary">#</a></h2>
+<p>这篇工作最值得记住的，是它<strong>换了问题的提法</strong>：真实世界点跟踪的难点不在“造更强 tracker”，而在“自训练里该信哪个 teacher、信到哪一帧”。一旦把它定义成<em>逐帧可靠性估计</em>，剩下的就顺了——</p>
 <ol>
-<li><strong>oracle 实验</strong>先量出"逐帧选择"的巨大 headroom（图 2a），论证这个问题值得专门学一个模型；</li>
-<li><strong>verifier</strong>用"局部外观一致性"作为域无关判据，在合成扰动候选上学软对比目标（式9/10），逼近那个无法直接得到的 oracle 选择器；</li>
-<li><strong>两条独立验证</strong>——推理集成超过最强单 teacher（图4），引导微调四基准 SOTA（表1）；消融进一步证明它<em>利用</em>互补性、<em>不被</em>弱 teacher 稀释（表2），且仅用真实数据已有竞争力（表3）。</li>
+<li><strong>oracle 实验</strong>先量出“逐帧选择”的巨大 headroom（图 2a），论证这个问题值得专门学一个模型；</li>
+<li><strong>verifier</strong>用“局部外观一致性”作为域无关判据，在合成扰动候选上学软对比目标（式 9/10），逼近那个无法直接得到的 oracle 选择器；</li>
+<li><strong>两条独立验证</strong>——推理集成超过最强单 teacher（图 4），引导微调四基准 SOTA（表 1）；消融进一步证明它<em>利用</em>互补性、<em>不被</em>弱 teacher 稀释（表 2），且仅用真实数据已有竞争力（表 3）。</li>
 </ol>
-<p>代价也诚实：verifier 是旁路裁判，上限被 teacher 池质量锁死。但作为一个 15-行就能说清动机、即插即用、且把"模型多样性"从负担变成资源的框架，它给"无标注真实世界适配"提供了一个干净、可复用的范式。</p>
-<div class="takeaway">一句话 Takeaway：<strong>与其相信任何单个老师，不如学一个"逐帧判断该信谁"的裁判</strong>——verifier 把 sim-to-real 自训练里最脆弱的一环（伪标签可靠性）显式建模成一个可学、可迁移、无需真实标注的选择问题。</div>
+<p>代价也诚实：verifier 是旁路裁判，上限被 teacher 池质量锁死。但作为一个 15 行就能说清动机、即插即用、且把“模型多样性”从负担变成资源的框架，它给“无标注真实世界适配”提供了一个干净、可复用的范式。</p>
+<div class="takeaway">一句话 Takeaway：<strong>与其相信任何单个老师，不如学一个“逐帧判断该信谁”的裁判</strong>——verifier 把 sim-to-real 自训练里最脆弱的一环（伪标签可靠性）显式建模成一个可学、可迁移、无需真实标注的选择问题。</div>
 </section>
 
 <section id="references">
@@ -600,12 +600,12 @@ body.lb-lock{overflow:hidden}
 <li><strong>原文</strong>：Görkay Aydemir, Fatma Güney, Weidi Xie. <em>Real-World Point Tracking with Verifier-Guided Pseudo-Labeling</em>. arXiv:2603.12217 v1（2026-03-12）。Koç University KUIS AI Center / Shanghai Jiao Tong University。项目页 kuis-ai.github.io/track_on_r。</li>
 <li><strong>代码</strong>：track_on 仓库（github.com/gorkaydemir/track_on，Track-On-R 通过 verifier 引导的伪标签微调提升真实世界性能；HTTP 200 已核）。</li>
 <li><strong>CVF</strong>：CVPR 2026 openaccess 页在本文撰写时尚未解析（404），故本页不附 CVF 链接。</li>
-<li><strong>本页数值来源</strong>：表 1/2/3 完整转写自论文 Table 1/2/3；表 A 转写自论文 Fig.4 的柱状标注（密集叠图，部分单 teacher 精确值未在图中标注，已标"—"并说明）。图 1/3 为论文正文图，图 2 为补充材料的局部特征提取示意。</li>
-<li><strong>kexue:su 方法论与归因说明</strong>：本页的机制推导（核心问题的"动机先行"、式 9/10 的双路径验证、$\tau\to0$ 退化为 oracle 选择器的极限化简）采用了 <code>kexue:su</code>（苏剑林 / kexue.fm）的科学认知方法论——动机先行、显式标注每个假设、同一结论从 ≥2 个独立起点验证、化简到最小可解模型。但在该技能语料库中<strong>检索"伪标签 / 验证器 / 自训练 / 点跟踪 / 对比目标"未返回与本文机制<em>主题相关</em>的卡片</strong>（返回的是 seq2seq 伪标签解码 [archives/6877]、BERT MLM 小样本 [archives/7764] 等 NLP 场景，与本文"逐帧 verifier 仲裁多 teacher 跟踪候选"不是同一问题）。按 <code>kexue:su</code> 的归因红线，<strong>本页应用其方法论但不附 苏剑林 [archives/XXXX] 引用</strong>，特此说明。</li>
+<li><strong>本页数值来源</strong>：表 1/2/3 完整转写自论文 Table 1/2/3；表 A 转写自论文 Fig. 4 的柱状标注（密集叠图，部分单 teacher 精确值未在图中标注，已标“—”并说明）。图 1/3 为论文正文图，图 2 为补充材料的局部特征提取示意。</li>
+<li><strong>kexue:su 方法论与归因说明</strong>：本页的机制推导（核心问题的“动机先行”、式 9/10 的双路径验证、$\tau\to0$ 退化为 oracle 选择器的极限化简）采用了 <code>kexue:su</code>（苏剑林 / kexue.fm）的科学认知方法论——动机先行、显式标注每个假设、同一结论从 ≥2 个独立起点验证、化简到最小可解模型。但在该技能语料库中<strong>检索“伪标签 / 验证器 / 自训练 / 点跟踪 / 对比目标”未返回与本文机制<em>主题相关</em>的卡片</strong>（返回的是 seq2seq 伪标签解码 [archives/6877]、BERT MLM 小样本 [archives/7764] 等 NLP 场景，与本文“逐帧 verifier 仲裁多 teacher 跟踪候选”不是同一问题）。按 <code>kexue:su</code> 的归因红线，<strong>本页应用其方法论但不附 苏剑林 [archives/XXXX] 引用</strong>，特此说明。</li>
 </ul>
 </section>
 
 </main>
-<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法 / verifier</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Real-World Point Tracking with Verifier-Guided Pseudo-Labeling</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper (candidate)</dd><dt>机构</dt><dd>Koç University KUIS AI · Shanghai Jiao Tong University</dd><dt>Base / Student</dt><dd>Track-On2（→ Track-On-R）</dd><dt>Teacher 池</dt><dd>6 个 off-the-shelf tracker</dd><dt>arXiv</dt><dd>2603.12217 v1</dd><dt>Topic</dt><dd>Point Tracking · Verifier-Guided Pseudo-Labeling</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：verifier 逐帧选 teacher + 自训练</li><li>图 3：局部特征 + Candidate Transformer 全貌</li><li>式 9：温度缩放 cosine softmax 可靠性</li><li>式 10：候选到 GT 负距离软目标</li><li>表 1：四基准 SOTA，EgoPoints 61.7→67.3</li><li>表 2：加弱 teacher，verifier 不退反进</li><li>表 3：仅真实数据已具竞争力</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> Track-On-R / Verifier 深读</p><p><span class="status-good">figures</span> 3 张 PNG（fig1/fig3/补充图，原生分辨率）</p><p><span class="status-good">tables</span> 表 1/2/3 全转写 + 图4 转写为表 A</p><p><span class="status-good">formula</span> 式 2/5/6/9/10 + 训练损失，待 MathJax 预检</p><p><span class="status-warn">scope</span> verifier 为旁路裁判，上限受 teacher 池锁定；GPU-hours 论文未说明</p></div></section></aside></div>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法 / verifier</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Real-World Point Tracking with Verifier-Guided Pseudo-Labeling</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper (candidate)</dd><dt>机构</dt><dd>Koç University KUIS AI · Shanghai Jiao Tong University</dd><dt>Base / Student</dt><dd>Track-On2（→ Track-On-R）</dd><dt>Teacher 池</dt><dd>6 个 off-the-shelf tracker</dd><dt>arXiv</dt><dd>2603.12217 v1</dd><dt>Topic</dt><dd>Point Tracking · Verifier-Guided Pseudo-Labeling</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：verifier 逐帧选 teacher + 自训练</li><li>图 3：局部特征 + Candidate Transformer 全貌</li><li>式 9：温度缩放 cosine softmax 可靠性</li><li>式 10：候选到 GT 负距离软目标</li><li>表 1：四基准 SOTA，EgoPoints 61.7→67.3</li><li>表 2：加弱 teacher，verifier 不退反进</li><li>表 3：仅真实数据已具竞争力</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> Track-On-R / Verifier 深读</p><p><span class="status-good">figures</span> 3 张 PNG（fig1/fig3/补充图，原生分辨率）</p><p><span class="status-good">tables</span> 表 1/2/3 全转写 + 图 4 转写为表 A</p><p><span class="status-good">formula</span> 式 2/5/6/9/10 + 训练损失，待 MathJax 预检</p><p><span class="status-warn">scope</span> verifier 为旁路裁判，上限受 teacher 池锁定；GPU-hours 论文未说明</p></div></section></aside></div>
 </body>
 </html>

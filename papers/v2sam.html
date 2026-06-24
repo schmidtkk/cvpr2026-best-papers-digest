@@ -355,7 +355,7 @@ body.lb-lock{overflow:hidden}
 <article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">12</span><span class="month">Jun</span></div><h1 id="paper-title">V²-SAM 深读：SAM2 要"目标视角里的坐标"才能分割，可跨视角里那个坐标恰好是未知量——怎么把它从查询视角"造"出来？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-12</span><span>CVPR 2026 Highlight · Top Paper (candidate) · INSAIT / 清华 / 复旦 / 华东师大</span><span>来源：arXiv:2511.20886 v2 PDF + 正文/补充材料</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Cross-View Correspondence</span><span class="tag green">SAM2 / DINOv3</span><span class="tag">Ego–Exo4D</span><span class="tag">Multi-Prompt Experts</span><span class="tag">Cyclic Consistency</span><span class="tag">MathJax checked</span></div></header>
 <main class="content">
 
-<p id="abstract" class="lead"><strong>导读。</strong>SAM2 是当下最强的可提示分割基座，但它有一条硬约束：它的解码器要靠<strong>"目标图像坐标系里的"空间提示</strong>（点 / 框 / 掩码坐标）才能被条件化。把它搬到<strong>跨视角物体对应</strong>（cross-view object correspondence）——给定查询视角 ego（第一人称）里某物体的掩码，要在目标视角 exo（第三人称）里把<em>同一个物理物体</em>抠出来——它立刻翻车：目标视角里这个物体的<strong>位置、尺度、形状、外观几乎全变了</strong>，于是"目标视角里的坐标"恰恰成了你要找的未知量。前人方案 Ref-SAM 走了另一条路：干脆扔掉空间提示、换成视觉参考提示——可这既丢了 SAM2 的定位强项，又在剧烈外观变化下崩盘。本文的核心张力就在这：<strong>SAM2 最擅长的输入（目标视角坐标），在跨视角里恰好是缺失的；你能不能把它从查询视角"造"出来，而不是放弃它？</strong>V²-SAM 的答案是<strong>两个互补的 prompt 生成器 + 多专家挑选</strong>：V²-Anchor 借 DINOv3 几何特征把查询掩码"翻译"成目标视角的一个<strong>高置信坐标</strong>（首次为 SAM2 解锁跨视角坐标提示，且全程不可训练）；V²-Visual 用可学的 VPMatcher 把外观线索从<strong>特征</strong>与<strong>结构</strong>两路映射过去；再用 Anchor / Visual / Fusion 三个专家覆盖不同场景，靠一个<strong>点级循环一致选择器 PCCS</strong> 按实例挑最可靠的那个。Ego-Exo4D 总 IoU 48.0、DAVIS-17 78.8 J&amp;F、HANDAL-X 77.2 IoU 三个基准全 SOTA，而可训练参数只有 <strong>15M</strong>（约为 ObjectRelator 的 1%）。</p>
+<p id="abstract" class="lead"><strong>导读。</strong>SAM2 是当下最强的可提示分割基座，但它有一条硬约束：它的解码器要靠<strong>"目标图像坐标系里的"空间提示</strong>（点 / 框 / 掩码坐标）才能被条件化。把它搬到<strong>跨视角物体对应</strong>（cross-view object correspondence）——给定查询视角 ego（第一人称）里某物体的掩码，要在目标视角 exo（第三人称）里把<em>同一个物理物体</em>抠出来——它立刻翻车：目标视角里这个物体的<strong>位置、尺度、形状、外观几乎全变了</strong>，于是"目标视角里的坐标"恰恰成了你要找的未知量。前人方案 Ref-SAM 走了另一条路：干脆扔掉空间提示、换成视觉参考提示。可这既丢了 SAM2 的定位强项，又在剧烈外观变化下崩盘。本文的核心张力就在这：<strong>SAM2 最擅长的输入（目标视角坐标），在跨视角里恰好是缺失的；你能不能把它从查询视角"造"出来，而不是放弃它？</strong>V²-SAM 的答案是<strong>两个互补的 prompt 生成器 + 多专家挑选</strong>：V²-Anchor 借 DINOv3 几何特征把查询掩码"翻译"成目标视角的一个<strong>高置信坐标</strong>（首次为 SAM2 解锁跨视角坐标提示，且全程不可训练）；V²-Visual 用可学的 VPMatcher 把外观线索从<strong>特征</strong>与<strong>结构</strong>两路映射过去；再用 Anchor / Visual / Fusion 三个专家覆盖不同场景，靠一个<strong>点级循环一致选择器 PCCS</strong> 按实例挑最可靠的那个。Ego-Exo4D 总 IoU 48.0、DAVIS-17 78.8 J&amp;F、HANDAL-X 77.2 IoU 三个基准全 SOTA，而可训练参数只有 <strong>15M</strong>（约为 ObjectRelator 的 1%）。</p>
 
 <figure>
 <a href="../assets/figures/v2sam/v2sam_fig1.png"><img src="../assets/figures/v2sam/v2sam_fig1.png" alt="三种 SAM 变体在跨视角分割上的对比：Vanilla-SAM 无结果、Ref-SAM 错误结果、V²-SAM 正确结果"></a>
@@ -531,7 +531,7 @@ body.lb-lock{overflow:hidden}
 <p>下表完整转写论文 Tab.1（Correspondences v2 test split）。最后两行是本文方法。</p>
 <div class="table-wrap"><table>
 <caption>表 1（转写自论文 Tab.1）：Ego-Exo4D Correspondences v2 测试集。↑ 越大越好，↓ 越小越好。</caption>
-<thead><tr><th>方法</th><th>Ego2Exo IoU↑</th><th>Ego2Exo Cont.A↑</th><th>Ego2Exo Loc.E↓</th><th>Exo2Ego IoU↑</th><th>Exo2Ego Cont.A↑</th><th>Exo2Ego Loc.E↓</th><th>Total-IoU↑</th><th>Param 总(M)</th><th>可训练(M)</th></tr></thead>
+<thead><tr><th>方法</th><th>Ego2Exo IoU↑</th><th>Ego2Exo Cont.A↑</th><th>Ego2Exo Loc.E↓</th><th>Exo2Ego IoU↑</th><th>Exo2Ego Cont.A↑</th><th>Exo2Ego Loc.E↓</th><th>Total-IoU↑</th><th>Param 总（M）</th><th>可训练（M）</th></tr></thead>
 <tbody>
 <tr><td>PSALM（零样本）</td><td>7.4</td><td>0.121</td><td>0.266</td><td>2.1</td><td>0.058</td><td>0.294</td><td>4.8</td><td>1587.1</td><td>0</td></tr>
 <tr><td>CMX</td><td>6.8</td><td>0.137</td><td>0.110</td><td>12.0</td><td>0.177</td><td>0.166</td><td>9.4</td><td>138.0</td><td>17.3</td></tr>
@@ -546,7 +546,7 @@ body.lb-lock{overflow:hidden}
 <tr><td><strong>V²-SAM（多专家）</strong></td><td><strong>46.3</strong></td><td><strong>0.616</strong></td><td>0.056</td><td><strong>49.6</strong></td><td><strong>0.575</strong></td><td>0.078</td><td><strong>48.0</strong></td><td>543.4</td><td>15.3</td></tr>
 </tbody>
 </table></div>
-<p>读数：多专家版在两方向均创 SOTA，比次优的 O-MaMa 在 Ego2Exo / Exo2Ego 上分别高 <strong>+3.7 / +5.5 IoU</strong>。更值得注意的是<strong>参数效率</strong>——ObjectRelator 用 1.6B 参数（全量可训练），V²-SAM 只用 543M 总参数、<strong>15M 可训练</strong>（约 ObjectRelator 的 1%），Total-IoU 反而高出 +10.2。连单专家版（45.9）都已超过所有前人。Loc.E 略高于最优是唯一不占优的细项，但 IoU/Cont.A 全面领先。</p>
+<p>读数：多专家版在两方向均创 SOTA，比次优的 O-MaMa 在 Ego2Exo / Exo2Ego 上分别高 <strong>+3.7 / +5.5 IoU</strong>。更关键的是<strong>参数效率</strong>——ObjectRelator 用 1.6B 参数（全量可训练），V²-SAM 只用 543M 总参数、<strong>15M 可训练</strong>（约 ObjectRelator 的 1%），Total-IoU 反而高出 +10.2。连单专家版（45.9）都已超过所有前人。Loc.E 略高于最优是唯一不占优的细项，但 IoU/Cont.A 全面领先。</p>
 
 <h3>DAVIS-17（时序泛化）与 HANDAL-X（真实世界零样本）</h3>
 <div class="fig-grid">
@@ -683,13 +683,13 @@ body.lb-lock{overflow:hidden}
 
 <section id="summary">
 <h2>总结：一次"补输入"而非"换基座"的范式<a class="anchor" href="#summary">#</a></h2>
-<p>V²-SAM 的价值不在于又造了一个更大的分割模型，而在于它把跨视角对应的核心矛盾<strong>看穿了</strong>：SAM2 不是不行，而是它要的那个输入（目标视角坐标）在跨视角下恰好缺席。顺着这个判断，全文是一条干净的"补输入"逻辑链——</p>
+<p>V²-SAM 的价值不在于又造了一个更大的分割模型，而在于它把跨视角对应的核心矛盾<strong>看穿了</strong>。SAM2 不是不行，而是它要的那个输入（目标视角坐标）在跨视角下恰好缺席。顺着这个判断，全文是一条干净的"补输入"逻辑链——</p>
 <ol>
 <li><strong>V²-Anchor</strong>：借 DINOv3 几何特征把缺失的目标视角坐标"翻译"出来（前景约束→分层→质心，全程不可训练），首次为 SAM2 解锁跨视角坐标提示，回答"它在哪"。</li>
 <li><strong>V²-Visual</strong>：用 VPMatcher 从特征+结构两路把外观映射过去，回答"它长什么样"，与 Anchor 天然互补。</li>
 <li><strong>三专家 + PCCS</strong>：Anchor/Visual/Fusion 覆盖不同场景，点级循环一致按实例挑最可靠的——既不掉点又省一次解码。</li>
 </ol>
-<p>四条独立消融证据（拿掉生成器即崩 / 三专家缺一不可 / 稀疏≫稠密 / 点级≈掩码级但更轻）把每个设计点都钉死，三个基准三种压测全 SOTA，且只用 15M 可训练参数。对做基座适配的研究者，最值得带走的一条方法论是：<strong>当一个强基座"水土不服"，先别急着改它，先问清楚它缺的到底是哪个输入，然后专门去把那个输入造出来。</strong></p>
+<p>四条独立消融证据（拿掉生成器即崩 / 三专家缺一不可 / 稀疏≫稠密 / 点级≈掩码级但更轻）把每个设计点都钉死，三个基准三种压测全 SOTA，且只用 15M 可训练参数。对做基座适配的研究者，最值得带走的一条方法论是：<strong>当一个强基座"水土不服"，先别急着改它。先问清楚它缺的到底是哪个输入，然后专门去把那个输入造出来。</strong></p>
 </section>
 
 <section id="references">

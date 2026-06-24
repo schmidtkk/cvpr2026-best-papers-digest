@@ -1019,7 +1019,7 @@
       "page_path": "papers/cadctc.html",
       "thumbnail": "assets/figures/cadctc/cadctc_thumb.png",
       "status": "completed",
-      "figures_count": 16,
+      "figures_count": 17,
       "formula_check": "passed",
       "missing_info": "训练/推理用时与硬件、SMOTE 倍率、阈值敏感性分析论文未说明；无外部测试集"
     },

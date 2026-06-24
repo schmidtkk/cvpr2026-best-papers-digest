@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VGGT-Segmentor 深读：VGGT 的逐点投影会漂、可注意力却很稳——凭什么把"稳的对齐"榨成"准的掩码"？</title>
+<title>VGGT-Segmentor 深读：VGGT 的逐点投影会漂、但注意力却很稳——凭什么把"稳的对齐"榨成"准的掩码"？</title>
 <meta name="description" content="VGGT-S 深读：在 ego–exo 跨视角实例分割里，VGGT 的逐像素点投影系统性漂移，但其 object-level attention 仍稳定落在目标区域。本文用 kexue:su 方法论拆解 Union Segmentation Head 的三阶段（Mask Prompt Fusion → Point-Guided Prediction → Mask Refinement）如何把不可靠的稀疏点当 prompt、靠特征融合与迭代修边把掩码拉回几何一致位置，并以单图自监督训练去掉配对标注，在 Ego–Exo4D 上 67.7 / 68.0 IoU 创 SOTA。">
 <script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
@@ -352,14 +352,14 @@ body.lb-lock{overflow:hidden}
 <body>
 <header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>Cross-View Segmentation · 冻结 VGGT + Union Segmentation Head / 几何先验治跨视角对应</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
 <div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Segmentation &gt; VGGT-Segmentor</div>
-<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">12</span><span class="month">Jun</span></div><h1 id="paper-title">VGGT-Segmentor 深读：VGGT 的逐点投影会漂、可注意力却很稳——凭什么把"稳的对齐"榨成"准的掩码"？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-12</span><span>CVPR 2026 · Top Paper (candidate) · Beihang University</span><span>来源：arXiv:2604.13596 PDF</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Cross-View Segmentation</span><span class="tag green">VGGT / 几何先验</span><span class="tag">Ego–Exo4D</span><span class="tag">Union Segmentation Head</span><span class="tag">单图自监督</span><span class="tag">MathJax checked</span></div></header>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">12</span><span class="month">Jun</span></div><h1 id="paper-title">VGGT-Segmentor 深读：VGGT 的逐点投影会漂、但注意力却很稳——凭什么把"稳的对齐"榨成"准的掩码"？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-12</span><span>CVPR 2026 · Top Paper (candidate) · Beihang University</span><span>来源：arXiv:2604.13596 PDF</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Cross-View Segmentation</span><span class="tag green">VGGT / 几何先验</span><span class="tag">Ego–Exo4D</span><span class="tag">Union Segmentation Head</span><span class="tag">单图自监督</span><span class="tag">MathJax checked</span></div></header>
 <main class="content">
 
-<p id="abstract" class="lead"><strong>导读。</strong>VGGT 是个"几何一致"的多视角大模型：一次前馈联合预测深度、相机参数、点图，给跨视角特征对齐打了很好的底子。可一旦你想拿它直接做<strong>跨视角实例分割</strong>——给定 ego（第一人称）一张图里某个物体的 mask，要在 exo（第三人称）那张图里把<em>同一个物理物体</em>抠出来——它会在一个意想不到的地方翻车：<strong>VGGT 的逐像素点投影会系统性漂移</strong>（把锅投到砧板上、把瓶子认成旁边那只长得像的瓶子），<strong>但它内部的 object-level attention 却仍然稳稳地落在目标大致区域</strong>。这就是本文的核心张力：<strong>同一个模型，"逐点重投影"不可信，"注意力对齐"却可信——你该信哪个、又怎么把"可信的那个"榨成一张像素级准确的掩码，而不被"不可信的那个"带偏？</strong>VGGT-Segmentor（VGGT-S）的答案是冻住 VGGT、只加一个轻量 <strong>Union Segmentation Head</strong>，把漂移的稀疏点降格成"引导用的 prompt"而非"答案"，再靠特征融合做空间共识、靠迭代修边把掩码拉回几何一致的位置；外加一招<strong>单图自监督训练</strong>彻底甩掉配对标注。Ego–Exo4D 上 67.7%（Ego→Exo）/ 68.0%（Exo→Ego）IoU 创 SOTA，连"零配对标注"的预训练版都反超了一批全监督方法。</p>
+<p id="abstract" class="lead"><strong>导读。</strong>VGGT 是个"几何一致"的多视角大模型：一次前馈联合预测深度、相机参数、点图，给跨视角特征对齐打了很好的底子。可一旦你想拿它直接做<strong>跨视角实例分割</strong>——给定 ego（第一人称）一张图里某个物体的 mask，要在 exo（第三人称）那张图里把<em>同一个物理物体</em>抠出来——它会在一个意想不到的地方翻车：<strong>VGGT 的逐像素点投影会系统性漂移</strong>（把锅投到砧板上、把瓶子认成旁边那只长得像的瓶子），<strong>但它内部的 object-level attention 却仍然稳稳地落在目标大致区域</strong>。这就是本文的核心张力：<strong>同一个模型，"逐点重投影"不可信，"注意力对齐"却可信——你该信哪个、又怎么把"可信的那个"榨成一张像素级准确的掩码，而不被"不可信的那个"带偏？</strong>VGGT-Segmentor（VGGT-S）的答案是：冻住 VGGT，只加一个轻量 <strong>Union Segmentation Head</strong>；把漂移的稀疏点降格成"引导用的 prompt"而非"答案"；再靠特征融合形成空间共识、靠迭代修边把掩码拉回几何一致的位置。另外，它用一招<strong>单图自监督训练</strong>彻底甩掉配对标注。Ego–Exo4D 上 67.7%（Ego→Exo）/ 68.0%（Exo→Ego）IoU 创 SOTA，连"零配对标注"的预训练版都反超了一批全监督方法。</p>
 
 <figure>
   <a href="../assets/figures/vggtseg/vggtseg_fig1.png"><img src="../assets/figures/vggtseg/vggtseg_fig1.png" alt="VGGT 跨视角对应可视化：source 图采样点直接用 VGGT 投到 target 出现系统性漂移（中列红框 Wrong Projection），而同样这些点对应的 attention map（右列）却稳定聚焦在正确物体区域"></a>
-  <figcaption><strong>图 1（核心矛盾的实锤）。</strong>左：source 图。中：把 source 采样点用 VGGT 直接投到 target——红色"Wrong Projection!"标出投歪了的点，蓝色"Well-Aligned"是少数对上的。右：同样这些点（source 上的星标）在 target 上的 attention map——热区稳稳压在正确物体上。<strong>看点：逐点投影漂，可注意力不漂。</strong>这张图把"为什么不能直接拿 VGGT 投影当掩码、却可以信它的注意力"一句话钉死，也直接立起了全篇的设计动机。</figcaption>
+  <figcaption><strong>图 1（核心矛盾的实锤）。</strong>左：source 图。中：把 source 采样点用 VGGT 直接投到 target——红色"Wrong Projection!"标出投歪了的点，蓝色"Well-Aligned"是少数对上的。右：同样这些点（source 上的星标）在 target 上的 attention map——热区稳稳压在正确物体上。<strong>看点：逐点投影漂，但注意力不漂。</strong>这张图要支撑的结论是：不能直接拿 VGGT 投影当掩码，但可以信它的注意力；这也直接引出全篇的设计动机。</figcaption>
 </figure>
 
 <section id="motivation">
@@ -367,7 +367,7 @@ body.lb-lock{overflow:hidden}
 
 <p><strong>问题。</strong>跨视角实例分割难在哪？ego 相机贴着操作者的手、exo 相机远在另一个高度甚至角度，同一个物体在两张图里尺度、视角、遮挡全变了——ego 帧常被手和工具挡住，exo 帧里又塞满了长得差不多的干扰物。直接做逐像素匹配天然不稳。早期路线要么靠语义一致性、要么塞个大语言模型补上下文，<strong>但都绕开了几何结构与空间关系</strong>，于是遇到"两只几乎一样的瓶子"就只能猜。</p>
 
-<p><strong>引导。</strong>VGGT 看起来是救星：它是几何驱动的大 transformer，联合推断深度/相机/点图，跨视角特征天然对齐。一个朴素想法是——既然 VGGT 能把 source 的点"投"到 target，那把 source mask 里的点全投过去，连起来不就是 target mask 了？<strong>本文恰恰证明这条捷径是错的。</strong>图 1 显示：在 ego–exo 这种强遮挡 + 大视角变化下，逐点投影会系统性漂移；可耐人寻味的是，<em>同样这些点的内部注意力却仍然落在正确物体上</em>。</p>
+<p><strong>引导。</strong>VGGT 看起来是救星：它是几何驱动的大 transformer，联合推断深度/相机/点图，跨视角特征天然对齐。一个朴素想法是——既然 VGGT 能把 source 的点"投"到 target，那把 source mask 里的点全投过去，连起来不就是 target mask 了？<strong>本文恰恰证明这条捷径是错的。</strong>图 1 显示：在 ego–exo 这种强遮挡 + 大视角变化下，逐点投影会系统性漂移；但<em>同样这些点的内部注意力却仍然落在正确物体上</em>。</p>
 
 <p><strong>为什么会出现"投影漂 / 注意力稳"的撕裂？</strong>（这里用动机先行、并从两个角度交叉印证，是全篇机制的锚点。）</p>
 <ul>
@@ -375,9 +375,9 @@ body.lb-lock{overflow:hidden}
   <li><strong>自下而上的旁证（后文表 3 会兑现）。</strong>如果"投影"本身可信，那把更多点投过去应该一路涨；可消融显示点数从 1→5 涨 6.2 IoU、5→9 只涨 0.6——稀疏锚点足矣，密集投影并不带来对应的密集收益。这反过来说明：点的价值在于"提供少量几何锚"，<strong>而不在于"逐点拼出掩码"</strong>。</li>
 </ul>
 
-<p><strong>回答（立题）。</strong>于是核心问题变得很具体：<strong>把 VGGT 的几何先验当成"半可信"——区域对齐可信、逐点投影不可信——该怎么设计读出头，让可信的部分主导、不可信的部分只做弱引导？</strong>VGGT-S 的回答是：①冻住 VGGT，只加轻量头（不破坏已学好的几何一致性）；②把漂移的投影点降级成稀疏 <em>prompt</em>，而非掩码答案；③靠双向特征融合做"空间共识"、靠迭代修边把掩码拉回几何一致位置。</p>
+<p><strong>回答（立题）。</strong>于是核心问题变得很具体：<strong>把 VGGT 的几何先验当成"半可信"——区域对齐可信、逐点投影不可信——该怎么设计读出头，让可信的部分主导、不可信的部分只做弱引导？</strong>VGGT-S 的回答是：①冻住 VGGT，只加轻量头（不破坏已学好的几何一致性）；②把漂移的投影点降级成稀疏 <em>prompt</em>，而非掩码答案；③靠双向特征融合形成"空间共识"、靠迭代修边把掩码拉回几何一致位置。</p>
 
-<p class="takeaway"><strong>Takeaway：</strong>本文真正的贡献不是"又一个分割头"，而是<strong>对一个强几何基座的"可信边界"的精确判定</strong>——指出 VGGT 的注意力能用、逐点投影不能照搬，并据此把"不可信的输出"系统地降格使用。这一步判定，比任何模块都更值钱。</p>
+<p class="takeaway"><strong>Takeaway：</strong>本文真正的贡献不是"又一个分割头"，而是<strong>精确判定一个强几何基座的"可信边界"</strong>——指出 VGGT 的注意力能用、逐点投影不能照搬，并据此把"不可信的输出"系统地降格使用。这一步判定，比任何模块都更值钱。</p>
 </section>
 
 <section id="contribution">
@@ -385,7 +385,7 @@ body.lb-lock{overflow:hidden}
 <p>论文自陈三条贡献，我按"它们各自如何处理 VGGT 的半可信输出"重排，方便对上后文机制：</p>
 <ol>
   <li><strong>VGGT-S 框架</strong>：一个几何增强的跨视角分割框架，充分利用 VGGT 的多视角几何表征，但<em>冻结编码器、只训练新头</em>——把"可信的几何对齐"原封保留。</li>
-  <li><strong>Union Segmentation Head</strong>：三阶段协同——Mask Prompt Fusion（把 source mask 注入双视角特征，做区域级共识）、Point-Guided Prediction（把漂移的投影点当稀疏 prompt 弱引导）、Mask Refinement（迭代修边、补遮挡）。三阶段正好对应"用注意力 / 弱用投影 / 修不可信残差"。</li>
+  <li><strong>Union Segmentation Head</strong>：三阶段协同——Mask Prompt Fusion（把 source mask 注入双视角特征，形成区域级共识）、Point-Guided Prediction（把漂移的投影点当稀疏 prompt 弱引导）、Mask Refinement（迭代修边、补遮挡）。三阶段正好对应"用注意力 / 弱用投影 / 修不可信残差"。</li>
   <li><strong>Single-Image Self-Supervised Training</strong>：单图自监督训练，去掉配对标注的依赖，让 Ego→Exo / Exo→Ego 都能在没有跨视角对应监督的情况下训练并强泛化。</li>
 </ol>
 <p><strong>读者侧判断（与作者主张分开）。</strong>第 2 条是工程主体，但第 1 条"冻结编码器"和第 3 条"单图自监督"才是让这套方案<em>可扩展</em>的关键：前者把训练代价压在轻量头上，后者把数据代价从"昂贵的跨视角配对"换成"任意单图 + 离线分割器伪标"。两者合起来，才支撑得起"correspondence-free 预训练版反超全监督"这个最反直觉的结果。</p>
@@ -406,7 +406,7 @@ body.lb-lock{overflow:hidden}
 </tbody>
 </table>
 <p>泛化测试另用两个数据集：<strong>MvMHAT</strong>（多视角多人关联与跟踪，作泛化微调验证）与 <strong>MAVREC</strong>（多视角航拍户外，细节在补充材料，正文未给定量）。<strong>论文未说明</strong> Ego-Exo4D 各类别的精细分布。</p>
-<p class="takeaway"><strong>Takeaway：</strong>这是个"一张扫描里多个物体、且物体之间长得像"的高干扰基准——正好暴露"无几何约束的方法会认错近邻同类物"的软肋，也正是几何先验该发力的地方。</p>
+<p class="takeaway"><strong>Takeaway：</strong>这是个"一帧图里多个物体、且物体之间长得像"的高干扰基准——正好暴露"无几何约束的方法会认错近邻同类物"的软肋，也正是几何先验该发力的地方。</p>
 </section>
 
 <section id="pipeline">
@@ -436,7 +436,7 @@ $$F_s'=F_s+E_m\tag{5}$$
 <div class="equation">$$\tilde F_s=D_r(F_s'),\quad \tilde F_t=D_r(F_t)\tag{6}$$
 $$\dot F_s,\dot F_t=\mathrm{FFN}\big(\mathrm{SelfAttn}([\tilde F_s,\tilde F_t])\big)\tag{7}$$
 $$F_s^\star=U_r(\dot F_s),\quad F_t^\star=U_r(\dot F_t)\tag{8}$$
-<div class="eq-caption">式 6–8（Bottleneck Fusion，本步关键）：先用比例 $r$ 下采样 $D_r$ 把双视角特征压小（否则全分辨率自注意力显存炸——式 6 的下采样正是后文"37×37 / 74×74 / 518×518 OOM"那张消融的来由），拼接后做自注意力 + FFN 让两视角充分耦合，再上采样 $U_r$ 还原。$F^\star=[F_s^\star,F_t^\star]$ 是同时含几何与语义、跨两视角的紧致表征。<strong>这一步是"区域共识"：让 target 特征在被点引导之前，先知道 source 物体大概是什么、大概在哪。</strong></div></div>
+<div class="eq-caption">式 6–8（Bottleneck Fusion，本步关键）：先用比例 $r$ 下采样 $D_r$ 把双视角特征压小（否则全分辨率自注意力显存炸——式 6 的下采样正是后文"37×37 / 74×74 / 518×518 OOM"那张消融的来由），拼接后做自注意力 + FFN 让两视角充分耦合，再上采样 $U_r$ 还原。$F^\star=[F_s^\star,F_t^\star]$ 是同时含几何与语义、跨两视角的紧致表征。<strong>这一步是"区域共识"：让 target 特征先知道 source 物体大概是什么、大概在哪，再接受点引导。</strong></div></div>
 
 <h3>5.2 Point-Guided Prediction——把漂移的投影点降级成"稀疏锚 prompt"</h3>
 <p><strong>动机先行（全篇机制的核心一招）。</strong>现在才轮到点。但记住图 1 的教训：<em>逐点投影会漂</em>。所以这里绝不把投影点当掩码，而是只采<strong>极少数</strong>代表点、当作"稀疏几何锚"去<em>引导</em>已经做过区域共识的特征——点错一两个，区域共识能兜住；点对的那几个，提供视角/尺度鲁棒的定位线索。</p>
@@ -450,7 +450,7 @@ $$Q_0=[E_p,E_s,E_t,O]\tag{13}$$
 <div class="equation">$$\bar Q_\ell=\mathrm{SelfAttn}(Q_{\ell-1})\tag{14}$$
 $$Q_\ell^\star=\mathrm{CrossAttn}_{P\to I}(\bar Q_\ell,F^\star)\tag{15}$$
 $$H_\ell=\mathrm{CrossAttn}_{I\to P}(F^\star,Q_\ell^\star),\quad \ell=1,\dots,L\tag{16}$$
-<div class="eq-caption">式 14–16（$L$ 层轻量 decoder，双向是要点）：每层先 prompt 自注意力，再"点→图"$P\to I$ 让 query 去读图像特征，再"图→点"$I\to P$ 把 query 的信息写回图像特征 $H_\ell$。<strong>双向的意义：</strong>不是单纯"点查图"，而是点与图互相校准——漂的点会被区域共识后的图像特征拉回，图像特征也被对的点锐化。</div></div>
+<div class="eq-caption">式 14–16（$L$ 层轻量 decoder，双向是要点）：每层先 prompt 自注意力，再"点→图"$P\to I$ 让 query 去读图像特征，再"图→点"$I\to P$ 把 query 的信息写回图像特征 $H_\ell$。<strong>双向的意义：</strong>不是单纯"点查图"，而是点与图互相校准——区域共识后的图像特征会拉回漂的点，对的点也会锐化图像特征。</div></div>
 <div class="equation">$$\tilde O=\mathrm{CrossAttn}_{P\to I}(O,H_t^L)\tag{17}$$
 $$z(x,y)=\big(W\tilde O+b\big)^{\!\top} f(x,y)\tag{18}$$
 $$\hat M_t^{(0)}(x,y)=\sigma\big(z(x,y)\big)\tag{19}$$
@@ -465,7 +465,7 @@ $$\hat M_t^{(0)}(x,y)=\sigma\big(z(x,y)\big)\tag{19}$$
 <p><strong>动机先行。</strong>跨视角配对标注又贵又少。能不能不用配对、只用单图就训出跨视角分割头？关键洞察：<em>VGGT 的跨视角能力已经预训练好了，下游头要学的只是"怎么把 VGGT 特征读成掩码"</em>——而这个读出能力，可以用"单图 + 几何增广"来模拟跨视角。</p>
 <p>给任意图 $I$，生成增广视图 $I'$，用离线分割器（SAM）拿伪 mask $M$，要求模型在 $I'$ 上预测同一物体的掩码 $\hat M'$。增广分两族，对应 VGGT 的两种工作模式：</p>
 <ul>
-  <li><strong>VGGT-adaptive</strong>（缩放、轻微旋转、裁剪）：保留 VGGT 的点映射。此时<em>两个视图都过 VGGT 编码器</em>，由 track head 在 target 视图上给点 prompt——模拟"投影还算可信"的情形。</li>
+  <li><strong>VGGT-adaptive</strong>（缩放、轻微旋转、裁剪）：保留 VGGT 的点映射。此时<em>两个视图都过 VGGT 编码器</em>，由 track head 在 target 视图上生成点 prompt——模拟"投影还算可信"的情形。</li>
   <li><strong>VGGT-non-adaptive</strong>（大幅旋转、水平翻转）：严重破坏跨视角对齐、让 VGGT 失去有效对应。此时<em>两个视图各自独立过 VGGT 编码器</em>，并对 target 真值点加扰动来合成 prompt——模拟"投影不可信、得靠区域共识"的情形。</li>
 </ul>
 <p><strong>为什么要混两族（交叉验证式设计）。</strong>只喂 adaptive，模型会过度信任投影；只喂 non-adaptive，模型学不到"投影可信时怎么用"。混合后，模型学到一个<em>与 VGGT 特征对齐、且对投影漂移鲁棒</em>的掩码头——这正好覆盖真实 ego–exo 里"有时投影准、有时全漂"的整个谱系。作者在 SA-1B 的 1/20 子集上训出 correspondence-free 预训练版，直接在 Ego-Exo4D 上评测仍有竞争力（后文表 1 兑现）。</p>
@@ -578,17 +578,17 @@ $$\hat M_t^{(0)}(x,y)=\sigma\big(z(x,y)\big)\tag{19}$$
 <tr><td>6</td><td>68.8</td><td>69.3</td><td>176.8</td></tr>
 </tbody>
 </table>
-<p><strong>读法（点数消融最值得品）。</strong>"点数 1→5 涨 6.2、5→9 几乎不涨"这条，正是 §一里那个判断的实锤——<em>如果逐点投影可信，点越多越准；可它在 5 点就饱和</em>，说明点的作用是"提供少量几何锚"，多了反而把漂移的噪声也一起喂进来。这把"投影只配当稀疏 prompt"从设计主张升级成了可证伪的实验结论。</p>
+<p><strong>读法（点数消融最值得细看）。</strong>"点数 1→5 涨 6.2、5→9 几乎不涨"这条，正是 §一里那个判断的实锤——<em>如果逐点投影可信，点越多越准；可它在 5 点就饱和</em>，说明点的作用是"提供少量几何锚"，多了反而把漂移的噪声也一起喂进来。这把"投影只能当作稀疏 prompt"从设计主张升级成了可证伪的实验结论。</p>
 </section>
 
 <section id="limitations">
 <h2>九、局限与复现门槛</h2>
 <ul>
-  <li><strong>性能天花板被冻结的 VGGT 锁住。</strong>整套头建在"VGGT 注意力可信"的前提上；若某场景 VGGT 的区域对齐本身就崩（极端遮挡 + 极端基线同时发生），区域共识无源可依，三阶段都会受限。论文未给这类失败率的定量统计。</li>
+  <li><strong>冻结的 VGGT 锁住性能天花板。</strong>整套头建在"VGGT 注意力可信"的前提上；若某场景 VGGT 的区域对齐本身就崩（极端遮挡 + 极端基线同时发生），区域共识无源可依，三阶段都会受限。论文未给这类失败率的定量统计。</li>
   <li><strong>更大配置普遍更准，默认值是性价比折中。</strong>表 4/7/8 都显示"加分辨率/加块数还能涨"，作者为效率取了小配置；这意味着<strong>报告数字不是该架构的精度上限</strong>，复现时若放宽算力可能更高（但 Bottleneck Fusion 518×518 直接 OOM，提示显存是硬约束）。</li>
   <li><strong>仅空间、无时序。</strong>VGGT-S 是 Type S，只用图像级特征。这是优点（简单、超过时空方法）也是边界——它不建模时间一致性，视频级长程跟踪并非其目标场景。</li>
   <li><strong>户外/航拍泛化只在补充材料定性给出。</strong>MAVREC 上"Details and visualization can be found in the Supplementary Material"，正文无定量——<strong>论文未说明</strong>其户外定量表现。</li>
-  <li><strong>计时口径有省略。</strong>Ego→Exo 的额外 remapping 步在计时中被略去；推理时延是单图 100 次前传均值，与真实部署吞吐不完全等价。</li>
+  <li><strong>计时口径略去部分步骤。</strong>Ego→Exo 的额外 remapping 步未计入计时；推理时延是单图 100 次前传均值，与真实部署吞吐不完全等价。</li>
   <li><strong>复现门槛。</strong>需要 VGGT 官方权重 + SAM 当离线伪标分割器 + Ego-Exo4D 官方划分；单图自监督版还需 SA-1B 的 1/20 子集。代码已开源（见下）。</li>
 </ul>
 </section>

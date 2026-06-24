@@ -361,17 +361,17 @@ body.lb-lock{overflow:hidden}
 <section id="motivation"><h2>1. 核心问题：单纯的像素重建，凭什么能逼出“几何”特征？</h2>
 <p>自监督表征学习这几年的主线是 DINO 家族（自蒸馏）和 MAE 家族（掩码重建）。但 3D vision 流水线（VGGT、MapAnything、RoMa、UFM）真正需要的是<strong>几何</strong>特征：能支撑深度、点图、相机位姿、稠密匹配。问题在于，主流 SSL 几乎都为“语义理解”优化——DINOv3 的特征常被描述为“语义而非几何”，而它要靠 Sinkhorn-Knopp 居中等精心设计的启发式来防塌缩，还需要数十亿图，对多数学术团队是“用不起”的方法。</p>
 <p>CroCo 是个重要例外：它把 MAE 改成“跨视图补全”——拿同一场景一张<strong>未掩码</strong>的参考图，去帮另一张被掩码的图做重建，以此鼓励网络理解几何。但代价是这套目标依赖两图<strong>大面积共视</strong>，采样很脆（Loiseau 等人已指出），而且“只有两视图、两个不同掩码率 \(\gamma_1,\gamma_2\)”的设定根本不知道怎么推广到三视图以上。</p>
-<div class="socratic"><p class="question">问：MAE 重建的是被自己掩掉的像素，这是个很“低层”的目标，怎么会和三维几何扯上关系？</p><p class="guide">引导：先想“要把被掩掉的 patch 填对，网络必须依赖什么信息”。单视图里它只能靠图内上下文（纹理、形状先验）；可一旦同一场景给了多张视图、又统一把每张都掩掉 75%，要补回某张图的缺失区域，最划算的线索来自<strong>别的视图里同一块表面的可见 patch</strong>——而要用上别的视图，就得隐式地把跨视图对应、相对几何关系编码进特征。</p><p class="answer">答：动机其实是把“重建难度”当成一根杠杆。单视图 MAE 的重建可以靠图内统计糊弄过去，几何信号弱；CroCo 用“参考图”强行注入几何，但把采样逼到死角。MuM 的判断是：<strong>不需要参考图这种非对称设计，只要让“同一场景的多张图一起、都被大比例掩码”，跨视图互补就成了把重建做对的最优策略，几何对应会作为副产品被压进编码器</strong>。而且因为目标和 MAE 完全同构，单视图时它<strong>就是</strong> MAE，采样退无可退时总有 MAE 兜底，CroCo 那种“配不到共视对就崩”的脆性被根除。</p><p class="takeaway"><strong>Takeaway：</strong>把几何当“重建副产品”而非显式监督——靠“多视图 + 统一高掩码”制造一个只有理解跨视图几何才能做好的任务，比靠参考图显式注入几何更简单也更稳。</p></div>
+<div class="socratic"><p class="question">问：MAE 重建的是被自己掩掉的像素，这是个很“低层”的目标，怎么会和三维几何扯上关系？</p><p class="guide">引导：先想“要把被掩掉的 patch 填对，网络必须依赖什么信息”。单视图里它只能靠图内上下文（纹理、形状先验）；可一旦同一场景给了多张视图、又统一把每张都掩掉 75%，要补回某张图的缺失区域，最划算的线索来自<strong>别的视图里同一块表面的可见 patch</strong>——而要用上别的视图，就得隐式地把跨视图对应、相对几何关系编码进特征。</p><p class="answer">答：动机是把“重建难度”当成一根杠杆。单视图 MAE 的重建可以靠图内统计糊弄过去，几何信号弱；CroCo 用“参考图”强行注入几何，但把采样逼到死角。MuM 的判断是：<strong>不需要参考图这种非对称设计，只要让“同一场景的多张图一起、都被大比例掩码”，跨视图互补就成了把重建做对的最优策略，几何对应会作为副产品被压进编码器</strong>。而且因为目标和 MAE 完全同构，单视图时它<strong>就是</strong> MAE，采样退无可退时总有 MAE 兜底，CroCo 那种“配不到共视对就崩”的脆性被根除。</p><p class="takeaway"><strong>Takeaway：</strong>把几何当“重建副产品”而非显式监督——靠“多视图 + 统一高掩码”制造一个只有理解跨视图几何才能做好的任务，比靠参考图显式注入几何更简单也更稳。</p></div>
 </section>
 
-<section id="contribution"><h2>2. 贡献拆解：作者明确提出的，与读者可推断的</h2>
+<section id="contribution"><h2>2. 贡献拆解：作者明确提出的，与读者能进一步推断的点</h2>
 <p><strong>作者明确提出的贡献（论文 §1）：</strong></p>
 <ol>
 <li>把掩码图像建模（MIM）从单/双视图推广到<strong>任意多视图</strong>，给出一个简单、可扩展、为 3D vision 量身定做的训练框架。</li>
 <li>用“线性探针 + 稠密特征匹配”这把统一尺子，<strong>横向比较了一大批视觉骨干</strong>（弱监督 SigLIP2/PEcore、实例判别 iBOT/DINOv2/v3、掩码建模 CAPI/I-JEPA/V-JEPA2/MAE/CroCo v2 等）。</li>
 <li>在前馈三维重建、特征匹配、相对位姿三类 3D 任务上把 MuM 当特征提取器，与 DINOv3、CroCo v2 对比验证；并训练了多个<strong>小于 VGGT 规模</strong>的前馈重建模型，以及一批按 RoMa 范式训练的两视图匹配器。</li>
 </ol>
-<p><strong>读者可推断的启发（非作者原话）：</strong></p>
+<p><strong>读者能进一步推断的是（非作者原话）：</strong></p>
 <ul>
 <li>这篇真正“贵”的洞察是一个<strong>负结果的反转</strong>：在多视图数据上，单纯像素重建（MAE）反而比 DINOv2 这类自蒸馏目标更会学几何（见 §8 消融表）——这暗示“语义 SSL ≠ 几何 SSL”，几何任务上简单目标可能更优。</li>
 <li>“对称、无参考帧”的设计让 \(n=1\) 自动等价于 MAE，这不仅是工程便利，更是把“采样鲁棒性”写进了目标函数本身：任何采样退化的极端情形都有 MAE 这个下界兜底。</li>
@@ -380,7 +380,7 @@ body.lb-lock{overflow:hidden}
 </section>
 
 <section id="datasets"><h2>3. 数据与任务：预训练吃什么、下游怎么切</h2>
-<p>MuM 在一批 3D 数据集的混合上预训练，配方受 DUSt3R / VGGT 启发，合计约 <strong>2000 万帧</strong>（精确 19,462k）。各源按概率采样，并按“是否室内/室外/物体中心、真实/合成”覆盖多样视角。值得注意：ImageNet-1K 以 10% 概率混入，<strong>它只有单视图数据</strong>——这恰恰利用了 MuM 在 \(n=1\) 时退化为 MAE 的性质，把单视图数据无缝并入同一目标。</p>
+<p>MuM 在一批 3D 数据集的混合上预训练，配方受 DUSt3R / VGGT 启发，合计约 <strong>2000 万帧</strong>（精确 19,462k）。各源按概率采样，并按“是否室内/室外/物体中心、真实/合成”覆盖多样视角。其中，ImageNet-1K 以 10% 概率混入，<strong>它只有单视图数据</strong>——这恰恰利用了 MuM 在 \(n=1\) 时退化为 MAE 的性质，把单视图数据无缝并入同一目标。</p>
 <div class="table-wrap"><table><caption>表 1（论文 Table 1）：MuM 预训练数据混合与帧数（按采样概率排序，已逐行转写）</caption>
 <thead><tr><th>数据集</th><th>类型</th><th>采样概率</th><th>帧数</th></tr></thead>
 <tbody>
@@ -500,7 +500,7 @@ body.lb-lock{overflow:hidden}
 <tr><td>DINOv3</td><td>15.6</td><td>32.5</td><td>51.2</td><td>7.3</td><td>20.7</td><td>39.6</td><td>3.3</td><td>10.3</td><td>23.0</td></tr>
 <tr><td><strong>MuM</strong></td><td><strong>26.7</strong></td><td><strong>47.0</strong></td><td><strong>65.0</strong></td><td><strong>10.3</strong></td><td><strong>25.3</strong></td><td>44.5</td><td>6.6</td><td><strong>18.4</strong></td><td><strong>35.8</strong></td></tr>
 </tbody></table></div>
-<p>这是公平性值得点名的一表：相对位姿这个任务的<strong>结构其实利好 CroCo v2</strong>（它的 decoder 本就用双目交叉注意力、采样方式也贴近其训练数据）。即便如此，MuM 在 MegaDepth 上大幅领先（如 5° 的 26.7 vs CroCo 13.9 / DINOv3 15.6），Re10K/BlendedMVS 多数阈值持平或更优。</p>
+<p>这是公平性值得点名的一表：相对位姿这个任务的<strong>结构利好 CroCo v2</strong>（它的 decoder 本就用双目交叉注意力、采样方式也贴近其训练数据）。即便如此，MuM 在 MegaDepth 上大幅领先（如 5° 的 26.7 vs CroCo 13.9 / DINOv3 15.6），Re10K/BlendedMVS 多数阈值持平或更优。</p>
 
 <h3>7.4 单视图任务（\(n=1\)）：深度、法向、语义</h3>
 <div class="table-wrap"><table><caption>表 7/8/9 合并转写：单目深度 RMSE（↓）、表面法向（角度阈值召回↑ / RMSE↓）、语义（IN1K 分类↑、ADE20K 分割 mIoU↑）</caption>
@@ -527,7 +527,7 @@ body.lb-lock{overflow:hidden}
 <tr><td>MAE</td><td>12</td><td>18.7</td></tr>
 <tr><td>　└ + 多视图（= MuM 的核心机制）</td><td>12</td><td><strong>12.5</strong></td></tr>
 </tbody></table></div>
-<div class="socratic"><p class="question">问：这张表怎么证明“是多视图 + 像素重建”而不是别的因素在起作用？</p><p class="guide">引导：它做的是控制变量——同数据、同步数、同骨干，只换“目标函数”和“是否多视图”。</p><p class="answer">答：两条独立的对照都指向同一结论。<strong>其一，多视图增益对像素重建特别大：</strong>给 MAE 加多视图，EPE 从 18.7 骤降到 12.5（且训练时间不变，12h），而给 DINOv2 加多视图只从 28.9 微降到 28.4——说明“多视图互补”这把杠杆专门撬动像素重建类目标的几何学习。<strong>其二，简单目标在几何上反超复杂目标：</strong>单纯 MAE（18.7）就已远好于 CroCo v2（41.4，注：CroCo 在其原始共视对上结果更好，此处是同设定对照）和 DINOv2（28.9），且 MAE 比 DINOv2 快 3 倍以上（12h vs 38h）。这两点合起来正是 MuM 的论点：<strong>几何 SSL 要的是“简单像素重建 + 多视图”，不是更语义、更重的自蒸馏</strong>。</p><p class="takeaway"><strong>Takeaway：</strong>多视图增益与目标类型强相关（利好像素重建、对自蒸馏几乎无感），且简单目标在几何上更优、更快——机制归因成立。</p></div>
+<div class="socratic"><p class="question">问：这张表如何支撑“是多视图 + 像素重建”而不是别的因素在起作用？</p><p class="guide">引导：它做的是控制变量——同数据、同步数、同骨干，只换“目标函数”和“是否多视图”。</p><p class="answer">答：两条独立的对照都指向同一结论。<strong>其一，多视图增益对像素重建特别大：</strong>给 MAE 加多视图，EPE 从 18.7 骤降到 12.5（且训练时间不变，12h），而给 DINOv2 加多视图只从 28.9 微降到 28.4——说明“多视图互补”这把杠杆专门撬动像素重建类目标的几何学习。<strong>其二，简单目标在几何上反超复杂目标：</strong>单纯 MAE（18.7）就已远好于 CroCo v2（41.4，注：CroCo 在其原始共视对上结果更好，此处是同设定对照）和 DINOv2（28.9），且 MAE 比 DINOv2 快 3 倍以上（12h vs 38h）。这两点合起来正是 MuM 的论点：<strong>几何 SSL 要的是“简单像素重建 + 多视图”，不是更语义、更重的自蒸馏</strong>。</p><p class="takeaway"><strong>Takeaway：</strong>多视图增益与目标类型强相关（利好像素重建、对自蒸馏几乎无感），且简单目标在几何上更优、更快——机制归因成立。</p></div>
 <p>架构消融（论文 Table 11，含 6 个子表）逐一验证设计点，要点转写如下：</p>
 <ul>
 <li><strong>(a) 序列长度：</strong>2–24 比 2–6、2–12 更好（EPE 10.6 vs 12.8/12.5）——更长序列＝更多跨视图互补线索。</li>
@@ -562,7 +562,7 @@ body.lb-lock{overflow:hidden}
 <li>David Nordström, Johan Edstedt, Fredrik Kahl, Georg Bökman. <em>MuM: Multi-View Masked Image Modeling for 3D Vision</em>. CVPR 2026（候选）/ arXiv:2511.17309（Chalmers University of Technology · Linköping University · University of Amsterdam）。代码：<a href="https://github.com/davnords/mum">github.com/davnords/mum</a>。</li>
 <li>本文所有公式、表格与实验数字以 arXiv PDF 为准；论文未披露之处统一标注“论文未说明”。GPU-hours 为按论文披露数字粗略估算，不等同于实际账单。</li>
 <li><strong>关于 kexue 归因：</strong>本文的“动机先行 / 显式标注假设 / 双路径交叉验证”推导姿态采用 苏剑林 kexue.fm 方法论，但检索其语料库（多视图掩码建模 / MAE / 3D 几何表征 / 自监督）未返回与 MuM 机制<strong>主题对应</strong>的卡片（最接近的一张被标为 non-ML / skip），故<strong>不附 [archives/XXXX] 引用</strong>，仅借用其推导方法，特此说明。</li>
-<li>图像说明：正文图均为本地 PNG，由 arXiv PDF 经 caption-anchored 提取器以 300 DPI 裁切（图 1 流程、图 2 训练动态、图 3 数据样例），路径位于 <code>assets/figures/mum/</code>；论文附录的法向/数据montage 等图非论证关键，未纳入。</li>
+<li>图像说明：正文图均为本地 PNG，由 arXiv PDF 经 caption-anchored 提取器以 300 DPI 裁切（图 1 流程、图 2 训练动态、图 3 数据样例），路径位于 <code>assets/figures/mum/</code>；论文附录的法向/数据 montage 等图非论证关键，未纳入。</li>
 </ol></section>
 
 </main><footer class="article-footer">Paper Digest · MuM 深读。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>

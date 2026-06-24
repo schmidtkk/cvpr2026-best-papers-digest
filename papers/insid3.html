@@ -375,11 +375,11 @@ body.lb-lock{overflow:hidden}
 
 <p>顺着这个矛盾看前人两条路线，就知道它们各自的代价：</p>
 <ul>
-<li><strong>路线 A：微调 VFM 装解码器</strong>（SegIC 在 DINOv2 上训分割头、DiffewS 微调 Stable Diffusion）。它把"分割"显式地教给模型，in-domain 涨点很猛（SegIC 在 COCO-20$^i$ 上 76.1 mIoU），但代价是<strong>把模型绑死在训练分布上</strong>：换到 iSAID（航拍）、X-Ray（医学）就大幅掉点，粒度也被训练标注锁死。本质上是<strong>用监督把泛化换成了 in-domain 精度</strong>。</li>
+<li><strong>路线 A：微调 VFM 装解码器</strong>（SegIC 在 DINOv2 上训分割头、DiffewS 微调 Stable Diffusion）。它把"分割"显式地教给模型，in-domain 涨点很猛（SegIC 在 COCO-20$^i$ 上 76.1 mIoU），但代价是<strong>把模型绑死在训练分布上</strong>：换到 iSAID（航拍）、X-Ray（医学）就大幅掉点，粒度也被训练标注锁死。这相当于<strong>用监督把泛化换成了 in-domain 精度</strong>。</li>
 <li><strong>路线 B：拼接冻结 VFM</strong>（Matcher / GF-SAM = DINOv2 找对应 + SAM 出 mask）。它保住了泛化（都是冻结的预训练模型），但<strong>语义匹配和 mask 生成分属两个特征空间</strong>，必须靠点选、prompt 工程、mask 过滤、打分这些胶水步骤来协调；架构臃肿（945M）、推理慢（GF-SAM 1030ms vs INSID3 302ms），且 mask 的粒度被 SAM 的预训练先验锁死，做不好部件级。</li>
 </ul>
 
-<p>那么真正的问题来了：<strong>有没有一个 backbone，本身就同时具备"图内连贯分组"和"跨图语义对应"？</strong>本文押注 DINOv3 [56]。它是纯自监督 VFM，用 Gram anchoring 目标 + 高分辨率后训练，被显式设计成产出稠密、局部化的特征。论文 Fig. 2 给出第一条直觉证据：对 DINOv3 稠密特征做凝聚聚类，得到的簇<strong>天然贴合物体级和部件级的连贯区域</strong>——也就是说"图内分组"这件事 DINOv3 已经免费送了。</p>
+<p>那么真正的问题来了：<strong>有没有一个 backbone，本身就同时具备"图内连贯分组"和"跨图语义对应"？</strong>本文押注 DINOv3 [56]。它是纯自监督 VFM，用 Gram anchoring 目标 + 高分辨率后训练，设计目标是产出稠密、局部化的特征。论文 Fig. 2 给出第一条直觉证据：对 DINOv3 稠密特征做凝聚聚类，得到的簇<strong>天然贴合物体级和部件级的连贯区域</strong>——也就是说"图内分组"这件事 DINOv3 已经免费送了。</p>
 
 <figure id="fig-cluster"><a href="../assets/figures/insid3/insid3_fig2.png"><img src="../assets/figures/insid3/insid3_fig2.png" alt="对 DINOv3 稠密特征做凝聚聚类，每对图左为输入、右为聚类图，簇贴合物体与部件级区域"></a><figcaption><strong>图 2：DINOv3 的图内分组是免费的。</strong>每对图左为输入、右为对 DINOv3 稠密特征做凝聚聚类的结果。簇边界自发贴合物体与部件——披萨被切成连贯块、人/家具各成一团。这是 INSID3 敢只用一个 backbone 的底气：能力 ②（图内分组）不需要任何监督，已经写在 DINOv3 的特征里。剩下的问题只在能力 ①（跨图匹配）。</figcaption></figure>
 </section>
@@ -417,7 +417,7 @@ body.lb-lock{overflow:hidden}
 <tr><td>个体（同一实例）</td><td>PerMIS</td><td>16 类，存在大量视觉相似干扰实例</td></tr>
 </tbody>
 </table></div>
-<p>评测协议：每个设定给<strong>一张</strong>标注参考 mask（1-shot；补充材料另测 5-shot），主指标 mIoU。语义对应迁移实验用 SPair-71k，指标 PCK@T。实现细节：DINOv3-Large 编码器，输入 resize 到 $1024\times1024$（对齐 SAM 类方法），mask 在 patch 分辨率预测后双线性插值回原图，并按 [21,22,40,60] 用一个 CRF [36] 做后处理精修。</p>
+<p>评测协议：每个设定给<strong>一张</strong>标注参考 mask（1-shot；补充材料另测 5-shot），主指标 mIoU。语义对应迁移实验用 SPair-71k，指标 PCK@T。实现细节：DINOv3-Large 编码器，输入 resize 到 $1024\times1024$（对齐 SAM 类方法），mask 在 patch 分辨率预测后双线性插值回原图，并按 [21,22,40,60] 用一个 CRF [36] 后处理并精修。</p>
 </section>
 
 <section id="pipeline">
@@ -474,7 +474,7 @@ body.lb-lock{overflow:hidden}
 </section>
 
 <section id="training">
-<h2>训练配置：没有训练——但"零超参调优"这件事本身要被验证<a class="anchor" href="#training">#</a></h2>
+<h2>训练配置：没有训练——但"零超参调优"这件事本身也要验证<a class="anchor" href="#training">#</a></h2>
 <p>INSID3 <strong>训练自由</strong>，所以这一节谈的是"超参与算力"，而不是优化器/学习率。论文的核心声明是：<strong>只有三个标量超参，且一次性在 COCO-20$^i$ 训练集上用 3 折交叉验证选定后，跨所有数据集/域/任务全部固定，不做任何 dataset/task 特定调优。</strong></p>
 <div class="table-wrap"><table>
 <caption>表 C：INSID3 的全部超参（补充材料表 6）</caption>
@@ -486,11 +486,11 @@ body.lb-lock{overflow:hidden}
 </tbody>
 </table></div>
 <p><strong>算力 / 推理成本（补充材料表 11–13）。</strong>单张 RTX 4090、$1024\times1024$ 下，INSID3 单样例推理 <strong>302ms</strong>，而最强基线 GF-SAM 要 1030ms、Matcher 要 9000ms。细分（表 12）：编码+去偏 78ms、相似度与簇打分 3ms、凝聚聚类 166ms（主成本，token 数二次复杂度）、CRF 精修 55ms。论文坦言所有计时为 32 位精度、100 次平均，半精度还能更快。<em>本文不涉及训练算力，故无 GPU-hours；上述推理时延为论文披露数字，不等同于你机器上的实际账单。</em></p>
-<aside class="note"><div class="note-title">为什么"零调优"是个需要被验证的主张</div>训练自由方法最容易被质疑的就是"是不是偷偷为每个数据集调了 $\tau/\alpha$"。论文用<strong>固定三超参 + 跨 9 基准全面领先</strong>来正面回应；补充材料 5-shot（表 7）更进一步——直接复用 1-shot 的全部超参、不引入任何新组件，仍稳涨，说明这套配置确实通用而非过拟合到某个基准。</aside>
+<aside class="note"><div class="note-title">为什么"零调优"是个需要验证的主张</div>训练自由方法最容易被质疑的就是"是不是偷偷为每个数据集调了 $\tau/\alpha$"。论文用<strong>固定三个超参 + 跨 9 个基准全面领先</strong>来正面回应；补充材料 5-shot（表 7）更进一步——直接复用 1-shot 的全部超参、不引入任何新组件，仍稳涨，说明这套配置确实通用而非过拟合到某个基准。</aside>
 </section>
 
 <section id="experiments">
-<h2>实验结果：9 基准全面领先，且赢在"分布外"<a class="anchor" href="#experiments">#</a></h2>
+<h2>实验结果：9 个基准全面领先，且赢在"分布外"<a class="anchor" href="#experiments">#</a></h2>
 <p>主结果是表 1（1-shot，mIoU%）。我把原表完整转写（这是论文最核心的论据，不做"按表 1"式略写）。灰底=该方法在对应数据集训练集上训过；INSID3 是表中<strong>唯一</strong>既不预训练用 mask 监督、也不微调的方法。</p>
 <div class="table-wrap"><table>
 <caption>表 1（完整转写）：1-shot 语义/部件/个体分割对比（mIoU %, ↑）。最佳加粗。† 为用 DINOv3 特征的 GF-SAM 变体。</caption>
@@ -585,27 +585,27 @@ body.lb-lock{overflow:hidden}
 <h2>局限与复现门槛：作者自陈 + reader 补刀<a class="anchor" href="#limitations">#</a></h2>
 <p><strong>作者自陈（补充 §F）：</strong></p>
 <ul>
-<li><strong>一次只处理一个目标概念。</strong>目标图里有多个概念时要分别给参考 prompt，缺一个"一次推理同时推理多概念"的机制。</li>
+<li><strong>一次只处理一个目标概念。</strong>目标图里有多个概念时要分别给参考 prompt，缺一个"一次推理同时处理多概念"的机制。</li>
 <li><strong>依赖 mask 形式的 prompt。</strong>不像 SAM 能用点/框这类更轻的标注；而 mask 更贵更慢，限制了交互式部署的便利性。论文把"支持更轻 prompt"和"实例级推理"列为未来方向。</li>
 </ul>
 <p><strong>reader 补刀（基于论文文本的推断，非作者声称）：</strong></p>
 <ul>
-<li><strong>性能上限被冻结 DINOv3 锁死。</strong>表 8 已表明全靠 DINOv3 的特征质量；DINOv3 本身在某个域弱，INSID3 在该域就弱，无法靠训练补救。</li>
+<li><strong>性能上限受冻结 DINOv3 锁定。</strong>表 8 已表明全靠 DINOv3 的特征质量；DINOv3 本身在某个域弱，INSID3 在该域就弱，无法靠训练补救。</li>
 <li><strong>凝聚聚类是 token 数二次复杂度。</strong>补充表 12 显示聚类 166ms 是单步最大成本；虽然表 13 表明高分辨率下仍可用（$1760^2$ 约 1.1s），但相对"一次矩阵乘"的去偏，这是真正的算力瓶颈。</li>
-<li><strong>三超参虽"一次定终身"，但都在 COCO 上选的。</strong>论文用跨域泛化结果间接说明其通用性；严格说，$\tau/\alpha/s$ 是否对某些极端域（如非自然图像）仍最优，是个开放问题——论文未对此逐域消融。</li>
+<li><strong>三个超参虽"一次定终身"，但都在 COCO 上选的。</strong>论文用跨域泛化结果间接说明其通用性；严格说，$\tau/\alpha/s$ 是否对某些极端域（如非自然图像）仍最优，是个开放问题——论文未对此逐域消融。</li>
 </ul>
-<p><strong>复现门槛：</strong>无需训练，门槛主要是 ① 拿到 DINOv3-Large 权重；② 一张噪声图离线估 $B$（一次性）；③ 一个 GPU 加速 dense CRF 做后处理。三超参公开（$\tau{=}0.6,\alpha{=}0.2,s{=}500$），官方代码已开源（见侧栏）。</p>
+<p><strong>复现门槛：</strong>无需训练，门槛主要是 ① 拿到 DINOv3-Large 权重；② 一张噪声图离线估 $B$（一次性）；③ 一个 GPU 加速 dense CRF 做后处理。三个超参公开（$\tau{=}0.6,\alpha{=}0.2,s{=}500$），官方代码已开源（见侧栏）。</p>
 </section>
 
 <section id="summary">
-<h2>总结：一个"认识论"贡献——分割不必被监督喂出来，它能从自监督表征里被"读"出来<a class="anchor" href="#summary">#</a></h2>
+<h2>总结：一个"认识论"贡献——分割不必靠监督喂出来，它能从自监督表征里被"读"出来<a class="anchor" href="#summary">#</a></h2>
 <p>INSID3 把一句直觉做成了系统：<strong>当一个自监督 backbone 同时拥有"图内连贯结构"和"跨图语义对应"，上下文分割就不再需要解码器、微调或 SAM——只需要正确地区分"何时该信任它的位置信息、何时该投掉它"。</strong>它的三个可独立验证的支点是：</p>
 <ol>
 <li><strong>位置偏置的发现与训练自由修正</strong>——用噪声图估低维位置子空间、正交投影投掉；并用 SPair-71k（解耦于分割）证明改善的是对应能力本身（+6.6 PCK），还能插到 GF-SAM 上涨点。</li>
 <li><strong>"两种读法"的分工</strong>——原始特征做图内聚类、去偏特征做跨图匹配，把 ICS 的两个相反诉求统一进一套表征。</li>
 <li><strong>乘法聚合</strong>——跨图语义 × 图内自相似的双门，把"克制定位 + 完整补全"这对张力解开。</li>
 </ol>
-<p>结果是 9 基准、四域、三粒度全面 SOTA（平均 +7.5 mIoU），参数仅 1/3、推理快 3 倍以上、零 mask 监督，外加 85% 的空 mask 判空率这种 SAM 系做不到的红利。它最值得带走的，不是某个 SOTA 数字，而是那条<strong>认识论</strong>主张：<em>随着自监督表征变强，"分割"这类下游能力可以从表征里直接涌现，而减少监督反而可能换来更鲁棒、更可迁移的表征。</em></p>
+<p>结果是 9 个基准、四个域、三个粒度全面 SOTA（平均 +7.5 mIoU），参数仅 1/3、推理快 3 倍以上、零 mask 监督，外加 85% 的空 mask 判空率这种 SAM 系做不到的红利。它最值得带走的，不是某个 SOTA 数字，而是那条<strong>认识论</strong>主张：<em>随着自监督表征变强，"分割"这类下游能力可以从表征里直接涌现，而减少监督反而可能换来更鲁棒、更可迁移的表征。</em></p>
 </section>
 
 <section id="references">
@@ -614,11 +614,11 @@ body.lb-lock{overflow:hidden}
 <li><strong>原始论文：</strong>Cuttano, Trivigno, Reich, Cremers, Masone, Roth. <em>INSID3: Training-Free In-Context Segmentation with DINOv3.</em> CVPR 2026（Oral）. arXiv:2603.28480v1. 项目页 <a href="https://visinf.github.io/INSID3/">visinf.github.io/INSID3</a>，代码 <a href="https://github.com/visinf/INSID3">github.com/visinf/INSID3</a>。</li>
 <li><strong>关键引用方法：</strong>DINOv3 [56]、DINOv2 [47]、SAM [33]、Matcher [39]、GF-SAM [69]、SegIC [41]、DiffewS [74]、PerSAM [72]、SegGPT/Painter [64,63]、SPair-71k [42]、凝聚聚类 [43]、CRF [36]。完整文献见原文 References。</li>
 <li><strong>kexue:su 归因红线：</strong>本页用 <code>kexue:su</code> 的科学推导方法论（动机先行、假设显式、≥2 路交叉验证、重新推导）组织机制部分；但检索其语料库时<strong>未命中任何与"位置偏置 / 正交投影去偏 / DINO 特征匹配 / 上下文分割"主题相关的卡片</strong>（返回的是 GAN 级联抑制、中文分词、Muon 优化器、Embedding 共享等无关条目）。按归因红线，<strong>全文不对苏剑林做任何 [archives/XXXX] 引用</strong>——只借方法、不虚构出处。</li>
-<li><strong>诚实边界：</strong>所有数字（表 1–13、PCK、参数量、时延）均转写自论文正文与补充材料；推理时延为论文披露数字、不等同于读者机器上的实际账单；"reader 补刀"一节明确标注为基于论文文本的推断而非作者声称；论文未逐项说明之处（如三超参对极端域是否仍最优）已写"论文未说明 / 未逐域消融"。</li>
+<li><strong>诚实边界：</strong>所有数字（表 1–13、PCK、参数量、时延）均转写自论文正文与补充材料；推理时延为论文披露数字、不等同于读者机器上的实际账单；"reader 补刀"一节明确标注为基于论文文本的推断而非作者声称；论文未逐项说明之处（如三个超参对极端域是否仍最优）已写"论文未说明 / 未逐域消融"。</li>
 </ul>
 </section>
 
 </main>
-<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与评测</a></li><li><a href="#pipeline">Pipeline 全景</a></li><li><a href="#method">方法 / 四机制</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>INSID3: Training-Free In-Context Segmentation with DINOv3</dd><dt>Venue</dt><dd>CVPR 2026 · Oral · Top Paper (candidate)</dd><dt>机构</dt><dd>Politecnico di Torino / TU Darmstadt / TU Munich / hessian.AI / ELIZA / MCML</dd><dt>基座</dt><dd>冻结 DINOv3-Large（304M），零训练</dd><dt>arXiv</dt><dd>2603.28480 v1</dd><dt>Topic</dt><dd>Training-Free In-Context Segmentation</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：三态泛化雷达图（单 backbone 撑最外圈）</li><li>图 3：去偏→聚类→选种子→聚合 全管线</li><li>式 2：噪声图估位置子空间 + 正交投影去偏</li><li>式 4：反向对应（吃负证据）</li><li>式 6：跨图语义 × 图内自相似 乘法聚合</li><li>表 1：9 基准全面 SOTA，平均 +7.5 mIoU、304M</li><li>表 2：SPair-71k 去偏迁移 +6.6 PCK</li><li>表 8：换掉 DINOv3 即崩（必要性）</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> INSID3 深读</p><p><span class="status-good">figures</span> 8 张 PNG（fig1/2/3/4/5/7/8/10，原生分辨率）</p><p><span class="status-good">tables</span> 表 1/2/3/8 全转写 + 表 5/7/9/10/11/12/13 数字引用</p><p><span class="status-good">formula</span> 式 1–6 待 MathJax 预检</p><p><span class="status-warn">scope</span> 训练自由；性能受冻结 DINOv3 上限锁定，一次一概念，依赖 mask prompt</p></div></section></aside></div>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与评测</a></li><li><a href="#pipeline">Pipeline 全景</a></li><li><a href="#method">方法 / 四机制</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>INSID3: Training-Free In-Context Segmentation with DINOv3</dd><dt>Venue</dt><dd>CVPR 2026 · Oral · Top Paper (candidate)</dd><dt>机构</dt><dd>Politecnico di Torino / TU Darmstadt / TU Munich / hessian.AI / ELIZA / MCML</dd><dt>基座</dt><dd>冻结 DINOv3-Large（304M），零训练</dd><dt>arXiv</dt><dd>2603.28480 v1</dd><dt>Topic</dt><dd>Training-Free In-Context Segmentation</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：三态泛化雷达图（单 backbone 撑最外圈）</li><li>图 3：去偏→聚类→选种子→聚合 全管线</li><li>式 2：噪声图估位置子空间 + 正交投影去偏</li><li>式 4：反向对应（吃负证据）</li><li>式 6：跨图语义 × 图内自相似 乘法聚合</li><li>表 1：9 个基准全面 SOTA，平均 +7.5 mIoU、304M</li><li>表 2：SPair-71k 去偏迁移 +6.6 PCK</li><li>表 8：换掉 DINOv3 即崩（必要性）</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> INSID3 深读</p><p><span class="status-good">figures</span> 8 张 PNG（fig1/2/3/4/5/7/8/10，原生分辨率）</p><p><span class="status-good">tables</span> 表 1/2/3/8 全转写 + 表 5/7/9/10/11/12/13 数字引用</p><p><span class="status-good">formula</span> 式 1–6 待 MathJax 预检</p><p><span class="status-warn">scope</span> 训练自由；性能受冻结 DINOv3 上限锁定，一次一概念，依赖 mask prompt</p></div></section></aside></div>
 </body>
 </html>
