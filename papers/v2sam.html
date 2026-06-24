@@ -455,7 +455,7 @@ body.lb-lock{overflow:hidden}
 <p class="formula-note"><strong>公式读法：</strong>$H_{ij}$ 衡量第 $i$ 个查询 patch 与第 $j$ 个目标 patch 的相似度。对每个查询 patch，取最相似目标 patch $j^*=\arg\max_j H_{ij}$，再把线性索引映回二维 patch 坐标，就得到一对跨视角对应点。<strong>关键约束（不可省）：</strong>只在查询掩码 $M_q$ 投到 DINOv3 patch 网格后选中的<strong>前景 patch</strong> 上做匹配——这一步把背景噪声压掉，让匹配集中在物体区域，是几何精度的前提。</p>
 
 <p><strong>第二步·点分层（Point Stratification）。</strong>即便加了前景约束，匹配点仍可能冗余或局部聚成一团。于是做一次分层采样，强制目标点之间有最小间距 $\tau$：</p>
-<div class="equation">$$P'_t=\{\,p_i \mid \lVert p_i-p_j\rVert_2 > \tau,\ \forall j<i\,\}$$<div class="eq-caption">式 2：最小间距分层采样</div></div>
+<div class="equation">$$P'_t=\{\,p_i \mid \lVert p_i-p_j\rVert_2 > \tau,\ \forall j\lt i\,\}$$<div class="eq-caption">式 2：最小间距分层采样</div></div>
 <p class="formula-note"><strong>公式读法：</strong>按顺序保留那些与已选点距离都大于 $\tau$ 的点，得到一个<strong>紧凑但空间多样</strong>的高质量对应集 $P'_t$。这步在 §ablations 里会被实验直接验证——"稀疏高置信"远好于"稠密"。</p>
 
 <p><strong>第三、四步·坐标变换与提示编码。</strong>$P'_t$ 是原图坐标系下的稀疏对应，经一个确定性几何投影 $\Pi(\cdot)$ 线性变换到 SAM2 的规范坐标空间 $\tilde P_t=\Pi(P'_t;(H_t,W_t))$，再送进提示编码器，得到目标视角的坐标提示 $P_{anchor}^{q2t}$。注意：去除离群点后<strong>取剩余匹配的质心</strong>作为高置信坐标，避免被邻近干扰物带偏。<strong>全程无可学习参数</strong>。</p>

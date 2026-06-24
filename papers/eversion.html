@@ -413,8 +413,8 @@ body.lb-lock{overflow:hidden}
 <div class="equation">$$f_1(i)=\frac{1}{1+e^{-(x_i-\beta_1)/\alpha_1}},\qquad f_2(i)=\frac{1}{1+e^{-(x_i-\beta_2)/\alpha_2}}$$<div class="eq-caption">式 1：两个 sigmoid 滤波器（$x_i$ 为方向导数图第 $i$ 点）。本文取 $\alpha_1{=}-4,\beta_1{=}-10$；$\alpha_2{=}4,\beta_2{=}-60$（外表面处方向导数约 20–50）。</div></div>
 <div class="equation">$$S(i)=1-\big[f_1(i)+f_2(i)-1\big]=2-f_1(i)-f_2(i)$$<div class="eq-caption">式 2：把两个 sigmoid <strong>并联</strong>合成 speed image。外表面边界处 $S\approx0$（黑），其余 $\approx1$（白）。</div></div>
 <div class="formula-note"><p class="note-title">公式读法：串联 vs 并联，差在"能不能同时照顾两种边界"</p><p>串联是先过一个再过另一个，输出受制于先过的那个，只能拟合<u>一种</u>趋势；并联是两个各自判断、再用 $2-f_1-f_2$ 合成——只要<u>任一</u>个判出"这里是外表面边界"，合成速度就压到 0。于是空气区与造影剂区的外表面能<u>同时</u>被正确停住（图 2c）。水平集再配 ITK 的 GAC（advection 0.2、propagation 0.2、curvature 0.4、max RMS 0.01、150 迭代）即可贴出真外表面。残留的"过膨胀/假连接"用基于测地距离的 FCS 分离掉。</p></div>
-<div class="formula-note"><p class="note-title">数学补遗 1 · 为什么"并联两个反向 sigmoid"= 一个软带通</p><p>把式 2 改写成 $S=(1-f_1)+(1-f_2)$。$S$ 要在外表面处 $\to0$，就需 $f_1\to1$ <u>且</u> $f_2\to1$。设 $f_1$ 是在阈 $a$ 处上升的软台阶（$x>a$ 时 $f_1\to1$）、$f_2$ 是在阈 $b$ 处下降的软台阶（$x<b$ 时 $f_2\to1$），则
-$$S\approx0\iff f_1{\approx}1\ \text{且}\ f_2{\approx}1\iff a<x<b,$$
+<div class="formula-note"><p class="note-title">数学补遗 1 · 为什么"并联两个反向 sigmoid"= 一个软带通</p><p>把式 2 改写成 $S=(1-f_1)+(1-f_2)$。$S$ 要在外表面处 $\to0$，就需 $f_1\to1$ <u>且</u> $f_2\to1$。设 $f_1$ 是在阈 $a$ 处上升的软台阶（$x>a$ 时 $f_1\to1$）、$f_2$ 是在阈 $b$ 处下降的软台阶（$x\lt b$ 时 $f_2\to1$），则
+$$S\approx0\iff f_1{\approx}1\ \text{且}\ f_2{\approx}1\iff a\lt x\lt b,$$
 即 $S$ 是一个中心落在外表面方向导数带 $(a,b)$ 上的<strong>软带通（smoothed top-hat）</strong>。空气区与造影剂区的外表面只要方向导数都落进 $(a,b)$，就被<u>同时</u>判成 $S\approx0$。反观<strong>串联</strong> $f_1\!\circ\!f_2$：两个单调 sigmoid 复合仍是单调软台阶，只有<u>一个</u>阈值、只能贴一侧趋势——这正是 Van Uitert 法在造影剂区失准（图 2b）的根。（注：式 1 中 $\alpha,\beta$ 由原文给定，其符号约定使带 $(a,b)$ 恰好罩住方向导数约 20–50 的外表面。）</p></div>
 <figure class="fig-grid">
 <figure><a href="../assets/figures/eversion/eversion_fig1.png"><img src="../assets/figures/eversion/eversion_fig1.png" alt="空气区与造影剂区边界的不同趋势"></a><figcaption><strong>图 1 · 两种边界趋势不同（论文 Fig. 1）。</strong>空气区边界与造影剂区边界在方向导数上趋势相反——这就是串联 sigmoid 只能照顾一种、必须并联的根由。</figcaption></figure>

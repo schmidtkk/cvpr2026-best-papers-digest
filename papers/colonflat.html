@@ -424,7 +424,7 @@ $$\frac{(a,b,c)}{a}=\Big(1,\tfrac43,\tfrac53\Big)=(1,\;1.333,\;1.667)\ \approx\ 
 棱方向相对误差约 $5.7\%$、角方向约 $3.7\%$。整数代价的好处是测地变换可由一次 raster 扫描的动态规划纯整数完成、无浮点累积误差。连续极限下这张测地图 $g$ 满足<strong>程函方程（eikonal equation）</strong> $\lVert\nabla g\rVert=1,\ g|_{\text{种子}}=0$——这条 $\lVert\nabla g\rVert=1$ 是下面 OSE 与 DCA 两处推导<u>共同的支点</u>：它说"沿任意方向走单位长度，测地值恰好涨 1"。</p></div>
 <div class="formula-note"><p class="note-title">为什么测地距离能"嗅"出粘连</p><p>因为肠腔是<strong>单连通管</strong>：沿管从直肠走到盲肠，$g$ 单调递增。对任一肠壁体素 $p$，看它小球邻域里的肠腔体素 $g$ 值——正常壁只贴着<u>一段</u>管腔，这些 $g$ 值彼此接近；粘连壁同时夹在<u>两段相距很远</u>的管腔之间（一段离种子近、一段远），$g$ 值就会横跨一大段（图 3（b）里那条实线长路径 + 虚线短路径）。"两条到种子的路径"正是粘连的几何指纹。</p></div>
 <p>把这个直觉写成算子。先定义球滤波器邻域（以肠壁体素 $p$ 为心、半径 $T_r$、只取落在肠腔里的体素）：</p>
-<div class="equation">$$N=\{\,q:\ \lVert q-p\rVert<T_r,\ q\in I,\ p\in S\,\}$$<div class="eq-caption">式 2：球滤波器邻域。$T_r=6.0$，对应可覆盖厚度 $\le 6\times0.5\times2=6$ mm 的肠壁（最小像素间距 0.5 mm）。</div></div>
+<div class="equation">$$N=\{\,q:\ \lVert q-p\rVert\lt T_r,\ q\in I,\ p\in S\,\}$$<div class="eq-caption">式 2：球滤波器邻域。$T_r=6.0$，对应可覆盖厚度 $\le 6\times0.5\times2=6$ mm 的肠壁（最小像素间距 0.5 mm）。</div></div>
 <p>再取这个邻域里测地值的<strong>极差</strong>作为粘连分数：</p>
 <div class="equation">$$\mathrm{dif}(p)=\max_{q\in N} g(q)-\min_{q\in N} g(q),\qquad p\in S$$<div class="eq-caption">式 3：球邻域内测地值的最大减最小。正常壁极差小，粘连壁极差大。</div></div>
 <div class="formula-note"><p class="note-title">公式读法</p><p>$\mathrm{dif}(p)$ 把一个<strong>全局拓扑问题</strong>（这根管在哪里碰到了自己）压成了一个<strong>局部标量测试</strong>（球里测地值的极差）。这是 OSE 最漂亮的一步：测地图把"我沿管走了多远"这条全局信息编码进每个体素，而粘连恰好是"两个差很远的'走了多远'在局部相遇"。$T_r$ 必须大于壁厚，球才能在粘连处同时够到两侧管腔；又不能太大，否则正常拐弯也会被桥接误判——这是一个显式权衡。</p></div>
