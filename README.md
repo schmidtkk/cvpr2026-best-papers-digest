@@ -1,4 +1,4 @@
-# CVPR 2026 Best Papers Digest
+# Paper Digest
 
 研究级 **Paper2Html** 深读博客集：为 CVPR 2026 的获奖论文与精选「Top Paper（候选）」逐篇生成
 中文学术深读。每篇不是摘要，而是「问题 → 引导 → 回答 → Takeaway」的苏格拉底式拆解，**图是证据、不是装饰**，

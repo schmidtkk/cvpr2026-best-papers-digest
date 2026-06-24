@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MuM 深读：为什么把 MAE“统一掩码”推广到任意多视图，反而比 CroCo / DINOv3 更会学几何？</title>
-<meta name="description" content="CVPR 2026 Best Papers Digest · MuM: Multi-View Masked Image Modeling for 3D Vision 学术深读">
+<meta name="description" content="Paper Digest · MuM: Multi-View Masked Image Modeling for 3D Vision 学术深读">
 <script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
 /* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
@@ -565,5 +565,5 @@ body.lb-lock{overflow:hidden}
 <li>图像说明：正文图均为本地 PNG，由 arXiv PDF 经 caption-anchored 提取器以 300 DPI 裁切（图 1 流程、图 2 训练动态、图 3 数据样例），路径位于 <code>assets/figures/mum/</code>；论文附录的法向/数据montage 等图非论证关键，未纳入。</li>
 </ol></section>
 
-</main><footer class="article-footer">CVPR 2026 Best Papers Digest · MuM 深读。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
+</main><footer class="article-footer">Paper Digest · MuM 深读。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
 <aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与任务</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法与公式</a></li><li><a href="#training">训练账本</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>MuM: Multi-View Masked Image Modeling for 3D Vision</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper（候选）</dd><dt>Team</dt><dd>Chalmers / Linköping / Amsterdam</dd><dt>arXiv</dt><dd>2511.17309</dd><dt>Topic</dt><dd>Multi-View MIM / 3D 几何表征</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：多视图掩码重建流程</li><li>图 2：训练动态</li><li>图 3：数据样例与重建</li><li>式 1：多视图重建损失</li><li>表 4：稠密匹配横评</li><li>表 10：SSL 目标消融</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> MuM 深读</p><p><span class="status-good">figures</span> 3 张 PNG 素材入库</p><p><span class="status-good">formula</span> MathJax 预检通过</p><p><span class="status-warn">scope</span> 几何强项、语义任务逊于 DINOv3</p></div></section></aside></div></body></html>
