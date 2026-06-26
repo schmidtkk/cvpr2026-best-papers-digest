@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VGGT-Segmentor 深读：VGGT 的逐点投影会漂、但注意力却很稳——凭什么把"稳的对齐"榨成"准的掩码"？</title>
-<meta name="description" content="VGGT-S 深读：在 ego–exo 跨视角实例分割里，VGGT 的逐像素点投影系统性漂移，但其 object-level attention 仍稳定落在目标区域。本文用 kexue:su 方法论拆解 Union Segmentation Head 的三阶段（Mask Prompt Fusion → Point-Guided Prediction → Mask Refinement）如何把不可靠的稀疏点当 prompt、靠特征融合与迭代修边把掩码拉回几何一致位置，并以单图自监督训练去掉配对标注，在 Ego–Exo4D 上 67.7 / 68.0 IoU 创 SOTA。">
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VGGT-Segmentor: turning reliable cross-view attention into precise masks</title>
+<meta name="description" content="Paper Digest · VGGT-Segmentor: Geometry-Enhanced Cross-View Segmentation — English deep-read">
 <script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+/* ===== Paper2Html shell · refined academic theme ===== */
 :root{
   --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
   --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
@@ -250,9 +250,9 @@ body.lb-lock{overflow:hidden}
     var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
     var overlay=document.createElement("div");
     overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
-    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+    overlay.innerHTML='<button class="lb-close" aria-label="Close">×</button>'+
       '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
-      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+      '<div class="lb-hint">Click anywhere or press Esc to close</div>';
     document.body.appendChild(overlay);
     var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
     function openLB(src,cap){
@@ -309,7 +309,7 @@ body.lb-lock{overflow:hidden}
     (function(){
       var title=document.querySelector(".site-title");if(!title)return;
       var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
-      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      var hp=nav.filter(function(a){return /home/i.test(a.textContent);})[0];
       if(hp)home=hp.getAttribute("href");
       else if(document.querySelector(".home"))home="index.html";
       if(!home)return;
@@ -327,12 +327,12 @@ body.lb-lock{overflow:hidden}
         function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
         if(!head.querySelector(".quick-links")){
           var bar=document.createElement("div");bar.className="quick-links";
-          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+          bar.innerHTML='<span class="ql-label">Links</span>'+chips();head.appendChild(bar);
         }
         var sb=document.querySelector(".sidebar");
         if(sb&&!sb.querySelector(".quick-links-side")){
           var card=document.createElement("section");card.className="side-card";
-          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          card.innerHTML='<h2 class="side-title">Links</h2><div class="side-body quick-links-side">'+chips()+'</div>';
           sb.insertBefore(card,sb.firstChild);
         }
       }
@@ -350,269 +350,480 @@ body.lb-lock{overflow:hidden}
 </script>
 </head>
 <body>
-<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>Cross-View Segmentation · 冻结 VGGT + Union Segmentation Head / 几何先验治跨视角对应</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
-<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Segmentation &gt; VGGT-Segmentor</div>
-<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">12</span><span class="month">Jun</span></div><h1 id="paper-title">VGGT-Segmentor 深读：VGGT 的逐点投影会漂、但注意力却很稳——凭什么把"稳的对齐"榨成"准的掩码"？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-12</span><span>CVPR 2026 · Top Paper (candidate) · Beihang University</span><span>来源：arXiv:2604.13596 PDF</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Cross-View Segmentation</span><span class="tag green">VGGT / 几何先验</span><span class="tag">Ego–Exo4D</span><span class="tag">Union Segmentation Head</span><span class="tag">单图自监督</span><span class="tag">MathJax checked</span></div></header>
-<main class="content">
+<header class="site-header">
+  <div class="site-header-inner">
+    <div>
+      <p class="site-title">Paper Digest<small>Cross-View Segmentation · Frozen VGGT + Union Segmentation Head</small></p>
+    </div>
+    <nav class="top-nav">
+      <a href="../index.html">Home</a>
+      <a href="#motivation">Problem</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#method">Method</a>
+      <a href="#experiments">Results</a>
+      <a href="#limitations">Limits</a>
+    </nav>
+  </div>
+</header>
 
-<p id="abstract" class="lead"><strong>导读。</strong>VGGT 是个"几何一致"的多视角大模型：一次前馈联合预测深度、相机参数、点图，给跨视角特征对齐打了很好的底子。可一旦你想拿它直接做<strong>跨视角实例分割</strong>——给定 ego（第一人称）一张图里某个物体的 mask，要在 exo（第三人称）那张图里把<em>同一个物理物体</em>抠出来——它会在一个意想不到的地方翻车：<strong>VGGT 的逐像素点投影会系统性漂移</strong>（把锅投到砧板上、把瓶子认成旁边那只长得像的瓶子），<strong>但它内部的 object-level attention 却仍然稳稳地落在目标大致区域</strong>。这就是本文的核心张力：<strong>同一个模型，"逐点重投影"不可信，"注意力对齐"却可信——你该信哪个、又怎么把"可信的那个"榨成一张像素级准确的掩码，而不被"不可信的那个"带偏？</strong>VGGT-Segmentor（VGGT-S）的答案是：冻住 VGGT，只加一个轻量 <strong>Union Segmentation Head</strong>；把漂移的稀疏点降格成"引导用的 prompt"而非"答案"；再靠特征融合形成空间共识、靠迭代修边把掩码拉回几何一致的位置。另外，它用一招<strong>单图自监督训练</strong>彻底甩掉配对标注。Ego–Exo4D 上 67.7%（Ego→Exo）/ 68.0%（Exo→Ego）IoU 创 SOTA，连"零配对标注"的预训练版都反超了一批全监督方法。</p>
+<div class="wrap">
+  <div class="breadcrumbs"><a href="../index.html">Home</a> &gt; CVPR 2026 &gt; Segmentation &gt; VGGT-Segmentor</div>
 
-<figure>
-  <a href="../assets/figures/vggtseg/vggtseg_fig1.png"><img src="../assets/figures/vggtseg/vggtseg_fig1.png" alt="VGGT 跨视角对应可视化：source 图采样点直接用 VGGT 投到 target 出现系统性漂移（中列红框 Wrong Projection），而同样这些点对应的 attention map（右列）却稳定聚焦在正确物体区域"></a>
-  <figcaption><strong>图 1（核心矛盾的实锤）。</strong>左：source 图。中：把 source 采样点用 VGGT 直接投到 target——红色"Wrong Projection!"标出投歪了的点，蓝色"Well-Aligned"是少数对上的。右：同样这些点（source 上的星标）在 target 上的 attention map——热区稳稳压在正确物体上。<strong>看点：逐点投影漂，但注意力不漂。</strong>这张图要支撑的结论是：不能直接拿 VGGT 投影当掩码，但可以信它的注意力；这也直接引出全篇的设计动机。</figcaption>
-</figure>
+  <article class="article" aria-labelledby="paper-title">
+    <header class="article-head clearfix">
+      <div class="date-card"><span class="day">12</span><span class="month">Jun</span></div>
+      <h1 id="paper-title">VGGT-Segmentor: how to use VGGT when its points drift but its object attention still lands</h1>
+      <div class="article-meta">
+        <span>Paper2Html</span>
+        <span>2026-06-12</span>
+        <span>CVPR 2026 · Top Paper candidate · Beihang University</span>
+        <span>Source: arXiv:2604.13596v3 PDF</span>
+      </div>
+      <div class="tags">
+        <span class="tag orange">Top Paper candidate</span>
+        <span class="tag">Cross-View Segmentation</span>
+        <span class="tag green">VGGT</span>
+        <span class="tag">Ego-Exo4D</span>
+        <span class="tag">Union Segmentation Head</span>
+        <span class="tag">Self-supervised Training</span>
+        <span class="tag">MathJax checked</span>
+      </div>
+    </header>
 
-<section id="motivation">
-<h2>一、核心问题：投影会漂、注意力却稳，这种"半可信"的几何先验该怎么用？</h2>
+    <div class="content">
+      <p id="lead" class="lead"><strong>Root question.</strong> Cross-view instance segmentation asks a model to take an object mask in one camera view and segment the same physical object in another view. The ego-exo version is especially hard because the first-person camera is close to hands and tools, while the exocentric camera sees a wider scene with many distractors. VGGT looks like the right foundation because it builds geometry-aware features across views, but the paper shows a failure that matters: direct point projection can drift badly under large viewpoint change and occlusion. The useful observation is narrower and more interesting: VGGT's internal attention still tends to land on the right object region even when the projected points are wrong. VGGT-Segmentor freezes VGGT and adds a Union Segmentation Head that fuses the source mask, uses tracked points only as weak prompts, and then refines the target mask. The result worth leading with is the zero-shot one: a correspondence-free VGGT-S, trained without any paired ego-exo labels, reports 54.1 and 58.4 IoU — already above DOMR's supervised 49.7 and 55.2. The fully supervised head then pushes that to 67.7 IoU for Ego-&gt;Exo and 68.0 for Exo-&gt;Ego. The caveat is equally important: VGGT-S is a spatial image-pair model, not a temporal tracker, and several ablations show that higher resolution or deeper decoding can score slightly higher at extra latency or memory cost.</p>
 
-<p><strong>问题。</strong>跨视角实例分割难在哪？ego 相机贴着操作者的手、exo 相机远在另一个高度甚至角度，同一个物体在两张图里尺度、视角、遮挡全变了——ego 帧常被手和工具挡住，exo 帧里又塞满了长得差不多的干扰物。直接做逐像素匹配天然不稳。早期路线要么靠语义一致性、要么塞个大语言模型补上下文，<strong>但都绕开了几何结构与空间关系</strong>，于是遇到"两只几乎一样的瓶子"就只能猜。</p>
+      <div id="hero" class="hero-split">
+        <div>
+          <div class="kv-grid">
+            <div class="kv"><b>One-line contribution</b>VGGT-S turns a geometry foundation model into a cross-view instance segmentor by learning only a lightweight head on top of frozen VGGT features.</div>
+            <div class="kv"><b>Key mechanism</b>The head separates two signals that VGGT mixes: object-level attention is trusted as a region prior, while point tracks are treated as sparse prompts rather than pixel-accurate answers.</div>
+            <div class="kv"><b>Core evidence</b>On Ego-Exo4D, supervised VGGT-S reaches 67.7/68.0 IoU versus DOMR's 49.7/55.2. More striking: the zero-shot VGGT-S row (54.1/58.4) already beats the supervised DOMR baseline without any paired ego-exo labels, while still trailing the supervised VGGT-S row.</div>
+            <div class="kv"><b>Reproduction boundary</b>The recipe depends on official VGGT settings, SAM-style pseudo masks for self-supervision, 4 NVIDIA RTX 4090 GPUs for the reported training, and the Ego-Exo4D official split.</div>
+          </div>
+        </div>
+        <figure class="hero-card">
+          <a href="../assets/figures/vggtseg/vggtseg_fig1.png"><img src="../assets/figures/vggtseg/vggtseg_fig1.png" alt="VGGT cross-view correspondence visualization showing wrong point projection but well-aligned attention maps"></a>
+          <figcaption><strong>Figure 1 · The failure that motivates the whole paper.</strong> The middle column shows source-sampled points projected into the target view by VGGT; several land on the wrong place. The right column shows the corresponding attention maps, which still concentrate around the correct object. The figure does not say that VGGT is unusable. It says that its point coordinates and its object-level alignment should not be trusted equally.</figcaption>
+        </figure>
+      </div>
 
-<p><strong>引导。</strong>VGGT 看起来是救星：它是几何驱动的大 transformer，联合推断深度/相机/点图，跨视角特征天然对齐。一个朴素想法是——既然 VGGT 能把 source 的点"投"到 target，那把 source mask 里的点全投过去，连起来不就是 target mask 了？<strong>本文恰恰证明这条捷径是错的。</strong>图 1 显示：在 ego–exo 这种强遮挡 + 大视角变化下，逐点投影会系统性漂移；但<em>同样这些点的内部注意力却仍然落在正确物体上</em>。</p>
+      <section id="motivation">
+        <h2>1. Motivation: what exactly fails when VGGT is used directly?</h2>
+        <p>VGGT is a visual geometry grounded transformer. In this paper, that means a multi-view model that jointly builds dense features, depth-like geometry, point maps, and tracking information from an image pair. For cross-view segmentation, a tempting shortcut is to sample points inside the source mask, project those points into the target view, and draw a mask around where they land.</p>
+        <p>Figure 1 shows why that shortcut is not enough. Ego-exo views break many assumptions that make point reprojection clean. The object can be close in the source view and small in the target view. Hands can hide the target. Nearby objects can share the same category and shape. Under those conditions, a few wrong points can pull a mask onto a distractor.</p>
+        <div class="socratic">
+          <p class="question">Q: If the points drift, why keep VGGT at all?</p>
+          <p class="guide">Guide: look at the mismatch between the two VGGT signals. Point coordinates are local and brittle. Attention over the target feature map is softer and object-level.</p>
+          <p class="answer">A: The paper keeps VGGT because its internal alignment remains useful even when its explicit projections are too noisy to be final masks. VGGT-S does not ask VGGT to solve segmentation by itself. It asks VGGT for cross-view features and weak point prompts, then lets a learned head decide how those cues should form a mask.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The paper's real design move is a trust split: use VGGT's region-level correspondence strongly, but use its projected points cautiously.</p>
+        </div>
+      </section>
 
-<p><strong>为什么会出现"投影漂 / 注意力稳"的撕裂？</strong>（这里用动机先行、并从两个角度交叉印证，是全篇机制的锚点。）</p>
-<ul>
-  <li><strong>自上而下的直觉。</strong>"逐点重投影"是一个<em>点级、需要精确深度与精确对应</em>的任务：遮挡让目标点在 target 里根本不可见，大基线让深度的小误差被放大成像素级的大偏移，于是单点投影的方差爆炸。而"object-level attention"是一个<em>区域级、软聚合</em>的量：它只需要"这一团 token 大致对上那一团 token"，对单点深度误差天然鲁棒。<strong>同一个表征，在"点精度"这个尺度上崩，在"区域聚合"这个尺度上稳</strong>——这不矛盾，是两个不同粒度的读出口。</li>
-  <li><strong>自下而上的旁证（后文表 3 会兑现）。</strong>如果"投影"本身可信，那把更多点投过去应该一路涨；可消融显示点数从 1→5 涨 6.2 IoU、5→9 只涨 0.6——稀疏锚点足矣，密集投影并不带来对应的密集收益。这反过来说明：点的价值在于"提供少量几何锚"，<strong>而不在于"逐点拼出掩码"</strong>。</li>
-</ul>
+      <section id="contribution">
+        <h2>2. Contribution: what is new, and what is inherited?</h2>
+        <p>The inherited part is the geometry backbone. VGGT-S uses VGGT's existing ability to process two views together and produce geometry-aware dense features. The paper does not retrain VGGT for the main framework; during training, the VGGT encoder remains frozen and only the Union Segmentation Head is optimized.</p>
+        <p>The new part is the head and the training strategy around it. The head has three stages. Mask Prompt Fusion injects the source mask into the source features and lets source and target features interact. Point-Guided Prediction samples representative points from the source mask, tracks them to the target view, and uses both source and tracked points as prompts. Mask Refinement iteratively sharpens the mask and corrects local misalignment.</p>
+        <p>The second contribution is Single-Image Self-Supervised Training. Instead of requiring paired ego-exo annotations, the model can train from a single image, an augmented view, and an offline pseudo mask from a segmentor such as SAM. The authors train a correspondence-free pretrained variant on a 1/20 subset of SA-1B. In Table 1, that zero-shot row is 54.1/58.4 IoU, above DOMR's supervised 49.7/55.2 and ObjectRelator's 45.4/50.9, but below supervised VGGT-S at 67.7/68.0.</p>
+      </section>
 
-<p><strong>回答（立题）。</strong>于是核心问题变得很具体：<strong>把 VGGT 的几何先验当成"半可信"——区域对齐可信、逐点投影不可信——该怎么设计读出头，让可信的部分主导、不可信的部分只做弱引导？</strong>VGGT-S 的回答是：①冻住 VGGT，只加轻量头（不破坏已学好的几何一致性）；②把漂移的投影点降级成稀疏 <em>prompt</em>，而非掩码答案；③靠双向特征融合形成"空间共识"、靠迭代修边把掩码拉回几何一致位置。</p>
+      <section id="datasets">
+        <h2>3. Datasets and tasks: what is being measured?</h2>
+        <p>The primary benchmark is the ego-exo correspondence split of Ego-Exo4D. A source image and source object mask are given. The model must produce the mask of the same physical object in the target view. The paper evaluates both directions: Ego-&gt;Exo and Exo-&gt;Ego.</p>
+        <p>The main metric is mean Intersection over Union (IoU), the overlap area between a predicted mask and its ground-truth mask divided by their union area; higher is better. The MvMHAT generalization table uses Average Precision (AP), an area-under-precision-recall style detection or association score; higher is better.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Dataset and evaluation facts stated in the paper.</strong></caption>
+            <thead>
+              <tr><th>Item</th><th>Paper statement</th><th>Role in this page</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Ego-Exo4D correspondence benchmark</td><td>1,335 annotated takes; 5,566 target objects; 1.8M masks sampled at 1 FPS; 742K egocentric masks and 1.1M exocentric masks.</td><td>Main benchmark for Tables 1 and 3-8.</td></tr>
+              <tr><td>Average video statistics</td><td>About 5.5 objects per video and 173 frames per track.</td><td>Explains why distractors and repeated objects are common.</td></tr>
+              <tr><td>Objects covered</td><td>Tools, relevant environmental items, and human body parts.</td><td>Cross-view matching is not only object-category recognition.</td></tr>
+              <tr><td>Train/validation split</td><td>The official split is used.</td><td>Prevents comparing against a custom split.</td></tr>
+              <tr><td>MvMHAT</td><td>The correspondence-free pretrained model is finetuned for 1 epoch before the AP result is reported.</td><td>Generalization check in Table 2, not the main training setting.</td></tr>
+              <tr><td>MAVREC</td><td>The paper says the correspondence-free pretrained model is also assessed on MAVREC, with details in supplementary material.</td><td>The main PDF does not print a numeric table for this result.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-<p class="takeaway"><strong>Takeaway：</strong>本文真正的贡献不是"又一个分割头"，而是<strong>精确判定一个强几何基座的"可信边界"</strong>——指出 VGGT 的注意力能用、逐点投影不能照搬，并据此把"不可信的输出"系统地降格使用。这一步判定，比任何模块都更值钱。</p>
-</section>
+      <section id="pipeline">
+        <h2>4. Pipeline: frozen VGGT plus a learned union head</h2>
+        <figure class="fig-wide">
+          <a href="../assets/figures/vggtseg/vggtseg_fig2.png"><img src="../assets/figures/vggtseg/vggtseg_fig2.png" alt="VGGT-S architecture with VGGT encoder, Mask Prompt Fusion, Point-Guided Prediction, and output mask prediction"></a>
+          <figcaption><strong>Figure 2 · The three-stage head is the bridge from geometry to masks.</strong> The frozen VGGT encoder produces source and target features. Mask Prompt Fusion injects the source mask and lets the two views exchange information at a bottleneck resolution. Point-Guided Prediction turns sampled source points and tracked target points into prompts. The final mask token is compared with target image features to produce the first target mask, which the refinement stage improves.</figcaption>
+        </figure>
+        <p>For a source-target image pair \((I_s,I_t)\), VGGT-S first follows the VGGT encoder path. A DINO-style stem patchifies each image. VGGT processes the two streams jointly, and a dense-prediction head converts the tokens into spatial feature maps.</p>
+        <div class="equation">$$
+\begin{aligned}
+x_s &= \mathrm{Stem}(I_s), \qquad x_t = \mathrm{Stem}(I_t), \\
+h_s,h_t &= \mathrm{VGGT}(x_s,x_t), \\
+F_s,F_t &= \mathrm{DPT}(h_s,h_t).
+\end{aligned}
+$$<div class="eq-caption">Eq. 1-3: VGGT feature extraction used by VGGT-S.</div></div>
+        <div class="formula-note">
+          <p class="note-title">How to read Eq. 1-3</p>
+          <p>\(I_s\) and \(I_t\) are the source and target images. \(x_s,x_t\) are patch tokens. \(h_s,h_t\) are the VGGT hidden representations, and \(F_s,F_t\) are dense feature maps used by the segmentation head. The important engineering choice is that this encoder is frozen during training.</p>
+        </div>
+        <div class="socratic">
+          <p class="question">Q: Why call it a union head rather than just a decoder?</p>
+          <p class="answer">A: Because the head does not decode the target view alone. It builds a joint source-target representation that contains the source mask, target features, tracked point prompts, and a learned output mask token. The target mask is predicted from that union, not from target appearance alone.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The pipeline makes the source mask part of cross-view reasoning before the model draws the target mask.</p>
+        </div>
+      </section>
 
-<section id="contribution">
-<h2>二、贡献拆解：三件事，分别对应"半可信"的三种用法</h2>
-<p>论文自陈三条贡献，我按"它们各自如何处理 VGGT 的半可信输出"重排，方便对上后文机制：</p>
-<ol>
-  <li><strong>VGGT-S 框架</strong>：一个几何增强的跨视角分割框架，充分利用 VGGT 的多视角几何表征，但<em>冻结编码器、只训练新头</em>——把"可信的几何对齐"原封保留。</li>
-  <li><strong>Union Segmentation Head</strong>：三阶段协同——Mask Prompt Fusion（把 source mask 注入双视角特征，形成区域级共识）、Point-Guided Prediction（把漂移的投影点当稀疏 prompt 弱引导）、Mask Refinement（迭代修边、补遮挡）。三阶段正好对应"用注意力 / 弱用投影 / 修不可信残差"。</li>
-  <li><strong>Single-Image Self-Supervised Training</strong>：单图自监督训练，去掉配对标注的依赖，让 Ego→Exo / Exo→Ego 都能在没有跨视角对应监督的情况下训练并强泛化。</li>
-</ol>
-<p><strong>读者侧判断（与作者主张分开）。</strong>第 2 条是工程主体，但第 1 条"冻结编码器"和第 3 条"单图自监督"才是让这套方案<em>可扩展</em>的关键：前者把训练代价压在轻量头上，后者把数据代价从"昂贵的跨视角配对"换成"任意单图 + 离线分割器伪标"。两者合起来，才支撑得起"correspondence-free 预训练版反超全监督"这个最反直觉的结果。</p>
-</section>
+      <section id="method">
+        <h2>5. Method: how the head uses trustworthy and untrustworthy cues</h2>
+        <h3>5.1 Mask Prompt Fusion</h3>
+        <p>The first stage turns the source mask into a feature-level prompt. A convolution maps the binary mask to an embedding \(E_m\), and that embedding is added to the source feature map. This tells the head which source-region features should matter before it exchanges information with the target view.</p>
+        <div class="equation">$$
+\begin{aligned}
+E_m &= \mathrm{Conv}(M_s), \\
+F_s' &= F_s + E_m.
+\end{aligned}
+$$<div class="eq-caption">Eq. 4-5: source-mask injection.</div></div>
+        <p>The target feature map still has not seen the source mask. Bottleneck Fusion handles that interaction. It downsamples the source and target feature maps, applies joint self-attention and a feed-forward network, then upsamples the fused maps back.</p>
+        <div class="equation">$$
+\begin{aligned}
+\tilde{F}_s &= D_r(F_s'), \qquad \tilde{F}_t = D_r(F_t), \\
+\dot{F}_s,\dot{F}_t &= \mathrm{FFN}\!\left(\mathrm{SelfAttn}\!\left([\tilde{F}_s,\tilde{F}_t]\right)\right), \\
+F_s^\star &= U_r(\dot{F}_s), \qquad F_t^\star = U_r(\dot{F}_t).
+\end{aligned}
+$$<div class="eq-caption">Eq. 6-8: Bottleneck Fusion.</div></div>
+        <div class="formula-note">
+          <p class="note-title">How to read Eq. 4-8</p>
+          <p>\(M_s\) is the source mask. \(D_r\) and \(U_r\) are downsampling and upsampling operators with ratio \(r\). \([\cdot,\cdot]\) denotes concatenation. The bottleneck is not cosmetic: Table 3 shows that adding BF raises IoU from 35.5 to 50.2 in Ego-&gt;Exo and from 37.1 to 52.3 in Exo-&gt;Ego.</p>
+        </div>
 
-<section id="datasets">
-<h2>三、数据：Ego–Exo4D 的对应基准长什么样</h2>
-<p>主实验用 <strong>Ego-Exo4D</strong> 的 ego–exo correspondence 基准：同步的第一/第三人称专业技能演示视频。规模与构成（均为论文披露数字）：</p>
-<table>
-<thead><tr><th>项目</th><th>数值 / 说明</th></tr></thead>
-<tbody>
-<tr><td>标注 takes</td><td>1,335</td></tr>
-<tr><td>目标物体数</td><td>5,566</td></tr>
-<tr><td>掩码总量（1 FPS 采样）</td><td>180 万（其中 ego 74.2 万、exo 110 万）</td></tr>
-<tr><td>平均每视频</td><td>约 5.5 个物体 / 173 帧每 track</td></tr>
-<tr><td>物体类别</td><td>工具、相关环境物件、人体部位</td></tr>
-<tr><td>划分 / 指标</td><td>官方 train/val 划分；指标为预测掩码与真值掩码的 mean IoU</td></tr>
-</tbody>
-</table>
-<p>泛化测试另用两个数据集：<strong>MvMHAT</strong>（多视角多人关联与跟踪，作泛化微调验证）与 <strong>MAVREC</strong>（多视角航拍户外，细节在补充材料，正文未给定量）。<strong>论文未说明</strong> Ego-Exo4D 各类别的精细分布。</p>
-<p class="takeaway"><strong>Takeaway：</strong>这是个"一帧图里多个物体、且物体之间长得像"的高干扰基准——正好暴露"无几何约束的方法会认错近邻同类物"的软肋，也正是几何先验该发力的地方。</p>
-</section>
+        <h3>5.2 Point-Guided Prediction</h3>
+        <p>The second stage uses points, but only as prompts. Let \(\Omega\) be the set of foreground pixels in the source mask. The paper samples \(K_{\mathrm{pt}}\) representative source points with K-Means, then asks VGGT's track head to map them into the target view.</p>
+        <div class="equation">$$
+\begin{aligned}
+\Omega &= \{(x,y)\mid M_s(x,y)=1\}, \\
+P_s &= \mathrm{kmeans}(\Omega,K_{\mathrm{pt}}), \\
+P_t &= \mathcal{T}(P_s; I_s,I_t).
+\end{aligned}
+$$<div class="eq-caption">Eq. 9-11: sampled source points and VGGT-tracked target points.</div></div>
+        <p>The model then builds prompt queries. \(G(P_s,F_s)\) samples source features at the source points. A prompt encoder \(\psi\) embeds source and target points. The learned output token \(O\) is appended because the model needs one query whose job is to become the mask.</p>
+        <div class="equation">$$
+\begin{aligned}
+E_p &= G(P_s,F_s), \qquad E_s = \psi(P_s), \qquad E_t = \psi(P_t), \\
+Q_0 &= [E_p,E_s,E_t,O].
+\end{aligned}
+$$<div class="eq-caption">Eq. 12-13: prompt query construction.</div></div>
+        <p>The decoder alternates among prompt self-attention, point-to-image cross-attention, and image-to-point cross-attention. This is the place where a point can help without being allowed to dictate the final mask location.</p>
+        <div class="equation">$$
+\begin{aligned}
+\bar{Q}_{\ell} &= \mathrm{SelfAttn}(Q_{\ell-1}), \\
+Q_{\ell} &= \mathrm{CrossAttn}_{P\to I}(\bar{Q}_{\ell},F_{\ell}^{\star}), \\
+H_{\ell} &= \mathrm{CrossAttn}_{I\to P}(F_{\ell}^{\star},Q_{\ell}), \qquad \ell=1,\ldots,L.
+\end{aligned}
+$$<div class="eq-caption">Eq. 14-16: bidirectional point-image interaction.</div></div>
+        <div class="formula-note">
+          <p class="note-title">How to read Eq. 9-16</p>
+          <p>\(P_s\) are representative source points and \(P_t\) are their tracked target positions. \(Q_\ell\) is the evolving prompt state, and \(H_\ell\) is the fused image feature state. The paper's default \(K_{\mathrm{pt}}\) is 5; Table 5 shows that 5 points is much better than 1 point, while 9 points adds only a small gain.</p>
+        </div>
 
-<section id="pipeline">
-<h2>四、Pipeline / 架构：冻结的 VGGT + 一个轻量 Union Segmentation Head</h2>
+        <h3>5.3 Mask prediction and refinement</h3>
+        <p>After the decoder, the output mask token performs one more point-to-image attention over the target fused features \(H_t\). The initial mask is produced by a per-pixel dot product between a transformed mask token and the target feature at each pixel.</p>
+        <div class="equation">$$
+\begin{aligned}
+\tilde{O} &= \mathrm{CrossAttn}_{P\to I}(O_L,H_t), \\
+z(x,y) &= \left(W\tilde{O}+b\right)^{\top}f_t(x,y), \\
+\hat{M}_t^{(0)}(x,y) &= \sigma(z(x,y)).
+\end{aligned}
+$$<div class="eq-caption">Eq. 17-19: initial target-mask logits.</div></div>
+        <p>The refinement module then takes the source image features, source mask, target features, the current target mask, and the refined prompt queries. It predicts an improved mask at the next iteration.</p>
+        <div class="equation">$$
+\hat{M}_t^{(k+1)} = \Psi\!\left(F_s,M_s,F_t,\hat{M}_t^{(k)},Q\right).
+$$<div class="eq-caption">Eq. 20: iterative mask refinement.</div></div>
+        <div class="formula-note">
+          <p class="note-title">How to read Eq. 17-20</p>
+          <p>\(W\) and \(b\) are the weights and bias of an MLP. \(f_t(x,y)\) is the target feature vector at pixel position \((x,y)\). \(\sigma\) is the sigmoid function, and \(\Psi\) is the lightweight mask decoder. Table 6 shows why this stage exists: two refinement iterations raise the no-refinement row from 62.2/63.5 IoU to 67.7/68.0.</p>
+        </div>
+      </section>
 
-<figure>
-  <a href="../assets/figures/vggtseg/vggtseg_fig2.png"><img src="../assets/figures/vggtseg/vggtseg_fig2.png" alt="VGGT-S 总体架构：左侧冻结的 VGGT 编码器产出双视角几何特征 Fs/Ft；(B) Mask Prompt Fusion 把 source mask 经卷积注入并经 Bottleneck Fusion（下采样-自注意力-FFN-上采样）做双视角融合；(C) Point-Guided Prediction 用 L 层 decoder 在点 prompt 与图像特征间做 P→I / I→P 双向 cross-attention，最后输出掩码 token 与 Ht 点积得初始掩码"></a>
-  <figcaption><strong>图 2（全篇骨架）。</strong>(A) 总体：冻结的 VGGT 编码器（粉色）出双视角几何对齐特征 $F_s,F_t$，下挂轻量 Union Segmentation Head。(B) Mask Prompt Fusion：source mask $M_s$ 经卷积变成嵌入加进 $F_s$，再经 Bottleneck Fusion（下采样 $D$→自注意力/FFN→上采样 $U$）让 $F_t$ 也吸到 source 的空间先验。(C) Point-Guided Prediction：把 source 点与 track 出的 target 点编码成 prompt query，$L$ 层 decoder 里交替做"点→图(P→I)"与"图→点(I→P)"双向 cross-attention，最后输出掩码 token 与目标特征 $H_t$ 做逐像素点积得到初始掩码 $\hat M_t$。<strong>看点：source mask 既作"区域 prompt"（B），点又作"稀疏锚 prompt"（C）——两种 prompt 都不直接当答案。</strong></figcaption>
-</figure>
+      <section id="training">
+        <h2>6. Training and compute: what the paper discloses</h2>
+        <p>The paper reports both implementation settings and a single-image self-supervised training route. The supervised setting trains the Union Segmentation Head while VGGT remains frozen. The correspondence-free pretrained variant uses single images, augmentation, and offline masks rather than paired ego-exo annotations.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Training and implementation details from the main PDF.</strong></caption>
+            <thead>
+              <tr><th>Component</th><th>Setting</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>VGGT encoder</td><td>Official VGGT encoder settings; image patch size 14; encoder frozen during training.</td></tr>
+              <tr><td>Mask Prompt Fusion</td><td>Source mask is downsampled by a convolution layer to half of the original resolution to match the VGGT output feature map.</td></tr>
+              <tr><td>Point-Guided Prediction</td><td>K-Means uses 5 clusters, matching the number of sampled points; clustering is refined only once to save training time.</td></tr>
+              <tr><td>Loss</td><td>Linear combination of focal loss and dice loss with weight ratio 20:1, following SAM.</td></tr>
+              <tr><td>Optimizer</td><td>AdamW; initial learning rate \(5\times10^{-5}\); weight decay \(1\times10^{-4}\).</td></tr>
+              <tr><td>Schedule</td><td>12 epochs; learning rate reduced by a factor of 0.1 after epochs 8 and 11.</td></tr>
+              <tr><td>Gradient clipping</td><td>\(L_2\) norm of all gradients clipped to 1.0.</td></tr>
+              <tr><td>Hardware and batch</td><td>4 NVIDIA RTX 4090 GPUs; batch size 8 during training.</td></tr>
+              <tr><td>Inference timing protocol</td><td>100 forward passes on a single image using one GPU; average time is reported. Ego-&gt;Exo remapping introduces an additional mapping step that is omitted in later timing tables.</td></tr>
+              <tr><td>Wall-clock training time</td><td>Not stated in the paper.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>For single-image self-supervision, the model receives an image \(I\), an augmented view \(I'\), and an offline pseudo mask \(M\). It must predict the same object mask on \(I'\). The augmentations have two families: VGGT-adaptive transforms such as scaling, mild rotation, and cropping, and VGGT-non-adaptive transforms such as large rotations and horizontal flips. The first family preserves point mapping; the second deliberately disrupts correspondence, forcing the mask head to survive less reliable prompts.</p>
+      </section>
 
-<p><strong>一句话流程（Exo→Ego 为例）。</strong>给一对 source–target 图 $(I_s,I_t)$：VGGT 出 $F_s,F_t$ → source mask $M_s$ 编码并注入跨视角特征交互 → 从 $M_s$ 采一小撮代表点、经 VGGT track head 投到 target 得 $P_t$ → 这些点 prompt 引导预测 target 掩码 $\hat M_t$。<strong>训练时 VGGT 全程冻结，只优化 Union Segmentation Head</strong>，端到端但算力/显存开销极小。</p>
+      <section id="experiments">
+        <h2>7. Experiments: where does VGGT-S win, and by how much?</h2>
+        <p>Table 1 is the central result. ZSL denotes zero-shot learning. Type S means spatial-only modeling, and Type ST means spatio-temporal modeling. The authors report both the correspondence-free pretrained VGGT-S row and the supervised VGGT-S row.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table 1.</strong> Ego-Exo4D comparison. IoU is mean Intersection over Union; higher is better.</caption>
+            <thead>
+              <tr><th>Method</th><th>ZSL</th><th>Type</th><th>Ego-&gt;Exo IoU</th><th>Exo-&gt;Ego IoU</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>XSegTx [21]</td><td>&#10003;</td><td>S</td><td>0.3</td><td>1.3</td></tr>
+              <tr><td>SEEM [55]</td><td>&#10003;</td><td>S</td><td>1.1</td><td>4.1</td></tr>
+              <tr><td>XSegTx [21]</td><td>&#215;</td><td>S</td><td>6.2</td><td>30.2</td></tr>
+              <tr><td>CMX [52]</td><td>&#215;</td><td>S</td><td>6.8</td><td>12.0</td></tr>
+              <tr><td>PSALM [54]</td><td>&#10003;</td><td>S</td><td>7.9</td><td>9.6</td></tr>
+              <tr><td>DCAMA [43]</td><td>&#10003;</td><td>S</td><td>9.7</td><td>14.1</td></tr>
+              <tr><td>XView-XMem [21]</td><td>&#10003;</td><td>ST</td><td>16.2</td><td>13.5</td></tr>
+              <tr><td>XView-XMem [21]</td><td>&#215;</td><td>ST</td><td>17.7</td><td>20.7</td></tr>
+              <tr><td>XView-XMem + XSegTx [21]</td><td>&#215;</td><td>ST</td><td>36.9</td><td>36.1</td></tr>
+              <tr><td>PCC [3]</td><td>&#215;</td><td>S</td><td>37.7</td><td>43.7</td></tr>
+              <tr><td>PSALM [54]</td><td>&#215;</td><td>S</td><td>41.3</td><td>47.3</td></tr>
+              <tr><td>ObjectRelator [17]</td><td>&#215;</td><td>S</td><td>45.4</td><td>50.9</td></tr>
+              <tr><td>DOMR [31]</td><td>&#215;</td><td>S</td><td>49.7</td><td>55.2</td></tr>
+              <tr><td><strong>VGGT-S (Ours, zero-shot)</strong></td><td>&#10003;</td><td>S</td><td><strong>54.1</strong></td><td><strong>58.4</strong></td></tr>
+              <tr><td><strong>VGGT-S (Ours, supervised)</strong></td><td>&#215;</td><td>S</td><td><strong>67.7</strong></td><td><strong>68.0</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The strongest supported claim is specific. The supervised VGGT-S row is best in both directions in Table 1, with 67.7 versus DOMR's 49.7 on Ego-&gt;Exo and 68.0 versus DOMR's 55.2 on Exo-&gt;Ego. The zero-shot VGGT-S row also beats DOMR in both directions, 54.1 versus 49.7 and 58.4 versus 55.2, but it remains 13.6 and 9.6 IoU points below the supervised VGGT-S row.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table 2.</strong> MvMHAT comparison after finetuning the correspondence-free pretrained model for 1 epoch. AP is Average Precision; higher is better.</caption>
+            <thead>
+              <tr><th>Method</th><th>AP</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>MvMHAT [20]</td><td>63.8</td></tr>
+              <tr><td>DOMR [31]</td><td>71.1</td></tr>
+              <tr><td><strong>VGGT-S (Ours)</strong></td><td><strong>80.7</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Table 2 supports a smaller generalization claim. After one epoch of finetuning on MvMHAT, VGGT-S reaches 80.7 AP, above DOMR's 71.1 and the MvMHAT method's 63.8. It does not prove zero-shot transfer to MvMHAT, because the reported row is finetuned.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/vggtseg/vggtseg_fig3.png"><img src="../assets/figures/vggtseg/vggtseg_fig3.png" alt="Qualitative comparison of VGGT-S and DOMR on Ego to Exo and Exo to Ego examples"></a>
+          <figcaption><strong>Figure 3 · Qualitative comparison against DOMR.</strong> In the Ego-&gt;Exo example, DOMR predicts the chopping board while VGGT-S identifies the pot. In the Exo-&gt;Ego example, two similar bottles are close together; DOMR confuses them, while VGGT-S selects the target. This figure is evidence for the geometric-disambiguation claim, not a replacement for Table 1.</figcaption>
+        </figure>
+        <figure class="fig-wide">
+          <a href="../assets/figures/vggtseg/vggtseg_fig4.png"><img src="../assets/figures/vggtseg/vggtseg_fig4.png" alt="Visualization showing Union Segmentation Head correcting target masks when raw VGGT points project to wrong locations"></a>
+          <figcaption><strong>Figure 4 · Why the head must correct the points.</strong> The raw VGGT point projections are visibly misplaced, but the Union Segmentation Head moves the final mask toward the geometrically consistent object region. This closes the loop with Figure 1: the method uses drift-prone points as prompts, then lets fused image features decide the mask.</figcaption>
+        </figure>
+      </section>
 
-<div class="equation">$$x_s=\mathrm{Stem}(I_s),\quad x_t=\mathrm{Stem}(I_t)\tag{1}$$
-$$h_s,h_t=\mathrm{VGGT}(x_s,x_t)\tag{2}$$
-$$F_s,F_t=\mathrm{DPT}(h_s,h_t)\tag{3}$$
-<div class="eq-caption">式 1–3（编码器读出口）：DINO 式 patch stem 把图切成 token；交替的 frame-wise / global 自注意力层处理双视角；DPT 式稠密头把 token 升采样融合成与深度/点图/跟踪几何对齐的稠密特征 $F_s,F_t$。注意这里读的是"稠密几何特征"，不是"投影点"——把可信的部分先拿出来。</div></div>
-</section>
+      <section id="ablations">
+        <h2>8. Ablations: which part explains the gain?</h2>
+        <p>The ablations are useful because they stop the story from becoming "VGGT plus any head works." Table 3 starts from a Plain Head and adds the proposed components one by one.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table 3.</strong> Component analysis. BF is Bottleneck Fusion, PGP is Point-Guided Prediction, and MR is Mask Refinement.</caption>
+            <thead>
+              <tr><th>Method</th><th>Ego-&gt;Exo IoU</th><th>Exo-&gt;Ego IoU</th><th>Time (ms)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Plain Head</td><td>35.5</td><td>37.1</td><td>105.8</td></tr>
+              <tr><td>+ BF</td><td>50.2</td><td>52.3</td><td>107.4</td></tr>
+              <tr><td>+ PGP</td><td>62.2</td><td>63.5</td><td>153.2</td></tr>
+              <tr><td><strong>+ MR</strong></td><td><strong>67.7</strong></td><td><strong>68.0</strong></td><td><strong>161.4</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Bottleneck Fusion gives the first large jump, from 35.5/37.1 to 50.2/52.3, with little reported latency change. Point-Guided Prediction gives the next jump, from 50.2/52.3 to 62.2/63.5, but it also raises time from 107.4 ms to 153.2 ms. Mask Refinement adds the final gain to 67.7/68.0 at 161.4 ms.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table 4.</strong> Effect of Bottleneck Fusion resolution.</caption>
+            <thead>
+              <tr><th>Fusion size</th><th>Ego-&gt;Exo IoU</th><th>Exo-&gt;Ego IoU</th><th>Time (ms)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>37 x 37</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
+              <tr><td>74 x 74</td><td><strong>68.4</strong></td><td><strong>68.5</strong></td><td>180.9</td></tr>
+              <tr><td>518 x 518</td><td>OOM</td><td>OOM</td><td>OOM</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Table 4 is an efficiency caveat. The default 37 x 37 bottleneck is not the highest-IoU row; 74 x 74 is 0.7 and 0.5 points higher, but it costs 19.5 ms more. Full 518 x 518 fusion runs out of memory in the reported setting.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table 5.</strong> Effect of the number of points in Point-Guided Prediction.</caption>
+            <thead>
+              <tr><th># Points</th><th>Ego-&gt;Exo IoU</th><th>Exo-&gt;Ego IoU</th><th>Time (ms)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>61.5</td><td>63.4</td><td>160.1</td></tr>
+              <tr><td>5</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
+              <tr><td>9</td><td><strong>68.3</strong></td><td><strong>68.5</strong></td><td>162.9</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Five points is the practical choice used in the final model. Nine points is slightly better, 68.3/68.5 versus 67.7/68.0, but the paper treats the gain as marginal. One point is much weaker, especially in Ego-&gt;Exo.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table 6.</strong> Effect of Mask Refinement iterations.</caption>
+            <thead>
+              <tr><th># Refine iterations</th><th>Ego-&gt;Exo IoU</th><th>Exo-&gt;Ego IoU</th><th>Time (ms)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>0</td><td>62.2</td><td>63.5</td><td>153.2</td></tr>
+              <tr><td>1</td><td>66.3</td><td>67.5</td><td>157.7</td></tr>
+              <tr><td>2</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
+              <tr><td>3</td><td><strong>67.9</strong></td><td><strong>68.4</strong></td><td>165.3</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Two refinement iterations are the default trade-off, not the absolute best row. Three iterations add 0.2 and 0.4 IoU points over two iterations, while increasing latency from 161.4 ms to 165.3 ms.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table 7.</strong> Effect of input image size.</caption>
+            <thead>
+              <tr><th>Image size</th><th>Ego-&gt;Exo IoU</th><th>Exo-&gt;Ego IoU</th><th>Time (ms)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>420 x 420</td><td>66.1</td><td>66.3</td><td>136.8</td></tr>
+              <tr><td>518 x 518</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
+              <tr><td>700 x 700</td><td><strong>68.5</strong></td><td><strong>68.9</strong></td><td>225.4</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The 700 x 700 row has the best IoU in Table 7, but it is much slower: 225.4 ms versus 161.4 ms at 518 x 518. The paper adopts 518 x 518 as the default balance point.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table 8.</strong> Effect of the number of decoder blocks.</caption>
+            <thead>
+              <tr><th># Blocks</th><th>Ego-&gt;Exo IoU</th><th>Exo-&gt;Ego IoU</th><th>Time (ms)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>65.1</td><td>65.5</td><td>158.2</td></tr>
+              <tr><td>2</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
+              <tr><td>3</td><td>68.4</td><td>68.7</td><td>165.4</td></tr>
+              <tr><td>6</td><td><strong>68.8</strong></td><td><strong>69.3</strong></td><td>176.8</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Again, the chosen default is not the peak score. Six blocks reach 68.8/69.3 but cost 176.8 ms. Two blocks keep the head compact while capturing most of the gain.</p>
+        <div class="socratic">
+          <p class="question">Q: Which ablation most directly supports the paper's mechanism?</p>
+          <p class="answer">A: Table 3 supports the mechanism most cleanly because it adds the three proposed stages in order. BF shows that source-mask-aware cross-view fusion matters. PGP shows that sparse point prompts add geometric anchors. MR shows that a final correction step is needed after those anchors. The other tables tune the trade-off between accuracy, latency, and memory.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The method is not one magic module. The gain comes from a sequence: fuse the source mask, guide with sparse points, then refine the mask.</p>
+        </div>
+      </section>
 
-<section id="method">
-<h2>五、方法 / 三阶段：怎么"信注意力、弱用投影、修残差"</h2>
+      <section id="limitations">
+        <h2>9. Limitations: where should the claim stop?</h2>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Limits and reproduction boundaries.</strong></caption>
+            <thead>
+              <tr><th>Boundary</th><th>Evidence in the paper</th><th>How to read it</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Spatial, not temporal</td><td>VGGT-S rows in Table 1 are Type S. XView-XMem rows are Type ST.</td><td>The result is strong for image-pair segmentation, but it is not a long-horizon video tracking claim.</td></tr>
+              <tr><td>Frozen foundation model dependency</td><td>The VGGT encoder remains frozen and the head consumes VGGT features, point tracks, and attention structure.</td><td>If VGGT's object-level alignment fails, the learned head has less useful signal to recover from.</td></tr>
+              <tr><td>Default configuration is a trade-off</td><td>Tables 4, 6, 7, and 8 all contain higher-IoU settings than the default row, but they increase latency or hit memory limits.</td><td>The reported main setting is chosen for balance, not for maximum ablation-table IoU.</td></tr>
+              <tr><td>Single-image self-supervision uses external masks</td><td>The self-supervised strategy obtains pseudo masks from an offline segmentor and trains on a 1/20 subset of SA-1B.</td><td>The approach reduces paired correspondence labels, but it does not remove all external supervision or data dependencies.</td></tr>
+              <tr><td>Supplementary dependence</td><td>Cropping, remapping, MAVREC details, and more refinement details are deferred to supplementary material.</td><td>A full reproduction needs the supplement or code, not only the main PDF.</td></tr>
+              <tr><td>Failure-rate analysis</td><td>The main PDF shows qualitative corrections but does not give a separate taxonomy or frequency of failure cases.</td><td>The figures explain plausible behavior; they do not quantify all failure modes.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-<h3>5.1 Mask Prompt Fusion——把 source mask 变成跨视角的"区域共识"</h3>
-<p><strong>动机先行。</strong>第一步要解决的不是"点准不准"，而是"target 那边到底大概在哪个区域"。所以先把 source mask 当成<em>区域级 prompt</em> 注进特征里，让 target 特征也拿到来自 source 物体的空间先验——这一步只用"可信的区域对齐"，完全不碰漂移的点。</p>
-<div class="equation">$$E_m=\mathrm{Conv}(M_s)\tag{4}$$
-$$F_s'=F_s+E_m\tag{5}$$
-<div class="eq-caption">式 4–5：把 source mask $M_s$ 卷成高维嵌入 $E_m$（编码它的空间布局与身份），直接加到 source 特征上。<strong>注意：</strong>此时 $M_s$ 只进了 $F_s'$，还没和 $F_t$ 充分交互——所以单靠这步不够，下面要补一个跨视角的 Bottleneck Fusion。</div></div>
-<div class="equation">$$\tilde F_s=D_r(F_s'),\quad \tilde F_t=D_r(F_t)\tag{6}$$
-$$\dot F_s,\dot F_t=\mathrm{FFN}\big(\mathrm{SelfAttn}([\tilde F_s,\tilde F_t])\big)\tag{7}$$
-$$F_s^\star=U_r(\dot F_s),\quad F_t^\star=U_r(\dot F_t)\tag{8}$$
-<div class="eq-caption">式 6–8（Bottleneck Fusion，本步关键）：先用比例 $r$ 下采样 $D_r$ 把双视角特征压小（否则全分辨率自注意力显存炸——式 6 的下采样正是后文"37×37 / 74×74 / 518×518 OOM"那张消融的来由），拼接后做自注意力 + FFN 让两视角充分耦合，再上采样 $U_r$ 还原。$F^\star=[F_s^\star,F_t^\star]$ 是同时含几何与语义、跨两视角的紧致表征。<strong>这一步是"区域共识"：让 target 特征先知道 source 物体大概是什么、大概在哪，再接受点引导。</strong></div></div>
+      <section id="summary">
+        <h2>10. Summary: the useful mental model</h2>
+        <p><strong>In one sentence:</strong> VGGT-Segmentor works by treating VGGT as a strong but uneven geometry prior: reliable enough for object-level alignment, too noisy for direct point-to-mask projection.</p>
+        <div class="note">
+          <p class="note-title">Three takeaways</p>
+          <ol>
+            <li>The main evidence is Table 1: supervised VGGT-S is best on both Ego-Exo4D directions, 67.7/68.0 versus DOMR's 49.7/55.2, and the zero-shot row is also above DOMR while staying below the supervised VGGT-S row.</li>
+            <li>The mechanism is supported by staged ablation: BF, PGP, and MR each add measurable IoU, with the largest individual jump coming from Bottleneck Fusion before point-guided prediction adds the next large gain.</li>
+            <li>The practical lesson is to grade a foundation model's outputs by reliability. VGGT-S trusts feature alignment most, point tracks less, and finalizes the mask only after learned fusion and refinement.</li>
+          </ol>
+        </div>
+      </section>
 
-<h3>5.2 Point-Guided Prediction——把漂移的投影点降级成"稀疏锚 prompt"</h3>
-<p><strong>动机先行（全篇机制的核心一招）。</strong>现在才轮到点。但记住图 1 的教训：<em>逐点投影会漂</em>。所以这里绝不把投影点当掩码，而是只采<strong>极少数</strong>代表点、当作"稀疏几何锚"去<em>引导</em>已经做过区域共识的特征——点错一两个，区域共识能兜住；点对的那几个，提供视角/尺度鲁棒的定位线索。</p>
-<div class="equation">$$\Omega=\{(x,y)\mid M_s(x,y)=1\}\tag{9}$$
-$$P_s=\mathrm{kmeans}(\Omega,K_{pt})\tag{10}$$
-$$P_t=\mathcal T(P_s;I_s,I_t)\tag{11}$$
-<div class="eq-caption">式 9–11：从 source mask 前景像素集 $\Omega$ 里用 K-Means 选 $K_{pt}$ 个代表点 $P_s$（默认 5 个，"代表性"而非"密集"），再经 VGGT track head $\mathcal T$ 投到 target 得 $P_t$。<strong>这就是那批会漂的点</strong>——但下面只拿它做 prompt。</div></div>
-<div class="equation">$$E_p=G(P_s,F_s),\quad E_s=\psi(P_s),\quad E_t=\psi(P_t)\tag{12}$$
-$$Q_0=[E_p,E_s,E_t,O]\tag{13}$$
-<div class="eq-caption">式 12–13：$\psi$ 是 prompt 编码器，把 source 点 $P_s$、target 点 $P_t$ 编码成嵌入 $E_s,E_t$；$E_p$ 是从 $F_s$ 采的 source 点特征；再拼上一个可学习的输出掩码 token $O$，组成 prompt query $Q_0$。<strong>点和掩码 token 一起进 query——点是"线索"，token 才是"将要长成掩码的那个槽"。</strong></div></div>
-<div class="equation">$$\bar Q_\ell=\mathrm{SelfAttn}(Q_{\ell-1})\tag{14}$$
-$$Q_\ell^\star=\mathrm{CrossAttn}_{P\to I}(\bar Q_\ell,F^\star)\tag{15}$$
-$$H_\ell=\mathrm{CrossAttn}_{I\to P}(F^\star,Q_\ell^\star),\quad \ell=1,\dots,L\tag{16}$$
-<div class="eq-caption">式 14–16（$L$ 层轻量 decoder，双向是要点）：每层先 prompt 自注意力，再"点→图"$P\to I$ 让 query 去读图像特征，再"图→点"$I\to P$ 把 query 的信息写回图像特征 $H_\ell$。<strong>双向的意义：</strong>不是单纯"点查图"，而是点与图互相校准——区域共识后的图像特征会拉回漂的点，对的点也会锐化图像特征。</div></div>
-<div class="equation">$$\tilde O=\mathrm{CrossAttn}_{P\to I}(O,H_t^L)\tag{17}$$
-$$z(x,y)=\big(W\tilde O+b\big)^{\!\top} f(x,y)\tag{18}$$
-$$\hat M_t^{(0)}(x,y)=\sigma\big(z(x,y)\big)\tag{19}$$
-<div class="eq-caption">式 17–19（读出初始掩码）：用精炼后的掩码 token $O$ 再对 target 侧融合特征 $H_t^L$ 做一次点→图注意力得 $\tilde O$；$\tilde O$ 经 MLP（权重 $W$、偏置 $b$）后与每个像素位置的特征 $f(x,y)$ 做点积，sigmoid 得到初始掩码 $\hat M_t^{(0)}$。<strong>公式读法：</strong>掩码 = "物体描述子 $\tilde O$" 与"逐像素特征"的相似度图——这是 SAM 系一脉的 token-点积式解码。</div></div>
+      <section id="references" class="references">
+        <h2>Sources and figure provenance</h2>
+        <ol>
+          <li>Yulu Gao*, Bohao Zhang*, Zongheng Tang, Jitong Liao, Wenjun Wu, Si Liu&#8224;. <em>VGGT-Segmentor: Geometry-Enhanced Cross-View Segmentation.</em> arXiv:2604.13596v3 [cs.CV], 22 May 2026. The author markers are reproduced as printed in the PDF: * equal contribution and &#8224; corresponding author.</li>
+          <li>All formulas, tables, training details, and numerical claims in this page are taken from <code>/tmp/vggtseg.txt</code>, produced with <code>pdftotext -layout cvpr2026-best-papers-digest/sources/vggtseg.pdf /tmp/vggtseg.txt</code>. Formula pages were visually checked from local PDF renders before writing the MathJax.</li>
+          <li>No external explanatory citations are fabricated in this page. Reader-side interpretations are separated from the paper's stated results and tied back to the printed tables or figures.</li>
+          <li>Figure provenance: all four in-body figures are local PNGs under <code>assets/figures/vggtseg/</code>, produced by the repository's caption-anchored extractor from the arXiv PDF, not by page screenshots or blind crops. Page Fig. 1 maps to paper Fig. 1 (<code>vggtseg_fig1.png</code>, VGGT point drift versus attention alignment). Page Fig. 2 maps to paper Fig. 2 (<code>vggtseg_fig2.png</code>, overall architecture and Union Segmentation Head). Page Fig. 3 maps to paper Fig. 3 (<code>vggtseg_fig3.png</code>, VGGT-S versus DOMR qualitative comparison). Page Fig. 4 maps to paper Fig. 4 (<code>vggtseg_fig4.png</code>, Union Segmentation Head correcting point drift).</li>
+        </ol>
+      </section>
+    </div>
 
-<h3>5.3 Mask Refinement——把不可信残差迭代修掉</h3>
-<p><strong>动机先行。</strong>即便有了区域共识 + 稀疏锚，边界仍可能糊、遮挡区仍可能漏。于是加一个迭代修边模块，专治"不可信的残差"：每轮重调边界、补遮挡。</p>
-<div class="equation">$$\hat M_t^{(k+1)}=\Psi\big(F_s,M_s,F_t,\hat M_t^{(k)},Q\big)\tag{20}$$
-<div class="eq-caption">式 20：第 $k$ 轮把当前预测 $\hat M_t^{(k)}$ 连同双视角特征、source mask、精炼 query $Q$ 一起喂给轻量掩码解码器 $\Psi$，输出更锐的 $\hat M_t^{(k+1)}$。训练时<strong>只对最后一轮迭代回传梯度，且每个 batch 仅一半样本走 refinement、另一半不走</strong>——这是个省显存又防过拟合的小技巧（避免每轮都回传导致训练代价线性膨胀，也让模型同时学会"一步到位"和"迭代修正"两种模式）。</div></div>
+    <footer class="article-footer">VGGT-Segmentor deep-read · English rewrite from the paper source text · Figures reused from local extracted assets.</footer>
+  </article>
 
-<h3>5.4 单图自监督训练——把"跨视角配对标注"换成"任意单图 + 增广"</h3>
-<p><strong>动机先行。</strong>跨视角配对标注又贵又少。能不能不用配对、只用单图就训出跨视角分割头？关键洞察：<em>VGGT 的跨视角能力已经预训练好了，下游头要学的只是"怎么把 VGGT 特征读成掩码"</em>——而这个读出能力，可以用"单图 + 几何增广"来模拟跨视角。</p>
-<p>给任意图 $I$，生成增广视图 $I'$，用离线分割器（SAM）拿伪 mask $M$，要求模型在 $I'$ 上预测同一物体的掩码 $\hat M'$。增广分两族，对应 VGGT 的两种工作模式：</p>
-<ul>
-  <li><strong>VGGT-adaptive</strong>（缩放、轻微旋转、裁剪）：保留 VGGT 的点映射。此时<em>两个视图都过 VGGT 编码器</em>，由 track head 在 target 视图上生成点 prompt——模拟"投影还算可信"的情形。</li>
-  <li><strong>VGGT-non-adaptive</strong>（大幅旋转、水平翻转）：严重破坏跨视角对齐、让 VGGT 失去有效对应。此时<em>两个视图各自独立过 VGGT 编码器</em>，并对 target 真值点加扰动来合成 prompt——模拟"投影不可信、得靠区域共识"的情形。</li>
-</ul>
-<p><strong>为什么要混两族（交叉验证式设计）。</strong>只喂 adaptive，模型会过度信任投影；只喂 non-adaptive，模型学不到"投影可信时怎么用"。混合后，模型学到一个<em>与 VGGT 特征对齐、且对投影漂移鲁棒</em>的掩码头——这正好覆盖真实 ego–exo 里"有时投影准、有时全漂"的整个谱系。作者在 SA-1B 的 1/20 子集上训出 correspondence-free 预训练版，直接在 Ego-Exo4D 上评测仍有竞争力（后文表 1 兑现）。</p>
-<p class="takeaway"><strong>Takeaway：</strong>三阶段不是堆模块，是一条"信任度递降"的流水线——先用最可信的区域对齐定大区域（5.1），再用半可信的稀疏点做锚定（5.2），最后用迭代修边清理不可信的残差（5.3）；单图自监督（5.4）则把"跨视角"这件昂贵的事，用"单图增广模拟两种投影可信度"廉价地造了出来。</p>
-</section>
-
-<section id="training">
-<h2>六、训练配置（均为论文披露）</h2>
-<table>
-<thead><tr><th>项</th><th>设置</th></tr></thead>
-<tbody>
-<tr><td>VGGT 编码器</td><td>官方设置，patch size 14，<strong>全程冻结</strong>，只训 Union Segmentation Head</td></tr>
-<tr><td>Mask Prompt Fusion</td><td>source mask 经卷积下采样到原分辨率一半，对齐 VGGT 输出特征图</td></tr>
-<tr><td>Point-Guided Prediction</td><td>K-Means 聚类数 = 5（匹配采样点数）；聚类只精炼一次以省训练时间</td></tr>
-<tr><td>损失</td><td>沿用 SAM：focal + dice 线性组合，权重比 20 : 1</td></tr>
-<tr><td>优化器 / LR</td><td>AdamW，初始 lr $5\times10^{-5}$，weight decay $1\times10^{-4}$</td></tr>
-<tr><td>训练轮数</td><td>12 epochs；第 8、11 epoch 后 lr ×0.1；梯度 $L_2$ 范数裁剪到 1.0</td></tr>
-<tr><td>硬件 / batch</td><td>4× NVIDIA RTX 4090，batch size 8</td></tr>
-<tr><td>推理计时</td><td>单 GPU 单图跑 100 次前传取均值；Ego→Exo 的额外 remapping 步在计时中略去</td></tr>
-</tbody>
-</table>
-<p><strong>算力口径声明。</strong>论文给出"4× RTX 4090、12 epochs"，但<strong>未披露总训练时长 / GPU-hours</strong>；任何由此外推的 GPU-hours 数字都属"按论文披露数字粗略估算，不等同于实际账单"，本文不擅自给。</p>
-</section>
-
-<section id="experiments">
-<h2>七、实验结果：SOTA，且"零配对标注版"反超一批全监督</h2>
-<p><strong>主结果（表 1，全表转写）。</strong>ZSL = 零样本；Type S = 仅空间建模，Type ST = 时空建模。VGGT-S 同时给出监督与零样本两档。</p>
-<table>
-<thead><tr><th>方法</th><th>ZSL</th><th>Type</th><th>Ego→Exo IoU↑</th><th>Exo→Ego IoU↑</th></tr></thead>
-<tbody>
-<tr><td>XSegTx</td><td>✓</td><td>S</td><td>0.3</td><td>1.3</td></tr>
-<tr><td>SEEM</td><td>✓</td><td>S</td><td>1.1</td><td>4.1</td></tr>
-<tr><td>XSegTx</td><td>×</td><td>S</td><td>6.2</td><td>30.2</td></tr>
-<tr><td>CMX</td><td>×</td><td>S</td><td>6.8</td><td>12.0</td></tr>
-<tr><td>PSALM</td><td>✓</td><td>S</td><td>7.9</td><td>9.6</td></tr>
-<tr><td>DCAMA</td><td>✓</td><td>S</td><td>9.7</td><td>14.1</td></tr>
-<tr><td>XView-XMem</td><td>✓</td><td>ST</td><td>16.2</td><td>13.5</td></tr>
-<tr><td>XView-XMem</td><td>×</td><td>ST</td><td>17.7</td><td>20.7</td></tr>
-<tr><td>XView-XMem + XSegTx</td><td>×</td><td>ST</td><td>36.9</td><td>36.1</td></tr>
-<tr><td>PCC</td><td>×</td><td>S</td><td>37.7</td><td>43.7</td></tr>
-<tr><td>PSALM</td><td>×</td><td>S</td><td>41.3</td><td>47.3</td></tr>
-<tr><td>ObjectRelator（LLM）</td><td>×</td><td>S</td><td>45.4</td><td>50.9</td></tr>
-<tr><td>DOMR（前 SOTA）</td><td>×</td><td>S</td><td>49.7</td><td>55.2</td></tr>
-<tr><td><strong>VGGT-S（零样本）</strong></td><td>✓</td><td>S</td><td><strong>54.1</strong></td><td><strong>58.4</strong></td></tr>
-<tr><td><strong>VGGT-S（监督）</strong></td><td>×</td><td>S</td><td><strong>67.7</strong></td><td><strong>68.0</strong></td></tr>
-</tbody>
-</table>
-<p><strong>怎么读这张表（动机：每个数都该支撑一个论点）。</strong></p>
-<ul>
-  <li><strong>监督版 67.7 / 68.0</strong>，比前 SOTA DOMR 高 18.0 / 12.8，比 LLM 路线 ObjectRelator 高 22.3 / 17.1——证明"几何先验 + 正确的半可信用法"打得过"靠 LLM 补语义"。</li>
-  <li><strong>零样本版 54.1 / 58.4 反超监督的 DOMR（49.7 / 55.2）</strong>，gains 4.4 / 3.2。这是最反直觉的一条：correspondence-free 预训练 + 单图自监督，居然超过吃了配对标注的全监督方法——印证 5.4 的设计赌注成立。</li>
-  <li>零样本版还把 PSALM（×，41.3/47.3）甩开 46.2 / 48.8、把用了时空线索的 XView-XMem（×, ST）甩开 37.9 / 44.9——<strong>VGGT-S 只用图像级特征、不用时序，仍打过时空方法</strong>，说明几何对齐比时序记忆更能治"认错近邻同类物"。</li>
-</ul>
-
-<p><strong>泛化（表 2，全表转写，MvMHAT 数据集，指标 AP）。</strong>把 correspondence-free 预训练版在 MvMHAT 上仅微调 1 个 epoch：</p>
-<table>
-<thead><tr><th>方法</th><th>AP</th></tr></thead>
-<tbody>
-<tr><td>MvMHAT</td><td>63.8</td></tr>
-<tr><td>DOMR</td><td>71.1</td></tr>
-<tr><td><strong>VGGT-S（Ours）</strong></td><td><strong>80.7</strong></td></tr>
-</tbody>
-</table>
-<p>1 epoch 微调即 80.7 AP，超 DOMR 9.6、超 MvMHAT 原方法 16.9——强泛化的旁证。</p>
-
-<figure>
-  <a href="../assets/figures/vggtseg/vggtseg_fig3.png"><img src="../assets/figures/vggtseg/vggtseg_fig3.png" alt="VGGT-S vs DOMR 定性对比：Ego→Exo 行 DOMR 把砧板当成预测结果，VGGT-S 正确识别锅；Exo→Ego 行有两只相似瓶子，DOMR 因缺几何信息混淆，VGGT-S 仍准确"></a>
-  <figcaption><strong>图 3（定性对比，证"几何治混淆"）。</strong>上行 Ego→Exo：DOMR 误把砧板当成目标，VGGT-S 正确认出锅。下行 Exo→Ego：旁边有两只长得几乎一样的瓶子，DOMR 因缺几何信息混淆，VGGT-S 仍准确。<strong>看点：在"近邻同类干扰物"这一最考验几何约束的场景，VGGT-S 把对应搜索限制在几何合理区域，干净利落地避开 look-alike。</strong>这正是表 1 里"超 LLM 路线"的可视化注脚。</figcaption>
-</figure>
-
-<figure>
-  <a href="../assets/figures/vggtseg/vggtseg_fig4.png"><img src="../assets/figures/vggtseg/vggtseg_fig4.png" alt="Union Segmentation Head 效果可视化：尽管 VGGT 把点投到错误位置，Union Segmentation Head 仍把预测掩码调整到几何一致的位置"></a>
-  <figcaption><strong>图 4（机制自证，呼应图 1）。</strong>即便 VGGT 把点投到了错误位置，Union Segmentation Head 仍通过特征融合与"空间共识"把掩码拉回几何一致的位置。<strong>看点：这张图直接兑现 5.2 的核心主张——"漂的点只当 prompt、不当答案"，最终掩码由区域共识主导而非逐点投影。</strong></figcaption>
-</figure>
-</section>
-
-<section id="ablations">
-<h2>八、消融：每个模块、每个超参各支撑一个论点</h2>
-
-<p><strong>组件分析（表 3，全表转写）。</strong>BF = Bottleneck Fusion，PGP = Point-Guided Prediction，MR = Mask Refinement；从 Plain Head 起逐件加。</p>
-<table>
-<thead><tr><th>配置</th><th>Ego→Exo IoU↑</th><th>Exo→Ego IoU↑</th><th>Time (ms)</th></tr></thead>
-<tbody>
-<tr><td>Plain Head</td><td>35.5</td><td>37.1</td><td>105.8</td></tr>
-<tr><td>+ BF</td><td>50.2</td><td>52.3</td><td>107.4</td></tr>
-<tr><td>+ PGP</td><td>62.2</td><td>63.5</td><td>153.2</td></tr>
-<tr><td>+ MR</td><td><strong>67.7</strong></td><td><strong>68.0</strong></td><td>161.4</td></tr>
-</tbody>
-</table>
-<p><strong>这张表是全篇机制的量化总账：</strong>Plain Head 只编码 source mask + 输出掩码 token，35.5/37.1；加 BF（区域共识）猛涨到 50.2/52.3 且几乎不加时延（+1.6ms）——证明"跨视角特征聚合"是视角迁移的关键；加 PGP（稀疏锚 prompt）再涨到 62.2/63.5——证明几何锚对视角/尺度变化鲁棒；加 MR（迭代修边）到 67.7/68.0——以极小开销修边补遮挡。全栈相对 Plain Head 共涨 32.2 / 30.9，正好对应 5.1–5.3 三步各自的必要性。</p>
-
-<p><strong>四个超参消融（表 4–8，代表行转写，趋势完整保留）。</strong>这几张表都遵循同一逻辑——"更大/更多通常更准，但默认值取在性价比拐点"：</p>
-<table>
-<thead><tr><th>消融维度</th><th>取值</th><th>Ego→Exo</th><th>Exo→Ego</th><th>Time(ms)</th><th>默认 & 结论</th></tr></thead>
-<tbody>
-<tr><td rowspan="3">Bottleneck Fusion 分辨率（表 4）</td><td>37×37</td><td>67.7</td><td>68.0</td><td>161.4</td><td rowspan="3"><strong>默认 37×37</strong>：74×74 仅 +0.7/+0.5 却更慢；518×518 训练 OOM</td></tr>
-<tr><td>74×74</td><td>68.4</td><td>68.5</td><td>180.9</td></tr>
-<tr><td>518×518</td><td>OOM</td><td>OOM</td><td>OOM</td></tr>
-<tr><td rowspan="3">点数（表 5）</td><td>1</td><td>61.5</td><td>63.4</td><td>160.1</td><td rowspan="3"><strong>默认 5</strong>：1→5 涨 6.2/4.6，5→9 仅 +0.6/+0.5——稀疏锚足矣</td></tr>
-<tr><td>5</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
-<tr><td>9</td><td>68.3</td><td>68.5</td><td>162.9</td></tr>
-<tr><td rowspan="3">Mask Refinement 迭代（表 6）</td><td>0</td><td>62.2</td><td>63.5</td><td>153.2</td><td rowspan="3"><strong>默认 2</strong>：0→3 共涨 +5.7/+4.9 但近线性增时延；2 次为性价比拐点</td></tr>
-<tr><td>2</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
-<tr><td>3</td><td>67.9</td><td>68.4</td><td>165.3</td></tr>
-<tr><td rowspan="3">输入图像尺寸（表 7）</td><td>420×420</td><td>66.1</td><td>66.3</td><td>136.8</td><td rowspan="3"><strong>默认 518×518</strong>：单调更准但更慢；512 档平衡精度/效率</td></tr>
-<tr><td>518×518</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
-<tr><td>700×700</td><td>68.5</td><td>68.9</td><td>225.4</td></tr>
-<tr><td rowspan="3">Decoder 块数（表 8）</td><td>1</td><td>65.1</td><td>65.5</td><td>158.2</td><td rowspan="3"><strong>默认 2</strong>：1→6 单调微涨；2 块已抓住大部分点-图迭代收益</td></tr>
-<tr><td>2</td><td>67.7</td><td>68.0</td><td>161.4</td></tr>
-<tr><td>6</td><td>68.8</td><td>69.3</td><td>176.8</td></tr>
-</tbody>
-</table>
-<p><strong>读法（点数消融最值得细看）。</strong>"点数 1→5 涨 6.2、5→9 几乎不涨"这条，正是 §一里那个判断的实锤——<em>如果逐点投影可信，点越多越准；可它在 5 点就饱和</em>，说明点的作用是"提供少量几何锚"，多了反而把漂移的噪声也一起喂进来。这把"投影只能当作稀疏 prompt"从设计主张升级成了可证伪的实验结论。</p>
-</section>
-
-<section id="limitations">
-<h2>九、局限与复现门槛</h2>
-<ul>
-  <li><strong>冻结的 VGGT 锁住性能天花板。</strong>整套头建在"VGGT 注意力可信"的前提上；若某场景 VGGT 的区域对齐本身就崩（极端遮挡 + 极端基线同时发生），区域共识无源可依，三阶段都会受限。论文未给这类失败率的定量统计。</li>
-  <li><strong>更大配置普遍更准，默认值是性价比折中。</strong>表 4/7/8 都显示"加分辨率/加块数还能涨"，作者为效率取了小配置；这意味着<strong>报告数字不是该架构的精度上限</strong>，复现时若放宽算力可能更高（但 Bottleneck Fusion 518×518 直接 OOM，提示显存是硬约束）。</li>
-  <li><strong>仅空间、无时序。</strong>VGGT-S 是 Type S，只用图像级特征。这是优点（简单、超过时空方法）也是边界——它不建模时间一致性，视频级长程跟踪并非其目标场景。</li>
-  <li><strong>户外/航拍泛化只在补充材料定性给出。</strong>MAVREC 上"Details and visualization can be found in the Supplementary Material"，正文无定量——<strong>论文未说明</strong>其户外定量表现。</li>
-  <li><strong>计时口径略去部分步骤。</strong>Ego→Exo 的额外 remapping 步未计入计时；推理时延是单图 100 次前传均值，与真实部署吞吐不完全等价。</li>
-  <li><strong>复现门槛。</strong>需要 VGGT 官方权重 + SAM 当离线伪标分割器 + Ego-Exo4D 官方划分；单图自监督版还需 SA-1B 的 1/20 子集。代码已开源（见下）。</li>
-</ul>
-</section>
-
-<section id="summary">
-<h2>十、总结：一篇"先判定可信边界、再据此设计"的范本</h2>
-<p>VGGT-S 最该被记住的，不是它在 Ego-Exo4D 上把 IoU 推到 67.7/68.0，而是它<strong>先用图 1 把一个强基座的"可信边界"判定清楚</strong>——VGGT 的 object-level 注意力可信、逐像素点投影不可信——再据此把"不可信的输出"系统地降级使用：区域共识（信注意力）→ 稀疏锚 prompt（弱用投影）→ 迭代修边（修残差）。这条"信任度递降"的流水线，配上"用单图增广模拟两种投影可信度"的自监督训练，让一个零配对标注的版本都能反超全监督前 SOTA。对做"基于基础模型的下游头"的人，这套"判定可信边界 → 据此分配信任"的方法论，比任何具体模块都更可迁移。</p>
-<p class="takeaway"><strong>一句话 Takeaway：</strong>当一个强模型的输出"半可信"时，正确做法不是整体信或整体弃，而是<strong>精确切分出可信的子量、把不可信的部分降格成弱引导并迭代修正</strong>——VGGT-S 把这条原则在跨视角分割上做成了 SOTA。</p>
-</section>
-
-<section id="references">
-<h2>参考与引用说明</h2>
-<ul>
-  <li><strong>原文：</strong>Yulu Gao, Bohao Zhang, Zongheng Tang, Jitong Liao, Wenjun Wu, Si Liu. <em>VGGT-Segmentor: Geometry-Enhanced Cross-View Segmentation.</em> arXiv:2604.13596v3（CVPR 2026）。本深读的全部公式、表格、数字均以该 PDF 为准；缺失处标注"论文未说明"。</li>
-  <li><strong>代码：</strong><a href="https://github.com/buaa-colalab/VGGT-S">github.com/buaa-colalab/VGGT-S</a>（HTTP 200，已核验）。</li>
-  <li><strong>CVF：</strong><a href="https://openaccess.thecvf.com/content/CVPR2026/html/Gao_VGGT-Segmentor_Geometry-Enhanced_Cross-View_Segmentation_CVPR_2026_paper.html">CVPR 2026 open access 页面</a>（HTTP 200，已核验）。</li>
-  <li><strong>关键引用（论文 References 摘录）：</strong>VGGT（几何一致多视角基座）、Ego-Exo4D [21]（数据与基准）、DOMR [31]（前 SOTA，Dense Object Matching）、ObjectRelator [17]（LLM 跨视角对应）、MASA [30]（单图自监督增广的灵感来源）、SAM [28]（离线伪标分割器 + focal/dice 损失配方）、SEEM/PSALM/XSegTx/XView-XMem/PCC/CMX/DCAMA（表 1 基线）、MvMHAT [20] / MAVREC [13]（泛化测试）。完整文献见原文 References。</li>
-  <li><strong>方法论与归因声明：</strong>本文的机制叙述（动机先行、每个假设/近似显式标出、关键机制从"自上而下直觉 + 自下而上消融旁证"两条独立路径交叉验证）采用 <em>kexue:su</em>（苏剑林 / kexue.fm）的科学推导姿态。<strong>但检索 kexue:su 语料库（关键词：VGGT 跨视角点投影漂移 / 注意力一致性 / 掩码精炼）未返回任何主题对口的卡片</strong>（命中的均为 Transformer attention mask、MLM、seq2seq、RoPE 等无关条目），因此<strong>按归因红线，本文只应用其方法论、不附任何 [archives/XXXX] 引用</strong>。</li>
-</ul>
-</section>
-
-</main>
-</article>
-
-<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline / 架构</a></li><li><a href="#method">方法 / 三阶段</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>VGGT-Segmentor: Geometry-Enhanced Cross-View Segmentation</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper (candidate)</dd><dt>机构</dt><dd>Beihang University / Hangzhou International Innovation Institute of BUAA</dd><dt>基座</dt><dd>冻结 VGGT 编码器 + 轻量 Union Segmentation Head</dd><dt>arXiv</dt><dd>2604.13596</dd><dt>Topic</dt><dd>Cross-View Segmentation · Ego–Exo</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：投影漂 / 注意力稳的实锤</li><li>图 2：冻结 VGGT + 三阶段头</li><li>式 4–8：Mask Prompt Fusion（区域共识）</li><li>式 9–16：稀疏点 prompt + 双向 decoder</li><li>表 1：67.7/68.0 SOTA，零样本反超全监督</li><li>表 3：35.5→50.2→62.2→67.7 逐级证必要性</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> VGGT-S 深读</p><p><span class="status-good">figures</span> 4 张 PNG（fig1–4）</p><p><span class="status-good">tables</span> 表 1/2/3 全转写，表 4–8 代表行（趋势完整）</p><p><span class="status-good">formula</span> 式 1–20 待 MathJax 预检</p><p><span class="status-warn">scope</span> 仅空间、无时序；性能受冻结 VGGT 上限锁定</p></div></section></aside></div>
-
-</body></html>
+  <aside class="sidebar">
+    <section class="side-card">
+      <h2 class="side-title">Contents</h2>
+      <div class="side-body">
+        <ol>
+          <li><a href="#lead">Lead</a></li>
+          <li><a href="#motivation">Motivation</a></li>
+          <li><a href="#contribution">Contribution</a></li>
+          <li><a href="#datasets">Datasets</a></li>
+          <li><a href="#pipeline">Pipeline</a></li>
+          <li><a href="#method">Method</a></li>
+          <li><a href="#training">Training</a></li>
+          <li><a href="#experiments">Experiments</a></li>
+          <li><a href="#ablations">Ablations</a></li>
+          <li><a href="#limitations">Limitations</a></li>
+          <li><a href="#summary">Summary</a></li>
+          <li><a href="#references">References</a></li>
+        </ol>
+      </div>
+    </section>
+    <section class="side-card">
+      <h2 class="side-title">Paper Info</h2>
+      <div class="side-body">
+        <dl class="meta-list">
+          <dt>Title</dt><dd>VGGT-Segmentor: Geometry-Enhanced Cross-View Segmentation</dd>
+          <dt>Venue</dt><dd>CVPR 2026 digest entry; source PDF arXiv:2604.13596v3</dd>
+          <dt>Authors</dt><dd>Yulu Gao*; Bohao Zhang*; Zongheng Tang; Jitong Liao; Wenjun Wu; Si Liu&#8224;</dd>
+          <dt>Backbone</dt><dd>Frozen VGGT encoder</dd>
+          <dt>Head</dt><dd>Mask Prompt Fusion + Point-Guided Prediction + Mask Refinement</dd>
+          <dt>Metric</dt><dd>Mean IoU on Ego-Exo4D; AP on MvMHAT</dd>
+        </dl>
+      </div>
+    </section>
+    <section class="side-card">
+      <h2 class="side-title">Key Evidence</h2>
+      <div class="side-body">
+        <ul>
+          <li>Figure 1: point drift versus attention alignment</li>
+          <li>Figure 2: frozen encoder plus three-stage head</li>
+          <li>Eq. 4-8: mask-aware bottleneck fusion</li>
+          <li>Eq. 9-16: sparse point prompts and bidirectional attention</li>
+          <li>Table 1: main Ego-Exo4D comparison</li>
+          <li>Table 3: staged component ablation</li>
+        </ul>
+      </div>
+    </section>
+    <section class="side-card">
+      <h2 class="side-title">Status</h2>
+      <div class="side-body">
+        <p><span class="status-good">completed</span> English vggtseg rewrite</p>
+        <p><span class="status-good">figures</span> 4 local PNGs reused</p>
+        <p><span class="status-good">tables</span> Paper Tables 1-8 transcribed</p>
+        <p><span class="status-warn">scope</span> Spatial image-pair segmentation, not temporal tracking</p>
+      </div>
+    </section>
+  </aside>
+</div>
+</body>
+</html>

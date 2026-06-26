@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RNS（Retrieve and Segment）深读：开放词表分割明明只缺"几张带标注的图"，为什么前人把文本预测和视觉预测"事后相加"就是补不上这道监督缺口？</title>
-<meta name="description" content="Retrieve and Segment（RNS, CVPR 2026 Highlight / Top Paper candidate）深读：开放词表分割（OVS）落后全监督，根因是 VLM 只有图像级监督、加上语言本身有歧义。作者给每个类补上'几张像素标注图'当视觉支撑，核心问题随之变成——文本支撑和视觉支撑怎么融合。本文用 kexue:su 方法论拆解 RNS 为什么不做 late hand-crafted fusion，而是把两种模态在'原型/特征层'先融合成 f=λt+(1-λ)v，再用检索（每个 query patch 从视觉支撑里取 k 近邻）构造测试时训练数据，per-image 训练一个轻量线性分类器、在 A100 上 <1 秒。三条独立验证：图 5 把检索换成随机/最远 → 掉点，证明检索确实选到相关支撑；表 1 去掉 pseudo-label loss / 类相关权重 w_c / 多 λ → 逐项掉点；图 3/4 在全/部分支撑下持续超 kNN-CLIP、FREEDA。DINOv3.txt+SAM B=20 把与全监督的差距压到 11.5 mIoU，比零样本 +34，且只用 ~964 张标注（全监督用 20k）。">
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RNS: retrieve, fuse, and adapt for open-vocabulary segmentation</title>
+<meta name="description" content="Paper Digest deep-read for Retrieve and Segment: visual support, prototype fusion, kNN retrieval, and per-image test-time training for open-vocabulary segmentation.">
 <script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+/* ===== Paper2Html shell · refined academic theme ===== */
 :root{
   --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
   --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
@@ -250,9 +250,9 @@ body.lb-lock{overflow:hidden}
     var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
     var overlay=document.createElement("div");
     overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
-    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+    overlay.innerHTML='<button class="lb-close" aria-label="Close">×</button>'+
       '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
-      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+      '<div class="lb-hint">Click anywhere or press Esc to close</div>';
     document.body.appendChild(overlay);
     var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
     function openLB(src,cap){
@@ -309,7 +309,7 @@ body.lb-lock{overflow:hidden}
     (function(){
       var title=document.querySelector(".site-title");if(!title)return;
       var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
-      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      var hp=nav.filter(function(a){return /home/i.test(a.textContent);})[0];
       if(hp)home=hp.getAttribute("href");
       else if(document.querySelector(".home"))home="index.html";
       if(!home)return;
@@ -327,12 +327,12 @@ body.lb-lock{overflow:hidden}
         function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
         if(!head.querySelector(".quick-links")){
           var bar=document.createElement("div");bar.className="quick-links";
-          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+          bar.innerHTML='<span class="ql-label">Links</span>'+chips();head.appendChild(bar);
         }
         var sb=document.querySelector(".sidebar");
         if(sb&&!sb.querySelector(".quick-links-side")){
           var card=document.createElement("section");card.className="side-card";
-          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          card.innerHTML='<h2 class="side-title">Links</h2><div class="side-body quick-links-side">'+chips()+'</div>';
           sb.insertBefore(card,sb.firstChild);
         }
       }
@@ -350,246 +350,405 @@ body.lb-lock{overflow:hidden}
 </script>
 </head>
 <body>
-<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>Top / Highlight · 开放词表分割 / 检索增强测试时适配</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
-<div class="wrap"><div class="breadcrumbs">首页 &gt; CVPR 2026 &gt; Segmentation &gt; RNS</div>
-<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">RNS 深读：开放词表分割只缺“几张带标注的图”，为什么前人把文本预测和视觉预测“事后相加”就是补不上这道监督缺口？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>CVPR 2026 · Highlight · CTU Prague / Univ. Crete / Archimedes / IACM-FORTH</span><span>来源：arXiv:2602.23339 PDF</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Open-Vocabulary Segmentation</span><span class="tag">Few-shot</span><span class="tag green">Retrieval-augmented</span><span class="tag">Test-time Training</span><span class="tag">VLM + SAM</span><span class="tag">MathJax checked</span></div></header>
-<main class="content">
+<header class="site-header">
+  <div class="site-header-inner">
+    <div>
+      <p class="site-title">Paper Digest<small>CVPR 2026 Top Paper candidate · Open-Vocabulary Segmentation / Retrieval-Augmented Test-Time Adaptation</small></p>
+    </div>
+    <nav class="top-nav">
+      <a href="../index.html">Home</a>
+      <a href="#lead">Lead</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#experiments">Experiments</a>
+      <a href="#limitations">Limitations</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap">
+  <div class="breadcrumbs">Home &gt; CVPR 2026 &gt; Open-Vocabulary Segmentation &gt; RNS</div>
+  <article class="article" aria-labelledby="paper-title">
+    <header class="article-head clearfix">
+      <div class="date-card"><span class="day">26</span><span class="month">Jun</span></div>
+      <h1 id="paper-title">RNS: retrieve a few annotated examples, then adapt the segmenter for the current image</h1>
+      <div class="article-meta">
+        <span>Paper2Html</span>
+        <span>2026-06-26</span>
+        <span>CVPR 2026 Top Paper candidate</span>
+        <span>Source: arXiv:2602.23339 PDF</span>
+      </div>
+      <div class="tags">
+        <span class="tag orange">Open-Vocabulary Segmentation</span>
+        <span class="tag">Few-Shot Visual Support</span>
+        <span class="tag">DINOv3.txt</span>
+        <span class="tag">SAM 2.1</span>
+        <span class="tag green">Test-Time Training</span>
+        <span class="tag">MathJax checked</span>
+      </div>
+    </header>
+    <main class="content">
 
-<p class="lead">开放词表分割（OVS）想做的事很朴素：给一张图和一组<strong>测试时才定下来</strong>的类别名，把每个像素分到某一类。类别集合可以任意换。它的天花板被两件事压着——（1）撑起 OVS 的 VLM 只见过<strong>图像级</strong>（image–text）监督，做不细像素级定位；（2）自然语言本身有歧义（“骑车的人”到底标 person 还是 motorcycle？）。一个直觉的补法是：给每个类配<strong>几张像素标注的图</strong>当视觉支撑，把问题从“零样本”挪到“少样本”。但补丁一打上，真正的核心问题就冒出来了：<strong>文本支撑和视觉支撑，到底该怎么融合？</strong>前人（kNN-CLIP、FREEDA）的做法是各自出一张预测图、再<strong>手工后期相加</strong>（late hand-crafted fusion）——本文（RNS, Retrieve and Segment）证明这条路有结构性缺陷：支撑一多就被启发式拖累、缺类时直接崩。RNS 换了个层次——在<strong>原型层</strong>先把两种模态融成 $f=\lambda t+(1-\lambda)v$，再用<strong>检索</strong>给每张测试图现搭训练集，per-image 训练一个轻量线性分类器，A100 上不到 1 秒。结果：用 DINOv3.txt + SAM、每类 20 张图，把与全监督的差距压到 <strong>11.5 mIoU</strong>，比零样本 +34，而标注量只用全监督的 ~5%。</p>
+      <section id="lead">
+        <h2>1. Lead</h2>
+        <p class="lead"><strong>The short version.</strong> Open-vocabulary semantic segmentation, or OVS, asks a model to assign every pixel to arbitrary class names supplied at test time. A vision-language model, or VLM, is an image-text model trained to place images and language in a shared feature space, but most VLMs learn from image-level supervision rather than pixel masks. That mismatch makes zero-shot segmentation, where no pixel-annotated examples are provided for the test classes, much weaker than fully supervised segmentation. Retrieve and Segment, or RNS, changes the setup into a few-shot one by adding a support set: a small collection of pixel-annotated images for some or all classes. A prototype is one feature vector that summarizes a class, and RNS first fuses the text prototype $t_c$ with the visual prototype $v_c$ before making predictions. It then uses k-nearest-neighbor retrieval, or kNN retrieval, to pull the support features most similar to the current query image. Finally, it performs test-time training, meaning it optimizes a tiny linear classifier for that one image while keeping the VLM and mask backbones frozen. In the DINOv3.txt plus SAM 2.1 setting, where DINOv3.txt is a DINOv3 vision backbone adapted for text-aligned dense features and SAM is the Segment Anything Model used for region proposals, RNS with $B=20$ support images per class reaches 61.9 mIoU, where mIoU means mean Intersection-over-Union; that narrows, but does not close, the average gap to fully supervised segmentation to 11.5 mIoU &mdash; and that average is uneven, with RNS even surpassing fully supervised segmentation on one fine-grained set while trailing well behind on others.</p>
 
-<figure><a href="../assets/figures/retseg/retseg_fig1.png"><img src="../assets/figures/retseg/retseg_fig1.png" alt="RNS teaser：四列对比 Ground Truth / Textual Only / Visual Only / Textual+Visual，下方是支撑集 A、B"></a><figcaption>图 1 · RNS teaser（这张图要支撑的结论是“两种模态都不能单独用，要在特征层融合”）。看四列：<b>Textual Only</b>（零样本 OVS）把“骑车的人”误判成 motorcycle、并在背景里幻觉出类别；<b>Visual Only</b>（RNS 去掉文本的简化版）在某些类缺视觉支撑时（person、car）漏掉、还会混淆形近物（motorcycle vs bicycle）；<b>Textual+Visual</b>（完整 RNS）通过“检索与测试图相关的图像 + 结合文本支撑”两者都救回来。下排是支撑集：视觉支撑一开始只含 A，之后可扩成 B（$A\subseteq B$），呼应“支撑集可动态增长”。</figcaption></figure>
+        <div class="hero-split">
+          <div>
+            <div class="kv-grid">
+              <div class="kv"><b>Question</b>Are a few pixel-annotated examples enough to reduce the supervision gap in OVS without giving up open-vocabulary behavior?</div>
+              <div class="kv"><b>Answer</b>They help a lot when text and visual support are fused before prediction and the support is retrieved per query image.</div>
+              <div class="kv"><b>Headline setup</b>DINOv3.txt ViT-L/16 plus SAM 2.1, $B=20$ support images per class, six-dataset average in Table 2.</div>
+              <div class="kv"><b>Boundary</b>The method still uses pixel annotations for support images, and the fully supervised average remains higher.</div>
+            </div>
+          </div>
+          <figure class="hero-card">
+            <a href="../assets/figures/retseg/retseg_fig1.png"><img src="../assets/figures/retseg/retseg_fig1.png" alt="RNS qualitative comparison of textual-only, visual-only, and textual plus visual support"></a>
+            <figcaption><strong>Paper Figure 1.</strong> Text-only support can hallucinate plausible but wrong labels, and visual-only support can confuse similar objects or miss classes without support. The combined RNS setting uses both: class names provide a semantic prior, and annotated examples anchor that prior to pixel-level appearance.</figcaption>
+          </figure>
+        </div>
+      </section>
 
-<section id="motivation">
-<h2>核心问题：缺口到底缺在哪？为什么不是“再标更多文本/再加层网络”<a class="anchor" href="#motivation">¶</a></h2>
+      <section id="motivation">
+        <h2>2. Motivation: language opens the vocabulary, but not the mask</h2>
+        <p>Fully supervised semantic segmentation trains on dense pixel annotations for a fixed class set. It localizes well, but it does not scale to every class a user may name later. OVS tries to remove that fixed vocabulary by replacing the learned classifier with text features from a VLM.</p>
+        <p>The paper argues that two limits then appear. First, the VLM was trained with image-level text supervision, so it did not have to learn exact pixel boundaries. Second, natural language can be ambiguous at segmentation granularity. A class name such as "plant" or "train" may carry enough information for image retrieval, but not enough to choose the right pixels in a cluttered scene.</p>
+        <p>RNS asks whether the missing supervision can be supplied at test time by a small set of annotated examples. The examples are not used to retrain the backbone. They are converted into compact class features and retrieved when a query image arrives.</p>
+        <div class="socratic">
+          <p class="question">Q: if the model already knows the class name, why should one or two annotated images help?</p>
+          <p class="answer">A: The class name says what the category is. The annotated image shows what the category looks like in pixels for this task.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> RNS treats text as a semantic prior and visual support as task-specific evidence, then makes both available to the same small classifier.</p>
+        </div>
+      </section>
 
-<div class="socratic">
-<p class="question">问：OVS 落后全监督，常见说法是“VLM 不够强”。这个诊断够用吗？</p>
-<p class="guide">引：作者把缺口拆成两条独立的病因，而且都不是“再训一个更大的 VLM”能直接治的——这一步决定了后面整套方法的形状。</p>
-<p class="answer">答：缺口有两个根源。<b>其一</b>，VLM（CLIP 一类）是用<strong>图像级</strong> image–text 对比训练出来的，它学到的是“整张图配整句话”的对齐，patch 级定位是副产品——所以原生 VLM“dense localization 很差”。<b>其二</b>，语言本身有歧义：类名/描述常常不足以指定像素级边界（teaser 里“骑车的人”就是典型）。关键观察是：这两条都<strong>不是文本侧能补全的</strong>——再精细的 prompt 也改不了“图像级监督”这个先天约束，也消不掉语言歧义。能直接注入“像素级、无歧义”信息的，只有<strong>带像素标注的真实图像</strong>。于是作者把任务从零样本改造成<strong>少样本</strong>：每个类除了文本支撑（类名），再配一个视觉支撑集（几张像素标注图）。</p>
-<div class="takeaway">Takeaway：诊断决定方案。缺口 = 图像级监督 + 语言歧义，两者都得靠“真实像素标注”来兜底，而不是更大的 VLM 或更花哨的 prompt。这就把“OVS 提升”问题转成了“<b>怎么把少量视觉支撑和文本支撑融到一起</b>”。</div>
+      <section id="contribution">
+        <h2>3. Contributions: what RNS adds</h2>
+        <p>The paper's first contribution is the few-shot OVS setting itself. Each test class may have textual support, visual support, both, or only one of the two. Visual support consists of raw images with pixel-level labels, but RNS stores only features derived from them.</p>
+        <p>The second contribution is prototype-level fusion. Earlier retrieval-based competitors such as kNN-CLIP and FREEDA combine text-based and visual predictions after the predictions already exist. RNS instead forms fused class features first, so the per-image classifier sees training examples that already contain both modalities.</p>
+        <p>The third contribution is retrieval-augmented test-time adaptation. For each query image, RNS retrieves relevant visual support features, uses them with fused class features to train a linear classifier, and applies that classifier back to the same query image.</p>
+        <p>The fourth contribution is a set of partial-support variants. If some classes lack visual examples, RNS uses zero-shot patch predictions from the query image to build pseudo visual class features. If some classes lack text names, it replaces the missing text feature with the average available text feature. These choices keep unsupported classes in the loss instead of silently dropping them.</p>
+      </section>
+
+      <section id="datasets">
+        <h2>4. Datasets and evaluation setup</h2>
+        <p>The main average in Figures 3 and 4 uses six OVS validation benchmarks: PASCAL VOC, PASCAL Context, COCO Object, COCO-Stuff, Cityscapes, and ADE20K. The paper reports average mIoU over these datasets unless it says otherwise.</p>
+        <p>The headline 61.9 / 73.4 / 11.5 numbers come from Table 2, whose six columns are a <em>different</em> set: VOC, Cityscapes, ADE20K, PASCAL Context-59, FoodSeg103, and CUB. Table 2 drops Context, Object, and Stuff and adds the three fine-grained sets (C-59, Food, CUB) to compare against fully supervised segmentation, so its average is not the same as the Figure 3/4 OVS-benchmark average above. The support images are sampled from each dataset's training split. The sampling intentionally follows class frequency, so frequent classes can appear more often and the benchmark keeps a realistic long tail.</p>
+        <p>The visual support budget is written as $B$, the number of support images per class. The paper creates support sets with four random seeds, except VOC and Cityscapes, where it uses eight random seeds. For partial-support experiments, it randomly removes visual or textual support for a fraction of classes.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Task settings considered by the paper.</strong> This is a setup table derived from Section 3.1, not a result table.</caption>
+            <thead><tr><th>Setting</th><th>Available class information</th><th>What RNS must do</th></tr></thead>
+            <tbody>
+              <tr><td>Full support</td><td>Every class has a class name and at least one annotated support image.</td><td>Fuse text and visual prototypes for all classes.</td></tr>
+              <tr><td>Partial visual support</td><td>Every class has text; some classes have no visual examples.</td><td>Use pseudo-labeling from the query image to create missing visual prototypes.</td></tr>
+              <tr><td>Partial textual support</td><td>Every class has visual examples; some classes have no class names.</td><td>Use a neutral average text feature for classes without names.</td></tr>
+              <tr><td>Only textual support</td><td>Every class has text; no visual support images are provided.</td><td>Reduce to the usual zero-shot OVS setting.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="pipeline">
+        <h2>5. Pipeline: build support once, adapt per image</h2>
+        <figure class="fig-wide">
+          <a href="../assets/figures/retseg/retseg_fig2.png"><img src="../assets/figures/retseg/retseg_fig2.png" alt="Overview of the RNS support construction, retrieval, training, and inference pipeline"></a>
+          <figcaption><strong>Paper Figure 2.</strong> Support construction turns annotated images into per-image visual class features, aggregates them into class prototypes, and fuses them with text prototypes. At test time, the query image retrieves nearby support features, trains a linear classifier, and then uses that classifier for the query's patch or region features.</figcaption>
+        </figure>
+        <p>RNS separates persistent support from per-image adaptation. Persistent support contains two feature sets. The visual support feature set $V$ stores per-image class vectors from annotated support masks. The fused support feature set $F$ stores text-visual class vectors for all classes and all selected mixing weights.</p>
+        <p>When a query image arrives, RNS does not train on the whole support set. It retrieves only support features close to the query patch or region features. This keeps the per-image training set small and makes the classifier concentrate on classes that look relevant to the current image.</p>
+        <p>The same pipeline can run at patch level or region level. Region-level prediction uses SAM 2.1 masks: each SAM region pools the dense VLM patch features inside the region, and RNS classifies the region feature. The paper reports that SAM proposals improve boundary quality, but they add inference cost.</p>
+      </section>
+
+      <section id="method">
+        <h2>6. Method: fuse prototypes, retrieve support, train one classifier</h2>
+        <h3>6.1 Zero-shot VLM prediction</h3>
+        <p>A query image is encoded into patch features $x_j \in \mathbb{R}^d$, and each class name $c$ is encoded into a text feature $t_c \in \mathbb{R}^d$. The zero-shot prediction for patch $j$ and class $c$ is a softmax over dot products:</p>
+        <div class="equation">
+          $$
+          \hat P_{jc}=s_C\left(x_j^\top t_c\right).
+          $$
+          <div class="eq-caption">Eq. 1: $s_C$ is the softmax over the class set $C$. This is the text-only baseline that RNS improves on.</div>
+        </div>
+
+        <h3>6.2 Visual and fused support features</h3>
+        <p>For support image $i$, RNS extracts patch features $x_j^i$ and down-samples the ground-truth mask into patch-level soft labels $P_{jc}^i$. It pools the support patches for class $c$ into a per-image visual class feature:</p>
+        <div class="equation">
+          $$
+          v_c^i=\sum_{j=1}^{n} P_{jc}^i x_j^i.
+          $$
+          <div class="eq-caption">Eq. 2: $v_c^i$ is one visual example of class $c$ from one annotated support image.</div>
+        </div>
+        <p>Across all support images, these per-image features form the visual support feature set and an aggregated visual class feature:</p>
+        <div class="equation">
+          $$
+          V=\bigcup_{i=1}^{M}\{v_c^i:c\in C_i\}, \qquad
+          v_c=\sum_{i\in I_c}v_c^i.
+          $$
+          <div class="eq-caption">Eq. 3: $C_i$ is the set of classes present in support image $i$, and $I_c$ is the set of support images that contain class $c$.</div>
+        </div>
+        <p>The key fusion step happens before prediction. For class $c$ and mixing weight $\lambda$, RNS forms a fused prototype:</p>
+        <div class="equation">
+          $$
+          f_c^\lambda=\lambda t_c+(1-\lambda)v_c,\qquad \lambda\in[0,1].
+          $$
+          <div class="eq-caption">Eq. 4: $t_c$ is the text prototype, $v_c$ is the visual prototype, and $f_c^\lambda$ is the fused class prototype used as a training example.</div>
+        </div>
+        <p>The paper uses multiple mixing weights rather than one. The implementation fixes $\Lambda=\{0.9,0.8,0.6,0.4,0.2,0.0\}$, so the classifier sees several text-visual balances for the same class.</p>
+
+        <h3>6.3 Retrieval and the per-image objective</h3>
+        <p>For a query image with features $x_j^q$, RNS retrieves the $k$ nearest neighbors of each query feature from the visual support feature set:</p>
+        <div class="equation">
+          $$
+          V_r=\bigcup_{j=1}^{n}\operatorname{kNN}(V,x_j^q), \qquad
+          C_r=\{\,l(v):v\in V_r\,\}.
+          $$
+          <div class="eq-caption">Eq. 5: $V_r$ is the retrieved visual support set, $l(v)$ returns the class label of support feature $v$, and $C_r$ is the set of retrieved classes.</div>
+        </div>
+        <p>RNS also estimates a class relevance weight from the query image-level feature and the text feature:</p>
+        <div class="equation">
+          $$
+          w_c=s_C\left((x^q)^\top t_c\right), \qquad
+          x^q=\frac{1}{n}\sum_{j=1}^{n}x_j^q.
+          $$
+          <div class="eq-caption">Eq. 6: $w_c$ down-weights retrieved classes that look irrelevant to the query image.</div>
+        </div>
+        <p>The classifier $g_\theta:\mathbb{R}^d\to\mathbb{R}^C$ is a linear layer trained for the current image. With full textual and visual support, its loss is:</p>
+        <div class="equation">
+          $$
+          L_v=\sum_{v\in V_r} w_{l(v)}\,\mathrm{CE}\!\left(g_\theta(v),\mathbf{1}_{l(v)}\right),
+          $$
+          $$
+          L_f=\sum_{c\in C_r}\sum_{\lambda\in\Lambda} w_c\,\mathrm{CE}\!\left(g_\theta(f_c^\lambda),\mathbf{1}_c\right),
+          \qquad
+          L=L_v+\beta_f L_f.
+          $$
+          <div class="eq-caption">Eq. 7: $L_v$ trains on retrieved visual examples, $L_f$ trains on fused prototypes, CE is cross-entropy, and $\mathbf{1}_c$ is the one-hot label for class $c$.</div>
+        </div>
+        <p>Partial visual support adds pseudo-labels for classes with text but no examples. The paper pools query patches predicted as those classes to create missing visual features, then adds a Kullback-Leibler term:</p>
+        <div class="equation">
+          $$
+          L_p=\sum_{c\in C_d\cap C_q}\sum_{\lambda\in\Lambda}
+          w_c\,\mathrm{KL}\!\left(\hat p_c^\lambda, g_\theta(f_c^\lambda)\right),
+          \qquad
+          L=L_v+\beta_f L_f+\beta_p L_p.
+          $$
+          <div class="eq-caption">Eq. 8: $C_d$ contains classes without visual support, $C_q$ contains classes predicted in the query image, and $L_p$ keeps those missing-support classes in the training signal.</div>
+        </div>
+        <div class="socratic">
+          <p class="question">Q: why train a classifier instead of averaging text and visual predictions at the end?</p>
+          <p class="answer">A: Late averaging mixes decisions after each modality has already made its own mistake. RNS mixes the class features first, then learns one classifier from the retrieved examples for this image.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The adapter is small, but it changes the point of fusion from prediction space to feature space.</p>
+        </div>
+      </section>
+
+      <section id="training">
+        <h2>7. Training: the backbones are frozen; the query gets a tiny classifier</h2>
+        <p>RNS does not fine-tune the VLM backbone or SAM. It extracts support features, stores compact prototypes, and trains only the per-image linear classifier $g_\theta$ when a query image arrives. This is why the paper calls the method a test-time adapter.</p>
+        <p>The implementation uses OpenCLIP ViT-B/16 trained on LAION with the MaskCLIP trick, and DINOv3.txt ViT-L/16 for text-aligned dense features. CLIP means Contrastive Language-Image Pre-training, the VLM family that aligns text and image features with a contrastive objective. For region proposals, the paper uses SAM 2.1 Hiera-L with a $32\times32$ point grid and non-maximum suppression.</p>
+        <p>The fixed RNS hyperparameters are $k=4$, $\tau=0.1$, $\beta_f=1.5$, $\beta_p=0.2$, and $\Lambda=\{0.9,0.8,0.6,0.4,0.2,0.0\}$. The per-image classifier is trained for 700 steps with learning rate 0.02 using Adam in full-batch mode, so no mini-batch stochasticity is involved.</p>
+        <p>The paper states that test-time training takes less than one second on a single NVIDIA A100 GPU. The supplement's runtime plot uses DINOv3.txt at patch level with $B=5$ and averages over VOC, ADE20K, and COCO-Stuff; it shows that fewer iterations reduce overhead while keeping a performance boost over feedforward baselines.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/retseg/retseg_fig13.png"><img src="../assets/figures/retseg/retseg_fig13.png" alt="RNS runtime and mIoU trade-off"></a>
+          <figcaption><strong>Paper Figure 13.</strong> Runtime is plotted against average mIoU for RNS with different iteration counts, kNN-CLIP, and the zero-shot baseline. The point is not a single magic iteration count; it is that the adapter can trade some optimization time for a consistent accuracy gain.</figcaption>
+        </figure>
+      </section>
+
+      <section id="experiments">
+        <h2>8. Experiments: support helps, but the gap remains</h2>
+        <h3>Full textual and visual support</h3>
+        <p>Figure 3 varies $B$, the number of visual support images per class. The named competitors are the zero-shot VLM prediction, kNN-CLIP, and FREEDA. kNN-CLIP is a nearest-neighbor OVS method that uses support class vectors, while FREEDA is adapted here from generated support prototypes to real pixel-annotated support images.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/retseg/retseg_fig3.png"><img src="../assets/figures/retseg/retseg_fig3.png" alt="Full textual and visual support curves for RNS, kNN-CLIP, FREEDA, and zero-shot baselines"></a>
+          <figcaption><strong>Paper Figure 3.</strong> With full text and visual support, RNS stays above the retrieval baselines across the support budgets shown. The left plot uses OpenCLIP ViT-B/16 with SAM regions. The right plot uses DINOv3.txt ViT-L/16 and compares patch-level against SAM-region predictions.</figcaption>
+        </figure>
+        <p>The paper reports two one-shot gains from this figure: +7.3 mIoU over zero-shot with OpenCLIP and +18.4 mIoU over zero-shot with DINOv3.txt. As support grows, visual examples carry more of the result. The text signal is most valuable in the low-shot regime.</p>
+
+        <h3>Partial support</h3>
+        <figure class="fig-wide">
+          <a href="../assets/figures/retseg/retseg_fig4.png"><img src="../assets/figures/retseg/retseg_fig4.png" alt="Partial visual support and partial textual support curves"></a>
+          <figcaption><strong>Paper Figure 4.</strong> Partial visual support removes annotated examples for a fraction of classes while keeping text for all classes. Partial textual support removes class names for a fraction of classes while keeping visual examples. RNS degrades more smoothly than kNN-CLIP and FREEDA, especially when visual support is missing.</figcaption>
+        </figure>
+        <p>The partial-visual plot is the harsher test because unsupported classes are exactly where visual evidence is missing. Removing the pseudo-label loss causes a steep drop there, which supports the paper's claim that the extra term in Eq. 8 is load-bearing. In partial textual support, RNS remains the best curve in the figure, but its advantage is smaller because visual support is still present for all classes.</p>
+
+        <h3>OVS versus fully supervised segmentation</h3>
+        <p>The headline number comes from Table 2. The like-for-like statement is narrow: in the DINOv3.txt plus SAM 2.1 setting, using $B=20$ support images per class and 964 annotated images total, RNS averages 61.9 mIoU. The fully supervised row averages 73.4 mIoU with 20k domain annotations, so the remaining shortfall below fully supervised is 11.5 mIoU. In the other direction, the same RNS row improves over the DINOv3.txt plus SAM zero-shot baseline by +34.0 mIoU.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 2.</strong> OVS vs. fully supervised segmentation. mIoU in percent, higher is better. <sup>*</sup>: self-evaluated. <sup>&dagger;</sup>: from CAT-Seg. Domain: using annotations from each training set. Annot.: number of pixel-level semantic segmentation annotations; for Domain the paper reports ADE annotations.</caption>
+            <thead><tr><th>Method</th><th>Training set</th><th>Annot.</th><th>VOC</th><th>City</th><th>ADE</th><th>C-59</th><th>Food</th><th>CUB</th><th>Avg.</th></tr></thead>
+            <tbody>
+              <tr><td>SAN<sup>&dagger;</sup> [85]</td><td>COCO</td><td>118k</td><td>-</td><td>-</td><td>32.1</td><td>57.7</td><td>24.5</td><td>19.3</td><td>-</td></tr>
+              <tr><td>CAT-Seg [12]</td><td>COCO</td><td>118k</td><td>82.5</td><td>47.0<sup>*</sup></td><td>37.9</td><td>63.3</td><td>33.3</td><td>22.9</td><td>47.8</td></tr>
+              <tr><td>LPOSS+ [67]</td><td>None</td><td>None</td><td>62.4</td><td>37.9</td><td>22.3</td><td>38.6</td><td>26.1</td><td>12.0</td><td>33.2</td></tr>
+              <tr><td>CorrCLIP [90]</td><td>None</td><td>None</td><td>76.4</td><td>49.9</td><td>28.8</td><td>47.9</td><td>-</td><td>-</td><td>-</td></tr>
+              <tr><td>DINOv3.txt [65] + SAM</td><td>None</td><td>None</td><td>31.3</td><td>39.3</td><td>27.7</td><td>36.3</td><td>27.2</td><td>5.8</td><td>27.9</td></tr>
+              <tr><td>+ RNS $B=1$</td><td>Domain</td><td>66</td><td>73.2</td><td>59.1</td><td>37.3</td><td>52.7</td><td>42.8</td><td>34.0</td><td>49.9</td></tr>
+              <tr><td><strong>+ RNS $B=20$</strong></td><td><strong>Domain</strong></td><td><strong>964</strong></td><td><strong>82.1</strong></td><td><strong>61.7</strong></td><td><strong>47.8</strong></td><td><strong>62.5</strong></td><td><strong>52.2</strong></td><td><strong>65.2</strong></td><td><strong>61.9</strong></td></tr>
+              <tr><td>Fully Supervised</td><td>Domain</td><td>20k</td><td>90.4</td><td>87.0</td><td>63.0</td><td>70.3</td><td>45.1</td><td>84.6</td><td>73.4</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>There are two important readings of this table. RNS narrows the average gap using far fewer annotated images, but it does not close it. It also does not win every dataset cell: the DINOv3.txt plus RNS $B=20$ row is 0.4 below CAT-Seg on VOC and 0.8 below it on PASCAL Context-59, both in a row marked as self-evaluated, and it trails the fully supervised row on every listed dataset except Food.</p>
+
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Supplementary Table 4.</strong> Complete OVS vs. fully supervised segmentation table. mIoU in percent, higher is better. <sup>*</sup>: self-evaluated. <sup>&dagger;</sup>: from CAT-Seg.</caption>
+            <thead><tr><th>Method</th><th>Training set</th><th>Annot.</th><th>Backbones</th><th>VOC</th><th>City</th><th>ADE</th><th>C-59</th><th>Food</th><th>CUB</th><th>Avg.</th></tr></thead>
+            <tbody>
+              <tr><td>ODISE [84]</td><td>COCO</td><td>118k</td><td>Stable Diffusion v1.3, CLIP (ViT-L/14)</td><td>84.6</td><td>-</td><td>29.9</td><td>57.3</td><td>-</td><td>-</td><td>-</td></tr>
+              <tr><td>OVSeg<sup>&dagger;</sup> [40]</td><td>COCO</td><td>118k</td><td>CLIP (ViT-L/14), Swin-B</td><td>-</td><td>-</td><td>29.6</td><td>55.7</td><td>16.4</td><td>14.0</td><td>-</td></tr>
+              <tr><td>SAN<sup>&dagger;</sup> [85]</td><td>COCO</td><td>118k</td><td>CLIP (ViT-L/14)</td><td>-</td><td>-</td><td>32.1</td><td>57.7</td><td>24.5</td><td>19.3</td><td>-</td></tr>
+              <tr><td>CAT-Seg [12]</td><td>COCO</td><td>118k</td><td>CLIP (ViT-L/14)</td><td>82.5</td><td>47.0<sup>*</sup></td><td>37.9</td><td>63.3</td><td>33.3</td><td>22.9</td><td>47.8</td></tr>
+              <tr><td>LPOSS+ [67]</td><td>None</td><td>None</td><td>OpenCLIP (ViT-B/16), DINO (ViT-B/16)</td><td>62.4</td><td>37.9</td><td>22.3</td><td>38.6</td><td>26.1</td><td>12.0</td><td>33.2</td></tr>
+              <tr><td>CLIP-DINOiser [79]</td><td>None</td><td>None</td><td>OpenCLIP (ViT-B/16), DINO (ViT-B/16)</td><td>62.1</td><td>31.7</td><td>20.0</td><td>35.9</td><td>-</td><td>-</td><td>-</td></tr>
+              <tr><td>CorrCLIP [90]</td><td>None</td><td>None</td><td>OpenCLIP (ViT-H/14), DINO (ViT-B/8), SAM2.1 (Hiera-L)</td><td>76.4</td><td>49.9</td><td>28.8</td><td>47.9</td><td>-</td><td>-</td><td>-</td></tr>
+              <tr><td>MaskCLIP [97] + SAM</td><td>None</td><td>None</td><td>OpenCLIP (ViT-B/16), SAM2.1 (Hiera-L)</td><td>54.4</td><td>37.1</td><td>22.9</td><td>38.0</td><td>23.0</td><td>15.0</td><td>31.7</td></tr>
+              <tr><td>+ RNS $B=1$</td><td>Domain</td><td>66</td><td>OpenCLIP (ViT-B/16), SAM2.1 (Hiera-L)</td><td>68.6</td><td>46.1</td><td>28.6</td><td>45.9</td><td>28.1</td><td>24.9</td><td>40.4</td></tr>
+              <tr><td>+ RNS $B=20$</td><td>Domain</td><td>964</td><td>OpenCLIP (ViT-B/16), SAM2.1 (Hiera-L)</td><td>76.2</td><td>52.5</td><td>38.5</td><td>54.4</td><td>37.2</td><td>50.6</td><td>51.6</td></tr>
+              <tr><td>DINOv3.txt [65] + SAM</td><td>None</td><td>None</td><td>DINOv3 (ViT-L/16), SAM2.1 (Hiera-L)</td><td>31.3</td><td>39.3</td><td>27.7</td><td>36.3</td><td>27.2</td><td>5.8</td><td>27.9</td></tr>
+              <tr><td>+ RNS $B=1$</td><td>Domain</td><td>66</td><td>DINOv3 (ViT-L/16), SAM2.1 (Hiera-L)</td><td>73.2</td><td>59.1</td><td>37.3</td><td>52.7</td><td>42.8</td><td>34.0</td><td>49.9</td></tr>
+              <tr><td><strong>+ RNS $B=20$</strong></td><td><strong>Domain</strong></td><td><strong>964</strong></td><td><strong>DINOv3 (ViT-L/16), SAM2.1 (Hiera-L)</strong></td><td><strong>82.1</strong></td><td><strong>61.7</strong></td><td><strong>47.8</strong></td><td><strong>62.5</strong></td><td><strong>52.2</strong></td><td><strong>65.2</strong></td><td><strong>61.9</strong></td></tr>
+              <tr><td>InternImage [74]</td><td>Domain</td><td>-</td><td>InternImage-H</td><td>-</td><td>87.0</td><td>62.9</td><td>70.3</td><td>-</td><td>-</td><td>-</td></tr>
+              <tr><td>SETR [95]</td><td>Domain</td><td>-</td><td>SeTR-MLA</td><td>-</td><td>76.7</td><td>48.6</td><td>-</td><td>45.1</td><td>-</td><td>-</td></tr>
+              <tr><td>GFN [92]</td><td>Domain</td><td>-</td><td>ResNet-101</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>84.6</td><td>-</td></tr>
+              <tr><td>Mask2Former [10]</td><td>Domain</td><td>-</td><td>DINOv3 (7B)</td><td>90.4</td><td>86.7</td><td>63.0</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+              <tr><td>Fully Supervised</td><td>Domain</td><td>20k</td><td>Best of above</td><td>90.4</td><td>87.0</td><td>63.0</td><td>70.3</td><td>45.1</td><td>84.6</td><td>73.4</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="ablations">
+        <h2>9. Ablations: three independent checks of the mechanism</h2>
+        <h3>9.1 Retrieval must retrieve relevant support</h3>
+        <p>Figure 5 tests whether the nearest-neighbor step is doing real work. The default RNS retrieval is compared to random support, support from retrieved classes, random support from retrieved classes, and the farthest examples from retrieved classes.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/retseg/retseg_fig5.png"><img src="../assets/figures/retseg/retseg_fig5.png" alt="Ablation of the RNS retrieval step"></a>
+          <figcaption><strong>Paper Figure 5.</strong> Replacing retrieved support with random support hurts. Restricting to retrieved classes helps more than sampling from all support, and choosing the farthest examples is worst. This supports the claim that RNS benefits from query-relevant visual support, not just from seeing any annotated examples.</figcaption>
+        </figure>
+
+        <h3>9.2 The component-removal table</h3>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 1.</strong> Ablations of RNS. Average mIoU across the considered datasets for $B=1$, $B=5$, and $B=10$. Difference values are relative to the first row in the same column.</caption>
+            <thead><tr><th>Method</th><th>$B=1$</th><th>$B=5$</th><th>$B=10$</th></tr></thead>
+            <tbody>
+              <tr><td><strong>RNS</strong></td><td><strong>41.59</strong></td><td><strong>47.87</strong></td><td><strong>49.02</strong></td></tr>
+              <tr><td>RNS w/o $w_c$</td><td>41.20 -0.39</td><td>47.43 -0.44</td><td>48.54 -0.48</td></tr>
+              <tr><td>RNS w/o $w_c$, $\Lambda=\{0.8\}$</td><td>36.40 -5.19</td><td>46.55 -1.32</td><td>48.38 -0.64</td></tr>
+              <tr><td>RNS w/o text</td><td>34.11 -7.48</td><td>45.71 -2.16</td><td>48.00 -1.02</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Three patterns matter. Class relevance weights help a little in all three columns. Using a single fusion weight hurts most at $B=1$, where text is most useful because visual support is sparse. Removing text hurts strongly at $B=1$ and less at $B=10$, which matches the Figure 3 pattern: visual examples dominate once the support set is dense.</p>
+
+        <h3>9.3 Full versus partial support</h3>
+        <p>Figures 3 and 4 are the third validation. Figure 3 shows that RNS improves as more support images arrive. Figure 4 shows that the method does not collapse when either visual support or textual support is missing for a fraction of classes. The partial-visual setting is also where the pseudo-label loss matters most.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Supplementary Table 5.</strong> Ablations of the kNN retrieval hyperparameter $K$ in RNS. Average mIoU across the considered datasets for $B=1$, $B=5$, and $B=10$. Difference values are relative to $K=4$ in the same column.</caption>
+            <thead><tr><th>Method</th><th>$B=1$</th><th>$B=5$</th><th>$B=10$</th></tr></thead>
+            <tbody>
+              <tr><td>RNS ($K=1$)</td><td>40.02 -1.57</td><td>46.83 -1.04</td><td>48.06 -0.96</td></tr>
+              <tr><td><strong>RNS ($K=4$)</strong></td><td><strong>41.59</strong></td><td><strong>47.87</strong></td><td><strong>49.02</strong></td></tr>
+              <tr><td>RNS ($K=16$)</td><td>41.97 +0.38</td><td>47.78 -0.09</td><td>48.96 -0.06</td></tr>
+              <tr><td>RNS ($K=32$)</td><td>42.02 +0.43</td><td>47.59 -0.28</td><td>48.84 -0.18</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The $K$ ablation is deliberately small in interpretation. $K=1$ is consistently worse. Once $K$ reaches 4, the differences are small enough that the paper treats the method as robust to the exact value.</p>
+      </section>
+
+      <section id="limitations">
+        <h2>10. Limitations and caveats</h2>
+        <p>RNS is not annotation-free. It uses far fewer pixel-annotated images than the fully supervised row in Table 2, but the support images are still dense semantic annotations. The fair framing is a supervision-budget comparison, not a zero-supervision claim.</p>
+        <p>The gap to fully supervised segmentation remains large in the headline setting: 61.9 average mIoU versus 73.4. The table also mixes open-vocabulary methods, support-set methods, COCO-trained OVS systems, and closed-vocabulary fully supervised systems, so the average is useful as a gap measurement rather than a perfectly matched training protocol.</p>
+        <p>RNS benefits from SAM region proposals when they are available, but SAM adds runtime and its own mask-proposal assumptions. Patch-level RNS is the lighter setting; SAM-region RNS is the stronger one in the reported plots.</p>
+        <p>Partial support is handled, not solved. When visual examples are missing, RNS relies on zero-shot query predictions to create pseudo visual features, so errors in the zero-shot map can enter the loss. When textual names are missing, the average text feature is a neutral fallback rather than a real semantic description.</p>
+        <p>The paper's personalized segmentation evidence is qualitative. Figure 7 shows that appending a few instance-specific support examples can separate a particular object instance from its generic class, but the paper does not report a quantitative personalized-segmentation benchmark.</p>
+        <p>Out-of-domain support is weaker than in-domain support in the supplementary Cityscapes and ACDC experiment, although it still improves over zero-shot in the reported setting. That matters for deployments where the support images come from a different camera, weather, or domain than the query images.</p>
+      </section>
+
+      <section id="summary">
+        <h2>11. Summary</h2>
+        <p><strong>In one sentence:</strong> RNS narrows the OVS supervision gap by turning a few pixel-annotated examples into visual prototypes, fusing those prototypes with text before prediction, retrieving query-relevant support, and training one tiny classifier for the current image.</p>
+        <div class="note">
+          <p class="note-title">Three takeaways</p>
+          <ol>
+            <li>The important design choice is where fusion happens. RNS fuses text and visual evidence at the prototype level, not by averaging finished predictions.</li>
+            <li>Retrieval is not cosmetic. The retrieval ablation shows that support selected for the query image beats random support and farthest support.</li>
+            <li>The headline result is strong but bounded: DINOv3.txt plus SAM and $B=20$ reaches 61.9 average mIoU using 964 annotated images, while the fully supervised average is 73.4 using 20k annotations; that 11.5-point average gap is uneven &mdash; RNS surpasses fully supervised on FoodSeg103 but trails it clearly on VOC, Cityscapes, and CUB.</li>
+          </ol>
+        </div>
+        <figure class="fig-wide">
+          <a href="../assets/figures/retseg/retseg_fig7.png"><img src="../assets/figures/retseg/retseg_fig7.png" alt="RNS personalized segmentation examples"></a>
+          <figcaption><strong>Paper Figure 7.</strong> The support set can be expanded with examples of a specific instance, such as a particular plate or patterned skirt. The figure shows the qualitative promise of dynamic support, while the paper also notes a failure where color cues lead to an incorrect swimsuit prediction.</figcaption>
+        </figure>
+      </section>
+
+      <section id="references" class="references">
+        <h2>12. References and provenance</h2>
+        <ol>
+          <li>Tilemachos Aravanis, Vladan Stojni&#263;, Bill Psomas, Nikos Komodakis, Giorgos Tolias. <em>Retrieve and Segment: Are a Few Examples Enough to Bridge the Supervision Gap in Open-Vocabulary Segmentation?</em> arXiv:2602.23339v1 [cs.CV], 26 Feb 2026. PDF used for this page: <code>sources/retseg.pdf</code>.</li>
+          <li>All equations, result tables, dataset names, support settings, marker meanings, and runtime statements in this page are taken from the supplied PDF. Information not present there is reported as "Not stated in the paper."</li>
+          <li>Local figure assets used in this page are under <code>assets/figures/retseg/</code>: <code>retseg_fig1.png</code>, <code>retseg_fig2.png</code>, <code>retseg_fig3.png</code>, <code>retseg_fig4.png</code>, <code>retseg_fig5.png</code>, <code>retseg_fig7.png</code>, and <code>retseg_fig13.png</code>.</li>
+        </ol>
+      </section>
+
+    </main>
+    <footer class="article-footer">Paper Digest · RNS deep-read. The page is grounded in the supplied PDF; missing information is marked explicitly.</footer>
+  </article>
+  <aside class="sidebar">
+    <section class="side-card">
+      <h2 class="side-title">Contents</h2>
+      <div class="side-body">
+        <ol>
+          <li><a href="#lead">Lead</a></li>
+          <li><a href="#motivation">Motivation</a></li>
+          <li><a href="#contribution">Contributions</a></li>
+          <li><a href="#datasets">Datasets</a></li>
+          <li><a href="#pipeline">Pipeline</a></li>
+          <li><a href="#method">Method</a></li>
+          <li><a href="#training">Training</a></li>
+          <li><a href="#experiments">Experiments</a></li>
+          <li><a href="#ablations">Ablations</a></li>
+          <li><a href="#limitations">Limitations</a></li>
+          <li><a href="#summary">Summary</a></li>
+          <li><a href="#references">References</a></li>
+        </ol>
+      </div>
+    </section>
+    <section class="side-card">
+      <h2 class="side-title">Paper Info</h2>
+      <div class="side-body">
+        <dl class="meta-list">
+          <dt>Title</dt><dd>Retrieve and Segment</dd>
+          <dt>arXiv</dt><dd>2602.23339</dd>
+          <dt>Task</dt><dd>Open-vocabulary semantic segmentation</dd>
+          <dt>Adapter</dt><dd>Per-image linear classifier</dd>
+          <dt>Main metric</dt><dd>mIoU</dd>
+        </dl>
+      </div>
+    </section>
+    <section class="side-card">
+      <h2 class="side-title">Key Evidence</h2>
+      <div class="side-body">
+        <ul>
+          <li>Figure 3: full support curves</li>
+          <li>Figure 4: partial support curves</li>
+          <li>Figure 5: retrieval ablation</li>
+          <li>Table 1: component removal</li>
+          <li>Table 2: gap to full supervision</li>
+        </ul>
+      </div>
+    </section>
+    <section class="side-card">
+      <h2 class="side-title">Status</h2>
+      <div class="side-body">
+        <p><span class="status-good">English</span> full rewrite</p>
+        <p><span class="status-good">figures</span> local PNG assets reused</p>
+        <p><span class="status-warn">scope</span> narrows, not closes, the gap</p>
+      </div>
+    </section>
+  </aside>
 </div>
-
-<div class="socratic">
-<p class="question">问：既然要补视觉支撑，为什么不直接像传统 few-shot segmentation 那样在 base 类上 meta-learn？</p>
-<p class="guide">引：作者明确把自己和 few-shot segmentation、test-time adaptation 划清界限——区别在“开放世界假设”。</p>
-<p class="answer">答：传统 few-shot 分割（原型网络、episodic N-way 训练）默认<strong>闭世界</strong>：类别集合训练时就固定。而 OVS 的设定是类别集合<strong>测试时任意给定、还会动态增长</strong>（teaser 的 $A\subseteq B$）。作者要的是：支撑集随时可扩、且<strong>有些类可能根本没视觉支撑、有些类可能没文本名</strong>（医学/遥感里命名都难）。这逼出四种设定——full-support、partial-visual-support（部分类缺图）、partial-textual-support（部分类缺名）、only-textual-support（退化回零样本）。一个真正可用的方法必须在这四种设定下都不崩——这是 RNS 设计的硬约束，也是它和 kNN-CLIP/FREEDA 拉开差距的地方。</p>
-<div class="takeaway">Takeaway：约束不是“在固定类上分割得多准”，而是“<b>在支撑残缺且动态增长的开放世界里都别崩</b>”。这条约束后面会反复用来解释 RNS 的每一个组件为什么必须存在。</div>
-</div>
-</section>
-
-<section id="contribution">
-<h2>贡献拆解：作者明确提出的 vs. 读者进一步推断的<a class="anchor" href="#contribution">¶</a></h2>
-<p><strong>作者明确列出的贡献（论文原文四条）：</strong></p>
-<ul>
-<li><strong>系统梳理少样本 OVS 设定</strong>：研究多种少样本设定，用“像素标注的视觉样例”去丰富文本 prompt（full / partial-visual / partial-textual / only-textual 四档）。</li>
-<li><strong>RNS 方法</strong>：一种检索增强的<strong>测试时适配器</strong>，学到的融合比前人的手工融合更有效。</li>
-<li><strong>显著缩小零样本↔全监督差距</strong>，同时保住开放词表的泛化能力。</li>
-<li><strong>支持动态扩张 + 细粒度任务</strong>：支撑集可在线增长（开放世界），并能无改动迁到 personalized segmentation（区分类内某个特定实例）。</li>
-</ul>
-<p><strong>读者能进一步推断的是（非作者结论，标注为推断）：</strong></p>
-<ul>
-<li>RNS 的“融合在原型层、决策交给 per-image 线性分类器”是一种把“模态融合”从<strong>手工设计</strong>交给<strong>每图一训的优化</strong>的范式——这与“测试时训练（TTT）”的思路同源，可推断它对 backbone 越强（DINOv3）收益越大（图 3 右印证）。</li>
-<li>“只存视觉原型、不存原图特征”使内存可控、支撑集可增量更新——可推断这是它能落地“持续演化开放世界”的工程前提，而非纯精度技巧。</li>
-</ul>
-<div class="note"><div class="note-title">和最接近的两个对手的边界（论文 §2）</div>
-<p><strong>kNN-CLIP</strong>：用像素标注图建一个“类向量”记忆库，测试时按 k 近邻给区域贴标签——但它对“没标注样例的类”无能为力，且文本/视觉是<strong>手工后期融合</strong>。<strong>FREEDA</strong>：把文本类特征经检索“扩展成视觉对应物”，构成一个非参数视觉分类器再与零样本文本分类器相加；原版用<strong>生成的</strong>视觉样例，本文为公平比较改成用真实支撑图。RNS 与两者的本质差别：<b>融合从“后期相加预测图”挪到“原型层 + 每图一训的线性分类器”</b>。</p></div>
-</section>
-
-<section id="datasets">
-<h2>数据：支撑集是“监督信号”而非训练集<a class="anchor" href="#datasets">¶</a></h2>
-<p>RNS 没有“训练阶段”意义上的训练集——它<strong>不训 backbone、不预训分类器</strong>。数据在这里扮演两个角色：<strong>支撑集</strong>（监督信号）与<strong>评测基准</strong>。</p>
-<div class="table-wrap"><table>
-<caption>表 A · 数据角色（据论文 §4.1 转写；非论文原表）</caption>
-<thead><tr><th>角色</th><th>具体数据</th><th>用途</th></tr></thead>
-<tbody>
-<tr><td>视觉支撑集</td><td>每类 $B$ 张像素标注图（$B\in\{1,2,3,5,10,20\}$）</td><td>提取 per-image 视觉类特征，构成检索记忆库；可在线扩张</td></tr>
-<tr><td>文本支撑集</td><td>类名 / 文本描述</td><td>经 VLM 文本编码器得到文本类特征 $t_c$</td></tr>
-<tr><td>主评测（6 个 OVS 基准，报平均 mIoU）</td><td>PASCAL VOC、PASCAL Context、COCO-Object、COCO-Stuff、Cityscapes、ADE20K</td><td>full / partial 支撑下与 kNN-CLIP、FREEDA、zero-shot 比</td></tr>
-<tr><td>细粒度对照（与全监督比）</td><td>PASCAL Context-59、FoodSeg103、CUB</td><td>表 2 的“bridging the gap”实验</td></tr>
-</tbody>
-</table></div>
-<p>“每类采样 $B$ 张支撑图”和“少样本基准的构造细节”作者放在补充材料；正文未给采样的全部细则——这里按论文披露<strong>明确标注“细节见补充材料”</strong>，不臆造。注意 $B$ 是“每类支撑图数”，不是 batch size。</p>
-</section>
-
-<section id="pipeline">
-<h2>Pipeline：支撑构造 → 测试时训练 → 推理，三段各解决什么<a class="anchor" href="#pipeline">¶</a></h2>
-<figure><a href="../assets/figures/retseg/retseg_fig2.png"><img src="../assets/figures/retseg/retseg_fig2.png" alt="RNS 总览：左 Support Construction，中 Training，右 Inference"></a><figcaption>图 2 · RNS 全流程（full 支撑下）。数据流分三段：<b>左 · 支撑构造</b>——支撑图按类标签 pool 出 per-image 视觉类特征 $v_c^i$，聚合成视觉类特征 $v_c$，再与文本类特征 $t_c$ 按系数 $\lambda$ 融成 fused 类特征 $f_{c\lambda}$。<b>中 · 测试时训练</b>——对每张测试图，用它的 patch 特征去检索“最相关”的那一小撮视觉支撑特征 + fused 类特征，连同类标签当训练样本，<strong>每图新训一个线性分类器</strong> $g_\theta$（火苗=要训，雪花=冻结），每个样本配一个类相关权重 $w_c$。<b>右 · 推理</b>——这个“为这张图量身训的”$g_\theta$ 作用在同一张图的 patch 特征上出分割；有 SAM 时把 patch 级特征换成 region 级特征 $x_r$ 提精度。</figcaption></figure>
-
-<div class="socratic">
-<p class="question">问：三段流程里，每一段如果抽掉会坏在哪？</p>
-<p class="guide">引：逐段问“为什么需要它”。</p>
-<p class="answer">答：<b>支撑构造</b>解决“原始支撑图太大、且两模态有 modality gap”——直接拿原图特征去和文本拼会因模态鸿沟失效（论文明说“直接组合不 work，实验已证”），所以先 pool 成紧凑视觉原型、再在原型层做融合。抽掉它 → 退回 kNN-CLIP 式的“原始特征 + 手工融合”。<b>测试时训练</b>解决“如何把支撑信息注入这张具体测试图”——它不是在所有类上训一个全局分类器，而是<strong>检索出与当前图相关的支撑</strong>再 per-image 训一个小分类器；抽掉检索 → 训练集被无关类淹没（图 5 的随机/最远变体掉点）。<b>推理</b>这段把 patch 级换成 SAM region 级是<strong>可选增益</strong>：借 SAM 大规模训练的定位能力提精度，代价是推理更贵。</p>
-<div class="takeaway">Takeaway：三段分别对应“<b>压缩+对齐 / 选相关+现学 / 出结果</b>”。检索是连接支撑库和单张测试图的桥——没有它，per-image 训练就失去了“只看相关支撑”的好处。</div>
-</div>
-</section>
-
-<section id="method">
-<h2>方法：为什么“原型层融合 + 检索式测试时训练”能赢“后期手工相加”<a class="anchor" href="#method">¶</a></h2>
-
-<h3>0. 先把零样本基线写清楚（后面所有东西都建在它上）</h3>
-<p>图像 $I\in\mathbb{R}^{H\times W\times3}$ 过 VLM 视觉编码器，得到 patch 级特征矩阵 $X\in\mathbb{R}^{n\times d}$，$n=h\times w$ 是 patch 数。类名 $c$ 过文本编码器得到文本类特征 $t_c\in\mathbb{R}^d$。视觉、文本特征都归一化到单位长度。零样本预测就是 patch 特征和文本特征点积、再 softmax：</p>
-<div class="equation">$$\hat{P}_{jc}=s_C\!\left(x_j^{\top}t_c\right)\qquad\text{(式 1)}$$<div class="eq-caption">式 1：$\hat P_{jc}$ 是第 $j$ 个 patch 属于类 $c$ 的概率；$s_C(\cdot)$ 是在类集合 $C$ 上的 softmax。低分辨率预测 $\hat P$ reshape + 上采样到全分辨率 $\hat Y$，argmax 出分割。</div></div>
-<p class="formula-note"><b>公式读法</b>：这就是 MaskCLIP 一类零样本 OVS 的标准做法——把“分类器权重”换成“文本类特征”，patch 特征去和它比相似度。式 1 的问题正是动机里那两条：$x_j$ 来自图像级监督的 VLM，定位糙；$t_c$ 来自有歧义的语言。RNS 要做的，是给这个点积分类器换上一个<strong>从视觉支撑现学</strong>的、更懂这张图的分类器。</p>
-
-<h3>1. 视觉类特征：把像素标注 pool 成原型</h3>
-<p>给一张支撑图 $I^i$ 和它的像素标注 $Y^i\in\{0,1\}^{H\times W\times C}$，提取 patch 特征 $X^i$，把全分辨率标注下采样、reshape 成 patch 级软标签 $P^i$（插值后不再是 0/1，按类做 $L_1$ 归一化）。然后用软标签把 patch 特征 pool 成 <strong>per-image 视觉类特征</strong>：</p>
-<div class="equation">$$v_c^i=\sum_{j=1}^{n}P^i_{jc}\,x_j^i\qquad\text{(式 2)}$$<div class="eq-caption">式 2：第 $i$ 张支撑图里，类 $c$ 的视觉原型 = 用“该 patch 属于 $c$ 的软标签”加权平均所有 patch 特征。</div></div>
-<p>所有支撑图的 per-image 视觉类特征并起来，就是<strong>视觉支撑特征集</strong> $V=\bigcup_{i=1}^{M}\{v_c^i:c\in C_i\}$（式 3）。再按类把它们求和聚合成<strong>视觉类特征</strong> $v_c=\sum_{i\in I_c}v_c^i$（式 5，$I_c$ 是含类 $c$ 的支撑图集合）。</p>
-
-<h3>2. 融合：为什么必须在原型层做，而且要多个 $\lambda$</h3>
-<div class="socratic">
-<p class="question">问：有了视觉原型 $v_c$ 和文本原型 $t_c$，为什么不直接把视觉支撑特征和文本拼起来？</p>
-<p class="guide">引：作者给了一个明确的失败理由——modality gap。</p>
-<p class="answer">答：VLM 里视觉和文本特征之间存在<strong>模态鸿沟</strong>（modality gap，论文引 [41]）：即使在同一空间里，图像特征和文本特征整体上落在不同的子区域。而 RNS 的目标是分类“图像 patch 级特征”。把 patch 级视觉支撑特征直接和文本特征拼，“组合得不好（实验已证）”。解法是为每个类造一个<strong>融合类特征</strong>，用一个混合系数 $\lambda$ 在文本原型和视觉原型之间插值：</p>
-<div class="equation">$$f_{c\lambda}=\lambda\,t_c+(1-\lambda)\,v_c,\qquad\lambda\in[0,1]\qquad\text{(式 4)}$$<div class="eq-caption">式 4：融合类特征是文本类特征与视觉类特征的凸组合。$\lambda=1$ 纯文本（退回零样本原型），$\lambda=0$ 纯视觉。</div></div>
-<p>关键设计：融合<strong>不只用一个 $\lambda$</strong>，而是用一组 $\Lambda\subseteq[0,1]$，得到一族 fused 类特征 $F=\{f_{c\lambda}:c\in C,\lambda\in\Lambda\}$（fused 支撑特征集）。</p>
-<div class="takeaway">Takeaway：在<b>原型层</b>插值（而非“后期相加两张预测图”）有两个好处——（1）凸组合让视觉原型被文本“拉”向语义可分的方向，缓解模态鸿沟；（2）<b>多个 $\lambda$</b> 等于给后面的线性分类器喂入“不同文本/视觉配比”的同一类原型，让它自己挑哪种配比对这张图最有用。后面消融会证明：固定单个 $\lambda=0.8$ 在低样本时明显下降。</div>
-</div>
-
-<h3>3. 检索：为每张测试图现搭训练集</h3>
-<p>对测试图 $I^q$，特征矩阵 $X^q$，patch 特征 $x_j^q$。RNS 要为它<strong>新训</strong>一个线性分类器 $g_\theta:\mathbb{R}^d\to\mathbb{R}^C$。训练数据怎么来？——<strong>检索</strong>：每个测试 patch 特征去视觉支撑集 $V$ 里取 $k$ 近邻，并起来成<strong>检索到的视觉支撑特征集</strong>：</p>
-<div class="equation">$$V_r=\bigcup_{j=1}^{n}\mathrm{kNN}\!\left(V,\;x_j^q\right)\qquad\text{(式 6)}$$<div class="eq-caption">式 6：把每个测试 patch 的 $k$ 个最近视觉支撑特征收集起来。这一步保证训练集里出现的，多半是“测试图里真出现的类”、且来自视觉相似的支撑图。</div></div>
-
-<h3>4. 测试时训练的损失：三项各管一摊</h3>
-<p><b>(a) 视觉支撑损失</b>——让分类器对检索到的视觉支撑特征分对类：</p>
-<div class="equation">$$L_v=\sum_{v\in V_r}w_{l(v)}\,\mathrm{CE}\!\left(g_\theta(v),\,\mathbf{1}_{l(v)}\right)\qquad\text{(式 7)}$$<div class="eq-caption">式 7：$l(v)$ 给出特征 $v$ 的类标签，$\mathbf{1}$ 是 one-hot，$\mathrm{CE}$ 是交叉熵，$w_c$ 是类相关权重。</div></div>
-<p><b>(b) 类相关权重 $w_c$</b>——检索难免捞进无关类的支撑特征，用测试图<strong>整图特征</strong>和文本特征的相似度来压低无关类的权重：</p>
-<div class="equation">$$w_c=s_C\!\left(x^{q\top}t_c\right),\qquad x^q=\tfrac{1}{n}\sum_{j=1}^{n}x_j^q\qquad\text{(式 8–9)}$$<div class="eq-caption">式 8–9：$x^q$ 是测试图 patch 特征的全局平均（global average pooling），$w_c$ 是它和各类文本特征点积后的 softmax——相当于“这张图里有类 $c$ 的整图级先验”。无关类权重小，相关类权重大。</div></div>
-<p class="formula-note"><b>公式读法</b>：$w_c$ 是 RNS 抗“检索噪声”的关键。检索是 per-patch 的、必然会捞进一些不该出现的类；$w_c$ 用整图级零样本先验把这些类的损失贡献压下去。消融（表 1）显示去掉 $w_c$ 各档都掉点，证实它确实能抑制无关检索类。</p>
-<p><b>(c) Fused 支撑损失</b>——把文本信息经 fused 支撑集注入。只对“检索到的视觉支撑里出现过的类”$C_r$ 训练 fused 类特征：</p>
-<div class="equation">$$L_f=\sum_{c\in C_r}\sum_{\lambda\in\Lambda}w_c\,\mathrm{CE}\!\left(g_\theta(f_{c\lambda}),\,\mathbf{1}_c\right)\qquad\text{(式 10)}$$<div class="eq-caption">式 10：对每个检索到的类、每个混合系数 $\lambda$，都让分类器把 fused 类特征 $f_{c\lambda}$ 判到类 $c$。这正是“多 $\lambda$”发挥作用的地方——同一类喂入多种文本/视觉配比。</div></div>
-<p>full 支撑下总损失 $L=L_v+\beta_f L_f$。训练完，$g_\theta$ 作用在测试图 patch 特征上出低分辨率预测，再上采样成最终分割图。</p>
-
-<div class="socratic">
-<p class="question">问：把这四步合起来看，RNS 到底用什么机制赢了“后期手工相加”？请从两个独立角度交叉验证。</p>
-<p class="guide">引：一个角度是“融合在哪一层”，另一个角度是“决策由谁做”。</p>
-<p class="answer">答：<b>角度一（融合层级）</b>：kNN-CLIP/FREEDA 是 <strong>late fusion</strong>——文本分支、视觉分支各自出一张预测图，再用<strong>固定的、手工调的</strong>规则相加。这种规则一旦定死，就无法随“支撑多寡 / 这张图的具体内容”自适应（实验里 kNN-CLIP 的融合启发式在 $B{=}1$ 有用、$B{>}5$ 反而拖累，正是这个症状）。RNS 是 <strong>early fusion at prototype level + learned decision</strong>——式 4 在原型层融合，再让 $g_\theta$ 在测试时<strong>学</strong>出最佳决策面。<b>角度二（决策主体）</b>：late fusion 的决策是“人写的加权公式”；RNS 的决策是“<strong>每张图新训的线性分类器</strong>”，它能根据检索到的相关支撑现学一个 per-image 判别面。两个角度指向同一结论：把“模态怎么配合”从<strong>设计</strong>变成<strong>每图一训的优化</strong>，才是 RNS 的胜负手。图 5（检索消融）与表 1（去组件消融）正是这两个角度的独立证据。</p>
-<div class="takeaway">Takeaway：RNS = “原型层融合”(给优化好的输入) + “检索”(给优化相关的样本) + “per-image 线性分类器”(让优化做决策)。三者缺一，要么输入有模态鸿沟、要么样本被无关类淹没、要么决策退回手工规则。</div>
-</div>
-
-<h3>5. 四种残缺设定怎么兜底（开放世界的硬约束）</h3>
-<ul>
-<li><strong>partial-visual（部分类缺图）</strong>：缺视觉支撑的类 $C_d$ 算不出 $v_c$、也算不出 $f_{c\lambda}$。RNS 用零样本预测式 1 判断测试图里是否疑似含这些类（把 $\hat P^q$ 转 one-hot、按类 $L_1$ 归一化得 $\tilde P^q$），对疑似出现的类用<strong>测试图自己的伪标签</strong> pool 出视觉特征 $v_c=\sum_j \tilde P^q_{jc}x_j^q$（式 11），这样这些类也能进式 4 融合。<br>对这些<strong>伪标签来的 fused 特征</strong>，因为类归属不确定，额外加一项 <b>伪标签损失</b>（KL 散度）：$L_p=\sum_{c\in C\cap C_d}\sum_{\lambda\in\Lambda}w_c\,\mathrm{KL}\!\left(\hat p_{c\lambda}\,\|\,g_\theta(f_{c\lambda})\right)$（式 12）。此时总损失 $L=L_v+\beta_f L_f+\beta_p L_p$。</li>
-<li><strong>partial-textual（部分类缺名）</strong>：缺类名的类用“有名类的平均文本特征”作中性语义先验填上，保证所有类都平等进损失，避免偏向“双支撑都有”的类。</li>
-<li><strong>only-textual（全缺名 = 零样本）</strong>：没有任何文本特征 → 令 $\Lambda=\{0\}$、所有 $w_c=1$，退化成“w/o text”基线。</li>
-<li><strong>region-proposal（可选）</strong>：有 SAM 时，把每个 mask 下采到 patch 分辨率、按 region 做 $L_1$ 归一化得 $\bar S$，pool 出 region 级特征 $x_r=\sum_j \bar S_{jr}x_j^q$（式 13），在 region 级分类再映回 mask——借 SAM 的定位力提精度。</li>
-</ul>
-<p>这套“四档兜底”正是回应动机里那条硬约束：<strong>支撑残缺且动态增长时也别崩</strong>。其中“<b>支撑集维护</b>”采用增量式设计——新支撑图到了，只需更新 $V$、$v_c$、$f_{c\lambda}$、$F$，无需重训任何东西，所以能在线扩张。</p>
-</section>
-
-<section id="training">
-<h2>训练账本：没有训练阶段，只有“每图一训”<a class="anchor" href="#training">¶</a></h2>
-<p>RNS 最反直觉的一点：<strong>它没有常规意义上的训练</strong>。backbone 冻结、不预训分类器，唯一被“训”的是每张测试图临时新建的线性分类器 $g_\theta$。论文披露的配置：</p>
-<div class="table-wrap"><table>
-<caption>表 B · 实现配置（据论文 §4.1 + 脚注转写；含“论文未说明”标注）</caption>
-<thead><tr><th>项目</th><th>设置</th></tr></thead>
-<tbody>
-<tr><td>VLM backbone</td><td>OpenCLIP ViT-B/16（LAION 训练）+ MaskCLIP trick；以及 DINOv3 ViT-L/16 经 dino.txt 适配得到文本对齐 patch 特征（记作 DINOv3.txt）</td></tr>
-<tr><td>区域提议</td><td>SAM 2.1 Hiera-L，每张 query 图用 $32\times32$ 点网格（每点一个 mask）+ 非极大抑制保证不重叠</td></tr>
-<tr><td>被训的参数</td><td>仅 per-image 线性分类器 $g_\theta:\mathbb{R}^d\to\mathbb{R}^C$（backbone 全程冻结）</td></tr>
-<tr><td>测试时训练耗时</td><td>论文正文：每张测试图的测试时训练在 NVIDIA A100 上<strong>不到 1 秒</strong></td></tr>
-<tr><td>学习率 / batch / 迭代数</td><td>正文未给通用值；闭集对比实验（图 6）中用“支撑集 train-val 划分”调过 lr/batch/迭代数。具体数值——<strong>论文正文未说明，见补充材料</strong></td></tr>
-<tr><td>$k$ / $\Lambda$ / $\beta_f,\beta_p$ 取值</td><td>正文给了机制，具体超参取值——<strong>论文正文未说明，见补充材料</strong></td></tr>
-</tbody>
-</table></div>
-<p class="note"><span class="note-title">关于算力口径</span>论文只给“A100 上 &lt;1 秒/图”这一相对量，<strong>未披露总 GPU-hours</strong>。若要估算整套基准的总测试时计算量，应明确“按论文披露数字粗略估算，不等同于实际账单”——本文不做此估算，因正文未给评测图像总数与并发设置。</p>
-</section>
-
-<section id="experiments">
-<h2>实验：四档设定逐一验证“别崩”<a class="anchor" href="#experiments">¶</a></h2>
-
-<h3>主结果一：full 支撑下随 $B$ 增长（图 3）</h3>
-<figure><a href="../assets/figures/retseg/retseg_fig3.png"><img src="../assets/figures/retseg/retseg_fig3.png" alt="图3：full支撑下 mIoU 随每类支撑图数 B 变化，RNS 始终高于 kNN-CLIP、FREEDA、Zero-shot"></a><figcaption>图 3 · 全文本 + 视觉支撑。横轴是每类支撑图数 $B\in\{1,2,3,5,10,20\}$，纵轴平均 mIoU。<b>左</b>：OpenCLIP ViT-B/16（region 级，SAM 2.1）。<b>右</b>：DINOv3.txt ViT-L/16（实线表示 SAM region，虚线表示 patch）。这张图要支撑的结论是：RNS（绿）在<strong>每个 $B$、两种 backbone、patch/region 两种粒度</strong>上都稳压 kNN-CLIP（黄）、FREEDA（紫）和 Zero-shot（棕横线）。实心点表示 with text，叉表示 w/o text。注意右图 DINOv3 上 RNS 与 kNN-CLIP 的差距比左图更大——backbone 越强，RNS 收益越大。</figcaption></figure>
-<p>关键数字（论文 §4.2 原文）：相对零样本，RNS 仅用<strong>每类 1 张图</strong>就拿到 <strong>+7.3% mIoU（OpenCLIP）</strong>、<strong>+18.4% mIoU（DINOv3.txt）</strong>。$B{=}1$ 时 with-text 明显高于 w/o-text，$B{=}20$ 时两者打平——印证“文本在支撑稀疏时最值钱，支撑变密后视觉主导”。对手的失败模式：kNN-CLIP 的融合启发式 $B{=}1$ 有用、$B{>}5$ 反而拖累（手工融合对支撑量敏感）；FREEDA 即使有文本也几乎不获益。</p>
-
-<h3>主结果二：partial 支撑下退化是否平滑（图 4）</h3>
-<figure><a href="../assets/figures/retseg/retseg_fig4.png"><img src="../assets/figures/retseg/retseg_fig4.png" alt="图4：左为部分类缺视觉支撑、右为部分类缺文本支撑下 mIoU 随缺失比例变化"></a><figcaption>图 4 · 部分视觉支撑（左）与部分文本支撑（右）。横轴表示缺支撑类的比例。<b>左</b>：一部分类没视觉样例（其余 $B{=}3$），RNS（绿）随缺失比例<strong>平滑下降</strong>，且即便只有小部分类有支撑也能获益；去掉伪标签损失（空心，式 12）会陡降——这就是 RNS 补偿“缺视觉支撑”的机制。<b>右</b>：一部分类没文本名（$B{=}1$），RNS 全程最好、只随文本变少<strong>轻微</strong>下降。对照：kNN-CLIP、FREEDA 都很快跌到零样本以下，因为它们不处理“支撑里缺的类”。</figcaption></figure>
-<p>这两张图直接验证开放世界硬约束：“缺类是开放世界里不可避免的”，而 RNS 是唯一在缺视觉/缺文本下都平滑退化、不跌破零样本的方法。左图的“去伪标签损失→陡降”是把式 12 的作用单独拎出来证明。</p>
-
-<h3>主结果三：与全监督的差距能压到多少（表 2）</h3>
-<div class="table-wrap"><table>
-<caption>表 2（论文原表，完整转写）· OVS vs. 全监督分割。Annot. = 该方法用的像素级语义分割标注数量（domain 行报的是 ADE 标注数）。∗=自测，†=取自 CAT-Seg。</caption>
-<thead><tr><th>Method</th><th>Training set</th><th>Annot.</th><th>VOC</th><th>City</th><th>ADE</th><th>C-59</th><th>Food</th><th>CUB</th><th>Avg.</th></tr></thead>
-<tbody>
-<tr><td>SAN<sup>†</sup></td><td>COCO</td><td>118k</td><td>–</td><td>–</td><td>32.1</td><td>57.7</td><td>24.5</td><td>19.3</td><td>–</td></tr>
-<tr><td>CAT-Seg<sup>∗</sup></td><td>COCO</td><td>118k</td><td>82.5</td><td>47.0</td><td>37.9</td><td>63.3</td><td>33.3</td><td>22.9</td><td>47.8</td></tr>
-<tr><td>LPOSS+</td><td>✗</td><td>✗</td><td>62.4</td><td>37.9</td><td>22.3</td><td>38.6</td><td>26.1</td><td>12.0</td><td>33.2</td></tr>
-<tr><td>CorrCLIP</td><td>✗</td><td>✗</td><td>76.4</td><td>49.9</td><td>28.8</td><td>47.9</td><td>–</td><td>–</td><td>–</td></tr>
-<tr><td>DINOv3.txt + SAM</td><td>✗</td><td>✗</td><td>31.3</td><td>39.3</td><td>27.7</td><td>36.3</td><td>27.2</td><td>5.8</td><td>27.9</td></tr>
-<tr><td>+ RNS ($B{=}1$)</td><td>Domain</td><td>66</td><td>73.2</td><td>59.1</td><td>37.3</td><td>52.7</td><td>42.8</td><td>34.0</td><td>49.9</td></tr>
-<tr><td>+ RNS ($B{=}20$)</td><td>Domain</td><td>964</td><td>82.1</td><td>61.7</td><td>47.8</td><td>62.5</td><td>52.2</td><td>65.2</td><td><strong>61.9</strong></td></tr>
-<tr><td>Fully Supervised</td><td>Domain</td><td>20k</td><td>90.4</td><td>87.0</td><td>63.0</td><td>70.3</td><td>45.1</td><td>84.6</td><td>73.4</td></tr>
-</tbody>
-</table></div>
-<p>这张表要支撑的核心结论：“bridging the gap”。读三处：（1）RNS $B{=}20$ 平均 61.9，离全监督 73.4 只差 <strong>11.5</strong>，比零样本基线（DINOv3.txt + SAM 的 27.9）<strong>+34</strong>。（2）RNS $B{=}20$ 超过第二好的 OVS 方法 CAT-Seg（47.8）<strong>+14.1</strong>，而标注量只用 964 vs CAT-Seg 的 118k、全监督的 20k。（3）增益在<strong>离 COCO-Stuff 域远的细粒度集</strong>（CUB 5.8→65.2、Food 27.2→52.2）上尤其大——因为 CAT-Seg 这类方法是在 COCO-Stuff 上训的，换域就吃力，而 RNS 直接用目标域的少量支撑。</p>
-</section>
-
-<section id="ablations">
-<h2>消融：每个组件是不是真在做它该做的事<a class="anchor" href="#ablations">¶</a></h2>
-
-<h3>检索到底有没有“选到相关支撑”（图 5）</h3>
-<p>这是验证“机制名副其实”的关键实验：把 RNS 检索到的视觉支撑集 $V_r$（式 6）换成各种替代品，看掉多少：</p>
-<ul>
-<li>换成 $V$ 的<strong>随机子集</strong> → 大幅掉点（证明“用相似图区域”是关键）；</li>
-<li>只保留“检索到的类” $C_r$、用其全部视觉特征 $V_{C_r}$ → 比默认略低（说明 $V_{C_r}$ 里仍有被 RNS 过滤掉的无关样例）；</li>
-<li>从 $V_{C_r}$ 随机取子集 → 比从 $V$ 随机取明显好（限定在语义相关类上有益）；</li>
-<li>取离 query 特征<strong>最远</strong>的样例 → 最差，甚至低于从 $V$ 随机采样。</li>
-</ul>
-<p>四个变体连成一条单调链：越偏离“检索相关支撑”，越差。这就独立证明了“RNS 的检索确实识别出了相关支撑特征”，而非碰巧。</p>
-
-<h3>去组件消融（表 1）</h3>
-<div class="table-wrap"><table>
-<caption>表 1（论文原表，完整转写）· RNS 消融，平均 mIoU。括号内是与同列第一行（完整 RNS）的差值。</caption>
-<thead><tr><th>Method</th><th>$B{=}1$</th><th>$B{=}5$</th><th>$B{=}10$</th></tr></thead>
-<tbody>
-<tr><td>RNS（完整）</td><td>41.59</td><td>47.87</td><td>49.02</td></tr>
-<tr><td>RNS w/o $w_c$</td><td>41.20 (−0.39)</td><td>47.43 (−0.44)</td><td>48.54 (−0.48)</td></tr>
-<tr><td>RNS w/o $w_c$, $\Lambda=\{0.8\}$</td><td>36.40 (−5.19)</td><td>46.55 (−1.32)</td><td>48.38 (−0.64)</td></tr>
-<tr><td>RNS w/o text</td><td>34.11 (−7.48)</td><td>45.71 (−2.16)</td><td>48.00 (−1.02)</td></tr>
-</tbody>
-</table></div>
-<p>逐行读：（1）去掉类相关权重 $w_c$，各档都掉（−0.39~−0.48），证实它确实能压低无关检索类。（2）再把多 $\lambda$ 砍成单一 $\lambda{=}0.8$，<strong>低样本时崩得最狠</strong>（$B{=}1$ 再掉到 −5.19）——印证“多 $\lambda$ 让分类器自己挑文本/视觉配比”在支撑稀疏时最关键。（3）再去掉文本（w/o text）继续掉（$B{=}1$ 共 −7.48），且<strong>差距随 $B$ 增大而缩小</strong>（$B{=}10$ 只剩 −1.02）——再次印证“文本在低样本时最值钱、支撑变密后视觉主导”。三行连起来，正好把式 8（$w_c$）、式 4 多 $\lambda$、文本支撑三个组件的贡献逐一分离。</p>
-
-<h3>闭集对照 + 个性化分割（图 6/7）</h3>
-<p>图 6（闭集对照）显示：把支撑集“离线”训一个线性分类器或微调整网，在<strong>低样本</strong>时不如 RNS——离线在全支撑上训会过拟合，而 RNS 的“测试时检索 + 只看相关支撑”更省样本；微调整网在样本足够时更强但要额外算力。“离线微调 + RNS”组合最好，说明文本监督与测试时适配是互补的。</p>
-<figure><a href="../assets/figures/retseg/retseg_fig7.png"><img src="../assets/figures/retseg/retseg_fig7.png" alt="图7：个性化分割，绿=个性化实例、红=通用类、黑=背景，对比personalization前后"></a><figcaption>图 7 · RNS 做个性化分割。绿表示个性化实例，红表示通用类，黑表示背景。机制：先有能分“plate（盘子）”这一类的支撑集，再往支撑里<strong>追加几张某个特定实例</strong>（如“带翠鸟图案的盘子 / 我的盘子”）的样例，模型就能把这个实例从大类里分出来——这正是“支撑集动态可扩”的直接副产品，<strong>无需任何改动</strong>。论文也诚实给了失败例：把橙色毛巾的一部分误分成泳衣（依赖颜色线索、上下文不足）。</figcaption></figure>
-</section>
-
-<section id="limitations">
-<h2>局限与复现门槛<a class="anchor" href="#limitations">¶</a></h2>
-<ul>
-<li><strong>失败模式（论文承认）</strong>：个性化分割里会因“颜色线索 + 上下文不足”误分（橙毛巾→泳衣）。部分遮挡能分对，但强依赖低层视觉线索时仍会错。</li>
-<li><strong>对零样本先验的依赖</strong>：partial-visual 兜底要用零样本式 1 判断“测试图里是否含某缺图类”（式 11），这一步本身来自有歧义的文本分类器——若零样本先验在某域整体偏弱，伪标签质量会受限。</li>
-<li><strong>SAM 的代价</strong>：region 级提精度，但每张 query 图要跑 SAM 2.1 + $32\times32$ 点网格 + NMS，推理更贵。patch 级更便宜但精度低一截（图 3 右虚线 vs 实线）。</li>
-<li><strong>复现门槛</strong>：正文未给 $k$、$\Lambda$、$\beta_f$、$\beta_p$、lr/batch/迭代数的具体值（均“见补充材料”），逐设定的支撑采样细节也在补充材料；要精确复现需补充材料 + 官方代码。代码仓库已开源（见下）。</li>
-<li><strong>评测口径</strong>：主结果报“6 个 OVS 基准的平均 mIoU”，逐数据集结果在补充材料；表 2 的“全监督”是逐数据集挑最好方法拼出来的上界，并非单一模型。</li>
-</ul>
-</section>
-
-<section id="summary">
-<h2>总结：一句话 + 三条 takeaway<a class="anchor" href="#summary">¶</a></h2>
-<p><strong>一句话</strong>：RNS 把“开放词表分割怎么用几张标注图”这件事，从前人的“<strong>后期手工相加</strong>两张预测图”，改成“<strong>原型层融合</strong> $f=\lambda t+(1-\lambda)v$ + <strong>检索</strong>现搭训练集 + <strong>每图一训</strong>一个线性分类器”，A100 上 &lt;1 秒/图，把与全监督的差距压到 11.5 mIoU。</p>
-<ol>
-<li><strong>诊断决定方案</strong>：缺口 = 图像级监督 + 语言歧义，只能靠真实像素标注兜底；于是核心问题变成“两种模态怎么融”，而答案是“别在预测层手工融，要在原型层融 + 让优化做决策”。</li>
-<li><strong>检索是桥</strong>：它把“庞大支撑库”和“单张测试图”接上——per-patch kNN 让训练集里多是“这张图真有的类”，再用 $w_c$ 压掉漏网的无关类。图 5 的随机/最远消融是它“名副其实”的直接证据。</li>
-<li><strong>开放世界鲁棒性是卖点</strong>：四档残缺设定（缺图/缺名/全缺名）都平滑退化、不跌破零样本，支撑集还能在线增量扩张、顺带做个性化分割——这才是它区别于 kNN-CLIP/FREEDA 的根本。</li>
-</ol>
-<p><strong>推荐阅读路径</strong>：图 1（为什么两模态都不能单用）→ §method 式 4（为什么在原型层融、为什么多 $\lambda$）→ §method 式 6–10（检索 + 三项损失）→ 图 3/4（full/partial 全面超过对手）→ 表 1 + 图 5（每个组件名副其实）→ 表 2（差距压到 11.5）。</p>
-</section>
-
-<section id="references">
-<h2>参考与图片来源<a class="anchor" href="#references">¶</a></h2>
-<div class="references">
-<ul>
-<li>论文：Aravanis, Stojnić, Psomas, Komodakis, Tolias. <i>Retrieve and Segment: Are a Few Examples Enough to Bridge the Supervision Gap in Open-Vocabulary Segmentation?</i> CVPR 2026（Highlight）. arXiv:2602.23339v1.</li>
-<li>官方代码：<a href="https://github.com/TilemahosAravanis/Retrieve-and-Segment" target="_blank" rel="noopener">github.com/TilemahosAravanis/Retrieve-and-Segment</a>（HTTP 200 已核）。</li>
-<li>CVF Open Access：截至本文撰写时 CVPR 2026 该论文页未解析（404），故未引 CVF 链接。</li>
-<li>关键对照方法（论文引用）：kNN-CLIP、FREEDA、CAT-Seg、SAN、LPOSS+、CorrCLIP；backbone：OpenCLIP（LAION）、DINOv3 + dino.txt、SAM 2.1。</li>
-</ul>
-<p class="note"><span class="note-title">关于方法论与归因</span>本文的机制拆解（动机先行、每个近似/假设显式标注、关键结论从“融合层级”与“决策主体”两个独立角度交叉验证）遵循 <code>kexue:su</code>（苏剑林 / kexue.fm）方法论。但在 <code>kexue:su</code> 语料库中以“检索增强 / 测试时训练 / 开放词表分割 / 模态融合 / 原型层融合 vs 后期融合”检索，<strong>未返回主题对应的卡片</strong>（实际返回的前五条为 SimBERT [archives/7427]、图像分类 fine-tune [archives/4611]、DGCNN 阅读理解问答 [archives/5409]、DGCNN 信息抽取 [archives/6671]、FLASH 高效 Transformer [archives/8934]，均为 NLP 文本生成/问答/注意力机制方向，与本文的视觉开放词表分割、检索增强测试时训练不相关）。按归因红线，本文<strong>仅应用方法论、不引用任何苏剑林 archive</strong>。</p>
-<p class="note"><span class="note-title">图片来源</span>所有图片均为从论文 PDF（arXiv:2602.23339）本地提取的高分辨率 PNG，用于学术评注：图 1（teaser，p1）、图 2（pipeline，p4）、图 3（full 支撑曲线，p6）、图 4（partial 支撑曲线，p6）、图 7（个性化分割，p8）。表 1、表 2 为论文原表完整转写；表 A、表 B 为据论文文本整理的辅助表（非论文原表，已标注）。</p>
-</div>
-</section>
-
-</main>
-<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法 / 融合+检索</a></li><li><a href="#training">训练账本</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Retrieve and Segment: Are a Few Examples Enough to Bridge the Supervision Gap in Open-Vocabulary Segmentation?（RNS）</dd><dt>Venue</dt><dd>CVPR 2026 · Highlight</dd><dt>核心</dt><dd>原型层融合 $f=\lambda t+(1-\lambda)v$ + 检索 + per-image 线性分类器</dd><dt>Backbone</dt><dd>OpenCLIP ViT-B/16 / DINOv3.txt ViT-L/16 + SAM 2.1（可选）</dd><dt>arXiv</dt><dd>2602.23339</dd><dt>Topic</dt><dd>Open-Vocabulary Segmentation · Few-shot</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：两模态都不能单用</li><li>式 4：原型层融合多 $\lambda$</li><li>式 6–10：检索 + 三项损失</li><li>图 3/4：full/partial 全面超过对手</li><li>表 1 + 图 5：组件名副其实</li><li>表 2：差距压到 11.5 mIoU</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> RNS 深读</p><p><span class="status-good">verified</span> 标题匹配 / 代码仓 200 / CVF 404</p><p><span class="status-good">figures</span> 5 张 PNG（fig1/2/3/4/7）</p><p><span class="status-good">formula</span> 式 1–13 选录 MathJax</p><p><span class="status-warn">scope</span> 个性化依赖颜色线索会误分</p></div></section></aside></div></body></html>
+</body>
+</html>

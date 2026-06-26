@@ -10,5 +10,8 @@ sources/
 # Browser-automation artifacts
 .playwright-mcp/
 
+# Pre-English-rewrite Chinese page backups (local done-markers, not deployed)
+*.zh.html.bak
+
 *.log
 .DS_Store

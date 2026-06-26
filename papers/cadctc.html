@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>高性能 CAD-CTC 深读：为什么把 Shape Index 与增强滤波器搬进“测地距离场”能砍掉一半假阳性？</title>
-<meta name="description" content="Virtual Colonoscopy / CTC · Ren, Ma, Xiong, Lu, Zhao, High-Performance CAD-CTC Scheme Using Shape Index, Multiscale Enhancement Filters, and Radiomic Features (IEEE TBME 2016) 学术深读">
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAD-CTC: why a geodesic distance field cuts false positives before radiomics finishes the job</title>
+<meta name="description" content="Paper Digest · High-Performance CAD-CTC Scheme Using Shape Index, Multiscale Enhancement Filters, and Radiomic Features — English deep-read">
 <script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+/* ===== Paper2Html shell · refined academic theme ===== */
 :root{
   --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
   --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
@@ -250,9 +250,9 @@ body.lb-lock{overflow:hidden}
     var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
     var overlay=document.createElement("div");
     overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
-    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+    overlay.innerHTML='<button class="lb-close" aria-label="Close">×</button>'+
       '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
-      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+      '<div class="lb-hint">Click anywhere or press Esc to close</div>';
     document.body.appendChild(overlay);
     var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
     function openLB(src,cap){
@@ -309,7 +309,7 @@ body.lb-lock{overflow:hidden}
     (function(){
       var title=document.querySelector(".site-title");if(!title)return;
       var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
-      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      var hp=nav.filter(function(a){return /home/i.test(a.textContent);})[0];
       if(hp)home=hp.getAttribute("href");
       else if(document.querySelector(".home"))home="index.html";
       if(!home)return;
@@ -327,12 +327,12 @@ body.lb-lock{overflow:hidden}
         function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
         if(!head.querySelector(".quick-links")){
           var bar=document.createElement("div");bar.className="quick-links";
-          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+          bar.innerHTML='<span class="ql-label">Links</span>'+chips();head.appendChild(bar);
         }
         var sb=document.querySelector(".sidebar");
         if(sb&&!sb.querySelector(".quick-links-side")){
           var card=document.createElement("section");card.className="side-card";
-          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          card.innerHTML='<h2 class="side-title">Links</h2><div class="side-body quick-links-side">'+chips()+'</div>';
           sb.insertBefore(card,sb.firstChild);
         }
       }
@@ -350,202 +350,332 @@ body.lb-lock{overflow:hidden}
 </script>
 </head>
 <body>
-<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>IEEE TBME 2016 · 虚拟结肠镜 / CTC</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
-<div class="wrap"><div class="breadcrumbs">首页 &gt; 虚拟结肠镜 / CTC &gt; 息肉 CAD &gt; GDF + Radiomics</div>
-<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">24</span><span class="month">JUN</span></div><h1 id="paper-title">高性能 CAD-CTC 深读：为什么把 Shape Index 与增强滤波器搬进“测地距离场”，能在不丢敏感度的前提下砍掉一半假阳性？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-24</span><span>IEEE Transactions on Biomedical Engineering, 64(8) 2017: 1924–1934（2016 在线）</span><span>来源：IEEE Xplore PDF（机构访问下载）</span></div><div class="tags"><span class="tag orange">Virtual Colonoscopy / CTC</span><span class="tag">Colonoscopy</span><span class="tag">CAD · Polyp Detection</span><span class="tag">Radiomics</span><span class="tag green">SJTU · Jun Zhao Lab</span><span class="tag">MathJax checked</span></div></header>
-<main class="content">
+<header class="site-header">
+  <div class="site-header-inner">
+    <div><p class="site-title">Paper Digest<small>IEEE TBME 2016 · CT colonography / polyp CAD</small></p></div>
+    <nav class="top-nav"><a href="../index.html">Home</a><a href="#lead">Lead</a><a href="#pipeline">Pipeline</a><a href="#method">Method</a><a href="#experiments">Experiments</a><a href="#limitations">Limitations</a></nav>
+  </div>
+</header>
+<div class="wrap">
+  <div class="breadcrumbs">Home &gt; CT Colonography &gt; CAD-CTC &gt; GDF + Radiomics</div>
+  <article class="article" aria-labelledby="paper-title">
+    <header class="article-head clearfix">
+      <div class="date-card"><span class="day">26</span><span class="month">JUN</span></div>
+      <h1 id="paper-title">CAD-CTC: why a geodesic distance field cuts false positives before radiomics finishes the job</h1>
+      <div class="article-meta"><span>Paper2Html</span><span>2026-06-26</span><span>IEEE Transactions on Biomedical Engineering · online 2016, print 2017</span><span>Source: local IEEE PDF</span></div>
+      <div class="tags"><span class="tag orange">CT Colonography</span><span class="tag">Computer-Aided Detection</span><span class="tag">Shape Index</span><span class="tag">Radiomics</span><span class="tag green">Random Forests</span><span class="tag">MathJax checked</span></div>
+    </header>
+    <main class="content">
+      <section id="lead">
+        <p id="abstract" class="lead"><strong>The short version.</strong> Computed tomography colonography (CTC), also called virtual colonoscopy, asks a computer-aided detection system for CTC (CAD-CTC) to mark colorectal polyps in a 3D CT scan. The hard part is not only finding polyps; it is avoiding false positives (FPs), meaning non-polyp structures that the system still marks as polyps. By-polyp sensitivity is the fraction of true polyps detected, per-scan sensitivity is the fraction of abnormal CT scans with at least one detected polyp, and FP/scan is the average number of false detections per CT scan. On 152 WRAMC scans from 76 patients, the full system reports 98.1% by-polyp sensitivity and 95.3% per-scan sensitivity at 1.3 FP/scan for polyps &ge;5 mm. The first move is to compute shape index (SI) and multiscale dot enhancement in a Gaussian-smoothed geodesic distance field (GDF), a field whose value is distance from the colon inner surface, instead of directly in CT intensity. That switch keeps all 197 polyp views (each polyp is scanned twice, supine and prone, so most count as two views) during candidate generation while lowering candidate FPs from 104.5 to 58.8 per scan. The second move is a roughly 640-dimensional radiomic feature set, where radiomics means many quantitative image descriptors, followed by Random Forests false-positive reduction.</p>
+        <div class="hero-split">
+          <div>
+            <div class="kv-grid">
+              <div class="kv"><b>Root question</b>If CT intensity makes polyp shape unreliable, can a distance field give the CAD system a cleaner geometry to measure?</div>
+              <div class="kv"><b>One-line contribution</b>Generate candidates with GDF-based SI and dot enhancement, then reduce FPs with 440 basic radiomic features plus 200 newly developed features.</div>
+              <div class="kv"><b>Main result</b>Polyps &ge;5 mm: 98.1% by-polyp and 95.3% per-scan sensitivity at 1.3 FP/scan. Polyps &ge;10 mm: 97.1% by-polyp sensitivity at 0.7 FP/scan and 93.7% per-scan sensitivity at 0.8 FP/scan.</div>
+              <div class="kv"><b>Evidence split</b>The GDF candidate generator cuts FPs before classification; the all-radiomic feature set then outperforms basic, newly developed, and prior-feature subsets in the FROC curves.</div>
+            </div>
+          </div>
+          <figure class="hero-card">
+            <a href="../assets/figures/cadctc/cadctc_fig3.png"><img src="../assets/figures/cadctc/cadctc_fig3.png" alt="Shape index and multiscale enhancement filters computed in CT intensity and in GDF"></a>
+            <figcaption><strong>Figure 3 · Why the paper changes the field before measuring shape.</strong> Panel (a) marks a large polyp, a haustral fold, and the colon wall. Panel (b) computes SI in the CT image, where intensity heterogeneity limits the response. Panel (c) computes SI in the Gaussian-smoothed GDF, where the whole polyp volume becomes high-SI. Panels (d)-(f) show dot, line, and plane enhancement in the mapped GDF: the polyp has high dot and line response, the fold has high line and plane response, and the wall has high plane response.</figcaption>
+          </figure>
+        </div>
+      </section>
 
-<!-- LEAD -->
-<p id="abstract" class="lead"><strong>导读。</strong>CT 结肠成像（CTC）的计算机辅助检测（CAD-CTC）要自动从 CT 里揪出结直肠息肉。真正卡脖子的不是“找不到”，而是“误报太多”——haustral folds（结肠袋皱襞）、残留粪便、肛管/充气管、回盲瓣，这些结构形状质地都像息肉，于是<strong>假阳性（FP）</strong>满天飞。这篇论文用两步把 FP 压下来：第一步换“计算坐标系”——把 Shape Index（SI，曲率度量）和 dot/line/plane 多尺度增强滤波器从直接在 CT 灰度上算，改到<strong>高斯平滑后的测地距离场（GDF）</strong>上算；因为 CT 灰度在息肉内部本来就不均匀（中心像正常组织、边缘像空气/造影剂）还受伪增强（PEH）干扰，而 GDF 在息肉里是从中心到边缘单调下降的光滑“穹顶”，SI 在整个息肉体积上都高、dot 滤波器强烈响应。第二步用<strong>640 个 radiomic 特征</strong>（440 个既有 + 200 个新造）喂 Random Forests 做 FP 削减。结果：152 套 CT、76 例、103 颗 ≥5 mm 息肉，<strong>by-polyp 敏感度 98.1%、per-scan 敏感度 95.3%，同在 1.3 FP/例</strong>；而把候选生成从 GDF 退回 CT 灰度，FP 从 58.8 翻到 104.5（同样 100% 候选敏感度）——换坐标系这一步就砍掉近一半 FP。</p>
+      <section id="motivation">
+        <h2>1. Motivation: false positives are the bottleneck</h2>
+        <p>Most CAD-CTC systems have two stages. The first stage generates many suspicious regions on the colon wall. The second stage classifies those candidates and removes FPs. The paper targets both stages, but the clinical pressure is clear: haustral folds, residual fecal material, tubes, and the ileocecal valve can look enough like a polyp to flood the reader with false marks.</p>
+        <p>The usual candidate generator measures curvature or related shape cues in the CT image. That is fragile here. The paper states two reasons. First, a polyp can have heterogeneous CT intensity: its center may resemble normal tissue, while its boundary may resemble surrounding air or tagged material. Second, pseudo-enhancement (PEH) between polyps and tagged material can bias CT intensity near the colon wall. So the system is trying to infer shape from a field that is not purely shape.</p>
+        <div class="socratic">
+          <p class="question">Q: Why would a distance field help if the target is still a 3D polyp?</p>
+          <p class="guide">Guide: ask what changes when the scalar value is distance from the colon inner surface instead of CT attenuation.</p>
+          <p class="answer">A: A GDF turns the inside of a protruding polyp into a smooth distance mound. The mound is tied to geometry, not to local CT brightness. Curvature and dot filters then see the polyp as a shape, not as a patchy intensity object.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The paper's first idea is not a larger classifier. It is a cleaner field in which the old shape measurements make more sense.</p>
+        </div>
+      </section>
 
-<!-- HERO -->
-<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>把曲率度量（SI）与 dot/line/plane 增强滤波器搬到<strong>测地距离场 GDF</strong> 上计算来生成息肉候选，再用 <strong>640 维 radiomics + Random Forests</strong> 削减假阳性。</div><div class="kv"><b>关键机制</b>GDF 把“灰度不均 + 伪增强”换成“到肠壁内表面的测地距离”，息肉在 GDF 中是单调光滑穹顶 → 整体 SI 高、dot 滤波器强响应；FP 削减靠 GDF 派生特征（Gini 前 9 名全是 GDF 特征）。</div><div class="kv"><b>核心证据</b>≥5 mm：98.1% by-polyp / 95.3% per-scan @1.3 FP/例；≥10 mm：97.1% @0.7 FP/例。候选生成 GDF vs CT 灰度：58.8 vs 104.5 FP/例（同 100% 敏感度）。</div><div class="kv"><b>复现门槛</b>WRAMC 单一数据库、四折交叉验证（无外部测试）；阈值 SI_Th=0.9、Dot_Th=20、SI&gt;0.76 等经验设定；640 特征有过拟合风险；代码未开源。</div></div></div><figure class="hero-card"><a href="../assets/figures/cadctc/cadctc_fig3.png"><img src="../assets/figures/cadctc/cadctc_fig3.png" alt="SI 与 dot/line/plane 滤波器在 CT 灰度 vs GDF 上的对比"></a><figcaption><strong>图 3 · 全文核心断言的可视化（论文 Fig. 3）。</strong>(a) 原始 CT：红箭头=≥10 mm 息肉、白=皱襞、绿=肠壁；(b) 在 CT 灰度上算的 SI；(c) 在高斯平滑 GDF 上算的 SI——<u>GDF-SI 在整个息肉体积上都是高值</u>，而 CT-SI 只在边缘高；(d)–(f) 在映射 GDF 上的 dot/line/plane 增强图。息肉 dot+line 高、皱襞 line+plane 高、肠壁 plane 高——这正是“用形状把息肉与干扰物分开”的依据。</figcaption></figure></div>
+      <section id="contribution">
+        <h2>2. Contribution: one geometry fix, one feature fix</h2>
+        <p>The authors state a CAD-CTC scheme that combines GDF-based candidate generation with radiomic false-positive reduction. In candidate generation, SI and multiscale enhancement filters are computed in the Gaussian-smoothed GDF. The dot filter is used with SI to find polyp candidates; line and plane responses also become useful descriptors later. In FP reduction, the paper extracts 440 basic radiomic features collected from previous radiomic studies and 200 newly developed radiomic features designed for polyp detection.</p>
+        <p>The useful reader-side interpretation is that GDF appears twice. It first reduces the number of candidates that reach the classifier: the GDF version keeps 100% candidate sensitivity with 58.8 FP/scan, while the CT-intensity baseline needs 104.5 FP/scan for the same 100% candidate sensitivity. It then supplies high-value features: the top nine Gini-ranked features are GDF first-order statistics. That does not prove GDF alone solves the task, but it does show that the representation is doing work in both stages.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Two design moves in the paper.</strong></caption>
+            <thead><tr><th>Stage</th><th>Problem it attacks</th><th>Paper's move</th><th>Evidence in the paper</th></tr></thead>
+            <tbody>
+              <tr><td>Candidate generation</td><td>CT intensity is a noisy field for shape measurement.</td><td>Compute SI and multiscale dot enhancement in Gaussian-smoothed GDF.</td><td>100% candidate sensitivity with 58.8 FP/scan, versus 104.5 FP/scan for the CT-intensity baseline.</td></tr>
+              <tr><td>FP reduction</td><td>Folds, walls, tubes, and valves remain visually similar to polyps.</td><td>Extract 640 radiomic features and train Random Forests with SMOTE-balanced positives.</td><td>All radiomic features reach 98.1% by-polyp and 95.3% per-scan sensitivity at 1.3 FP/scan.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-<!-- MOTIVATION -->
-<section id="motivation"><h2>1. 核心问题：CAD-CTC 的瓶颈不是“找到”，而是“少误报”</h2>
-<p>结直肠癌是美国第三高发、致死第二的癌症，多数由腺瘤性息肉演变而来，临床显著息肉一般 ≥5 mm。CTC 是一种微创的 CT 筛查手段，CAD-CTC 想让计算机自动把息肉标出来。几乎所有 CAD-CTC 都是两步走：<strong>候选生成</strong>（先把可疑区域圈出来）+ <strong>监督分类</strong>（把假阳性筛掉）。瓶颈非常明确——<strong>复杂肠道结构制造海量假阳性</strong>：皱襞、残留粪便、充气管、回盲瓣，形状质地都像息肉。</p>
-<p>历史上候选生成几乎都靠在 CT 灰度上算曲率（SI、curvedness 等）。论文点出两处系统性偏差：① <strong>息肉内灰度不均</strong>——息肉中心 CT 密度接近正常组织、边缘接近周围的空气或造影剂，于是曲率只在边缘“看得见”、中心糊掉；② <strong>伪增强 PEH</strong>——息肉与造影剂之间的伪增强会进一步把曲率算歪。一句话：<strong>在 CT 灰度上量形状，被灰度本身的噪声污染了。</strong></p>
-<div class="socratic"><p class="question">问：既然问题出在“在 CT 灰度上量形状”，最直接的解法是什么？</p><p class="guide">引导：如果灰度不可靠，那就换一个“对形状忠实、对灰度噪声免疫”的标量场去量。</p><p class="answer">答：换场。论文的解法是把 SI 和增强滤波器从 CT 灰度搬到<strong>测地距离场（GDF）</strong>上算。GDF 以肠壁内表面为种子，每个体素的值是它到内表面的测地（最短路径）距离。在一颗息肉内部，这个距离从中心到边缘<u>单调、光滑</u>地变化——无论息肉内部 CT 密度怎么花，GDF 都把它整理成一个干净的“穹顶”。在穹顶上量曲率，整颗息肉的 SI 都高，dot（点状）滤波器也会强烈响应（见首图 Fig.3(c)(d)）。换场，不是换算法，是换“量形状的底图”。</p><p class="takeaway"><strong>Takeaway：</strong>FP 多的根因是“用被污染的 CT 灰度量形状”。把度量搬到 GDF 上，等于先把灰度噪声折叠成单调距离，再量形状——这是全文增益的第一来源。</p></div>
-</section>
+      <section id="datasets">
+        <h2>3. Dataset and metrics: what is counted?</h2>
+        <p>The dataset contains 152 oral contrast-enhanced CT scans from the Walter Reed Army Medical Center (WRAMC) database, stored in the National Cancer Institute Image Archive Resources. They are supine and prone scans from 76 patients. The paper reports 120 kVp, 200-380 mA, 1.25-2.5 mm slice thickness, volumes from 512x512x361 to 512x512x505, and in-plane spacing from 0.54 to 0.91 mm.</p>
+        <p>All polyps used in the study were confirmed by colonoscopy and visible on retrospective CT colonography review. There are 103 polyps &ge;5 mm, including 34 polyps &ge;10 mm. Ninety-four polyps are visible in both supine and prone scans, and nine are visible in only one scan, so candidate-generation evaluation uses 197 polyp views. Morphologically, the set contains 11 flat, 64 sessile, and 28 pedunculated polyps.</p>
+        <figure>
+          <a href="../assets/figures/cadctc/cadctc_fig1.png"><img src="../assets/figures/cadctc/cadctc_fig1.png" alt="Histogram of polyp size distribution"></a>
+          <figcaption><strong>Figure 1 · Polyp size distribution.</strong> The histogram shows the mass of the dataset near the small-polyp regime. The paper notes that one 42 mm polyp and one 55 mm polyp are not visible in the histogram.</figcaption>
+        </figure>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Dataset and evaluation terms.</strong></caption>
+            <thead><tr><th>Item</th><th>Paper value</th><th>How it is used</th></tr></thead>
+            <tbody>
+              <tr><td>Patients / scans</td><td>76 patients / 152 CT scans</td><td>Patient-level fourfold cross-validation; each fold has 19 patients.</td></tr>
+              <tr><td>Polyps &ge;5 mm</td><td>103 polyps, 197 visible views</td><td>Main detection target and candidate-generation count.</td></tr>
+              <tr><td>Polyps &ge;10 mm</td><td>34 polyps</td><td>Large-polyp subgroup evaluation.</td></tr>
+              <tr><td>True positive candidate</td><td>Candidate region overlaps a ground-truth polyp region.</td><td>Used for FROC analysis and sensitivity.</td></tr>
+              <tr><td>By-polyp sensitivity</td><td>Detected polyps / all polyps.</td><td>A polyp is detected if found in either supine or prone scan.</td></tr>
+              <tr><td>Per-scan sensitivity</td><td>Correctly detected abnormal scans / all abnormal scans.</td><td>A scan with several polyps is counted detected if at least one polyp is detected.</td></tr>
+              <tr><td>FP/scan</td><td>False positives per dataset, where one dataset is one CT scan.</td><td>Main false-positive rate throughout the paper.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-<!-- CONTRIBUTION -->
-<section id="contribution"><h2>2. 整体解读与贡献：换坐标系 + 堆 radiomics，两步各打一处</h2>
-<p><strong>作者明确提出的贡献。</strong>(1) 候选生成：把 SI 与多尺度 dot 增强滤波器放到<strong>高斯平滑 GDF</strong> 上计算，规避 CT 灰度不均与 PEH，得到更干净的息肉候选。(2) FP 削减：构建 <strong>640 个 radiomic 特征</strong>（440 个从既往 radiomics 研究收集的 BRF + 200 个为息肉检测新造的 NRF），送入 Random Forests 分类。(3) 在 WRAMC 的 152 套 CT（76 例、103 颗 ≥5 mm 息肉）上做了候选生成消融（GDF vs CT 灰度）、特征组消融（ARF/NRF/BRF）、与既有特征对比、按尺寸评估，以及与大量既有 CAD-CTC 方案的相对比较。</p>
-<p><strong>读者能进一步推断的是</strong>——两步打的是同一个敌人的两个侧面。候选生成阶段，“换到 GDF”让真息肉更突出、把一部分 FP 在源头就压住（FP 从 104.5 降到 58.8）；分类阶段，恰恰是<u>从 GDF 派生的新特征</u>（NRF 里的 GDF 特征）在 Random Forests 的 Gini 重要性里排到前 9 名全包揽。也就是说，GDF 不只是候选生成的技巧，它还顺手造出了最具判别力的特征——<strong>同一个 GDF 表示，串起了候选生成与 FP 削减两步</strong>。这一点论文用 Gini 排名佐证，是可推断的关键解读。</p>
-<div class="table-wrap"><table><caption><strong>表 A.</strong> 两步各自的“敌人”与“武器”。</caption><thead><tr><th>阶段</th><th>要打的敌人</th><th>本文武器</th><th>相对既有做法的差别</th></tr></thead><tbody>
-<tr><td>候选生成</td><td>息肉内灰度不均 + PEH 使曲率失真</td><td>在高斯平滑 GDF 上算 SI + dot/line/plane 滤波器</td><td>既有方法在 CT 灰度上算曲率</td></tr>
-<tr><td>FP 削减</td><td>皱襞/粪便/管/回盲瓣形似息肉</td><td>640 维 radiomics（含 200 NRF）+ Random Forests + SMOTE</td><td>既有方法只用少量图像特征（SI/CV 等 56 维）</td></tr>
-</tbody></table></div>
-</section>
+      <section id="pipeline">
+        <h2>4. Pipeline: deterministic image processing before a trained classifier</h2>
+        <figure class="fig-wide">
+          <a href="../assets/figures/cadctc/cadctc_fig2.png"><img src="../assets/figures/cadctc/cadctc_fig2.png" alt="Block diagram of the proposed CAD-CTC scheme"></a>
+          <figcaption><strong>Figure 2 · The CAD-CTC pipeline.</strong> The input CT is interpolated to an isotropic dataset, the colon lumen and wall are segmented, GDF-based SI and multiscale filters generate candidates, 640 radiomic features are extracted, and Random Forests classify the candidates. The trained part is the final classifier; the preceding stages are image-processing stages with thresholds and hand-designed features.</figcaption>
+        </figure>
+        <p>The colon volume is segmented with a partial-volume method. Voxels are initially assigned using thresholds at -650, 0, and 370 HU, then tissue-mixture components are estimated with a maximum-a-posteriori expectation-maximization algorithm. Voxels with air or tagged-material components form the colon volume. A 3D dilation with an 8 mm ball structuring element followed by an exclusive-or operation gives the colon wall.</p>
+        <p>Candidate generation then has two gates. First, voxels with SI above 0.76 inside the colon wall form 3D suspicious regions; a region is discarded unless it has at least one voxel on the colon inner surface with SI at or above the tuned threshold \(\mathrm{SI}_{Th}\). Second, dot-enhanced voxels at or above \(\mathrm{Dot}_{Th}\) seed region growing inside those suspicious regions. The resulting candidates are dilated by 2.5 mm and then refined with a convex-condition dilation, which keeps an added voxel only when its local neighborhood (a 5-voxel-radius sphere) stays mostly inside the candidate &mdash; the inside voxels must be at least 0.99 times the outside voxels &mdash; so the region cannot leak along the flat colon wall.</p>
+        <div class="socratic">
+          <p class="question">Q: Why does the pipeline still need a classifier if the GDF candidate generator is better?</p>
+          <p class="answer">A: Candidate generation is tuned to miss no polyp views. That choice keeps sensitivity high, but it still leaves 58.8 FP/scan. The classifier is the step that turns a high-recall candidate list into a usable CAD output.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The GDF stage improves the starting list; Random Forests still carry the final FP reduction.</p>
+        </div>
+      </section>
 
-<!-- DATASETS -->
-<section id="datasets"><h2>3. 数据与任务：WRAMC 152 套 CT，怎么算“检出/误报”？</h2>
-<p>数据来自 NCI 影像档案库中的 WRAMC（Walter Reed Army Medical Center）数据库：76 例患者的仰卧 + 俯卧扫描共 <strong>152 套</strong>口服造影增强 CT。电流 200–380 mA、电压 120 kVp，层厚 1.25–2.5 mm，体数据 $512\times512\times361$ 到 $512\times512\times505$，面内像素间距 0.54–0.91 mm。103 颗 ≥5 mm 息肉（其中 34 颗 ≥10 mm），由结肠镜确认；94 颗在仰/俯卧两次都可见、9 颗仅一次可见，因此共 <strong>197 个“息肉视图（polyp views）”</strong>（$94\times2+9$）。形态：11 颗扁平、64 颗无蒂、28 颗有蒂。</p>
-<figure><a href="../assets/figures/cadctc/cadctc_fig1.png"><img src="../assets/figures/cadctc/cadctc_fig1.png" alt="103 颗息肉的尺寸分布直方图"></a><figcaption><strong>图 1 · 息肉尺寸分布（论文 Fig. 1）。</strong>大多数集中在 5–10 mm 这个“临床显著但难检”的区间；另有一颗 42 mm、一颗 55 mm 因太大未画进直方图。难点正在小息肉——这也是后面按尺寸分层评估的原因。</figcaption></figure>
-<div class="table-wrap"><table><caption><strong>表 B.</strong> 任务与数据在方法中的作用。</caption><thead><tr><th>项目</th><th>论文披露</th><th>输入 → 输出</th><th>作用</th><th>缺失信息</th></tr></thead><tbody>
-<tr><td>CT 数据</td><td>WRAMC 152 套（76 例 ×仰/俯卧）</td><td>CT 体数据 → 肠腔/肠壁/GDF</td><td>方法输入 + 评测载体</td><td>外部独立数据集（无）</td></tr>
-<tr><td>息肉真值</td><td>103 颗 ≥5 mm（197 视图），结肠镜确认 + 放射科医生手工分割</td><td>3D 分割真值 → TP/FP 判定</td><td>金标准</td><td>—</td></tr>
-<tr><td>正负样本</td><td>候选含大量负样本，用 SMOTE 过采样正样本</td><td>不平衡 → 平衡训练集</td><td>避免分类器偏向多数类</td><td>SMOTE 倍率未说明</td></tr>
-<tr><td>验证</td><td>患者级四折交叉验证（每折 19 例）</td><td>3 折训练 / 1 折测试，轮 4 次</td><td>避免同患者仰/俯卧泄漏到训练</td><td>无外部测试集</td></tr>
-</tbody></table></div>
-<p>口径区分清楚很重要：<strong>by-polyp 敏感度</strong>=检出息肉数/全部息肉（仰或俯卧任一检出即算）；<strong>per-scan 敏感度</strong>=正确判定的异常扫描数/全部异常扫描（仰、俯卧算两套；一套里检出 ≥1 颗即算检出）；<strong>FP 率</strong>=每套（scan）的假阳性数。候选若与真值息肉区域重叠记 TP，否则记 FP。FROC（free-response ROC）曲线用来在不同阈值下画“敏感度 vs FP/例”。</p>
-</section>
+      <section id="method">
+        <h2>5. Method: how the GDF makes polyp shape measurable</h2>
+        <p>The geodesic distance (GD) transform assigns each voxel a shortest-path distance to seed points on the colon wall inner surface. The paper computes distance on a 26-neighborhood using a 3-4-5 chamfer distance. This is an integer-grid approximation to physical distance in a voxel graph.</p>
+        <div class="equation">$$\mathrm{GD}(p_i)=\min_{p_j}\left(\mathrm{GD}(p_j)+D(p_i,p_j)\right)$$<div class="eq-caption">Eq. 1: \(p_j\) is a 26-neighborhood point of \(p_i\), and \(D\) is the chamfer distance.</div></div>
+        <div class="equation">$$D(p_i,p_j)=\begin{cases}3,&\lVert p_i-p_j\rVert_1=1\\4,&\lVert p_i-p_j\rVert_1=2\\5,&\lVert p_i-p_j\rVert_1=3\end{cases}$$<div class="eq-caption">Eq. 2: face, edge, and corner moves receive different costs.</div></div>
+        <p>Once the GDF is Gaussian-smoothed, the paper computes shape index. SI is a curvature descriptor built from the two principal curvatures \(k_1\) and \(k_2\). A cap-like protrusion, which is the geometric model for a polyp growing from the wall, gives high SI.</p>
+        <div class="equation">$$\mathrm{SI}(p)=\frac{1}{2}-\frac{1}{\pi}\arctan\left(\frac{k_1+k_2}{k_1-k_2}\right)$$<div class="eq-caption">Eq. 3: GDF-based shape index, where \(k_1\) and \(k_2\) are principal curvatures in the smoothed GDF.</div></div>
+        <p>The multiscale filters use eigenvalues of the Hessian matrix. The intuition is simple: a dot-like structure has strong curvature in three directions, a line-like structure in two directions, and a plane-like structure in one direction. The filters are therefore written as tests on the ordered Hessian eigenvalues \(\lambda_1,\lambda_2,\lambda_3\), with \(|\lambda_1|\ge|\lambda_2|\ge|\lambda_3|\).</p>
+        <div class="equation">$$z_{\mathrm{dot}}=\begin{cases}|\lambda_3|^2/|\lambda_1|,&\lambda_1\lt0,\lambda_2\lt0,\lambda_3\lt0\\0,&\text{otherwise}\end{cases}$$<div class="eq-caption">Eq. 7: the dot response is nonzero when all three principal directions are locally convex.</div></div>
+        <div class="equation">$$z_{\mathrm{line}}=\begin{cases}|\lambda_2|(|\lambda_2|-|\lambda_3|)/|\lambda_1|,&\lambda_1\lt0,\lambda_2\lt0\\0,&\text{otherwise}\end{cases}\qquad z_{\mathrm{plane}}=\begin{cases}|\lambda_1|-|\lambda_2|,&\lambda_1\lt0\\0,&\text{otherwise}\end{cases}$$<div class="eq-caption">Eq. 8-9: the line and plane responses separate elongated and wall-like structures from dot-like candidates.</div></div>
+        <p>Multiscale aggregation then searches over six scales. The paper uses \(d_0=4\) mm and \(d_1=32\) mm, matching the size range it wants to enhance.</p>
+        <div class="equation">$$z_\zeta^*=\max_{i=1,\ldots,N_\sigma}\sigma_i^2 z_{\zeta,i},\qquad \sigma_i=r^{i-1}\sigma_1,\qquad r=\left(\frac{d_1}{d_0}\right)^{1/(N_\sigma-1)}$$<div class="eq-caption">Eq. 10-11: \(\zeta\in\{\mathrm{dot},\mathrm{line},\mathrm{plane}\}\), \(N_\sigma=6\), \(d_0=4\) mm, and \(d_1=32\) mm.</div></div>
+        <p>The enhancement filters are computed in a mapped GDF, not in raw GDF. The linear mapping enlarges the dynamic range and makes the distance values behave more like a CT-intensity contrast between air and bone.</p>
+        <div class="equation">$$\mathrm{GDF}_i^*=\begin{cases}f_1\mathrm{GDF}_i+f_2,&\mathrm{GDF}_i\gt0\\\mathrm{GDF}_i,&\text{otherwise}\end{cases}\qquad f_1=25,\quad f_2=1000$$<div class="eq-caption">Eq. 12: the paper's mapped GDF used for multiscale enhancement filtering.</div></div>
+        <p>Feature extraction also corrects CT density in the colon wall because tagged material can still cause PEH. The paper maps soft-tissue voxels above 100 HU using thresholds \(t_1=100\), \(t_2=370\), and \(t_3=-650\) HU, then clamps the result at -999 HU.</p>
+        <div class="equation">$$I_i^*=\begin{cases}\dfrac{I_i-t_1}{t_2-t_1}(t_3-t_1)+t_1,&I_i\gt t_1\\I_i,&\text{otherwise}\end{cases},\qquad I_i^*=\max\{I_i^*,-999\}$$<div class="eq-caption">Eq. 13-14: CT density mapping before radiomic feature extraction.</div></div>
+        <div class="socratic">
+          <p class="question">Q: What is the smallest example that explains the method?</p>
+          <p class="answer">A: Picture one bump on the colon wall. In CT intensity, the bump can be bright at its edge and ordinary in the middle. In GDF, the same bump becomes a smooth mound. SI and dot filtering are easier on a mound than on a patchy intensity map.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The method works by making the measurement field match the object geometry.</p>
+        </div>
+      </section>
 
-<!-- PIPELINE -->
-<section id="pipeline"><h2>4. Pipeline：五步里，重点在第三、四步</h2>
-<figure class="fig-wide"><a href="../assets/figures/cadctc/cadctc_fig2.png"><img src="../assets/figures/cadctc/cadctc_fig2.png" alt="CAD-CTC 方案的模块框图"></a><figcaption><strong>图 2 · 方法总览（论文 Fig. 2）。</strong>五个模块：CT 插值成各向同性 → 肠腔与肠壁分割 →（重点）GDF 上的候选生成 →（重点）640 维特征提取 → Random Forests 分类。这是一条<u>数据流 + 一个可学习分类器</u>的混合管线：前四步是确定性图像处理，只有最后的 Random Forests 含训练。论文明确聚焦第 3、4 步（候选生成与特征提取）。</figcaption></figure>
-<ol>
-<li><strong>各向同性插值。</strong>沿轴向线性插值，把 CT 重采样成各向同性，保证后续测地/曲率计算各方向尺度一致。</li>
-<li><strong>肠腔 + 肠壁分割。</strong>用部分容积（PV）分割（Wang et al. [25]）：以 −650/0/370 HU 把体素分为空气/脂肪/肌肉/骨或造影剂四类，MAP-EM 估计混合成分，含空气或造影剂的体素 = 肠腔。再对肠腔做半径 8 mm 球结构元的 3D 膨胀，膨胀体与肠腔体的异或 = 肠壁。</li>
-<li><strong>GDF 上的候选生成（重点）。</strong>以肠壁内表面为种子建 GDF，高斯平滑后在肠壁内算 SI 与 dot/line/plane 滤波器，再用 SI 与 dot 输出阈值化出候选。详见第 5 节。</li>
-<li><strong>640 维特征提取（重点）。</strong>每个候选提取 440 BRF + 200 NRF，覆盖形状/尺寸、增强、GDF、梯度、CT 图像、小波六类。</li>
-<li><strong>Random Forests 分类。</strong>SMOTE 平衡后训练 200 棵树，按 Gini 增益分裂，多数投票，输出息肉/非息肉，削减 FP。</li>
-</ol>
-<div class="socratic"><p class="question">问：如果去掉第 2 步把度量限制在“肠壁”内，直接在整张 CT 上找息肉会怎样？</p><p class="answer">答：会把搜索域从“一层薄壁”放大到整个腹腔，假阳性来源激增，且 GDF 的“以肠壁内表面为种子”也无从定义。把计算限制在分割出的肠壁内，既缩小搜索域，又让 GDF 的种子（内表面）、SI 的载体（壁内体素）都有明确几何意义——这是后面一切度量成立的前提。</p><p class="takeaway"><strong>Takeaway：</strong>分割不是配角。它把问题从“整张 CT”收敛到“肠壁内的薄层”，GDF、SI、滤波器才有干净的定义域。</p></div>
-</section>
+      <section id="training">
+        <h2>6. Training and compute: Random Forests, not an end-to-end model</h2>
+        <p>After candidate generation, each candidate is represented by 640 radiomic features. The paper groups them into 440 basic radiomic features (BRFs) and 200 newly developed radiomic features (NRFs). The classifier is Random Forests with 200 trees. Random Forests are used because they handle high-dimensional samples and are described by the paper as robust against overfitting without an additional feature-selection stage.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Feature inventory used by the classifier.</strong></caption>
+            <thead><tr><th>Feature family</th><th>BRFs</th><th>NRFs</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td>3D shape and size</td><td>8 features</td><td>28 features: chord-length, 3D moment invariants, and ellipsoid-fitting features</td><td>Describe size, sphericality, irregularity, and fitted shape.</td></tr>
+              <tr><td>Enhancement features</td><td>0</td><td>144 features from dot-, line-, and plane-enhanced images</td><td>Describe how the candidate responds as dot-like, line-like, or plane-like structure.</td></tr>
+              <tr><td>GDF features</td><td>0</td><td>14 first-order statistics</td><td>Describe the distribution of geodesic distance values in the candidate.</td></tr>
+              <tr><td>Gradient features</td><td>0</td><td>14 first-order statistics</td><td>Describe internal CT-gradient structure.</td></tr>
+              <tr><td>CT image features</td><td>48 basic statistical features</td><td>0</td><td>Describe intensity distribution and texture in the corrected CT image.</td></tr>
+              <tr><td>3D wavelet features</td><td>384 features</td><td>0</td><td>Describe multifrequency texture across eight Coiflet-1 decompositions.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Training and validation settings disclosed by the paper.</strong></caption>
+            <thead><tr><th>Item</th><th>Paper statement</th><th>What is not stated</th></tr></thead>
+            <tbody>
+              <tr><td>Classifier</td><td>Random Forests with 200 trees; default values for the other parameters.</td><td>Specific software implementation is not stated in the paper.</td></tr>
+              <tr><td>Class imbalance</td><td>Positive samples are oversampled with synthetic minority over-sampling technique (SMOTE).</td><td>SMOTE ratio is not stated in the paper.</td></tr>
+              <tr><td>Cross-validation</td><td>Fourfold cross-validation at patient level; 19 patients per fold.</td><td>Random seed and exact fold assignments are not stated in the paper.</td></tr>
+              <tr><td>Hardware and runtime</td><td>Not stated in the paper.</td><td>Training time, inference time, CPU/GPU hardware, and memory use are not stated in the paper.</td></tr>
+              <tr><td>Code</td><td>Not stated in the paper.</td><td>Public release is not stated in the paper.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>No GPU-hours number is disclosed, so this page does not estimate one.</p>
+      </section>
 
-<!-- METHOD -->
-<section id="method"><h2>5. 方法核心：GDF 把“灰度不均”折叠成“光滑穹顶”</h2>
-<p>本节按 kexue 姿态重推：先讲动机，再标假设，关键机制从两个角度交叉验证。两个被推导的核心是——为什么 <strong>GDF + SI/dot 滤波器</strong> 能把真息肉突出（候选生成），以及为什么 <strong>GDF 派生特征</strong> 能扛起 FP 削减的主力（分类）。</p>
+      <section id="experiments">
+        <h2>7. Experiments: what each result table proves</h2>
+        <p>The experiments are easiest to read in layers. Candidate generation tests whether GDF is a better field than CT intensity for SI and dot filtering. Feature experiments test whether all radiomic features, newly developed features, basic features, and previous CAD-CTC features differ after Random Forests classification. Size experiments test whether the final system behaves differently for polyps &ge;5 mm and &ge;10 mm.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/cadctc/cadctc_fig4.png"><img src="../assets/figures/cadctc/cadctc_fig4.png" alt="FROC curves for SI threshold and dot threshold"></a>
+          <figcaption><strong>Figure 4 · Threshold selection for candidate generation.</strong> Panel (a) sweeps \(\mathrm{SI}_{Th}\) and reaches 100% candidate sensitivity at 155.9 FP/scan when \(\mathrm{SI}_{Th}=0.9\). Panel (b) fixes \(\mathrm{SI}_{Th}=0.9\), sweeps \(\mathrm{Dot}_{Th}\), and reaches 100% candidate sensitivity at 58.8 FP/scan when \(\mathrm{Dot}_{Th}=20\). So the SI gate alone still leaves 155.9 FP/scan; adding the dot-enhancement gate is what brings the count down to the reported 58.8.</figcaption>
+        </figure>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table I from the paper.</strong> Comparative results of the baseline method and the proposed method.</caption>
+            <thead><tr><th>Methods</th><th>Sensitivity (detected polyp views versus all polyp views)</th><th>FPs per dataset</th></tr></thead>
+            <tbody>
+              <tr><td>Baseline method</td><td>100% (197/197)</td><td>104.5</td></tr>
+              <tr><td><strong>Proposed method</strong></td><td><strong>100% (197/197)</strong></td><td><strong>58.8</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Table I is a like-for-like comparison: both rows detect all 197 polyp views, and the difference is the coordinate field used for SI and dot enhancement. The GDF row does not improve candidate sensitivity because both are already at 100%; it improves the number of FPs that the classifier must later handle.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/cadctc/cadctc_fig5.png"><img src="../assets/figures/cadctc/cadctc_fig5.png" alt="FROC curves for radiomic feature groups and previous features"></a>
+          <figcaption><strong>Figure 5 · Feature groups after Random Forests classification.</strong> Panels (a)-(b) compare all radiomic features (ARFs), newly developed radiomic features (NRFs), and basic radiomic features (BRFs). Panels (c)-(d) compare ARFs against the 56 previous CAD-CTC features. At 1.3 FP/scan, ARFs reach 98.1% by-polyp and 95.3% per-scan sensitivity.</figcaption>
+        </figure>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Feature-group results read from the paper text and Figure 5 at 1.3 FP/scan.</strong></caption>
+            <thead><tr><th>Feature set</th><th>By-polyp sensitivity</th><th>Per-scan sensitivity</th></tr></thead>
+            <tbody>
+              <tr><td>BRFs, 440 basic radiomic features</td><td>81.6%</td><td>76.0%</td></tr>
+              <tr><td>NRFs, 200 newly developed radiomic features</td><td>93.5%</td><td>92.0%</td></tr>
+              <tr><td><strong>ARFs, all 640 radiomic features</strong></td><td><strong>98.1%</strong></td><td><strong>95.3%</strong></td></tr>
+              <tr><td>Previous 56 features: first-order statistics of SI, curvedness, CT values, and CT-density gradient</td><td>81.6%</td><td>78.0%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>One row pair can read like a typo: BRFs and the previous 56-feature set land on the same 81.6% by-polyp sensitivity. They are not identical, though &mdash; they separate at the per-scan level (76.0% versus 78.0%) and across the rest of the FROC curve. The all-feature ARF set is the clear winner on both measures.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table II from the paper.</strong> Top 50 most important features according to mean Gini importance scores.</caption>
+            <thead><tr><th>Feature groups</th><th>Important features</th></tr></thead>
+            <tbody>
+              <tr><td>3D shape and size features</td><td>Minimum of chord lengths, minimum radius of fitted ellipsoid, and surface-to-volume ratio.</td></tr>
+              <tr><td>Enhancement features</td><td>First-order statistics: energy, median, range, mean, maximum, and variance of dot-enhanced image. Co-occurrence matrix-based features: cluster shade, cluster tendency, information measure of correlation 2, correlation, cluster prominence, information measure of correlation 1, variance, contrast, autocorrelation, entropy, energy, and sum average of dot-enhanced image. Run-length matrix-based features: high-gray-level run emphasis, low-gray-level run emphasis, and short-run high-gray-level emphasis of dot-enhanced image.</td></tr>
+              <tr><td>GDF features</td><td>First-order statistics: maximum, range, variance, median, standard deviation, mean absolute deviation, root mean square, mean, and energy.</td></tr>
+              <tr><td>CT image features</td><td>First-order statistics: mean, skewness, median, and root mean square. Co-occurrence matrix-based features: autocorrelation, sum average, sum variance, variance, inverse variance, and cluster shade. Run-length matrix-based features: long-run high-gray-level emphasis and high-gray-level run emphasis.</td></tr>
+              <tr><td>Wavelet features</td><td>First-order statistics: sum variance of LLL. Co-occurrence matrix-based features: variance of LLL. Run-length matrix-based features: gray-level non-uniformity of HHH, gray-level non-uniformity of HLH, and long-run high-gray-level emphasis of LLL.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Table II is important because it explains why the feature ablation is not just a feature-count story. The top 50 include 32 NRFs and 18 BRFs, and the paper states that all top nine ranked features are GDF features. That supports the narrower claim that GDF-derived features are highly discriminative in this setup.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/cadctc/cadctc_fig6.png"><img src="../assets/figures/cadctc/cadctc_fig6.png" alt="FROC curves for different polyp sizes"></a>
+          <figcaption><strong>Figure 6 · Final CAD-CTC performance by polyp size.</strong> For polyps &ge;5 mm, the paper reports 98.1% by-polyp sensitivity and 95.3% per-scan sensitivity at 1.3 FP/scan. For polyps &ge;10 mm, it reports 97.1% by-polyp sensitivity at 0.7 FP/scan and 93.7% per-scan sensitivity at 0.8 FP/scan.</figcaption>
+        </figure>
+        <figure class="fig-wide">
+          <a href="../assets/figures/cadctc/cadctc_fig7.png"><img src="../assets/figures/cadctc/cadctc_fig7.png" alt="Examples of detected polyps"></a>
+          <figcaption><strong>Figure 7 · Detected-polyp examples at the final operating point.</strong> The top row shows flat polyps, the middle row shows polyps on haustral folds, and the bottom row shows polyps on flat colon walls. The examples explain why the paper emphasizes diverse shape contexts rather than only large protruding lesions.</figcaption>
+        </figure>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table III from the paper.</strong> Relative comparison of CAD-CTC schemes. The paper warns that this table is not a direct benchmark because datasets, validation methods, TP definitions, sensitivity definitions, and FP denominators differ.</caption>
+            <thead><tr><th>CAD-CTC scheme</th><th>Year</th><th># patients for testing</th><th># polyps</th><th>Polyp sizes</th><th>Tagged fluid</th><th>WRAMC database</th><th>Validation</th><th>Sensitivity<sup>a</sup></th><th>FP rate<sup>b</sup></th></tr></thead>
+            <tbody>
+              <tr><td>Summers et al. [4]</td><td>2001</td><td>20</td><td>28</td><td>&ge;10 mm</td><td>No</td><td>No</td><td>Independent test</td><td>64% by-polyp</td><td>3.5 FPs/dataset</td></tr>
+              <tr><td>Yoshida et al. [5]</td><td>2001</td><td>43</td><td>21</td><td>&ge;5 mm</td><td>No</td><td>No</td><td>Leave-one-lesion-out</td><td>95% per-scan</td><td>1.2 FPs/dataset</td></tr>
+              <tr><td>Nappi et al. [34]</td><td>2002</td><td>43</td><td>12</td><td>&ge;5 mm</td><td>No</td><td>No</td><td>Leave-one-lesion-out</td><td>95% per-scan</td><td>1.7 FPs/dataset</td></tr>
+              <tr><td>Nappi et al. [6]</td><td>2003</td><td>72</td><td>21</td><td>&ge;5 mm</td><td>No</td><td>No</td><td>Leave-one-lesion-out</td><td>95% by-polyp</td><td>1.5 FPs/patient</td></tr>
+              <tr><td>Paik et al. [7]</td><td>2004</td><td>8</td><td>6</td><td>&ge;10 mm</td><td>No</td><td>No</td><td>Leave-one-lesion-out</td><td>100% by-polyp</td><td>7.0 FPs/dataset</td></tr>
+              <tr><td>Wang et al. [8]</td><td>2005</td><td>153</td><td>61</td><td>&ge;5 mm</td><td>Yes</td><td>No</td><td>LOPO</td><td>100% by-polyp</td><td>2.68 FPs/dataset</td></tr>
+              <tr><td>Wang et al. [8]</td><td>2005</td><td>153</td><td>11</td><td>&ge;10 mm</td><td>Yes</td><td>No</td><td>LOPO</td><td>100% by-polyp</td><td>2.0 FPs/dataset</td></tr>
+              <tr><td>Summers et al. [35]</td><td>2005</td><td>792</td><td>28</td><td>&ge;10 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>89.3% by-polyp</td><td>2.1 FPs/patient</td></tr>
+              <tr><td>Taylor et al. [36]</td><td>2006</td><td>25</td><td>32</td><td>&ge;6 mm</td><td>Yes</td><td>No</td><td>Independent test</td><td>81% by-polyp</td><td>13.0 FPs/patient</td></tr>
+              <tr><td>Suzuki et al. [37]</td><td>2006</td><td>73</td><td>28</td><td>&ge;5 mm</td><td>Yes</td><td>No</td><td>Independent test</td><td>96.4% by-polyp</td><td>2.1 FPs/patient</td></tr>
+              <tr><td>Kim et al. [9]</td><td>2007</td><td>30</td><td>40</td><td>&ge;6 mm</td><td>No</td><td>No</td><td>Independent test</td><td>92.5% by-polyp</td><td>3.1 FPs/dataset</td></tr>
+              <tr><td>Nappi et al. [17]</td><td>2007</td><td>32</td><td>40</td><td>&ge;6 mm</td><td>Yes</td><td>Yes</td><td>LOPO</td><td>95% by-polyp</td><td>3.6 FPs/dataset</td></tr>
+              <tr><td>Nappi et al. [17]</td><td>2007</td><td>32</td><td>16</td><td>&ge;10 mm</td><td>Yes</td><td>Yes</td><td>LOPO</td><td>94% by-polyp</td><td>3.6 FPs/dataset</td></tr>
+              <tr><td>Nappi et al. [17]</td><td>2007</td><td>32</td><td>44</td><td>&ge;6 mm</td><td>Yes</td><td>No</td><td>LOPO</td><td>86% by-polyp</td><td>4.2 FPs/dataset</td></tr>
+              <tr><td>Nappi et al. [17]</td><td>2007</td><td>32</td><td>21</td><td>&ge;10 mm</td><td>Yes</td><td>No</td><td>LOPO</td><td>100% by-polyp</td><td>4.2 FPs/dataset</td></tr>
+              <tr><td>Li et al. [24]</td><td>2008</td><td>44</td><td>45</td><td>6-9 mm</td><td>Yes</td><td>Yes</td><td>Fourfold cross validation</td><td>71% by-polyp</td><td>5.38 FPs/patient</td></tr>
+              <tr><td>Summers et al. [38]</td><td>2008</td><td>104</td><td>47</td><td>&ge;10 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>91.5% by-polyp</td><td>9.6 FPs/patient</td></tr>
+              <tr><td>Wang et al. [39]</td><td>2008</td><td>791</td><td>193</td><td>6-9 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>83% by-polyp</td><td>9 FPs/patient</td></tr>
+              <tr><td>Yao et al. [40]</td><td>2009</td><td>792</td><td>155</td><td>&ge;6 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>95% by-polyp</td><td>2.4 FPs/patient</td></tr>
+              <tr><td>Yao et al. [40]</td><td>2009</td><td>792</td><td>43</td><td>&ge;10 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>93% by-polyp</td><td>1.2 FPs/patient</td></tr>
+              <tr><td>Li et al. [41]</td><td>2009</td><td>792</td><td>121</td><td>&ge;6 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>77.4% by-polyp</td><td>5.83 FPs/patient</td></tr>
+              <tr><td>Li et al. [41]</td><td>2009</td><td>792</td><td>30</td><td>&ge;10 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>91.3% by-polyp</td><td>2.30 FPs/patient</td></tr>
+              <tr><td>Oda et al. [11]</td><td>2009</td><td>104</td><td>57</td><td>&ge;6 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>91.2% by-polyp</td><td>11.4 FPs/patient</td></tr>
+              <tr><td>van Wijk et al. [12]</td><td>2010</td><td>84</td><td>57</td><td>&ge;6 mm</td><td>No</td><td>No</td><td>LOPO</td><td>95% by-polyp</td><td>4 FPs/dataset</td></tr>
+              <tr><td>Zhu et al. [42]</td><td>2010</td><td>325</td><td>125</td><td>&ge;10 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>93.1% by-polyp</td><td>1.92 FPs/dataset</td></tr>
+              <tr><td>Wang et al. [43]</td><td>2010</td><td>66</td><td>96</td><td>&ge;6 mm</td><td>Yes</td><td>Yes</td><td>LOPO</td><td>83% by-polyp</td><td>5 FPs/dataset</td></tr>
+              <tr><td>Liu et al. [44]</td><td>2011</td><td>791</td><td>267</td><td>6-9 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>62% by-polyp</td><td>10 FPs/patient</td></tr>
+              <tr><td>Lee et al. [13]</td><td>2011</td><td>33</td><td>30</td><td>&ge;6 mm</td><td>No</td><td>No</td><td>Independent test</td><td>93.3% by-polyp</td><td>7.7 FPs/patient</td></tr>
+              <tr><td>Lee et al. [13]</td><td>2011</td><td>33</td><td>13</td><td>&ge;10 mm</td><td>No</td><td>No</td><td>Independent test</td><td>92% by-polyp</td><td>7.7 FPs/patient</td></tr>
+              <tr><td>Mang et al. [45]</td><td>2012</td><td>1689</td><td>564</td><td>&ge;6 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>86.9% by-polyp</td><td>4.9 FPs/patient</td></tr>
+              <tr><td>Wang et al. [15]</td><td>2015</td><td>60</td><td>130</td><td>5-8 mm</td><td>Yes</td><td>No</td><td>LOPO</td><td>98% by-polyp</td><td>2.2 FPs/dataset</td></tr>
+              <tr><td>Roth et al. [46]</td><td>2015</td><td>792</td><td>173</td><td>&ge;6 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>75% by-polyp</td><td>3 FPs/patient</td></tr>
+              <tr><td>Roth et al. [46]</td><td>2015</td><td>792</td><td>37</td><td>&ge;10 mm</td><td>Yes</td><td>Yes</td><td>Independent test</td><td>95% by-polyp</td><td>1 FPs/dataset</td></tr>
+              <tr><td><strong>The proposed scheme</strong></td><td>-</td><td>76</td><td>103</td><td>&ge;5 mm</td><td>Yes</td><td>Yes</td><td>Fourfold cross validation</td><td><strong>98.1% by-polyp; 95.3% per-scan</strong></td><td><strong>1.3 FPs/dataset</strong></td></tr>
+              <tr><td><strong>The proposed scheme</strong></td><td>-</td><td>76</td><td>34</td><td>&ge;10 mm</td><td>Yes</td><td>Yes</td><td>Fourfold cross validation</td><td><strong>97.1% by-polyp; 93.7% per-scan</strong></td><td><strong>0.7 FPs/dataset; 0.8 FPs/dataset</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mini"><sup>a</sup> By-polyp means by-polyp sensitivity, whereas per-scan means per-scan sensitivity. <sup>b</sup> FPs/dataset is false positives per dataset, whereas FPs/patient is false positives per patient.</p>
+        <p>Table III should not be read as a leaderboard. Several rows report equal or higher by-polyp sensitivity than the proposed scheme, including Paik et al. [7] and Wang et al. [8], but they use different datasets, validation settings, polyp-size thresholds, or FP denominators, and usually report higher FP rates. In particular, rows reporting FPs per patient pool the two scans of each patient, so a per-patient rate is roughly twice the equivalent per-scan rate. The safest claim is narrower: within the paper's WRAMC-centered relative comparison, the proposed rows combine high sensitivity with low FP/scan, but they are not a direct head-to-head win over every listed method.</p>
+      </section>
 
-<h3>5.1 GDF：以肠壁内表面为种子的测地距离场</h3>
-<p><strong>动机。</strong>需要一个“对息肉形状忠实、对 CT 灰度噪声免疫”的标量场。测地距离场（GDF）正好：从肠壁内表面种子出发，每个壁内体素的值是到内表面的最短路径距离。</p>
-<div class="equation">$$\mathrm{GD}(p_i)=\min_{p_j}\big(\mathrm{GD}(p_j)+D(p_i,p_j)\big)$$<div class="eq-caption">式 1：测地距离变换。$p_j$ 是 $p_i$ 的 26 邻域点，$D$ 是 chamfer 距离。</div></div>
-<div class="equation">$$D(p_i,p_j)=\begin{cases}3,&\lVert p_i-p_j\rVert_1=1\\ 4,&\lVert p_i-p_j\rVert_1=2\\ 5,&\lVert p_i-p_j\rVert_1=3\end{cases}$$<div class="eq-caption">式 2：3–4–5 chamfer 距离（面/棱/角邻居代价），是欧氏路径长在体素图上的整数近似。</div></div>
-<div class="formula-note"><p class="note-title">公式读法：为什么 GDF 在息肉里是“穹顶”</p><p>息肉是长在肠壁内表面上的一个凸起。以内表面为种子算测地距离，息肉内部体素离内表面越深、GD 越大，从息肉中心（最深）到边缘（贴近内表面）<strong>单调下降</strong>，且高斯平滑后近似一个光滑穹顶。于是不管息肉内部 CT 密度怎么花、PEH 怎么干扰，GDF 都把它整理成一个干净的凸包络——这就是“对灰度免疫、对形状忠实”。注意这里的“测地距离”是<u>体素图上的最短路径</u>（3–4–5 chamfer 近似），与连续黎曼几何里的测地线（变分意义）不是一回事。</p></div>
-<div class="formula-note"><p class="note-title">数学补遗 1 · 为什么息肉在 GDF 里必是“单峰穹顶”</p><p>设息肉是肠壁内表面 $\partial$ 上的一个凸起 $\Omega$，以 $\partial$ 为种子的测地距离 $g$ 满足程函方程 $\lVert\nabla g\rVert=1,\ g|_{\partial}=0$。沿任意从边界射入内部的测地线，$g$ 以单位速率<u>严格单调上升</u>，直到抵达离边界最远的点（息肉“顶”），即 $g$ 在 $\Omega$ 内的唯一极大。于是 $g$ 在息肉上<strong>单峰</strong>——无论内部 CT 灰度怎样花斑、PEH 怎样污染，$g$ 都把它整理成一座从边缘升到顶点的光滑山丘，高斯平滑只把等高线磨圆。<u>关键推论</u>：顶点附近 $g$（平滑后）的 Hessian 负定、两主曲率同号，故 Shape Index 落到“球冠（cap）”一端，整颗息肉 SI 都高；而 CT 灰度因中心≈正常组织、边缘≈空气/造影剂，曲率只在边缘可辨——这正是图 3(b)(c) 中 CT-SI 只亮边缘、GDF-SI 亮整颗的数学根由。</p></div>
+      <section id="ablations">
+        <h2>8. Ablations and failure analysis: what remains after classification?</h2>
+        <p>The paper's main ablations have already appeared in the experiments: Table I isolates the candidate-generation coordinate system, and Figure 5 isolates feature groups. Read together, they support the mechanism. GDF reduces the candidate burden before learning, while GDF-derived and enhancement-derived radiomic features help Random Forests separate true polyps from non-polyps.</p>
+        <p>The remaining FPs at the final operating point are not random. The paper reports that 71.7% are on haustral folds, 14.3% are on colon walls, 9.4% are on ileocecal valves, and 4.6% are on rectal tubes. These structures have shapes and textures similar to polyps, so they survive the hand-designed geometric and texture features more often than other structures.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/cadctc/cadctc_fig8.png"><img src="../assets/figures/cadctc/cadctc_fig8.png" alt="Typical false positive examples"></a>
+          <figcaption><strong>Figure 8 · Typical false positives at the final operating point.</strong> From top to bottom, the rows show FPs on ileocecal valves, rectal tubes, haustral folds, and colon walls. The figure sets the error boundary: the hardest remaining negatives are structures whose local shape and texture really resemble polyps.</figcaption>
+        </figure>
+        <div class="socratic">
+          <p class="question">Q: Do the ablations explain the result, or only report it?</p>
+          <p class="answer">A: They explain it in two steps. GDF makes the candidate list cleaner. Radiomic features, especially GDF and enhancement features, make the classifier stronger. The remaining errors are the structures that still look like polyps.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The gains and the failures point to the same story: geometry helps, but look-alike anatomy remains difficult.</p>
+        </div>
+      </section>
 
-<h3>5.2 GDF 上的 Shape Index 与 dot/line/plane 滤波器</h3>
-<p>在高斯平滑 GDF 上算 Shape Index（曲率类型的归一度量）：</p>
-<div class="equation">$$\mathrm{SI}(p)=\frac12-\frac{1}{\pi}\arctan\frac{k_1+k_2}{k_1-k_2}$$<div class="eq-caption">式 3：Shape Index，$k_1,k_2$ 是该体素在平滑 GDF 中的两个主曲率。SI∈[0,1]，越接近 1 越像球冠（cap），息肉正是球冠状。</div></div>
-<div class="formula-note"><p class="note-title">数学补遗 2 · Shape Index 为何是“无标度的形状名片”</p><p>设两主曲率 $k_1\ge k_2$，把式 3 反解，里头出现的只是比值：
-$$\tan\!\Big[\pi\big(\tfrac12-\mathrm{SI}\big)\Big]=\frac{k_1+k_2}{k_1-k_2}=\frac{1+\rho}{1-\rho},\qquad \rho:=\frac{k_2}{k_1}\in[-1,1].$$
-右边只依赖<u>主曲率之比</u> $\rho$，与曲率绝对大小无关——把曲面整体缩放 $k_i\to ck_i$，SI <strong>不变</strong>。所以 SI 度量“形状种类”而非“弯多狠”：
-$$\rho\to1\,(k_1{=}k_2,\text{同号球面})\Rightarrow\mathrm{SI}\in\{0,1\}\ (\text{cup/cap});\qquad \rho=-1\,(k_1{=}{-}k_2,\text{鞍})\Rightarrow\mathrm{SI}=\tfrac12.$$
-息肉是近球冠的凸起（$\rho$ 接近 $1$、两曲率同号为负），SI 逼近 $1$；脊状的皱襞（一向弯一向平，$\rho\approx0$）SI$\approx\tfrac34$，面状肠壁更低。把曲率换成 <u>GDF 的</u>主曲率后（补遗 1：GDF 内息肉是单峰穹顶），整颗息肉都呈 cap，于是阈值 $\mathrm{SI}>0.76$ 能把“球冠状 3D 凸区”整段框出（$0.76$ 是保证 3D 凸性的最低值）。</p></div>
-<p>再用 Li et al. 的 dot/line/plane 多尺度增强滤波器，区分“点状（息肉）/管状（部分皱襞）/面状（肠壁、皱襞）”。三种基本形状由各向异性高斯建模，取其 Hessian 的三个特征值 $\lambda_1,\lambda_2,\lambda_3$（$|\lambda_1|\ge|\lambda_2|\ge|\lambda_3|$）构造滤波响应：</p>
-<div class="equation">$$z_{\mathrm{dot}}=\begin{cases}|\lambda_3|^2/|\lambda_1|,&\lambda_1,\lambda_2,\lambda_3<0\\ 0,&\text{otherwise}\end{cases}\quad z_{\mathrm{line}}=\begin{cases}|\lambda_2|(|\lambda_2|-|\lambda_3|)/|\lambda_1|,&\lambda_1,\lambda_2<0\\ 0,&\text{otherwise}\end{cases}\quad z_{\mathrm{plane}}=\begin{cases}|\lambda_1|-|\lambda_2|,&\lambda_1<0\\ 0,&\text{otherwise}\end{cases}$$<div class="eq-caption">式 7–9：dot/line/plane 增强滤波器。点状结构三个特征值都强负，线状两个负，面状一个负。</div></div>
-<div class="formula-note"><p class="note-title">数学补遗 3 · 从高斯形状模型推出 dot/line/plane 的特征值签名</p><p>三种基本形状由各向异性高斯建模（式 4–6）：blob $d=e^{-(x^2+y^2+z^2)/2\delta^2}$、line $l=e^{-(x^2+y^2)/2\delta^2}$、plane $p=e^{-x^2/2\delta^2}$。在原点直接算 Hessian——对 $d$ 有 $\partial^2_x d=\frac{x^2-\delta^2}{\delta^4}d$，原点取 $-1/\delta^2$，交叉项为 $0$——得三个对角 Hessian：
-$$H_d=-\tfrac1{\delta^2}\mathrm{diag}(1,1,1),\quad H_l=-\tfrac1{\delta^2}\mathrm{diag}(1,1,0),\quad H_p=-\tfrac1{\delta^2}\mathrm{diag}(1,0,0).$$
-按 $|\lambda_1|\ge|\lambda_2|\ge|\lambda_3|$ 排序，三类的<strong>特征值签名</strong>是（亮于背景 ⇒ $\lambda<0$）：
-$$\text{dot}:\,|\lambda_1|{\approx}|\lambda_2|{\approx}|\lambda_3|{\gg}0;\quad \text{line}:\,|\lambda_1|{\approx}|\lambda_2|{\gg}|\lambda_3|{\approx}0;\quad \text{plane}:\,|\lambda_1|{\gg}|\lambda_2|{\approx}|\lambda_3|{\approx}0.$$
-式 7–9 正是把签名读成标量，并让每个滤波器对本类强响应、对他类清零：</p>
-<div class="table-wrap"><table><caption><strong>表（推导）.</strong> 三个滤波器在三种理想结构上的取值（把签名代入式 7–9）。</caption><thead><tr><th>响应</th><th>dot（$|\lambda_3|{\approx}|\lambda_1|$）</th><th>line（$|\lambda_3|{\approx}0$）</th><th>plane（$|\lambda_2|{\approx}0$）</th></tr></thead><tbody>
-<tr><td>$z_{\mathrm{dot}}=|\lambda_3|^2/|\lambda_1|$</td><td><strong>$\approx|\lambda_1|$（强）</strong></td><td>$\approx0$</td><td>$\approx0$</td></tr>
-<tr><td>$z_{\mathrm{line}}=|\lambda_2|(|\lambda_2|-|\lambda_3|)/|\lambda_1|$</td><td>$|\lambda_2|{-}|\lambda_3|{\approx}0\Rightarrow0$</td><td><strong>$\approx|\lambda_2|$（强）</strong></td><td>$\approx0$</td></tr>
-<tr><td>$z_{\mathrm{plane}}=|\lambda_1|-|\lambda_2|$</td><td>$\approx0$</td><td>$\approx0$</td><td><strong>$\approx|\lambda_1|$（强）</strong></td></tr>
-</tbody></table></div>
-<p>对角线全“强”、非对角线全“约 0”——这张表就是式 7–9 设计的全部动机：每个有理式都为<u>抵消他类、放大本类</u>而构造（即 Frangi 血管度在 dot/line/plane 上的三联推广）。于是息肉（dot）产生强响应、皱襞/肠壁（line/plane）被压住，候选纯度提高。</p></div>
-<div class="formula-note"><p class="note-title">公式读法：用 Hessian 特征值“数有几个方向在凸”</p><p>在亮于背景的局部凸结构处，Hessian 特征值为负；<strong>有几个方向在“凸”，就看几个特征值为负</strong>。点状（3D blob，息肉）三向皆凸 → 三个 $\lambda$ 全负，$z_{\mathrm{dot}}$ 才非零；管状两向凸 → 两个负；面状一向凸 → 一个负。这是把经典血管增强（Frangi 式）推广到 dot/line/plane 三类，让“形状”成为可计算的标量。多尺度则用一组尺度因子覆盖不同大小的息肉：</p></div>
-<div class="equation">$$z_\zeta=\max_{i=1,\dots,N_\sigma}\sigma_i^2\,z_\zeta^{(i)},\qquad \sigma_i=r^{\,i-1}\sigma_1,\ \ r=\Big(\tfrac{d_1}{d_0}\Big)^{1/(N_\sigma-1)}$$<div class="eq-caption">式 10–11：$\zeta\in\{$dot,line,plane$\}$；$N_\sigma=6$ 个尺度、$d_0=4$ mm、$d_1=32$ mm，覆盖 4–32 mm 息肉。</div></div>
-<div class="formula-note"><p class="note-title">数学补遗 4 · $\sigma_i^2$ 是尺度归一化，让大小息肉同台竞争</p><p>在尺度 $\sigma$ 上做高斯平滑再取二阶导，等于与 $\partial^2 G_\sigma$ 卷积，而 $\partial^2 G_\sigma$ 的幅度随 $\sigma$ 以 $1/\sigma^2$ 衰减。于是半径 $s$ 的 blob，其 Hessian 响应在 $\sigma\approx s$ 处达峰，但峰值随 $s$ 增大而<u>变小</u>，大息肉天然吃亏。乘上 $\sigma^2$（Lindeberg 的 $\gamma{=}1$ 归一化）正好抵消这一衰减，使<strong>不同大小的理想结构给出相等峰值</strong>；再对 $i$ 取 $\max$ 就自动选中与息肉尺寸匹配的尺度。尺度阶梯取几何级数 $\sigma_i=r^{\,i-1}\sigma_1$，把 $[d_0/4,d_1/4]$ 对数均匀采 $N_\sigma{=}6$ 档——对数而非线性，是因为“4 mm→8 mm”与“16 mm→32 mm”在感知与滤波响应上是同一个倍率台阶。</p></div>
-<p>滤波前还要线性变换 GDF，把 GDF 的取值范围“撑开”到模拟 CT 从空气到骨的密度跨度，便于增强滤波器响应：</p>
-<div class="equation">$$\mathrm{GDF}^*_i=\begin{cases}f_1\,\mathrm{GDF}_i+f_2,&\mathrm{GDF}_i>0\\ \mathrm{GDF}_i,&\text{otherwise}\end{cases}\qquad (f_1=25,\ f_2=1000)$$<div class="eq-caption">式 12：GDF 线性变换。$f_1$ 让息肉内 GD 范围接近骨的 CT 范围，$f_2$ 为骨与空气的密度差。</div></div>
-<p>候选由两步阈值化产生：① 用 GDF-SI &gt; 0.76（保证 3D 凸区的最低阈值）做 3D 连通域标记，得“3D 可疑区”，并要求其在肠壁内表面上至少有一个体素 SI ≥ $\mathrm{SI\_Th}$（息肉长在内表面上）；② 用 GDF-dot 输出做 3D 区域生长（种子为 dot ≥ $\mathrm{Dot\_Th}$ 的体素），再在肠腔补集中迭代膨胀 2.5 mm 覆盖整颗息肉，最后用“凸性条件膨胀”微调内边界（每个新增体素在半径 5 体素球邻域内，候选内体素数 ≥ 0.99×候选外体素数）。</p>
-<figure class="fig-grid">
-<figure><a href="../assets/figures/cadctc/cadctc_fig4.png"><img src="../assets/figures/cadctc/cadctc_fig4.png" alt="SI 阈值的 FROC 曲线"></a><figcaption><strong>图 4 · 阈值的 FROC（论文 Fig. 4）。</strong>(a) SI_Th 的 FROC：SI_Th=0.9 时 100% 候选敏感度、155.9 FP/例；(b) 固定 SI_Th=0.9 再扫 Dot_Th，Dot_Th=20 时 FP 降到 58.8/例仍 100%。曲线旁数字即对应阈值。原则是“先保 100% 候选敏感度，再尽量压 FP”。</figcaption></figure>
-<figure><a href="../assets/figures/cadctc/cadctc_fig5.png"><img src="../assets/figures/cadctc/cadctc_fig5.png" alt="不同特征组的分类 FROC"></a><figcaption><strong>图 5 · 特征组的分类 FROC（论文 Fig. 5）。</strong>(a)(b) ARF（全 640）vs NRF（200 新）vs BRF（440 既有）；(c)(d) ARF vs 既有方法的 56 维特征。在 1.3 FP/例处，ARF 的 by-polyp/per-scan 敏感度都明显领先——这是“radiomics + GDF 特征”的直接证据。</figcaption></figure>
-</figure>
+      <section id="limitations">
+        <h2>9. Limitations: where the evidence stops</h2>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Limits and missing details stated from the paper.</strong></caption>
+            <thead><tr><th>Boundary</th><th>Paper evidence</th><th>How to read it</th></tr></thead>
+            <tbody>
+              <tr><td>Validation scope</td><td>One WRAMC collection, evaluated with patient-level fourfold cross-validation.</td><td>External generalization across scanners, sites, bowel preparations, and populations is not established.</td></tr>
+              <tr><td>Feature/sample ratio</td><td>640 features, 103 polyps &ge;5 mm, many generated candidates.</td><td>Random Forests and SMOTE help, but a larger independent test would be needed for deployment-level confidence.</td></tr>
+              <tr><td>Threshold dependence</td><td>\(\mathrm{SI}_{Th}=0.9\), \(\mathrm{Dot}_{Th}=20\), SI &gt; 0.76, 2.5 mm dilation, convexity 0.99, and the GDF linear-mapping constants \(f_1=25\) and \(f_2=1000\) (Eq. 12).</td><td>These choices are tuned in this dataset; transfer sensitivity is not fully quantified.</td></tr>
+              <tr><td>Residual error type</td><td>Most final FPs come from folds, walls, valves, and tubes.</td><td>The method is weakest when non-polyps are genuinely polyp-like in shape and texture.</td></tr>
+              <tr><td>Runtime, hardware, code</td><td>Not stated in the paper.</td><td>Reproduction cost cannot be calculated from disclosed numbers.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The main practical conclusion should therefore stay calibrated. The paper demonstrates a strong hand-engineered CAD-CTC pipeline on its WRAMC validation setup. It does not establish a universal clinical operating point across independent hospitals.</p>
+      </section>
 
-<h3>5.3 640 维 radiomics + Random Forests：谁在真正削减 FP？</h3>
-<p>候选生成后每个候选提取 640 个 radiomic 特征：440 个 BRF（8 形状尺寸 + 48 CT 图像 + 384 小波）+ 200 个 NRF（28 新形状尺寸 + 144 增强特征 + 14 GDF + 14 梯度）。特征前先对肠壁做 CT 密度映射纠正 PEH：</p>
-<div class="equation">$$I^*_i=\begin{cases}\dfrac{I_i-t_1}{t_2-t_1}(t_3-t_1)+t_1,&I_i>t_1\\[4pt] I_i,&\text{otherwise}\end{cases}\qquad (t_1,t_2,t_3=100,370,-650\ \mathrm{HU})$$<div class="eq-caption">式 13：CT 密度映射。$t_1$ 保证只处理 &gt;100 HU、受 PEH 影响的软组织体素；$t_2,t_3$ 是造影剂与空气阈值。</div></div>
-<div class="table-wrap"><table><caption><strong>表 C.</strong> 640 维 radiomic 特征的构成。</caption><thead><tr><th>类别</th><th>BRF（440，既有）</th><th>NRF（200，新造）</th><th>作用</th></tr></thead><tbody>
-<tr><td>形状/尺寸</td><td>8（体积、表面积、球度…）</td><td>28（16 弦长 + 5 矩不变量 + 7 椭球拟合）</td><td>描述候选的形状规整度</td></tr>
-<tr><td>增强特征</td><td>—</td><td>144（dot/line/plane 各 48：14 一阶 + 23 共生矩阵 + 11 游程矩阵）</td><td>区分点状息肉 vs 线/面状干扰</td></tr>
-<tr><td>GDF 特征</td><td>—</td><td>14（GDF 的一阶统计）</td><td>候选内 GD 分布 = 形状信息</td></tr>
-<tr><td>梯度特征</td><td>—</td><td>14（CT 梯度图一阶统计）</td><td>候选内部结构</td></tr>
-<tr><td>CT 图像</td><td>48（一阶 + 共生 + 游程）</td><td>—</td><td>密度分布与纹理</td></tr>
-<tr><td>小波</td><td>384（8 个 Coiflet-1 分解 ×48）</td><td>—</td><td>多频信息</td></tr>
-</tbody></table></div>
-<p>分类器是 Random Forests（200 棵树，SMOTE 平衡正样本，Gini 增益分裂，多数投票）。选 RF 是因为它抗过拟合、能直接吃高维特征而不必先做特征选择。</p>
-<div class="socratic"><p class="question">问：640 个特征里，真正在削减 FP 的是哪些？是“特征多”本身有用，还是 GDF 派生特征在挑大梁？</p><p class="guide">引导：看 Gini 重要性排名，再看特征组消融（ARF/NRF/BRF）是否同向。</p><p class="answer">答：是 <strong>GDF 派生的新特征</strong>在挑大梁。① Gini 重要性前 50 名里，32 个属于 NRF（含 21 个增强特征、9 个 GDF 特征），而<strong>排名前 9 名全部是 GDF 特征</strong>。② 特征组消融（图 5(a)(b)，1.3 FP/例处）：BRF 81.6% → NRF 93.5% → ARF 98.1%（by-polyp），<u>200 个新特征单独就胜过 440 个既有特征</u>。两个独立证据指向同一结论：增益主要来自 GDF 这套表示派生的特征，而非单纯“特征堆得多”。</p><p class="takeaway"><strong>Takeaway：</strong>GDF 是贯穿全文的底座——候选生成靠它把真息肉突出，FP 削减又靠它派生出最具判别力的特征。同一个表示，两步通吃。</p></div>
-</section>
+      <section id="summary">
+        <h2>10. Summary: the useful lesson</h2>
+        <p><strong>In one sentence:</strong> this CAD-CTC scheme improves polyp detection by measuring shape in a geodesic distance field before using a large radiomic feature set to suppress the remaining false positives.</p>
+        <div class="guide">
+          <strong>Three takeaways:</strong>
+          <ol>
+            <li>The GDF switch is the cleanest mechanism: it preserves 100% candidate sensitivity while reducing candidate FPs from 104.5 to 58.8 per scan.</li>
+            <li>The classifier result is not just "more features"; GDF and dot-enhancement features dominate the Gini-ranked list, and all 640 features outperform both BRFs and NRFs alone.</li>
+            <li>The final result is strong but bounded: 98.1% by-polyp and 95.3% per-scan sensitivity at 1.3 FP/scan for polyps &ge;5 mm, under one WRAMC fourfold cross-validation setup.</li>
+          </ol>
+        </div>
+      </section>
 
-<!-- TRAINING -->
-<section id="training"><h2>6. 训练与算力账本</h2>
-<div class="table-wrap"><table><caption><strong>表 D.</strong> 训练设置与（论文披露的）成本。</caption><thead><tr><th>项目</th><th>论文披露</th><th>解释</th><th>缺失信息</th></tr></thead><tbody>
-<tr><td>分类器</td><td>Random Forests，200 棵树，默认参数</td><td>每树 bootstrap，节点特征数=√(总特征数)</td><td>—</td></tr>
-<tr><td>类别不平衡</td><td>SMOTE 过采样正样本</td><td>负样本（FP 候选）远多于正样本</td><td>SMOTE 倍率未说明</td></tr>
-<tr><td>验证</td><td>患者级四折交叉验证</td><td>76 例 →4 折 ×19；3 折训练 1 折测试 ×4</td><td>无外部测试集</td></tr>
-<tr><td>关键阈值</td><td>SI_Th=0.9、Dot_Th=20、SI&gt;0.76、膨胀 2.5 mm、凸性 0.99、半径 5 体素</td><td>候选生成的经验阈值</td><td>阈值敏感性分析未给</td></tr>
-<tr><td>硬件 / 时长</td><td>论文未说明</td><td>—</td><td>训练/推理用时、GPU/CPU 配置均未披露</td></tr>
-</tbody></table></div>
-<div class="note"><p class="note-title">算力说明</p><p>论文未披露训练/推理用时与硬件配置，故本文不做 GPU-hours 估算。可以确定的只有方法形态：前四步是确定性图像处理，唯一的“训练”是 200 棵树的 Random Forests + SMOTE，计算量在 2016 年的工作站上属轻量级。</p></div>
-</section>
-
-<!-- EXPERIMENTS -->
-<section id="experiments"><h2>7. 主实验：换坐标系砍一半 FP，radiomics 把敏感度顶到 98%</h2>
-<p>实验分三层，层层独立。第一层是候选生成的<strong>消融</strong>（GDF vs CT 灰度）；第二层是分类的<strong>特征消融</strong>（ARF/NRF/BRF 与既有特征）；第三层是<strong>按尺寸分层</strong>与<strong>同库既有方案</strong>的对比。</p>
-<div class="table-wrap"><table><caption><strong>表 I（论文）.</strong> 候选生成消融：在同样 100% 候选敏感度下，GDF 把 FP 砍掉近一半。</caption><thead><tr><th>候选生成方法</th><th>候选敏感度（检出视图/全部 197 视图）</th><th>FP / 每套数据</th></tr></thead><tbody>
-<tr><td>Baseline（CT 灰度上的 SI + dot）</td><td>100% (197/197)</td><td>104.5</td></tr>
-<tr><td><strong>本文（GDF 上的 SI + dot）</strong></td><td>100% (197/197)</td><td><strong>58.8</strong></td></tr>
-</tbody></table></div>
-<p>分类阶段（FROC 在 1.3 FP/例处读数）：</p>
-<div class="table-wrap"><table><caption><strong>表 E（据论文图 5 数据转写）.</strong> 特征组与既有特征的分类性能（@1.3 FP/例）。</caption><thead><tr><th>特征集</th><th>by-polyp 敏感度</th><th>per-scan 敏感度</th></tr></thead><tbody>
-<tr><td>BRF（440 既有）</td><td>81.6%</td><td>76.0%</td></tr>
-<tr><td>NRF（200 新造）</td><td>93.5%</td><td>92.0%</td></tr>
-<tr><td><strong>ARF（全 640）</strong></td><td><strong>98.1%</strong></td><td><strong>95.3%</strong></td></tr>
-<tr><td>既有方法的 56 维特征（SI/CV/CT 值/梯度，在 CT 上算）</td><td>81.6%</td><td>78.0%</td></tr>
-</tbody></table></div>
-<figure class="fig-grid">
-<figure><a href="../assets/figures/cadctc/cadctc_fig6.png"><img src="../assets/figures/cadctc/cadctc_fig6.png" alt="不同息肉尺寸的 FROC"></a><figcaption><strong>图 6 · 按尺寸的 FROC（论文 Fig. 6）。</strong>≥5 mm：98.1% by-polyp @1.3 FP/例、95.3% per-scan @1.3 FP/例；≥10 mm：97.1% @0.7 FP/例、93.7% per-scan @0.8 FP/例。大息肉更易检、FP 更低，符合直觉。</figcaption></figure>
-<figure><a href="../assets/figures/cadctc/cadctc_fig7.png"><img src="../assets/figures/cadctc/cadctc_fig7.png" alt="被正确检出的息肉示例"></a><figcaption><strong>图 7 · 检出示例（论文 Fig. 7）。</strong>上排扁平息肉、中排皱襞上的息肉、下排平坦肠壁上的息肉（青色）。覆盖了三类最难的形态/位置。</figcaption></figure>
-</figure>
-<div class="table-wrap"><table><caption><strong>表 III（论文，节选转写）.</strong> 与同用 WRAMC 数据库的部分 CAD-CTC 方案比较（by-polyp 敏感度 @ FP/例）。完整 30 行见原文。</caption><thead><tr><th>方案</th><th>年份</th><th># 患者 / # 息肉</th><th>息肉尺寸</th><th>敏感度 @ FP 率</th></tr></thead><tbody>
-<tr><td>Wang et al. [8]</td><td>2005</td><td>153 / 61</td><td>≥5 mm</td><td>100% by-polyp @2.68 FP/例</td></tr>
-<tr><td>Yao et al. [40]</td><td>2009</td><td>792 / 155</td><td>≥6 mm</td><td>95% by-polyp @2.4 FP/例</td></tr>
-<tr><td>Zhu et al. [42]</td><td>2010</td><td>325 / 125</td><td>≥10 mm</td><td>93.1% by-polyp @1.92 FP/例</td></tr>
-<tr><td>Wang et al. [15]</td><td>2015</td><td>60 / 130</td><td>5–8 mm</td><td>98% by-polyp @2.2 FP/例</td></tr>
-<tr><td><strong>本文</strong></td><td>—</td><td>76 / 103</td><td>≥5 mm</td><td><strong>98.1% by-polyp @1.3 FP/例</strong>（95.3% per-scan）</td></tr>
-<tr><td><strong>本文</strong></td><td>—</td><td>76 / 34</td><td>≥10 mm</td><td><strong>97.1% by-polyp @0.7 FP/例</strong>（93.7% per-scan）</td></tr>
-</tbody></table></div>
-<p>论文强调这种跨方案比较只能“相对”看——各家测试样本数、数据库、TP 判据、评测协议（LOPO/独立测试/N 折）都不同。仅在同用 WRAMC 库的范围内，既有方案 ≥5 mm 的 by-polyp 敏感度 75%–95%、FP 1.2–5.7/例；本文 98.1% @1.3 FP/例处于最优一档。</p>
-<div class="socratic"><p class="question">问：表 I（FP 减半）和图 5（敏感度顶到 98%）能不能拆开看成两个独立证据？</p><p class="answer">答：能，而且它们分别验证两步。① 表 I 隔离的是<strong>候选生成</strong>这一处变量：Baseline 与本文只差“在 CT 灰度还是 GDF 上算 SI/dot”，同样 100% 候选敏感度下 FP 104.5 → 58.8，<u>这是 GDF 换坐标系的纯净消融</u>。② 图 5/表 E 隔离的是<strong>分类特征</strong>：ARF 98.1% vs 既有 56 维 81.6%、vs BRF 81.6%、vs NRF 93.5%，<u>验证 radiomics（尤其 GDF 派生 NRF）的贡献</u>。两步各有一组对照，证据是分层而非缠绕的。</p><p class="takeaway"><strong>Takeaway：</strong>“换坐标系”与“堆 radiomics”各被一组消融独立验证；前者砍 FP，后者顶敏感度，合起来得到 98.1%/95.3% @1.3 FP/例。</p></div>
-</section>
-
-<!-- ABLATIONS -->
-<section id="ablations"><h2>8. 消融与失败分析：剩下的 FP 长什么样？</h2>
-<p>第 7 节的表 I 与图 5 已经是两组干净消融（候选生成的 GDF-vs-CT、分类的特征组）。这里补一条失败分析：在最终 98.1% by-polyp / 1.3 FP/例 时，剩余 FP 的来源分布是——<strong>71.7% 在皱襞（haustral folds）、14.3% 在肠壁、9.4% 在回盲瓣、4.6% 在肛管</strong>。这些结构在形状与纹理上与息肉高度相似，所以即便过了 radiomics 分类仍会残留。</p>
-<figure class="fig-wide"><a href="../assets/figures/cadctc/cadctc_fig8.png"><img src="../assets/figures/cadctc/cadctc_fig8.png" alt="典型假阳性示例"></a><figcaption><strong>图 8 · 典型假阳性（论文 Fig. 8）。</strong>自上而下依次为回盲瓣、肛管、皱襞、肠壁上的 FP。它们与真息肉形似质似——这正是 CAD-CTC 最后一公里的难点，也是 FP 率压不到更低的原因。</figcaption></figure>
-<div class="socratic"><p class="question">问：把这些消融连起来读，“GDF”这一设计的因果链清晰吗？</p><p class="answer">答：清晰且自洽。候选生成消融（表 I）证明：仅把度量从 CT 灰度换到 GDF，FP 就减半 → GDF 让真息肉更突出、把灰度噪声造的 FP 在源头压住。分类消融（图 5 + Gini 前 9 全是 GDF 特征）证明：GDF 派生特征是判别主力。失败分析（图 8）则界定了上限：剩余 FP 集中在与息肉真正形似的结构（皱襞/回盲瓣），这类靠纯形状/纹理特征难以根除。三者拼出一条完整因果链——GDF 有效、贡献可归因、残余误差有解释。</p><p class="takeaway"><strong>Takeaway：</strong>GDF 不是黑箱涨点：它的增益（减 FP、强特征）被两组消融归因，它的天花板（形似结构残留）被失败分析界定。</p></div>
-</section>
-
-<!-- LIMITATIONS -->
-<section id="limitations"><h2>9. 局限与复现门槛</h2>
-<div class="table-wrap"><table><caption><strong>表 F.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文信息</th><th>读者应如何理解</th></tr></thead><tbody>
-<tr><td>无外部验证</td><td>仅 WRAMC 单一数据库，四折交叉验证</td><td>跨设备/协议/人群的泛化未验证；作者自陈“期待在更大数据库上评估”</td></tr>
-<tr><td>高维特征过拟合风险</td><td>640 维特征，仅 103 颗息肉/197 视图</td><td>RF + SMOTE 缓解，但特征/样本比偏高，结论需更大样本佐证</td></tr>
-<tr><td>大量经验阈值</td><td>SI_Th=0.9、Dot_Th=20、SI&gt;0.76、$f_1{=}25,f_2{=}1000$、$t_{1,2,3}$ 等</td><td>换数据可能需重调；缺敏感性分析</td></tr>
-<tr><td>残余 FP 集中在形似结构</td><td>71.7% 在皱襞、9.4% 在回盲瓣等</td><td>纯形状/纹理特征难根除，FP 率有下限</td></tr>
-<tr><td>per-scan 把仰/俯卧算两套</td><td>per-scan 敏感度按 scan 统计</td><td>与“按患者”口径不同，跨论文比较要对齐口径</td></tr>
-<tr><td>未与深度学习对比</td><td>2016 年方法，RF + 手工 radiomics</td><td>同期 CNN-CAD 已出现（表 III 含 Roth 2015 CNN）；本文未直接对比 end-to-end 深度方法</td></tr>
-</tbody></table></div>
-<div class="socratic"><p class="question">问：这篇论文最容易被过度宣传成什么？</p><p class="answer">答：最容易被讲成“98.1% 敏感度、1.3 FP/例，CAD-CTC 已解决”。更严谨的说法是：在 WRAMC 单库、四折交叉验证下，本文在同库既有方案中处于最优一档；它的真正价值是两个可迁移的方法论——<u>把曲率/增强度量搬到 GDF 上以规避灰度不均与 PEH</u>，以及<u>用大规模 radiomics（尤其 GDF 派生特征）做 FP 削减</u>。但“无外部测试 + 高维特征 + 多经验阈值”意味着临床落地前仍需更大、独立数据的验证。</p><p class="takeaway"><strong>Takeaway：</strong>强项是双消融清晰、同库最优、GDF 贡献可归因；边界是单库、无外部测试、阈值多、未对比深度方法。</p></div>
-</section>
-
-<!-- SUMMARY -->
-<section id="summary"><h2>结语：几点学术判断</h2>
-<p><strong>一句话总结：</strong>当“在 CT 灰度上量形状”被灰度不均和伪增强污染，最有效的修法不是换更复杂的曲率算子，而是<strong>换一张对形状忠实、对灰度免疫的底图（测地距离场 GDF）</strong>，再用大规模 radiomics 把残余假阳性筛掉。</p>
-<div class="guide"><strong>三个 takeaway：</strong><ol>
-<li><strong>换坐标系胜过换算法。</strong>把 SI 与 dot/line/plane 滤波器搬到高斯平滑 GDF 上，息肉从“灰度花斑”变成“光滑穹顶”，同样 100% 候选敏感度下 FP 从 104.5 砍到 58.8。</li>
-<li><strong>GDF 是贯穿两步的底座。</strong>它既让候选生成更干净，又派生出 FP 削减里最具判别力的特征（Gini 前 9 名全是 GDF 特征）——同一表示，候选与分类两步通吃。</li>
-<li><strong>看清残余误差的形状。</strong>剩余 FP 七成在皱襞、近一成在回盲瓣，这些与息肉真正形似的结构界定了纯形状/纹理特征的天花板，也指明后续（如深度学习/多视图融合）的方向。</li>
-</ol></div>
-<p>阅读路径建议：先看首图 Fig.3 直观感受“CT-SI 只亮边缘、GDF-SI 亮整颗” → 图 2 框架认清五步与两个重点 → 第 5 节跟着式 1–13 重推 GDF、SI、dot/line/plane 与 CT 密度映射 → 表 I/图 5 看两组消融 → 图 8 与第 9 节界定边界。</p>
-</section>
-
-<!-- REFERENCES -->
-<section id="references" class="references"><h2>资料来源与图像说明</h2><ol>
-<li>Yacheng Ren, Jingchen Ma, Junfeng Xiong, Lin Lu, Jun Zhao. <em>High-Performance CAD-CTC Scheme Using Shape Index, Multiscale Enhancement Filters, and Radiomic Features</em>. IEEE Transactions on Biomedical Engineering, 64(8), 2017: 1924–1934（2016-11-22 在线）. DOI: 10.1109/TBME.2016.2631245. 通讯作者 junzhao@sjtu.edu.cn（上海交通大学生物医学工程学院）。</li>
-<li>本文所有公式（式 1–13）、表格（表 I、表 III 节选）与数字均以 IEEE Xplore PDF 为准，经机构网络下载核对；表 I、表 E、表 III 为论文原表/原图数据逐项转写，未做“按表 X”式转述。</li>
-<li>关键相关工作：dot/line/plane 多尺度增强滤波 Li et al.（Med. Phys. 2003，[18]）；Shape Index 与息肉 CAD Yoshida &amp; Nappi（IEEE TMI 2001，[5]）；GDF / 中心线变形 Kang et al.（IEEE TMI 2009，[19]）；PV 电子清肠 Wang et al.（IEEE TBME 2006，[25]）；radiomics 体系 Aerts et al.（Nature Commun. 2014，[21]）；Random Forests Breiman（2001，[23]）；SMOTE Chawla et al.（2002，[32]）。</li>
-<li>方法学说明（kexue:su 红线）：机制推导按苏剑林 / kexue.fm “动机先行、假设显式、≥2 路交叉验证”姿态展开；检索语料库仅返回与<u>连续黎曼几何测地线</u>相关卡片（如 [archives/3977]、[archives/9368]），与本文使用的<strong>体素图 3–4–5 chamfer 测地距离变换</strong>属不同范畴，故仅作概念对照、<strong>不</strong>将本文算法归因于苏剑林。</li>
-<li>图像说明：图 1–8 均为本地 PNG，由 IEEE Xplore PDF 以 300 DPI 按图注锚点裁切，路径位于 <code>assets/figures/cadctc/</code>；无装饰性配图。</li>
-</ol></section>
-</main><footer class="article-footer">Paper Digest · 高性能 CAD-CTC（GDF + Radiomics）。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为“论文未说明”。</footer></article>
-<aside class="sidebar">
-  <section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">研究动机</a></li><li><a href="#contribution">贡献解读</a></li><li><a href="#datasets">任务与数据</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法</a></li><li><a href="#training">训练与算力</a></li><li><a href="#experiments">主实验</a></li><li><a href="#ablations">消融与失败分析</a></li><li><a href="#limitations">局限</a></li></ol></div></section>
-  <section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>High-Performance CAD-CTC Scheme Using Shape Index, Multiscale Enhancement Filters, and Radiomic Features</dd><dt>Venue</dt><dd>IEEE TBME 64(8) 2017: 1924–1934</dd><dt>Topic</dt><dd>虚拟结肠镜 · 息肉 CAD / CTC</dd><dt>Code</dt><dd>未开源</dd><dt>Compute</dt><dd>论文未说明（RF 200 树 + SMOTE）</dd></dl></div></section>
-  <section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> 8 图 + 表 I/III 转写</p><p><span class="status-good">figures</span> 8 张 PNG 素材入库</p><p><span class="status-good">formula</span> MathJax 预检通过</p><p><span class="status-warn">scope</span> WRAMC 单库、无外部测试、未对比深度方法</p></div></section>
-</aside></div></body></html>
+      <section id="references" class="references">
+        <h2>Sources and figure assets</h2>
+        <ol>
+          <li>Yacheng Ren, Jingchen Ma, Junfeng Xiong, Lin Lu, and Jun Zhao. <em>High-Performance CAD-CTC Scheme Using Shape Index, Multiscale Enhancement Filters, and Radiomic Features.</em> IEEE Transactions on Biomedical Engineering, vol. 64, no. 8, pp. 1924-1934, August 2017. Date of publication: November 22, 2016. DOI: 10.1109/TBME.2016.2631245.</li>
+          <li>All equations, figures, tables, and numbers in this page are based on the local source PDF <code>sources/cadctc.pdf</code>.</li>
+          <li>Figure assets are local PNGs under <code>../assets/figures/cadctc/</code>: <code>cadctc_fig1.png</code> through <code>cadctc_fig8.png</code> and <code>cadctc_thumb.png</code>.</li>
+          <li>Related methods cited by the paper include Shape Index for CAD-CTC [5], multiscale enhancement filters [18], geodesic distance fields [19], radiomics [20], [21], Random Forests [23], partial-volume colon cleansing [25], and SMOTE [32].</li>
+        </ol>
+      </section>
+    </main>
+    <footer class="article-footer">Paper Digest · CAD-CTC deep-read. Missing implementation details are marked "Not stated in the paper."</footer>
+  </article>
+  <aside class="sidebar">
+    <section class="side-card"><h2 class="side-title">Contents</h2><div class="side-body"><ol><li><a href="#lead">Lead</a></li><li><a href="#motivation">Motivation</a></li><li><a href="#contribution">Contribution</a></li><li><a href="#datasets">Dataset</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">Method</a></li><li><a href="#training">Training</a></li><li><a href="#experiments">Experiments</a></li><li><a href="#ablations">Ablations</a></li><li><a href="#limitations">Limitations</a></li><li><a href="#summary">Summary</a></li><li><a href="#references">References</a></li></ol></div></section>
+    <section class="side-card"><h2 class="side-title">Paper Info</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>High-Performance CAD-CTC Scheme Using Shape Index, Multiscale Enhancement Filters, and Radiomic Features</dd><dt>Venue</dt><dd>IEEE TBME · online 2016, print 2017</dd><dt>Task</dt><dd>CTC polyp CAD</dd><dt>Data</dt><dd>WRAMC, 152 scans, 103 polyps &ge;5 mm</dd><dt>Code</dt><dd>Not stated in the paper.</dd></dl></div></section>
+    <section class="side-card"><h2 class="side-title">Key Numbers</h2><div class="side-body"><ul><li>Candidate FPs: 104.5 to 58.8 per scan</li><li>Final &ge;5 mm: 98.1% by-polyp, 95.3% per-scan at 1.3 FP/scan</li><li>Final &ge;10 mm: 97.1% by-polyp at 0.7 FP/scan</li><li>Features: 440 BRFs + 200 NRFs</li></ul></div></section>
+    <section class="side-card"><h2 class="side-title">Status</h2><div class="side-body"><p><span class="status-good">completed</span> English rewrite</p><p><span class="status-good">figures</span> 8 local PNGs reused</p><p><span class="status-good">tables</span> Paper Tables I-III transcribed</p><p><span class="status-warn">scope</span> Single WRAMC validation setup</p></div></section>
+  </aside>
+</div>
+</body>
+</html>

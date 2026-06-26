@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Thin wrapper around the Paper2Html skill tool scripts/formula_check.py — the
-# render-check ("公式编译器"): headless-render every page with real MathJax and fail
+# render-check ("formula compiler"): headless-render every page with real MathJax and fail
 # any page with unrendered math ($$ / \(...\) left) or an mjx-merror. Complements
 # the static preflight.py. No local server needed (renders via file://); requires a
 # Chromium-based browser + MathJax-CDN egress.

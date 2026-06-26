@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AsymLoc 深读：地图图像可以离线用大模型算，那查询图像为什么还要被大模型的算力账单绑死？——非对称视觉定位</title>
-<meta name="description" content="AsymLoc 深读：视觉定位里，地图库图像是离线预处理的、不受端侧算力约束，而查询图像要在智能眼镜这类边缘设备上实时算。本文据此提出非对称视觉定位：用大教师模型离线抽地图特征、用 0.04M 参数的小学生模型在线抽查询特征，再用零参数的互最近邻匹配把两者对上。难点在于两个不同模型抽的特征天生不兼容、又不想引入 LightGlue 这种 13M 参数的重匹配器。AsymLoc 的答案是把对齐放进检测器-描述子联合空间：几何匹配损失 L_match 用已知单应约束软对应，联合检测-描述子蒸馏损失 L_KD 用行/列双向 KL 把教师的联合可匹配性分布灌给学生。SiLK 教师下 0.13M 学生在 Aachen 上达教师 95.5% 精度、25× 更小的学生保留 96%+ 教师精度。CVPR 2026 Top Paper（候选）。">
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AsymLoc: asymmetric feature matching for efficient visual localization</title>
+<meta name="description" content="Paper Digest deep-read on AsymLoc: Towards Asymmetric Feature Matching for Efficient Visual Localization. The page explains asymmetric visual localization, joint detector-descriptor distillation, mutual nearest-neighbor matching, training, experiments, ablations, and limitations.">
 <script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+/* ===== Paper2Html shell · refined academic theme ===== */
 :root{
   --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
   --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
@@ -250,9 +250,9 @@ body.lb-lock{overflow:hidden}
     var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
     var overlay=document.createElement("div");
     overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
-    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+    overlay.innerHTML='<button class="lb-close" aria-label="Close">×</button>'+
       '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
-      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+      '<div class="lb-hint">Click anywhere or press Esc to close</div>';
     document.body.appendChild(overlay);
     var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
     function openLB(src,cap){
@@ -309,7 +309,7 @@ body.lb-lock{overflow:hidden}
     (function(){
       var title=document.querySelector(".site-title");if(!title)return;
       var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
-      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      var hp=nav.filter(function(a){return /home/i.test(a.textContent);})[0];
       if(hp)home=hp.getAttribute("href");
       else if(document.querySelector(".home"))home="index.html";
       if(!home)return;
@@ -327,12 +327,12 @@ body.lb-lock{overflow:hidden}
         function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
         if(!head.querySelector(".quick-links")){
           var bar=document.createElement("div");bar.className="quick-links";
-          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+          bar.innerHTML='<span class="ql-label">Links</span>'+chips();head.appendChild(bar);
         }
         var sb=document.querySelector(".sidebar");
         if(sb&&!sb.querySelector(".quick-links-side")){
           var card=document.createElement("section");card.className="side-card";
-          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          card.innerHTML='<h2 class="side-title">Links</h2><div class="side-body quick-links-side">'+chips()+'</div>';
           sb.insertBefore(card,sb.firstChild);
         }
       }
@@ -350,255 +350,162 @@ body.lb-lock{overflow:hidden}
 </script>
 </head>
 <body>
-<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>3D Vision / Visual Localization · 把端侧算力账单从查询模型上卸下来</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
-<div class="wrap"><div class="breadcrumbs"><a href="../index.html">首页</a> &gt; CVPR 2026 &gt; 3D Vision / Visual Localization &gt; AsymLoc</div>
-<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">AsymLoc 深读：地图图像可以离线用大模型慢慢算，那查询图像为什么还要被同一份算力账单绑死？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>CVPR 2026 · Top Paper (candidate) · UT Austin / Amazon</span><span>来源：arXiv:2604.09445 v1 PDF（正文 + 附录）</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Visual Localization</span><span class="tag green">Asymmetric Matching</span><span class="tag">Detector–Descriptor</span><span class="tag">Knowledge Distillation</span><span class="tag">Mutual Nearest Neighbor</span><span class="tag">Edge / On-device</span><span class="tag">MathJax checked</span></div></header>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>CVPR 2026 · Visual Localization · Asymmetric Feature Matching</small></p></div><nav class="top-nav"><a href="../index.html">Home</a><a href="#lead">Lead</a><a href="#method">Method</a><a href="#experiments">Experiments</a><a href="#limitations">Limitations</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">Home &gt; CVPR 2026 &gt; Visual Localization &gt; AsymLoc</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">26</span><span class="month">Jun</span></div><h1 id="paper-title">AsymLoc: asymmetric feature matching for efficient visual localization</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-26</span><span>CVPR 2026 · UT Austin / Amazon</span><span>Source: arXiv:2604.09445 PDF</span></div><div class="tags"><span class="tag orange">Visual Localization</span><span class="tag">Asymmetric Matching</span><span class="tag">Detector-Descriptor Distillation</span><span class="tag green">Edge Deployment</span><span class="tag">Mutual Nearest Neighbor</span><span class="tag">MathJax checked</span></div></header>
 <main class="content">
 
-<p id="abstract" class="lead"><strong>导读。</strong>视觉定位（从一张查询图像估计 6-DoF 相机位姿）的标准流水线里，藏着一个被长期忽略的<strong>不对称性</strong>：<strong>地图库（database）图像是离线建好的</strong>——你可以在服务器上用任意大的模型、花任意多的时间去抽它的特征；而<strong>查询（query）图像必须在端侧实时处理</strong>——智能眼镜、无人机、单板机上，算力被电池和散热死死卡住。既然两端的算力预算根本不在一个量级，为什么还要逼它们用<em>同一个</em>模型？AsymLoc 的回答是<strong>非对称视觉定位</strong>：地图端用大教师模型 $T$ 离线抽特征，查询端用<strong>小到 0.04M 参数</strong>的学生模型 $S$ 在线抽特征，再用<strong>零参数、零学习的互最近邻匹配</strong>把两边对上。难点随之而来：两个<em>不同</em>模型抽出的特征天生不在一个空间里、对不上；而要补这道缝，最省事的办法是塞一个 LightGlue 这样的学习型匹配器——可它光自己就有 ~13M 参数，比特征提取器还重一个量级，端侧根本背不动。AsymLoc 不走这条路，它把<strong>对齐</strong>这件事直接做进<strong>检测器–描述子联合空间</strong>：一个几何匹配损失 $\mathcal{L}_{\text{match}}$ 借已知单应（homography）强制空间对应，一个<strong>联合检测–描述子蒸馏损失</strong> $\mathcal{L}_{\text{KD}}$ 用行/列双向 KL 把教师的<em>联合可匹配性分布</em>（哪里该被检测 × 描述子有多像，两件事耦合在一起）灌给学生。结果：SiLK 当教师时，0.13M 的学生在 Aachen 上达到教师 <strong>95.5%</strong> 的定位精度、推理量却低一个数量级；25× 更小的学生仍保留 <strong>96%+</strong> 的教师精度，全面压过对称基线与改编自图像检索的非对称蒸馏方法。</p>
-
-<figure>
-  <a href="../assets/figures/asymloc/asymloc_fig1.png"><img src="../assets/figures/asymloc/asymloc_fig1.png" alt="AsymLoc 总览：地图端大教师离线、查询端小学生在线，只有 Large(map)+Small(query) 这一格同时满足 Performance 与 Efficiency"></a>
-  <figcaption><strong>图 1（论文 Fig. 1，teaser）：把不对称写进流水线。</strong>上半（Off-line）地图库图像由大教师 $T$ 处理，下半（On-line）查询图像由 25× 更小的学生 $S$ 处理，两路特征做匹配。底部三行表是全文的动机锚点：地图大/查询大（对称大）性能好但效率差；地图小/查询小（对称小）效率好但性能差；<strong>地图大 + 查询小</strong>是唯一同时拿到 ✅ 性能与 ✅ 效率的格子——这正是 AsymLoc 要做成的那一格。看图时盯住"哪一端被算力约束"：被约束的只有查询端，地图端的成本是离线一次性付清的。</figcaption>
-</figure>
+<section id="lead">
+<p class="lead"><strong>The short version.</strong> Visual localization has a built-in asymmetry. The map is built offline, so its database images can be processed once by a large feature model. The query image arrives online on a small device, such as smart glasses, where latency, heat, and battery matter. AsymLoc turns that asymmetry into the model design: a large frozen Teacher extracts map features offline, a tiny Student extracts query features online, and the two sides are matched with parameter-free mutual nearest neighbor matching. The hard part is compatibility. Features from two different networks do not naturally live in the same matching space. AsymLoc trains the Student to align with the Teacher in the joint detector-descriptor space, where detector confidence changes how much descriptor similarity should be trusted.</p>
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>One-line idea</b>Use the expensive model only where computation is offline, then train a tiny online model whose features can match the offline Teacher features directly.</div><div class="kv"><b>Why it matters</b>LightGlue adds about 13M parameters and about 93 ms, while SuperPoint itself has about 1.3M parameters and runs in under 10 ms. AsymLoc keeps the matcher as mutual nearest neighbor.</div><div class="kv"><b>What is new</b>Asymmetry had been studied for image retrieval. AsymLoc is the first to bring that asymmetric setting to the image-matching step of localization.</div><div class="kv"><b>Student sizes</b>The tested CNN students have 0.13M, 0.08M, 0.06M, and 0.04M parameters. The Teacher is frozen.</div></div></div><figure class="hero-card"><a href="../assets/figures/asymloc/asymloc_fig1.png"><img src="../assets/figures/asymloc/asymloc_fig1.png" alt="AsymLoc overview: large offline map model and small online query model"></a><figcaption><strong>Figure 1 · The asymmetry is in the pipeline, not just in the network size.</strong> Database images are processed offline by a large Teacher. Query images are processed online by a compact Student. The paper's central question is whether those two feature sets can be made compatible without adding a heavy learned matcher.</figcaption></figure></div>
+</section>
 
 <section id="motivation">
-<h2>一、核心问题：被算力账单绑在一起的两端，本就不该共用一个模型</h2>
-
-<p><strong>问题。</strong>视觉定位的典型流水线 [43, 45] 分两步：先用 GPS 先验或视觉地点识别（VPR）从地图库里召回一小撮邻近图像，再在查询图像与这撮地图图像之间做<strong>特征匹配</strong>，由匹配解相对位姿。匹配这一步的效率是关键瓶颈，尤其在智能眼镜这类边缘设备上——算力被电池续航和散热实打实地卡死。</p>
-
-<p><strong>常规解法为什么不够。</strong>最直接的省算力办法是<em>把模型整体换小</em> [22, 42]。但小模型会带来不可忽略的精度掉点 [58, 72]：你省了算力，却把定位质量也一起砍了。AsymLoc 想要的是<strong>逼近大模型的精度、又保留小模型的效率</strong>——常规的"一刀切换小"做不到，因为它默认查询端和地图端必须用<em>同一个</em>模型。</p>
-
-<p><strong>引导：被忽略的那条免费午餐。</strong>这里有一个被前人在<em>匹配步骤</em>上集体漏掉的事实——<strong>地图库图像可以离线预处理</strong>。建图是一次性的、在服务器上做的，那里没有电池、没有散热约束。换句话说，<strong>地图端的算力是"免费"的</strong>（已经付过一次、可以无限重用），真正受约束的只有查询端。那么自然的问题是：<em>既然两端的算力预算根本不对称，为什么要用对称的模型？</em></p>
-
-<div class="callout">
-<p><strong>核心张力（一句话）。</strong>地图端算力免费、查询端算力昂贵——这是一个天然的<strong>非对称</strong>结构；可现有的局部特征（SuperPoint、SiLK 等）全都假设<strong>对称部署</strong>（两端同一模型），于是把地图端那份免费算力白白浪费掉了。AsymLoc 要做的，就是把这份不对称<em>显式地</em>用起来：地图端尽管上大模型，查询端尽管缩到极小，难点只剩一个——<strong>两个不同模型抽的特征怎么对得上</strong>。</p>
-</div>
-
-<p><strong>为什么"对不上"是真问题。</strong>大模型 $T$ 和小模型 $S$ 各自独立训练，它们的描述子落在<em>不同的</em>表示空间里：同一个物理 3D 点，$T$ 给的 128 维向量和 $S$ 给的向量没有任何理由指向同一个方向，互最近邻匹配（mutual nearest neighbor, MNN）会大面积失配。补缝最省事的办法是塞一个学习型匹配器（SuperGlue [46] 和 LightGlue [32]），让它用两张图的全局信息去鲁棒地配对——但 LightGlue 自己就有 ~13M 参数（SuperPoint 才 1.3M），推理时间从 ~10ms 涨到 ~93ms [6]。这把"省下来的算力"又全吐回去了，端侧背不动。<strong>所以 AsymLoc 的目标被精确地框死：让 $T$、$S$ 的特征<em>天生兼容</em>，匹配步骤回落到零参数、零学习的 MNN。</strong></p>
+<h2>1. Motivation: the map is offline, the query is not</h2>
+<p>A standard visual localization pipeline estimates the 6-DoF camera pose of a query image against a pre-mapped database. It usually retrieves a shortlist of candidate database images, then matches local features between the query and the shortlisted map images. The second step is expensive because it must happen after the query arrives.</p>
+<p>The map side has a different budget. Database images can be processed once, stored, and reused. There is no deployment reason to force the map image and the query image through the same small model. If the map can afford a strong Teacher, the online side only needs a Student that speaks the Teacher's feature language.</p>
+<p>The naive way to bridge two feature languages is to add a learned matcher such as SuperGlue or LightGlue. That defeats the edge-device goal. LightGlue alone is roughly 13M parameters and about 93 ms, while the SuperPoint extractor is roughly 1.3M parameters and under 10 ms. AsymLoc therefore sets a stricter target: train the Student so that Teacher-Student features can be matched by simple mutual nearest neighbor, with no learned matcher at inference.</p>
+<div class="socratic"><p class="question">Q: why is matching harder than retrieval here?</p><p class="answer">A: Retrieval uses one global descriptor per image. Matching uses many local keypoints, each with a detector confidence and a descriptor. The Student must not only place descriptors near the Teacher's descriptors. It must also learn where the Teacher would trust a keypoint.</p><p class="takeaway"><strong>Takeaway:</strong> Compatibility for localization is a joint problem: where to look and how to compare must be aligned together.</p></div>
 </section>
 
 <section id="contribution">
-<h2>二、贡献拆解：一个新任务 + 一个联合蒸馏目标 + 一份全面验证</h2>
-
-<p>论文把贡献明确列为三条（§1 Contributions），我按"它各自回答了上面的哪一半问题"来转述：</p>
-
-<ol>
-<li><strong>提出"非对称视觉定位"这个任务。</strong>由真实端侧约束驱动：大模型处理地图图像、轻量模型处理查询图像。论文自陈，非对称设定在<em>图像检索（全局描述子）</em>里被充分研究过 [9,16,23,53,65,68]，但<strong>从没有人在图像匹配（局部检测器–描述子）这一步上做非对称</strong>——这是本文宣称的"首次"。<span class="reader">（读者注：这条是任务层面的 framing，价值在于把"地图离线"这个免费午餐摆上桌；下面两条才是技术内核。）</span></li>
-<li><strong>提出 AsymLoc：联合检测器–描述子蒸馏框架。</strong>核心机制——把<em>检测器置信度</em>与<em>描述子相似度</em>整合进<strong>统一的概率对齐目标</strong>，再配一个几何匹配损失。关键洞见（§2 末、§3 开头反复强调）：对齐应当发生在<strong>联合（joint）检测器–描述子空间</strong>里，因为"该不该在这里检测"会调制"这里的描述子有多可信"——两者不该像前人那样<em>独立</em>对齐。</li>
-<li><strong>全面实验。</strong>四个跨域基准（HPatches/ScanNet/IMC2022/Aachen）、两种教师架构（SiLK、SuperPoint）、四档学生尺寸（0.04M–0.13M，最小者比教师小 25×）。结论：同等推理成本下，AsymLoc 一致地压过所有替代方案；在 Aachen 上达到标准流水线 95.5%（SiLK 教师）/ 93%（SuperPoint 教师）的精度，而推理成本低一个数量级。</li>
-</ol>
-
-<p><strong>读者视角的一句提炼。</strong>真正新的不是"用蒸馏压缩模型"（那是老话题），而是<strong>蒸馏的目标变了</strong>：不再让学生去复刻教师的<em>原始特征向量</em>（朴素蒸馏，下文会看到它几乎无效），而是让学生去复刻教师的<strong>联合可匹配性分布</strong>——即"在教师眼里，谁该和谁匹配、以多大概率匹配"这整套软分配结构。学生只要把这套<em>关系</em>学像，它的特征自然就能和教师的特征做 MNN。</p>
+<h2>2. Contribution: asymmetric localization without a heavy matcher</h2>
+<p>The paper makes three concrete claims. First, it formulates <strong>asymmetric visual localization</strong>: the database side is processed offline by a large Teacher, and the online query side is processed by a lightweight Student. The authors position this as the first application of the asymmetric setting, previously studied for image retrieval, to the image-matching step of localization.</p>
+<p>Second, it proposes <strong>AsymLoc</strong>, a training framework that aligns Teacher and Student in the joint detector-descriptor space. The key phrase is joint. Detector confidence is not treated as a side output. It modulates descriptor similarity, so the model learns a distribution over matchability rather than only a distribution over raw descriptor vectors.</p>
+<p>Third, it evaluates the idea across HPatches, ScanNet, IMC2022, and Aachen Day-Night, under the HLoc pipeline where relevant. The paper tests SiLK and SuperPoint as teachers, four Student sizes, symmetric baselines, naive distillation, and four asymmetric distillation baselines adapted from retrieval: AML, RKD, CSD, and D3Still.</p>
+<p>The headline is not that AsymLoc beats large dense matchers. LoFTR and SuperPoint+LightGlue remain stronger on several absolute accuracy metrics. The point is the efficiency-accuracy trade-off: with the same online model size and GFLOPs as a small symmetric Student, the asymmetric Student can use a stronger offline map representation.</p>
 </section>
 
 <section id="datasets">
-<h2>三、数据：训练用 COCO 合成单应对，评测覆盖四个跨域基准</h2>
-
-<p><strong>训练数据（合成单应对）。</strong>所有模型都在 <strong>COCO [31]</strong> 上训练，沿用 SiLK [20] 的做法：从 COCO 采一张图，对它施加一个随机单应变换得到第二个视角，凑成一对 $(a,b)$，<strong>单应矩阵已知</strong>。已知单应 $\Rightarrow$ 像素级 ground-truth 对应 $M_{ab}$ 可直接算出来——这就是几何匹配损失的监督来源，<em>不需要任何人工标注</em>。<span class="reader">（读者注：这一步很关键——单应给的是"哪个像素对应哪个像素"的硬真值，省掉了 3D 重建/SfM 的麻烦，也让训练可以无限合成。）</span></p>
-
-<p><strong>评测基准（四个，论文 §4.1 + Fig. 3）。</strong>覆盖平面单应、室内/室外、白天/夜晚变化、小到大尺度：</p>
-
-<figure>
-  <a href="../assets/figures/asymloc/asymloc_fig3.png"><img src="../assets/figures/asymloc/asymloc_fig3.png" alt="四个评测基准各取一例：HPatches 平面场景、ScanNet 室内、IMC2022 地标、Aachen 室外昼夜"></a>
-  <figcaption><strong>图 3（论文 Fig. 3）：四个评测域各一例。</strong>HPatches（平面单应、光照/视角变化）→ 测单应估计；ScanNet（室内扫描）→ 测相对位姿 AUC；IMC2022（著名地标）→ 测平均定位精度 MLA；Aachen（室外、白天↔夜晚剧烈外观变化）→ 接进 HLoc 完整定位流水线。四域分别压住"几何稳定性、室内位姿、室外大尺度、昼夜鲁棒"四个不同的失败模式，单点好不算数。</figcaption>
-</figure>
-
-<table>
-<thead><tr><th>基准</th><th>域 / 特点</th><th>评测指标</th></tr></thead>
-<tbody>
-<tr><td><strong>HPatches</strong> [3]</td><td>平面单应对，光照 + 视角变化</td><td>单应估计精度（HEA，阈值 $\epsilon=1,3$ 像素）</td></tr>
-<tr><td><strong>ScanNet</strong> [14]</td><td>室内环境扫描</td><td>位姿精度 AUC @10°/20°（角度阈值）</td></tr>
-<tr><td><strong>IMC2022</strong> [37]</td><td>著名地标，建好的参考地图</td><td>平均定位精度 MLA（多位置/朝向阈值平均）</td></tr>
-<tr><td><strong>Aachen Day-Night</strong> [51]</td><td>室外，白天↔夜晚剧烈外观变化</td><td>定位精度（0.5m,5° / 5m,10°），接入 HLoc [44]</td></tr>
-</tbody>
-</table>
-<p class="note">附录另有 Megadepth [30] 与 XFeat [38] 教师的补充结果（论文 §A.6），此处不展开。所有跨库实验中——IMC2022、ScanNet、Aachen——<strong>地图用教师处理、查询用学生处理</strong>；HPatches 是图像对，则随机指定哪张喂教师、哪张喂学生。</p>
+<h2>3. Datasets and metrics: what each number means</h2>
+<p>The training data is synthetic. Following the SiLK setup, the authors sample COCO images and apply random homographies to generate paired views. A homography is a planar geometric transform between two views. Because the transform is known, the ground-truth correspondence set $M$ is known without manual labeling.</p>
+<p>The evaluation spans four benchmarks. <strong>HPatches</strong> measures homography estimation accuracy, reported as HE@epsilon=1 and HE@epsilon=3; higher means more pairs have accurate homographies under the pixel-error threshold. <strong>ScanNet</strong> measures relative pose estimation in indoor scenes, reported as pose AUC@10 degrees and AUC@20 degrees; higher area under the accuracy curve means better pose recovery. <strong>IMC2022</strong> reports mean localization accuracy, or MLA, over official position and orientation thresholds; higher is better. <strong>Aachen Day-Night</strong> reports the percentage of queries localized within two error thresholds, (0.5m,5 degrees) and (5m,10 degrees), separately for day and night; higher is better.</p>
+<p>For IMC2022, ScanNet, and Aachen, the database is processed with the Teacher and the query with the Student. For HPatches, where the input is a pair of images rather than a map-query split, the Teacher and Student sides are assigned randomly &mdash; so HPatches still measures the same Teacher-Student compatibility, just without a fixed map/query role. The HLoc pipeline supplies the standard coarse-to-fine localization wrapper for the localization benchmarks.</p>
+<figure class="fig-wide"><a href="../assets/figures/asymloc/asymloc_fig3.png"><img src="../assets/figures/asymloc/asymloc_fig3.png" alt="Examples from HPatches, ScanNet, IMC2022, and Aachen"></a><figcaption><strong>Figure 2 · The benchmark mix is deliberately broad.</strong> HPatches stresses planar homographies, ScanNet stresses indoor relative pose, and IMC2022/Aachen stress outdoor localization with larger appearance changes. This matters because a compatibility trick that works only on planar pairs would be much less useful.</figcaption></figure>
 </section>
 
 <section id="pipeline">
-<h2>四、Pipeline / 架构：一对已知单应的图，喂出两条损失</h2>
-
-<p><strong>先看全局再拆零件。</strong>训练时每次取一对单应已知的图 $(A,B)$。<strong>教师 $T$ 处理 $A$；图 $B$ 同时被教师 $T$ 和学生 $S$ 处理。</strong>每个网络对每张图输出 $N$ 个关键点，各带一个检测器置信度 $w$ 和一个描述子 $d$。这些输出形成两条平行的监督：</p>
-
-<figure>
-  <a href="../assets/figures/asymloc/asymloc_fig2.png"><img src="../assets/figures/asymloc/asymloc_fig2.png" alt="AsymLoc 训练流水线：教师处理 A、学生与教师都处理 B；T(A)+S(B) 组成互匹配矩阵给几何匹配损失，T(A)+S(B) 与 T(A)+T(B) 两个检测器加权相似度矩阵的分布做蒸馏对齐"></a>
-  <figcaption><strong>图 2（论文 Fig. 2，训练流水线）：两条损失的数据流。</strong>左侧：$A$ 走教师（蓝雪花=冻结），$B$ 走学生（火苗=可训练）+ 教师（冻结）。<strong>上路（几何匹配损失）：</strong>用 $T(A)$ 的输出 + $S(B)$ 的输出拼出<em>互匹配矩阵</em>（Mutual Matching Matrix，§3.2），按已知单应给的对应 $M_{ab}$ 监督。<strong>下路（联合检测–描述子蒸馏损失）：</strong>构造两个<em>检测器加权相似度矩阵</em>——一个用 $T(A)$+$S(B)$（学生–教师），一个用 $T(A)$+$T(B)$（教师–教师）——这两个矩阵各自是一个"联合检测–描述子相似度空间"，再用 KL 把<strong>学生–教师</strong>的分布对齐到<strong>教师–教师</strong>的分布（§3.3）。看图要点：教师全程冻结，唯一被训练的是学生 $S$；教师–教师那一路是学生要去模仿的"金标准目标"。</figcaption>
-</figure>
-
-<p><strong>推理时（部署）。</strong>训练完后，地图库每张图离线过一遍教师、存下 $\{(w^T,d^T)\}$；查询图来了，在端侧过一遍学生得 $\{(w^S,d^S)\}$；两边描述子直接做<strong>互最近邻匹配</strong>解位姿。没有学习型匹配器、没有教师参与在线计算——查询端的全部成本就是那 0.04M–0.13M 学生的一次前向。</p>
+<h2>4. Pipeline: two frozen Teacher branches, one trainable Student branch</h2>
+<p>Training starts from an image pair $(a,b)$ with a known homography. The Teacher processes image $a$. Image $b$ is processed by both the frozen Teacher and the trainable Student. Each network emits $N$ keypoints, each with detector confidence $w$ and descriptor $d$.</p>
+<figure class="fig-wide"><a href="../assets/figures/asymloc/asymloc_fig2.png"><img src="../assets/figures/asymloc/asymloc_fig2.png" alt="AsymLoc training pipeline with geometric matching and joint distillation losses"></a><figcaption><strong>Figure 3 · The two losses use the same pair in different ways.</strong> The upper path forms a Teacher-Student mutual matching matrix and supervises it with ground-truth correspondences from the homography. The lower path forms a Teacher-Student detector-weighted similarity matrix and a Teacher-Teacher reference matrix, then distills the Student distribution toward the Teacher reference. The snowflake marks the frozen Teacher; the trainable part is the Student.</figcaption></figure>
+<p>Deployment is simpler than training. The database images are processed offline once by the Teacher, and their keypoints, confidences, and descriptors are stored. A query image is processed online by the Student. Matching is then mutual nearest neighbor between the Student descriptors and the stored Teacher descriptors, using detector-aware compatibility learned during training. No Teacher runs on the device, and no learned matcher is added.</p>
 </section>
 
 <section id="method">
-<h2>五、方法 / 两条损失：把"哪里检测"和"描述子多像"耦合起来对齐</h2>
+<h2>5. Method: align matchability, not raw vectors</h2>
+<p>The method is easier to read if we keep one question in view: what quantity does deployment actually use? It uses the row and column structure of a similarity matrix. A match is accepted when two keypoints are nearest neighbors of each other. AsymLoc trains the Student at that same abstraction level.</p>
 
-<p>这一节是全文的机制核心。我按 kexue 的姿态来：先讲<em>为什么需要</em>每一步，每个近似和假设显式标出，关键结论从两个角度交叉验证。</p>
+<h3>5.1 The soft mutual match</h3>
+<p>Start with descriptor similarity. For image $a$ processed by the Teacher and image $b$ processed by the Student, the pairwise similarity matrix is:</p>
+<div class="equation">$$S^{TS}_{ij} = \langle d^T_i(a), d^S_j(b)\rangle / \tau$$<div class="eq-caption">Eq. 5: Teacher-Student descriptor similarity.</div></div>
+<div class="formula-note"><p>Here $d^T_i(a)$ is the $i$-th Teacher descriptor on image $a$, $d^S_j(b)$ is the $j$-th Student descriptor on image $b$, $\langle\cdot,\cdot\rangle$ is the dot product, and $\tau$ is a temperature scalar. Smaller $\tau$ makes the similarity distribution sharper.</p></div>
+<p>The soft version of mutual nearest neighbor then multiplies four signals: Teacher detector confidence, Student detector confidence, row-wise softmax, and column-wise softmax.</p>
+<div class="equation">$$P_{ij} = w_i(a)\,w_j(b)\,\sigma_r(S)_{ij}\,\sigma_c(S)_{ij}$$<div class="eq-caption">Eq. 6: detector-aware soft mutual matching.</div></div>
+<div class="formula-note"><p>Here $w_i(a)$ is the Teacher detector confidence at keypoint $i$, $w_j(b)$ is the Student detector confidence at keypoint $j$, $\sigma_r$ denotes row-wise softmax, and $\sigma_c$ denotes column-wise softmax of $S$. The row softmax asks whether $j$ is the best choice for $i$. The column softmax asks whether $i$ is the best choice for $j$. Multiplying them makes a differentiable proxy for mutual nearest neighbor.</p></div>
 
-<h3>5.0 记号与"软分配"为什么是对的抽象层级</h3>
-<p>教师对地图图 $I_d$ 输出 $\{(w_i^T, d_i^T)\}_{i=1}^{N}$，学生对查询图 $I_q$ 输出 $\{(w_j^S, d_j^S)\}_{j=1}^{N}$，其中 $w\in(0,1)$ 是检测器置信度、$d$ 是描述子（式 1–2）。非对称定位就是：用这两套特征算匹配、再解查询相对地图的位姿 $T_{S(I_q)\to T(I_d)}\in SE(3)$（式 3）；而<em>对称参照</em>是两张图都过教师得到 $T_{T(I_q)\to T(I_d)}$（式 4）。<strong>训练目标的灵魂就是让式 3 逼近式 4</strong>——让学生抽的特征"表现得像教师抽的一样"，这样它和教师建的地图才兼容。</p>
-<p><strong>为什么不直接回归描述子？</strong>论文明确说：朴素地把两个网络的输出向量拉近（naive distillation），实测效果很差（见下文实验），这与图像检索里的非对称文献 [17] 一致。<strong>关键认识：定位真正在乎的不是描述子向量本身长什么样，而是它们<em>诱导出的匹配</em>对不对。</strong>所以 AsymLoc 把监督抬到"<strong>概率匹配（软分配）</strong>"这一层——检测器分数和描述子相似度<em>共同</em>决定软分配，对齐软分配而非原始向量。这是整篇文章方法论上的第一个杠杆。</p>
+<h3>5.2 The geometric matching loss</h3>
+<p>The known homography gives ground-truth correspondences $M$. AsymLoc maximizes the soft match probability at those correspondences in both Teacher-Student directions.</p>
+<div class="equation">$$L_{\text{match}} = -\sum_{(i,j)\in M} \log P^{TS}_{ij} - \sum_{(i,j)\in M} \log P^{ST}_{ij}$$<div class="eq-caption">Eq. 9: geometric matching loss.</div></div>
+<div class="formula-note"><p>The sums run over ground-truth correspondences $M$ from the known homography. In the paper's implementation, the loss is restricted to Teacher keypoints whose detector confidence satisfies $w^T_i \gt \tau_d$, where $\tau_d$ is the confidence threshold. $P^{TS}$ is the soft matching matrix when image $a$ is Teacher and image $b$ is Student. $P^{ST}$ is the symmetric construction with the roles swapped.</p></div>
+<p>This loss gives the Student a geometric skeleton. It tells the model which keypoints should match. But by itself it does not teach the whole similarity landscape, and the ablation later shows that using it alone is harmful.</p>
 
-<h3>5.1 几何匹配损失 $\mathcal{L}_{\text{match}}$：用已知单应钉住"谁该匹配谁"</h3>
-<p><strong>动机。</strong>先得有一个把"空间对应"灌进去的信号——告诉学生：单应说 $A$ 的第 $i$ 点对应 $B$ 的第 $j$ 点，那它俩的匹配概率就该高。</p>
-<p><strong>构造（式 5–8）。</strong>先定义两图描述子的相似度矩阵（带温度 $\tau$ 控制锐度）：</p>
-<div class="equation">$$ S^{TS}_{ij} = \frac{\langle d_i^T(a),\, d_j^S(b)\rangle}{\tau} $$<div class="eq-caption">式 5：教师（图 $a$）描述子与学生（图 $b$）描述子的点积相似度；上标 $TS$ 标明"第一张图走教师、第二张走学生"。$\tau$ 越小、相似度分布越尖。</div></div>
-<p>再把检测器置信度乘进来、并用行/列双向 softmax 做<strong>互</strong>归一化，得到<strong>互匹配矩阵</strong>：</p>
-<div class="equation">$$ P^{TS}_{ij} = w_i^T(a)\, w_j^S(b)\, \sigma_r\!\big(S^{TS}\big)_{ij}\, \sigma_c\!\big(S^{TS}\big)_{ij} $$<div class="eq-caption">式 6：互匹配矩阵。$w_i^T(a)w_j^S(b)$ 是两端检测器置信度的乘积（双方都觉得"这是个好点"才算数）；$\sigma_r,\sigma_c$ 分别是行、列方向的 softmax（式 7–8），两者相乘 $\approx$ "$i$ 在 $j$ 这一行里最像 × $j$ 在 $i$ 这一列里最像"，即软化版的<strong>互</strong>最近邻。</div></div>
-<p><strong>公式读法（要点）。</strong>式 6 把<em>三件事</em>压进一个标量：①两端检测器都自信（$w^T w^S$ 大）；②$i$ 把 $j$ 看作行内最佳（$\sigma_r$）；③$j$ 把 $i$ 看作列内最佳（$\sigma_c$）。三者皆高，$P_{ij}$ 才大——这正是"互"最近邻的可微近似。<strong>注意这就是推理时 MNN 的训练期对应物</strong>：训练用的软分配和部署用的硬 MNN 是同一套逻辑的两端，所以学生学到的东西在部署时不打折。</p>
-<p><strong>损失（式 9）。</strong>给定单应导出的真对应集合 $M_{ab}$，对其中每个 $(i,j)$ 最大化匹配概率（双向）：</p>
-<div class="equation">$$ \mathcal{L}_{\text{match}} = -\!\!\!\sum_{\substack{(i,j)\in M_{ab}\\ w_i^T(a)>\tau_d}}\!\!\! \log P^{TS}_{ij}\;\; -\!\!\!\sum_{\substack{(i,j)\in M_{ab}\\ w_i^T(b)>\tau_d}}\!\!\! \log P^{ST}_{ij} $$<div class="eq-caption">式 9：几何匹配损失。只对教师认为可靠的点（$w^T>\tau_d$，置信阈值 $\tau_d$）算损失——监督只来自教师有把握的检测，避免低置信关键点带来的噪声。$P^{TS}$ 与 $P^{ST}$ 是把"哪张图走教师"互换后的两个方向，保证对称地约束两个匹配方向。</div></div>
-<p><strong>显式假设与边界。</strong>这里有一个隐含近似：用<strong>$\tau_d$ 门控</strong>等于假设"教师高置信处的对应可信、低置信处不可信"。论文的消融揭示了它的副作用——见 5.3：$\mathcal{L}_{\text{match}}$ 单独用<em>反而有害</em>，因为它对检测器<strong>没有负信号</strong>，更像一个"把损失重加权到教师自信区域"的正则项，而不是一个完整的学习目标。这是一个诚实且重要的自我揭示。</p>
+<h3>5.3 Joint detector-descriptor distillation</h3>
+<p>The distillation loss transfers the Teacher's full matchability pattern. Before softmax, AsymLoc weights descriptor similarity by detector confidence:</p>
+<div class="equation">$$\bar{S}_{ij} = S_{ij} \cdot (w_i/\tau)(w_j/\tau)$$<div class="eq-caption">Eq. 10: detector-weighted similarity.</div></div>
+<div class="formula-note"><p>Here $S_{ij}$ is the raw descriptor similarity for a keypoint pair, $w_i$ and $w_j$ are the detector confidences on the two sides, and $\tau$ is the detector-confidence temperature used for weighting. This construction is used to form both Student-Teacher and Teacher-Teacher similarity matrices, written $\bar{S}^{ST}$ and $\bar{S}^{TT}$.</p></div>
+<p>The Teacher-Teacher matrix is the reference distribution. It says what the matching landscape would look like if the powerful Teacher processed both sides. The Student-Teacher matrix is what deployment will use. The loss makes those two distributions agree along rows and columns.</p>
+<div class="equation">$$L_{\text{KD}} = \text{KL}(\sigma_r(\bar{S}^{ST}) \,\|\, \sigma_r(\bar{S}^{TT})) + \text{KL}(\sigma_c(\bar{S}^{ST}) \,\|\, \sigma_c(\bar{S}^{TT}))$$<div class="eq-caption">Eq. 11: joint detector-descriptor distillation.</div></div>
+<div class="formula-note"><p>$L_{\text{KD}}$ is the knowledge-distillation loss. KL divergence measures how much one probability distribution differs from a reference distribution. The first term aligns row-wise matchability distributions, and the second aligns column-wise matchability distributions. The same construction is then applied with the Student and Teacher roles swapped, so both matching directions are trained.</p></div>
+<p>The reason this is better than descriptor regression is direct. Mutual nearest neighbor does not care about the absolute coordinates of a descriptor vector. It cares about the relative order of similarities in a row and in a column. The KL loss targets that order structure after detector confidence has modulated the similarities.</p>
 
-<h3>5.2 联合检测–描述子蒸馏损失 $\mathcal{L}_{\text{KD}}$：让学生复刻教师的"联合可匹配性分布"</h3>
-<p><strong>动机（也是全文最关键的一步）。</strong>仅有几何匹配还不够——它只约束了<em>真对应</em>那几个点，没有把教师对"<strong>整张相似度图谱</strong>"的判断传过去。前人 [38] 的做法是把检测器和描述子<em>分开</em>对齐；AsymLoc 主张<strong>联合</strong>对齐，因为"检测器可靠性会调制描述子相似度该被多信任"——这两件事在匹配里本就是耦合的。</p>
-<p><strong>构造（式 10）。</strong>把原始相似度矩阵 $S^{ST},S^{TT}$ 用两端检测器置信度加权，得到两个"检测器加权相似度矩阵"：</p>
-<div class="equation">$$ \bar S^{ST}_{ij} = \Big(\tfrac{w_i^S}{\tau_s}\Big)\Big(\tfrac{w_j^T}{\tau_t}\Big) S^{ST}_{ij}, \qquad \bar S^{TT}_{ij} = \Big(\tfrac{w_i^T}{\tau_t}\Big)\Big(\tfrac{w_j^T}{\tau_t}\Big) S^{TT}_{ij} $$<div class="eq-caption">式 10：两个联合检测–描述子空间。左边 $\bar S^{ST}$ 是<strong>学生–教师</strong>对（学生抽的查询 × 教师抽的地图），右边 $\bar S^{TT}$ 是<strong>教师–教师</strong>对（金标准）。$\tau_s,\tau_t$ 是分别控制学生/教师检测器置信度影响力的温度，经验选取（附录 A.1 有消融）。把 $w$ 乘进相似度，等于说"描述子有多像，要按两端各自的检测置信度来打折"。</div></div>
-<p><strong>蒸馏损失（式 11–12）。</strong>把两个加权相似度矩阵各自经行/列 softmax 变成概率分布，再用<strong>行、列双向 KL 散度</strong>把学生–教师分布对齐到教师–教师分布：</p>
-<div class="equation">$$ \mathcal{L}_{\text{KD}}^{ST} = \mathrm{KL}\!\big(\sigma_r(\bar S^{ST})\,\Vert\,\sigma_r(\bar S^{TT})\big) + \mathrm{KL}\!\big(\sigma_c(\bar S^{ST})\,\Vert\,\sigma_c(\bar S^{TT})\big) $$<div class="eq-caption">式 11：联合蒸馏损失（学生–教师方向）。$\sigma_r,\sigma_c$ 是行、列 softmax；行方向 $\approx$ 查询→地图的相似结构，列方向 $\approx$ 地图→查询。两个 KL 都要小，才保证<strong>双向</strong>的相似度结构一致。把 $TS$ 方向也算一遍，合成 $\mathcal{L}_{\text{KD}}=\mathcal{L}_{\text{KD}}^{ST}+\mathcal{L}_{\text{KD}}^{TS}$（式 12）。</div></div>
-<p><strong>公式读法。</strong>$\bar S^{TT}$ 是"两边都用教师时、教师眼中该有的匹配分布"——这是学生<em>本可达到</em>的天花板（因为地图端本来就是教师抽的）。让 $\bar S^{ST}$（学生当查询端）去逼近它，等于直接命令学生："你抽出来的查询特征，要让它和教师的地图特征算出的相似度分布，跟教师自己算出来的那份一模一样。"这比"复刻教师的描述子向量"宽松得多也对得多——学生不必复刻向量，只需复刻<strong>向量之间的关系</strong>。</p>
-<p><strong>两角度交叉验证这步为什么 work。</strong></p>
-<ul>
-<li><strong>自上而下（目标对齐角度）：</strong>部署时用的是 MNN，MNN 只看相似度矩阵的行列极值结构，<em>不看</em>描述子向量的绝对方向。所以训练就该直接对齐"相似度分布的行列结构"——式 11 对齐的恰好就是它。训练目标和部署目标在同一个量上，没有 train-test gap。</li>
-<li><strong>自下而上（信息论角度）：</strong>KL$(\sigma(\bar S^{ST})\Vert\sigma(\bar S^{TT}))=0 \Leftrightarrow$ 两个 softmax 分布逐元素相等。由于 $\bar S^{TT}$ 用的是教师在两端的真实输出，逼近它就是逼近"教师–教师可达的最优软分配"——学生能拿到的最好结果，正是把自己伪装成"地图端那个教师"。两条路殊途同归：对齐<em>关系</em>比对齐<em>向量</em>更贴近定位真正要的东西。</li>
-</ul>
-
-<h3>5.3 总目标（式 13）</h3>
-<div class="equation">$$ \mathcal{L}_{\text{AsymLoc}} = \mathcal{L}_{\text{match}} + \lambda_{\text{KD}}\,\mathcal{L}_{\text{KD}} $$<div class="eq-caption">式 13：总损失。$\lambda_{\text{KD}}$ 平衡"几何监督"与"跨模型概率对齐"，经验取 2。$\mathcal{L}_{\text{match}}$ 提供空间对应的硬骨架、$\mathcal{L}_{\text{KD}}$ 提供联合分布的软肌肉，两者协同（消融见下）。</div></div>
-<p><strong>诚实的内部张力。</strong>论文消融（表 2）显示：$\mathcal{L}_{\text{match}}$ 单独用是<em>有害</em>的（它缺检测器负信号、退化成正则）；$\mathcal{L}_{\text{KD}}$ 单独用就有大幅提升；两者合用最好。这说明<strong>真正的主力是联合蒸馏 $\mathcal{L}_{\text{KD}}$，几何匹配是协同增益而非独立贡献</strong>——这是一个比"两个损失都重要"更精确、也更可证伪的论断。</p>
+<h3>5.4 The total objective</h3>
+<div class="equation">$$L_{\text{AsymLoc}} = L_{\text{match}} + \lambda_{\text{KD}} L_{\text{KD}}, \quad \lambda_{\text{KD}} = 2$$<div class="eq-caption">Eq. 13: the final AsymLoc loss.</div></div>
+<div class="formula-note"><p>$L_{\text{match}}$ contributes geometry from known correspondences. $L_{\text{KD}}$ contributes the Teacher's detector-descriptor matchability distribution. $\lambda_{\text{KD}}$ balances the two terms and is set to 2 in the paper.</p></div>
+<div class="socratic"><p class="question">Q: why not just make the Student descriptors imitate the Teacher descriptors?</p><p class="answer">A: Matching is not a vector-copying problem. It is a ranking problem over keypoint pairs. A Student can use a different internal representation and still work if its row and column similarity distributions match the Teacher's. That is exactly what the KL loss trains.</p><p class="takeaway"><strong>Takeaway:</strong> AsymLoc distills the thing the matcher will consume, not an intermediate vector format.</p></div>
 </section>
 
 <section id="training">
-<h2>六、训练配置：教师冻结，只训学生</h2>
-<table>
-<thead><tr><th>项</th><th>设置（论文 §4.1 + §A.3）</th></tr></thead>
-<tbody>
-<tr><td>训练数据</td><td>COCO [31] 单图 + 随机单应生成第二视角 → 已知单应对 $(a,b)$</td></tr>
-<tr><td>教师 / 学生</td><td>教师预训练后<strong>冻结</strong>；只优化学生 $S$（非对称目标）</td></tr>
-<tr><td>教师架构</td><td>SiLK [20]（1M 参数）、SuperPoint [15]（1.3M）；附录另含 XFeat [38]</td></tr>
-<tr><td>学生四档</td><td>0.13M（7 层 CNN）/ 0.08M（7 层减通道）/ 0.06M（6 层）/ 0.04M（6 层减通道）；CNN backbone + 检测/描述头</td></tr>
-<tr><td>训练轮数 / 优化器</td><td>50 epochs，Adam [28]，初始学习率 $1\times10^{-3}$</td></tr>
-<tr><td>关键超参</td><td>检测置信阈值 $\tau_d=0.65$；蒸馏权重 $\lambda_{\text{KD}}=2$（均经验设定）</td></tr>
-<tr><td>数据增强</td><td>随机亮度、旋转、缩放、高斯噪声</td></tr>
-<tr><td>GPU-hours</td><td><strong>论文未说明</strong>具体训练时长 / 硬件账单（"完整实现细节见附录 A.3"，正文未给小时数）。</td></tr>
-</tbody>
-</table>
-<p class="note">论文未在正文披露 GPU 型号与训练总时长，故此处不做任何 GPU-hours 估算。对称基线（Standard / Naive Distillation）则两张图用同一网络编码，遵循 SuperPoint/SiLK 标准流程。</p>
+<h2>6. Training: frozen Teacher, synthetic homographies, tiny CNN students</h2>
+<div class="table-wrap"><table><caption><strong>Training setup.</strong> All values below are from the paper.</caption><thead><tr><th>Item</th><th>Setting</th></tr></thead><tbody><tr><td>Teacher</td><td>Frozen pretrained SiLK or SuperPoint.</td></tr><tr><td>Student</td><td>CNN backbone with detector and descriptor heads.</td></tr><tr><td>Student sizes</td><td>0.13M, 0.08M, 0.06M, and 0.04M parameters.</td></tr><tr><td>Training pairs</td><td>Synthetic COCO homography pairs with known correspondences.</td></tr><tr><td>Optimizer</td><td>Adam for 50 epochs.</td></tr><tr><td>Learning rate</td><td>$1\times10^{-3}$.</td></tr><tr><td>Detector threshold</td><td>$\tau_d = 0.65$.</td></tr><tr><td>Distillation weight</td><td>$\lambda_{\text{KD}} = 2$.</td></tr><tr><td>Augmentation</td><td>Random brightness, rotation, scaling, Gaussian noise, and the broader augmentation suite described in the appendix.</td></tr><tr><td>Hardware and training time</td><td>Not stated in the paper.</td></tr></tbody></table></div>
+<p>For symmetric baselines, both images are encoded by the same small network. For asymmetric baselines, the online model remains small and the offline side uses the Teacher. The important accounting rule is that only the Student counts as online cost.</p>
 </section>
 
 <section id="experiments">
-<h2>七、实验结果：同等推理成本下逼近教师，且全面压过非对称基线</h2>
-
-<p><strong>主表（论文 Table 1，完整转写）。</strong>下表逐行转写论文主结果：蓝区为 SiLK 教师、橙区为 SuperPoint 教师，外加 LoFTR、SuperPoint+LightGlue 作为重量级参照。指标见列头。关注两组对比：①每档学生的 <em>Standard（对称小）</em> vs <em>AsymLoc</em>——同尺寸、同推理成本，只差训练方式；②AsymLoc vs 教师 Oracle——精度逼近到什么程度。</p>
-
-<div style="overflow-x:auto">
-<table class="dense">
-<thead>
-<tr><th>方法</th><th>Asym?</th><th>在线<br>参数</th><th>离线<br>参数</th><th>GFLOPs<br>(1图)</th><th>HPatches<br>HEA ε=1</th><th>HPatches<br>HEA ε=3</th><th>ScanNet<br>@10°</th><th>ScanNet<br>@20°</th><th>IMC2022<br>MLA</th><th>Aachen Day<br>(0.5m,5°/5m,10°)</th><th>Aachen Night</th></tr>
-</thead>
-<tbody>
-<tr><td colspan="12" style="background:#eaf4fb"><strong>SiLK 教师 · Backbone 0.13M</strong></td></tr>
-<tr><td>Standard</td><td>✗</td><td>0.13M</td><td>0.13M</td><td>6.6</td><td>0.56</td><td>0.80</td><td>29.7</td><td>45.2</td><td>0.45</td><td>80.2 / 85.2</td><td>69.7 / 80.0</td></tr>
-<tr><td>Naive distill (Symm)</td><td>✗</td><td>0.13M</td><td>0.13M</td><td>6.6</td><td>0.56</td><td>0.79</td><td>29.5</td><td>44.2</td><td>0.44</td><td>80.0 / 85.1</td><td>69.9 / 81.0</td></tr>
-<tr><td>Naive distill (Asym)</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.80</td><td>30.5</td><td>45.1</td><td>0.45</td><td>80.0 / 85.1</td><td>70.1 / 81.4</td></tr>
-<tr><td>AML</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.81</td><td>30.7</td><td>46.2</td><td>0.46</td><td>80.6 / 85.5</td><td>70.1 / 81.4</td></tr>
-<tr><td>RKD</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.56</td><td>0.81</td><td>31.1</td><td>47.4</td><td>0.46</td><td>81.0 / 85.3</td><td>70.0 / 81.2</td></tr>
-<tr><td>CSD</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.83</td><td>32.1</td><td>47.5</td><td>0.48</td><td>81.2 / 85.6</td><td>71.0 / 82.4</td></tr>
-<tr><td>D3Still</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.82</td><td>32.9</td><td><strong>49.0</strong></td><td>0.47</td><td>81.5 / 86.0</td><td>71.0 / 82.4</td></tr>
-<tr style="background:#eef7f1"><td><strong>AsymLoc (Ours)</strong></td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td><strong>0.60</strong></td><td><strong>0.84</strong></td><td><strong>32.9</strong></td><td>48.9</td><td><strong>0.51</strong></td><td><strong>83.3 / 87.8</strong></td><td><strong>71.2 / 84.4</strong></td></tr>
-<tr><td colspan="12" style="background:#eaf4fb"><strong>SiLK 教师 · 更小学生（仅列 Standard vs Ours）</strong></td></tr>
-<tr><td>Standard (0.08M)</td><td>✗</td><td>0.08M</td><td>0.08M</td><td>4.87</td><td>0.55</td><td>0.79</td><td>27.6</td><td>44.6</td><td>0.43</td><td>79.1 / 83.2</td><td>67.9 / 78.8</td></tr>
-<tr style="background:#eef7f1"><td><strong>AsymLoc (0.08M)</strong></td><td>✓</td><td>0.08M</td><td>1M</td><td>4.87</td><td>0.59</td><td>0.83</td><td>31.5</td><td>48.5</td><td>0.50</td><td>82.1 / 86.0</td><td>71.0 / 83.2</td></tr>
-<tr><td>Standard (0.06M)</td><td>✗</td><td>0.06M</td><td>0.06M</td><td>3.27</td><td>0.52</td><td>0.76</td><td>24.2</td><td>38.9</td><td>0.39</td><td>75.0 / 80.5</td><td>64.5 / 75.4</td></tr>
-<tr style="background:#eef7f1"><td><strong>AsymLoc (0.06M)</strong></td><td>✓</td><td>0.06M</td><td>1M</td><td>3.27</td><td>0.58</td><td>0.83</td><td>31.0</td><td>47.4</td><td>0.48</td><td>80.6 / 85.1</td><td>69.2 / 82.0</td></tr>
-<tr><td>Standard (0.04M)</td><td>✗</td><td>0.04M</td><td>0.04M</td><td>1.97</td><td>0.49</td><td>0.72</td><td>22.1</td><td>35.5</td><td>0.37</td><td>73.7 / 78.0</td><td>60.0 / 73.8</td></tr>
-<tr style="background:#eef7f1"><td><strong>AsymLoc (0.04M)</strong></td><td>✓</td><td>0.04M</td><td>1M</td><td>1.97</td><td>0.56</td><td>0.82</td><td>30.1</td><td>45.8</td><td>0.47</td><td>80.1 / 84.8</td><td>69.0 / 81.2</td></tr>
-<tr style="background:#fff7ee"><td><strong>SiLK (Teacher · Oracle)</strong></td><td>✗</td><td>1M</td><td>1M</td><td>47.3</td><td>0.62</td><td>0.86</td><td>34.1</td><td>50.2</td><td>0.56</td><td>87.2 / 91.5</td><td>74.5 / 86.8</td></tr>
-<tr><td colspan="12" style="background:#fff7ee"><strong>SuperPoint 教师（橙区，节选 Standard vs Ours + Oracle）</strong></td></tr>
-<tr><td>Standard (0.08M)</td><td>✗</td><td>0.08M</td><td>0.08M</td><td>4.87</td><td>0.38</td><td>0.74</td><td>17.5</td><td>31.0</td><td>0.38</td><td>78.5 / 82.1</td><td>53.0 / 70.2</td></tr>
-<tr style="background:#eef7f1"><td><strong>AsymLoc (0.08M)</strong></td><td>✓</td><td>0.08M</td><td>1M</td><td>4.87</td><td>0.41</td><td>0.76</td><td>18.3</td><td>33.5</td><td>0.39</td><td>80.7 / 84.5</td><td>56.6 / 72.1</td></tr>
-<tr><td>Standard (0.06M)</td><td>✗</td><td>0.06M</td><td>0.06M</td><td>3.27</td><td>0.33</td><td>0.71</td><td>12.3</td><td>26.6</td><td>0.35</td><td>73.9 / 78.2</td><td>51.3 / 68.1</td></tr>
-<tr style="background:#eef7f1"><td><strong>AsymLoc (0.06M)</strong></td><td>✓</td><td>0.06M</td><td>1M</td><td>3.27</td><td>0.39</td><td>0.75</td><td>16.9</td><td>31.4</td><td>0.37</td><td>77.9 / 83.0</td><td>55.8 / 71.5</td></tr>
-<tr style="background:#fff7ee"><td><strong>SuperPoint (Teacher · Oracle)</strong></td><td>✗</td><td>1.3M</td><td>1.3M</td><td>26.1</td><td>0.43</td><td>0.80</td><td>21.5</td><td>36.4</td><td>0.49</td><td>86.8 / 90.0</td><td>59.2 / 74.5</td></tr>
-<tr><td colspan="12"><strong>重量级参照（对称大模型 + 学习型匹配器）</strong></td></tr>
-<tr><td>LoFTR</td><td>✗</td><td>28M</td><td>28M</td><td>223</td><td>0.65</td><td>0.87</td><td>40.8</td><td>57.6</td><td>0.66</td><td>94.4 / 97.7</td><td>91.8 / 98.0</td></tr>
-<tr><td>SuperPoint + LightGlue</td><td>✗</td><td>14M</td><td>14M</td><td>63.3</td><td>0.47</td><td>0.82</td><td>35.3</td><td>53.3</td><td>0.61</td><td>95.4 / 98.3</td><td>91.8 / 100.0</td></tr>
-</tbody>
-</table>
-</div>
-<p class="note">表格为论文 Table 1 的完整转写（数值照录，含原文中 0.04M 行的 ScanNet 等）。"在线参数"=查询端实际承载的模型；"离线参数"=地图端教师（成本离线一次性付清）。对称设置（Standard / Naive）学生即教师，故两列参数相同。</p>
-
-<p><strong>怎么读这张表（三句话）。</strong></p>
-<ol>
-<li><strong>同尺寸、同 GFLOPs，AsymLoc 一致碾压 Standard。</strong>0.13M：HEA ε=1 从 0.56→0.60、IMC2022 MLA 0.45→0.51、Aachen Night 80.0→84.4。<em>推理成本一分钱没多花</em>（在线参数与 GFLOPs 完全相同），差别全来自训练方式——这是"非对称训练免费午餐"的直接证据。</li>
-<li><strong>逼近教师。</strong>论文正文给的招牌数字：0.13M 学生在 HPatches 上仅比默认 SiLK 低 2%，却小 8×、省 7× FLOPs；Aachen 上达教师 95.5%（SiLK）/ 93%（SuperPoint）精度。注意 LoFTR 和 LightGlue 那两行——精度更高，但参数 14M–28M、GFLOPs 63–223，是端侧背不动的量级；它们标的是"上限在哪"，不是同台竞争对象。</li>
-<li><strong>压过所有改编自检索的非对称蒸馏。</strong>AML、RKD、CSD、D3Still 都是把图像检索里的非对称方法搬过来的强基线；AsymLoc 几乎在每个指标上更优，唯一例外是 D3Still 在 ScanNet@20° 上以 0.1 分微弱领先（49.0 vs 48.9）——论文如实指出了这一点。</li>
-</ol>
-
-<figure>
-  <a href="../assets/figures/asymloc/asymloc_fig4.png"><img src="../assets/figures/asymloc/asymloc_fig4.png" alt="三联匹配可视化：左对称学生-学生匹配失败、中 AsymLoc 学生-教师匹配成功、右对称教师-教师匹配（金标准）"></a>
-  <figcaption><strong>图 4（论文 Fig. 4）：为什么"非对称"必须显式建模。</strong>同一对图、三种匹配方式的绿色对应线：<strong>左</strong>对称学生–学生（两端都用小模型）匹配稀疏且杂乱——这是把模型一刀切小的下场；<strong>中</strong> AsymLoc 学生–教师匹配又密又准；<strong>右</strong>对称教师–教师（金标准）。中、右两图肉眼几乎一致——这正是 $\mathcal{L}_{\text{KD}}$ 要学生复刻的目标：让"学生当查询端"产出的匹配，逼近"教师当查询端"的匹配。</figcaption>
-</figure>
-
-<figure>
-  <a href="../assets/figures/asymloc/asymloc_fig5.png"><img src="../assets/figures/asymloc/asymloc_fig5.png" alt="四联效率-精度权衡曲线：AsymLoc 的 Pareto 前沿明显更平、参数效率更高，逼近教师虚线"></a>
-  <figcaption><strong>图 5（论文 Fig. 5）：更平的 Pareto 前沿 = 更好的尺度可扩展性。</strong>（A）HPatches 上 HEA vs GFLOPs：绿（AsymLoc）随算力下降时精度掉得比红（Standard）慢得多，几乎贴着教师虚线。（B）HEA/GFLOP vs 参数量：参数越小、单位算力效率越高（机器学习常态），但 AsymLoc 的提升速率远快于 Standard。（C）（D）在 IMC2022 的 MLA 上重复同样的结论。一句话：<strong>把算力砍小，AsymLoc 的精度损失率远低于对称训练</strong>——它不是在某个点上赢，而是整条曲线都更靠右上。</figcaption>
-</figure>
-
-<figure>
-  <a href="../assets/figures/asymloc/asymloc_fig6.png"><img src="../assets/figures/asymloc/asymloc_fig6.png" alt="附录宽范围 Pareto：0.005M 到 0.5M 学生，AsymLoc 绿线全程在 Standard 红线之上、贴近 Teacher(SiLK) 虚线"></a>
-  <figcaption><strong>图 6（论文附录 Pareto，0.005M–0.5M 宽范围）：极小模型处差距最大。</strong>横轴 GFLOPs、纵轴 HEA，箭头标出各档参数量。越往左（模型越小）绿红两线的竖直间距越大——在 <strong>0.005M</strong> 这个极端处，非对称训练把 HEA 从 ~0.60 拉到 ~0.75。这呼应正文论断：模型越小、对称训练掉得越狠，而 AsymLoc 恰好在最受约束的端侧场景里收益最大。</figcaption>
-</figure>
+<h2>7. Experiments: near-Teacher accuracy at Student cost</h2>
+<p>The full table below preserves the paper's main comparison. The columns are the metrics defined in Section 3. "#params online" is the model that runs on the query device. "#params offline" is the model used to precompute map features. GFLOPs is inference cost for one image where reported.</p>
+<div class="table-wrap"><table><caption><strong>Table 1.</strong> Main AsymLoc results across HPatches, ScanNet, IMC2022, and Aachen Day-Night.</caption><thead><tr><th>Method</th><th>Asym?</th><th>#params online</th><th>#params offline</th><th>GFLOPs</th><th>HE@1</th><th>HE@3</th><th>AUC@10</th><th>AUC@20</th><th>MLA</th><th>Aachen Day (0.5m,5 degrees)</th><th>Aachen Day (5m,10 degrees)</th><th>Aachen Night (0.5m,5 degrees)</th><th>Aachen Night (5m,10 degrees)</th></tr></thead><tbody>
+<tr><td colspan="14" style="background:#eaf4fb"><strong>SiLK teacher block: teacher = SiLK, 1M parameters, 47.3 GFLOPs</strong></td></tr>
+<tr><td>Standard (symm)</td><td>✗</td><td>0.13M</td><td>0.13M</td><td>6.6</td><td>0.56</td><td>0.80</td><td>29.7</td><td>45.2</td><td>0.45</td><td>80.2</td><td>85.2</td><td>69.7</td><td>80.0</td></tr>
+<tr><td>Naive-Distill (symm)</td><td>✗</td><td>0.13M</td><td>0.13M</td><td>6.6</td><td>0.56</td><td>0.79</td><td>29.5</td><td>44.2</td><td>0.44</td><td>80.0</td><td>85.1</td><td>69.9</td><td>81.0</td></tr>
+<tr><td>Naive-Distill (asym)</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.80</td><td>30.5</td><td>45.1</td><td>0.45</td><td>80.0</td><td>85.1</td><td>70.1</td><td>81.4</td></tr>
+<tr><td>AML</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.81</td><td>30.7</td><td>46.2</td><td>0.46</td><td>80.6</td><td>85.5</td><td>70.1</td><td>81.4</td></tr>
+<tr><td>RKD</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.56</td><td>0.81</td><td>31.1</td><td>47.4</td><td>0.46</td><td>81.0</td><td>85.3</td><td>70.0</td><td>81.2</td></tr>
+<tr><td>CSD</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.83</td><td>32.1</td><td>47.5</td><td>0.48</td><td>81.2</td><td>85.6</td><td>71.0</td><td>82.4</td></tr>
+<tr><td>D3Still</td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td>0.57</td><td>0.82</td><td>32.9</td><td><strong>49.0</strong></td><td>0.47</td><td>81.5</td><td>86.0</td><td>71.0</td><td>82.4</td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc (Ours) 0.13M</strong></td><td>✓</td><td>0.13M</td><td>1M</td><td>6.6</td><td><strong>0.60</strong></td><td><strong>0.84</strong></td><td><strong>32.9</strong></td><td>48.9</td><td><strong>0.51</strong></td><td><strong>83.3</strong></td><td><strong>87.8</strong></td><td><strong>71.2</strong></td><td><strong>84.4</strong></td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc (Ours) 0.08M</strong></td><td>✓</td><td>0.08M</td><td>1M</td><td>4.87</td><td>0.59</td><td>0.83</td><td>31.5</td><td>48.5</td><td>0.50</td><td>82.1</td><td>86.0</td><td>71.0</td><td>83.2</td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc (Ours) 0.06M</strong></td><td>✓</td><td>0.06M</td><td>1M</td><td>3.27</td><td>0.58</td><td>0.83</td><td>31.0</td><td>47.4</td><td>0.48</td><td>80.6</td><td>85.1</td><td>69.2</td><td>82.0</td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc (Ours) 0.04M</strong></td><td>✓</td><td>0.04M</td><td>1M</td><td>1.97</td><td>0.56</td><td>0.82</td><td>30.1</td><td>45.8</td><td>0.47</td><td>80.1</td><td>84.8</td><td>69.0</td><td>81.2</td></tr>
+<tr><td>Standard (symm) 0.08M</td><td>✗</td><td>0.08M</td><td>0.08M</td><td>4.87</td><td>0.55</td><td>0.79</td><td>27.6</td><td>44.6</td><td>0.43</td><td>79.1</td><td>83.2</td><td>67.9</td><td>78.8</td></tr>
+<tr><td>Standard (symm) 0.06M</td><td>✗</td><td>0.06M</td><td>0.06M</td><td>3.27</td><td>0.52</td><td>0.76</td><td>24.2</td><td>38.9</td><td>0.39</td><td>75.0</td><td>80.5</td><td>64.5</td><td>75.4</td></tr>
+<tr><td>Standard (symm) 0.04M</td><td>✗</td><td>0.04M</td><td>0.04M</td><td>1.97</td><td>0.49</td><td>0.72</td><td>22.1</td><td>35.5</td><td>0.37</td><td>73.7</td><td>78.0</td><td>60.0</td><td>73.8</td></tr>
+<tr style="background:#fff7ee"><td><strong>SiLK teacher (oracle)</strong></td><td></td><td>1M</td><td>1M</td><td>47.3</td><td>0.62</td><td>0.86</td><td>34.1</td><td>50.2</td><td>0.56</td><td>87.2</td><td>91.5</td><td>74.5</td><td>86.8</td></tr>
+<tr><td colspan="14" style="background:#fff7ee"><strong>SuperPoint teacher block: teacher = SuperPoint, 1.3M parameters, 26.1 GFLOPs</strong></td></tr>
+<tr><td>Standard 0.08M</td><td>✗</td><td>0.08M</td><td>0.08M</td><td>—</td><td>0.38</td><td>0.74</td><td>17.5</td><td>31.0</td><td>0.38</td><td>78.5</td><td>82.1</td><td>53.0</td><td>70.2</td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc 0.08M</strong></td><td>✓</td><td>0.08M</td><td>1.3M</td><td>—</td><td>0.41</td><td>0.76</td><td>18.3</td><td>33.5</td><td>0.39</td><td>80.7</td><td>84.5</td><td>56.6</td><td>72.1</td></tr>
+<tr><td>Standard 0.06M</td><td>✗</td><td>0.06M</td><td>0.06M</td><td>—</td><td>0.33</td><td>0.71</td><td>12.3</td><td>26.6</td><td>0.35</td><td>73.9</td><td>78.2</td><td>51.3</td><td>68.1</td></tr>
+<tr style="background:#eef7f1"><td><strong>AsymLoc 0.06M</strong></td><td>✓</td><td>0.06M</td><td>1.3M</td><td>—</td><td>0.39</td><td>0.75</td><td>16.9</td><td>31.4</td><td>0.37</td><td>77.9</td><td>83.0</td><td>55.8</td><td>71.5</td></tr>
+<tr style="background:#fff7ee"><td><strong>SuperPoint (oracle)</strong></td><td></td><td>1.3M</td><td>1.3M</td><td>26.1</td><td>0.43</td><td>0.80</td><td>21.5</td><td>36.4</td><td>0.49</td><td>86.8</td><td>90.0</td><td>59.2</td><td>74.5</td></tr>
+<tr><td colspan="14"><strong>Reference methods</strong></td></tr>
+<tr><td>LoFTR</td><td></td><td>28M</td><td>28M</td><td>223</td><td>0.65</td><td>0.87</td><td>40.8</td><td>57.6</td><td>0.66</td><td>94.4</td><td>97.7</td><td>91.8</td><td>98.0</td></tr>
+<tr><td>SuperPoint+LightGlue</td><td></td><td>14M</td><td>14M</td><td>63.3</td><td>0.47</td><td>0.82</td><td>35.3</td><td>53.3</td><td>0.61</td><td>95.4</td><td>98.3</td><td>91.8</td><td>100.0</td></tr>
+</tbody></table></div>
+<p>Read the table by separating two questions. The first question is whether asymmetry helps at fixed online cost. Under the SiLK Teacher, the 0.13M Standard row and the 0.13M AsymLoc row both use 6.6 GFLOPs online, but AsymLoc improves HE@1 from 0.56 to 0.60, MLA from 0.45 to 0.51, and Aachen Night at (5m,10 degrees) from 80.0 to 84.4.</p>
+<p>The second question is how close the Student gets to the Teacher. On Aachen Day at (0.5m,5 degrees), which is the percentage of day queries localized within 0.5 meters and 5 degrees, the 0.13M AsymLoc Student reaches 83.3 while the SiLK Teacher reaches 87.2. That is 95.5% of the Teacher. The 0.13M Student is about 8x smaller than the 1M SiLK Teacher and uses about 7x fewer FLOPs, 6.6 versus 47.3. At the extreme end, the 0.04M Student is about 25x smaller and uses about 24x fewer FLOPs, 1.97 versus 47.3.</p>
+<p>With SuperPoint as Teacher, the same Aachen Day fine-threshold ratio is about 93%: the 0.08M AsymLoc Student reaches 80.7 and the 1.3M SuperPoint Teacher reaches 86.8. This is the right way to state the ratio. The result is strong, but it should not be inflated beyond the paper's numbers.</p>
+<p>Against asymmetric baselines, the pattern is also informative. Naive-Distill is nearly flat relative to Standard. AML and RKD give modest gains. CSD is the first large jump because it distills similarity structure rather than only raw feature values. D3Still adds a ranking loss on top of CSD, which helps in image retrieval, but here it does not further help for matching. AsymLoc beats all asymmetric baselines on almost every metric. The important exception is ScanNet AUC@20 degrees, where D3Still is ahead by 0.1: 49.0 versus 48.9. The paper itself states this caveat.</p>
+<figure class="fig-wide"><a href="../assets/figures/asymloc/asymloc_fig4.png"><img src="../assets/figures/asymloc/asymloc_fig4.png" alt="Student-student matching fails while Student-Teacher matching resembles Teacher-Teacher matching"></a><figcaption><strong>Figure 4 · The visual result matches the loss design.</strong> Symmetric Student-Student matching is sparse and unreliable. AsymLoc Student-Teacher matching is dense and close to the Teacher-Teacher reference. This is the qualitative version of the KL objective: make the deployed Student-Teacher distribution resemble the Teacher-Teacher distribution.</figcaption></figure>
+<figure class="fig-wide"><a href="../assets/figures/asymloc/asymloc_fig5.png"><img src="../assets/figures/asymloc/asymloc_fig5.png" alt="Efficiency and accuracy trade-off curves for AsymLoc"></a><figcaption><strong>Figure 5 · The Pareto curve is flatter for asymmetric training.</strong> On HPatches and IMC2022, the AsymLoc curve loses accuracy more slowly as GFLOPs shrink. The gain is not a single lucky Student size. It is a better size-performance curve.</figcaption></figure>
+<figure class="fig-wide"><a href="../assets/figures/asymloc/asymloc_fig7.png"><img src="../assets/figures/asymloc/asymloc_fig7.png" alt="FPS comparison for AsymLoc on HPatches with SiLK Teacher"></a><figcaption><strong>Figure 6 · Speed follows the same story.</strong> The appendix plots FPS against HPatches homography accuracy with a SiLK Teacher. The useful region is the upper-right trade-off: higher throughput while staying close to the Teacher curve. The exact runtime depends on hardware; the paper reports this analysis on an NVIDIA RTX A5000.</figcaption></figure>
 </section>
 
 <section id="ablations">
-<h2>八、消融：到底是哪条损失在起作用？</h2>
-<p><strong>损失分解（论文 Table 2）。</strong>在 HPatches（HEA）与 ScanNet（RP-AUC）上拆 $\mathcal{L}_{\text{match}}$ 与 $\mathcal{L}_{\text{KD}}$：</p>
-<table>
-<thead><tr><th>$\mathcal{L}_{\text{match}}$</th><th>$\mathcal{L}_{\text{KD}}$</th><th>HPatches HEA ε=1</th><th>HEA ε=3</th><th>ScanNet @10°</th><th>@20°</th></tr></thead>
-<tbody>
-<tr><td>✓</td><td>—</td><td>0.53</td><td>0.70</td><td>21.6</td><td>35.8</td></tr>
-<tr><td>—</td><td>✓</td><td>0.57</td><td>0.82</td><td>30.0</td><td>46.9</td></tr>
-<tr style="background:#eef7f1"><td>✓</td><td>✓</td><td><strong>0.59</strong></td><td><strong>0.83</strong></td><td><strong>31.5</strong></td><td><strong>48.5</strong></td></tr>
-</tbody>
-</table>
-<p><strong>三点结论（论文 §4.3 原文 + 我的读法）。</strong></p>
-<ul>
-<li><strong>$\mathcal{L}_{\text{match}}$ 单独用是有害的。</strong>第 1 行甚至低于纯 $\mathcal{L}_{\text{KD}}$。论文给的机理：$\mathcal{L}_{\text{match}}$ 对检测器<em>没有负信号</em>，它退化成一个"把损失重加权到教师自信区"的正则项，而非完整目标。这条澄清了一个容易误判的点——几何匹配不是越多越好。</li>
-<li><strong>$\mathcal{L}_{\text{KD}}$ 是主力。</strong>单独用就拿到绝大部分增益（@20° 35.8→46.9）。这与 §5.2 的双角度论证一致：定位真正在乎的是"相似度分布的行列结构"，而 $\mathcal{L}_{\text{KD}}$ 直接对齐它。</li>
-<li><strong>两者协同。</strong>合用再升一档（@20° 48.5），说明几何骨架与分布肌肉互补——$\mathcal{L}_{\text{match}}$ 钉住真对应的位置，$\mathcal{L}_{\text{KD}}$ 抹平整张分布。</li>
-</ul>
-<p class="note">温度 $\tau_s,\tau_t$、$\mathcal{L}_{\text{KD}}$ 的进一步消融与更宽参数范围/ResNet backbone 实验在附录 A.1/A.2/A.4，正文未给完整数表，此处不逐项转写。另一条正文结论：朴素蒸馏（直接拉近描述子向量）相对 Standard 几乎无改善——再次印证"对齐关系 ≫ 对齐向量"。</p>
+<h2>8. Ablations: the KL term carries the main load</h2>
+<p>The loss ablation separates the geometric matching loss and the joint detector-descriptor distillation loss. The result is sharper than "both losses matter." Used alone, $L_{\text{match}}$ is worse. Used alone, $L_{\text{KD}}$ gives most of the gain. Used together, they are best.</p>
+<div class="table-wrap"><table><caption><strong>Table 2.</strong> Loss ablation from the paper.</caption><thead><tr><th>$L_{\text{match}}$</th><th>$L_{\text{KD}}$</th><th>HPatches HE@1</th><th>HPatches HE@3</th><th>ScanNet AUC@10</th><th>ScanNet AUC@20</th></tr></thead><tbody><tr><td>✓</td><td>—</td><td>0.53</td><td>0.70</td><td>21.6</td><td>35.8</td></tr><tr><td>—</td><td>✓</td><td>0.57</td><td>0.82</td><td>30.0</td><td>46.9</td></tr><tr style="background:#eef7f1"><td>✓</td><td>✓</td><td><strong>0.59</strong></td><td><strong>0.83</strong></td><td><strong>31.5</strong></td><td><strong>48.5</strong></td></tr></tbody></table></div>
+<p>The paper explains the weak standalone result for $L_{\text{match}}$ as a detector-supervision issue. The matching loss has no negative signal for the detector. It mostly reweights training toward keypoints where the Teacher is confident. That can regularize the full objective, but it is not a complete objective by itself.</p>
+<p>The KL term is the main engine because it teaches the full row and column similarity structure. That matches deployment more closely than a correspondence-only loss. The combined objective still wins because the homography correspondences anchor the distribution to actual geometry.</p>
+<figure class="fig-wide"><a href="../assets/figures/asymloc/asymloc_fig6.png"><img src="../assets/figures/asymloc/asymloc_fig6.png" alt="Wide model-size Pareto analysis for AsymLoc"></a><figcaption><strong>Figure 7 · The small-model regime is where asymmetry pays most.</strong> The appendix extends the HPatches curve across a wider parameter range, including very small and larger models. As models get large, both symmetric and asymmetric pipelines approach the Teacher. As models shrink, AsymLoc holds accuracy much better than the symmetric Student.</figcaption></figure>
+<p>The appendix also ablates detector-confidence temperatures and the distillation weight. Lowering detector temperature from 1.0 to 0.5 improves HPatches, but pushing it further hurts. For the final objective, $\lambda_{\text{KD}}=2$ is the best reported setting; $\lambda_{\text{KD}}=0$ reduces to the harmful matching-only case, while too large a value moves back toward KD-only behavior.</p>
 </section>
 
 <section id="limitations">
-<h2>九、局限与复现门槛</h2>
+<h2>9. Limitations: what the result does not say</h2>
 <ul>
-<li><strong>需要已知单应/对极几何的训练对。</strong>$\mathcal{L}_{\text{match}}$ 的真对应 $M_{ab}$ 来自已知单应（COCO 合成）。这让训练免标注、可无限合成，但也意味着监督信号建立在"单应能描述视角变化"的前提上；对单应无法刻画的强 3D 视差/遮挡，合成对的覆盖是有上限的（论文用真实基准评测来缓解，但训练分布仍是合成单应）。</li>
-<li><strong>精度天花板被教师锁死。</strong>学生最好也只能逼近"教师当查询端"的表现（图 4 右、$\bar S^{TT}$）。要更高精度只能换更强教师——AsymLoc 解决的是"在给定教师下、查询端省到极致"，不是"突破教师上限"。与 LoFTR/LightGlue 的差距（表 1）正是教师档次的差距，而非方法缺陷。</li>
-<li><strong>非对称的代价转移到了地图端。</strong>"查询端便宜"的另一面是"地图端要存教师特征、且换教师要重建库"。论文的设定假设地图离线、可一次性付清；在地图频繁更新或存储受限的场景，这笔账需要单独评估（论文未展开该成本分析）。</li>
-<li><strong>D3Still 在 ScanNet@20° 上仍以 0.1 分微弱领先</strong>（49.0 vs 48.9）——论文如实承认，并非全指标横扫。</li>
-<li><strong>正文未披露训练时长和硬件，</strong>故本文不做 GPU-hours 估算（见 §训练配置）。代码仓库：检索（arXiv、OpenReview、GitHub）<strong>未找到</strong>官方开源链接，复现需自行实现；本文所有数字均以 arXiv:2604.09445 v1 PDF 为准。</li>
+<li><strong>The Teacher sets the ceiling.</strong> AsymLoc makes the Student compatible with Teacher-derived map features. It does not make the Student exceed the Teacher. If the Teacher is weaker than a dense matcher such as LoFTR, that gap remains visible in Table 1.</li>
+<li><strong>The map-side cost is moved offline, not erased.</strong> Database images must be processed and stored with the Teacher. If the map changes often, or storage is constrained, that offline cost becomes part of the system design.</li>
+<li><strong>Training relies on synthetic homographies.</strong> The ground-truth correspondence set $M$ comes from known homographies on COCO pairs. This makes supervision cheap and controlled, but homographies do not cover every 3D parallax and occlusion case.</li>
+<li><strong>The strongest absolute baselines are still heavier and more accurate in several columns.</strong> LoFTR and SuperPoint+LightGlue are not edge-equivalent competitors. They show the accuracy that larger online models and learned matchers can buy.</li>
+<li><strong>The D3Still exception matters.</strong> AsymLoc is not a clean sweep across every cell. D3Still is better on ScanNet AUC@20 degrees by 0.1, 49.0 versus 48.9.</li>
+<li><strong>Runtime hardware and full reproduction cost are only partly specified.</strong> The paper gives optimizer, epochs, learning rate, augmentations, thresholds, and appendix runtime plots. Exact end-to-end training wall time is not stated in the paper.</li>
 </ul>
 </section>
 
 <section id="summary">
-<h2>十、总结：把"地图离线"这条免费午餐吃干净</h2>
-<p>AsymLoc 的洞见小而锋利：<strong>视觉定位的两端算力预算本就不对称</strong>（地图离线免费、查询在线昂贵），那就别再用对称模型把它们捆在一起。它把"对齐"做进<strong>检测器–描述子联合空间</strong>——用 $\mathcal{L}_{\text{KD}}$ 让学生复刻教师的<em>联合可匹配性分布</em>（对齐关系而非向量），用 $\mathcal{L}_{\text{match}}$ 借已知单应钉住空间对应——使得 0.04M 的学生抽出的查询特征，能和 1M 教师建的地图直接做<strong>零参数互最近邻匹配</strong>。代价：查询端 25× 更小、推理量低一个数量级；回报：保留 96%+ 教师精度，全面压过对称基线与改编自图像检索的非对称蒸馏。</p>
-<p><strong>一句话 Takeaway。</strong>当一个流水线里"有的部分可以离线、有的必须在线"时，<em>不对称是结构性的免费午餐</em>——AsymLoc 给出的范式是：把昂贵那一端蒸馏成廉价那一端，但蒸馏的目标要对齐"<strong>部署时真正会用到的那个量</strong>"（这里是 MNN 的相似度行列结构），而不是图省事去对齐原始特征。这个思路的适用面远不止视觉定位。</p>
+<h2>10. Summary: align the quantity the matcher will use</h2>
+<p>AsymLoc is a clean example of system structure becoming a learning objective. The map side is offline, so it can use a strong Teacher. The query side is online, so it needs a tiny Student. The missing piece is not a heavier matcher. It is compatibility between two local-feature models.</p>
+<p>The paper's answer is to align the Student with the Teacher in the joint detector-descriptor space. Eq. 6 makes detector-aware mutual matching differentiable. Eq. 11 transfers the Teacher-Teacher matchability distribution to the Student-Teacher setting. Eq. 13 combines that soft distribution with geometric correspondences from homographies.</p>
+<p>The practical result is strongest at the efficiency boundary. A 0.13M Student reaches 83.3 versus 87.2 for the SiLK Teacher on Aachen Day at (0.5m,5 degrees), or 95.5% of the Teacher, while using 6.6 rather than 47.3 GFLOPs. With SuperPoint as Teacher, the corresponding ratio is about 93%. The honest read is therefore simple: AsymLoc does not beat every large matcher, but it makes very small query models much more useful when the map can be processed offline.</p>
 </section>
 
-<section id="references">
-<h2>参考与署名</h2>
-<ul>
-<li><strong>原文：</strong>Mohammad Omama, Gabriele Berton, Eric Foxlin, Yelin Kim. <em>AsymLoc: Towards Asymmetric Feature Matching for Efficient Visual Localization.</em> arXiv:2604.09445 v1（2026-04-10）。UT Austin / Amazon。CVPR 2026 · Top Paper（候选，来自 SkalskiP/top-cvpr-2026-papers 策展榜单，非官方奖项）。</li>
-<li><strong>本文依据：</strong>全部数值、公式（式 1–13）、表格（Table 1 完整转写、Table 2）均以 arXiv:2604.09445 v1 PDF 正文 + 附录为准；论文未说明处已标注"论文未说明"。</li>
-<li><strong>代码：</strong>检索 arXiv、OpenReview、GitHub 未找到官方开源仓库（none found）；CVF CVPR 2026 openaccess 页面当前 404，故未链接。</li>
-<li><strong>方法论署名（红线说明）：</strong>本文的机制写作（动机先行、每个假设显式标出、关键结论从 ≥2 角度交叉验证）采用了 <strong>苏剑林 / kexue.fm 的科学推导方法论</strong>。但本次 <code>kexue:su</code> 语料检索返回的卡片（扩散模型恒等式蒸馏 [archives/10085, 10567]、BERT-of-Theseus 模块替换压缩 [archives/7575]、CUR 分解检索 [archives/9336] 等）<strong>均与"局部检测器–描述子联合蒸馏、互最近邻匹配、视觉定位"主题不吻合</strong>，按归因红线，<strong>不</strong>对本文任何具体技术主张做 <code>[archives/XXXX]</code> 苏剑林引用——仅应用其方法论姿态，特此说明。</li>
-<li><strong>关键参照文献（论文引用，原编号）：</strong>SiLK [20]、SuperPoint [15]、LightGlue [32]、SuperGlue [46]、LoFTR [55]、XFeat [38]、D3Still [67]、CSD [66]、AML [10]、RKD [36]；基准 HPatches [3]、ScanNet [14]、IMC2022 [37]、Aachen [51]、HLoc [44]、COCO [31]。</li>
-</ul>
+<section id="references" class="references">
+<h2>11. References and figure provenance</h2>
+<ol>
+<li>Mohammad Omama, Gabriele Berton, Eric Foxlin, Yelin Kim. <em>AsymLoc: Towards Asymmetric Feature Matching for Efficient Visual Localization.</em> arXiv:2604.09445v1 [cs.CV], 10 Apr 2026. Affiliations in the PDF: The University of Texas at Austin and Amazon.</li>
+<li>All equations and numeric results in this page follow the provided verified fact block and the arXiv PDF. The table rows reproduce the paper's Table 1 values as supplied in the task. The ablation table reproduces the paper's Table 2.</li>
+<li>Figure provenance: all seven local PNGs are reused from <code>assets/figures/asymloc/</code>. The hero uses <code>asymloc_fig1.png</code>. The remaining figures correspond to the training pipeline, evaluation examples, matching visualization, efficiency-accuracy trade-offs, wide model-size analysis, and FPS comparison.</li>
+<li>Referenced methods and datasets include SiLK, SuperPoint, LightGlue, SuperGlue, LoFTR, AML, RKD, CSD, D3Still, HPatches, ScanNet, IMC2022, Aachen Day-Night, HLoc, and COCO.</li>
+</ol>
 </section>
-
-</main>
-<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据</a></li><li><a href="#pipeline">Pipeline / 架构</a></li><li><a href="#method">方法 / 两条损失</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>AsymLoc: Towards Asymmetric Feature Matching for Efficient Visual Localization</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper (candidate)</dd><dt>机构</dt><dd>UT Austin / Amazon</dd><dt>任务</dt><dd>非对称视觉定位（地图离线大教师 + 查询在线小学生）</dd><dt>arXiv</dt><dd>2604.09445 v1</dd><dt>Topic</dt><dd>Visual Localization · Asymmetric Feature Matching</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：地图大+查询小 = 唯一双 ✅ 的格子</li><li>图 2：两条损失的数据流（教师冻结）</li><li>式 6：互匹配矩阵 = 软化版 MNN</li><li>式 11：行/列双向 KL 对齐联合分布</li><li>表 1：0.13M 学生达教师 95.5%（Aachen）</li><li>图 4：学生–教师匹配 ≈ 教师–教师金标准</li><li>表 2：$\mathcal{L}_{\text{KD}}$ 是主力，$\mathcal{L}_{\text{match}}$ 单用有害</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> AsymLoc 深读</p><p><span class="status-good">figures</span> 6 张 PNG（fig1/2/3/4/5/6，原生分辨率）</p><p><span class="status-good">tables</span> Table 1 完整转写 + Table 2</p><p><span class="status-good">formula</span> 式 1–13（式 5/6/9/10/11/13 重点转写）</p><p><span class="status-warn">scope</span> 精度被教师档次锁定；训练依赖已知单应；无官方开源</p></div></section></aside></div>
-</body>
-</html>
+</main><footer class="article-footer">Paper Digest · AsymLoc deep-read. Formulas are written for MathJax rendering; quantities not disclosed by the paper are marked as not stated.</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">Contents</h2><div class="side-body"><ol><li><a href="#lead">Lead</a></li><li><a href="#motivation">Motivation</a></li><li><a href="#contribution">Contribution</a></li><li><a href="#datasets">Datasets</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">Method</a></li><li><a href="#training">Training</a></li><li><a href="#experiments">Experiments</a></li><li><a href="#ablations">Ablations</a></li><li><a href="#limitations">Limitations</a></li><li><a href="#summary">Summary</a></li><li><a href="#references">References</a></li></ol></div></section><section class="side-card"><h2 class="side-title">Paper Info</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>AsymLoc: Towards Asymmetric Feature Matching for Efficient Visual Localization</dd><dt>Venue</dt><dd>CVPR 2026</dd><dt>Team</dt><dd>UT Austin / Amazon</dd><dt>arXiv</dt><dd>2604.09445</dd><dt>Topic</dt><dd>Visual localization / local feature matching</dd></dl></div></section><section class="side-card"><h2 class="side-title">Key Claims</h2><div class="side-body"><ul><li>Offline Teacher, online Student</li><li>MNN matching, no learned matcher</li><li>Joint detector-descriptor alignment</li><li>95.5% of SiLK Teacher on Aachen Day fine threshold</li><li>D3Still caveat on ScanNet AUC@20</li></ul></div></section><section class="side-card"><h2 class="side-title">Status</h2><div class="side-body"><p><span class="status-good">complete</span> English rewrite</p><p><span class="status-good">figures</span> 7 reused PNGs</p><p><span class="status-good">table</span> full Table 1 included</p><p><span class="status-warn">scope</span> Teacher remains the ceiling</p></div></section></aside></div></body></html>

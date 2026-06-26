@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MARCO 深读：语义对应的模型在 benchmark 上很强，为什么一换没见过的关键点就崩？——把稀疏标注 densify 成整块物体表面的监督</title>
-<meta name="description" content="MARCO 深读：语义对应（在两张图之间建立语义等价点的像素级匹配）的主流做法是 DINOv2 + Stable Diffusion 双编码器，准但臃肿（近 10 亿参数），更要命的是——用稀疏关键点（每图 ≤20 个）训出来的模型，一旦查询没见过的关键点或没见过的类别就大面积失效，benchmark 高分和真实可用性之间裂开一道缝。MARCO 只用单个 DINOv2 主干（加 <5% 参数的 adapter + 上采样头），靠一套新训练框架补这道缝：(1) coarse-to-fine 的 Gaussian RBF 分布匹配目标，用余弦退火把核宽 σ 从 3 缩到 1，先学区域级对齐再逼出 subpatch 级精度，避免 soft-argmax L2 回归在多模态下被拉向均值的过平滑；(2) dense self-distillation via flow anchoring——把 EMA 教师挖出的互最近邻 seed 用 Delaunay 三角剖分 + 分片仿射 warp densify 成稠密位移场，再在位移空间 k-means 聚类、用 GT 关键点 anchor 过滤对称/遮挡错配，把一把关键点变成数千条可靠伪对应，让稀疏监督扩展到整块物体表面。MARCO 在 SPair-71k/AP-10K/PF-PASCAL 全面 SOTA，严格阈值 PCK@0.01 +8.9，未见关键点 SPair-U +5.1、未见类别 MP-100 +4.7，且比扩散双编码器小 3×、快 10×。CVPR 2026 Oral / Top Paper（候选）。">
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MARCO deep read: dense self-distillation for semantic correspondence beyond seen keypoints</title>
+<meta name="description" content="English Paper2Html deep-read of MARCO, a CVPR 2026 semantic-correspondence paper about coarse-to-fine localization, flow anchoring, dense self-distillation, and generalization to unseen keypoints and categories.">
 <script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+/* ===== Paper2Html shell ===== */
 :root{
   --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
   --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
@@ -250,9 +250,9 @@ body.lb-lock{overflow:hidden}
     var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
     var overlay=document.createElement("div");
     overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
-    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+    overlay.innerHTML='<button class="lb-close" aria-label="Close">×</button>'+
       '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
-      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+      '<div class="lb-hint">Click anywhere or press Esc to close</div>';
     document.body.appendChild(overlay);
     var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
     function openLB(src,cap){
@@ -309,7 +309,7 @@ body.lb-lock{overflow:hidden}
     (function(){
       var title=document.querySelector(".site-title");if(!title)return;
       var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
-      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      var hp=nav.filter(function(a){return /home/i.test(a.textContent);})[0];
       if(hp)home=hp.getAttribute("href");
       else if(document.querySelector(".home"))home="index.html";
       if(!home)return;
@@ -327,12 +327,12 @@ body.lb-lock{overflow:hidden}
         function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
         if(!head.querySelector(".quick-links")){
           var bar=document.createElement("div");bar.className="quick-links";
-          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+          bar.innerHTML='<span class="ql-label">Links</span>'+chips();head.appendChild(bar);
         }
         var sb=document.querySelector(".sidebar");
         if(sb&&!sb.querySelector(".quick-links-side")){
           var card=document.createElement("section");card.className="side-card";
-          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          card.innerHTML='<h2 class="side-title">Links</h2><div class="side-body quick-links-side">'+chips()+'</div>';
           sb.insertBefore(card,sb.firstChild);
         }
       }
@@ -350,284 +350,140 @@ body.lb-lock{overflow:hidden}
 </script>
 </head>
 <body>
-<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>Semantic Correspondence · 把一把稀疏关键点 densify 成整块物体表面的监督</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
-<div class="wrap"><div class="breadcrumbs"><a href="../index.html">首页</a> &gt; CVPR 2026 &gt; Semantic Correspondence &gt; MARCO</div>
-<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">MARCO 深读：语义对应的模型在 benchmark 上很强，为什么一换没见过的关键点就崩？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>CVPR 2026 · Oral · Top Paper (candidate) · Politecnico di Torino / TU Darmstadt / hessian.AI / ELIZA</span><span>来源：arXiv:2604.18267 v1 PDF（正文 + 附录图）</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Semantic Correspondence</span><span class="tag green">Feature Matching</span><span class="tag">DINOv2</span><span class="tag">Generalization</span><span class="tag">Self-Distillation</span><span class="tag">Coarse-to-Fine</span><span class="tag">Dense Pseudo-Labels</span><span class="tag">MathJax checked</span></div></header>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>Semantic Correspondence · Dense supervision from sparse landmarks</small></p></div><nav class="top-nav"><a href="../index.html">Home</a><a href="#pipeline">Pipeline</a><a href="#method">Method</a><a href="#experiments">Experiments</a><a href="#limitations">Limitations</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs"><a href="../index.html">Home</a> &gt; CVPR 2026 &gt; Semantic Correspondence &gt; MARCO</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">MARCO: what if sparse keypoint training is what breaks semantic correspondence?</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>CVPR 2026 digest entry · Politecnico di Torino / TU Darmstadt / hessian.AI / ELIZA</span><span>Source: arXiv:2604.18267v1 PDF</span></div><div class="tags"><span class="tag orange">Semantic Correspondence</span><span class="tag">DINOv2</span><span class="tag green">Dense Self-Distillation</span><span class="tag">Flow Anchoring</span><span class="tag">Coarse-to-Fine Loss</span><span class="tag">Generalization</span><span class="tag">MathJax checked</span></div></header>
 <main class="content">
 
-<p id="abstract" class="lead"><strong>导读。</strong>语义对应（semantic correspondence）要做的事很朴素：给两张图里语义等价的物体，把“这只猫的左眼”对到“那只猫的左眼”，建立<strong>像素级</strong>的语义匹配。它是图像编辑、姿态估计、风格迁移、affordance 理解的底层零件。这两年的主流配方是 <strong>DINOv2 + Stable Diffusion 双编码器</strong>——DINOv2 给稳健语义、扩散给细粒度空间结构，准是准，但臃肿到<strong>近 10 亿参数</strong>。更要命的一点被长期忽略：这些模型是用<strong>稀疏关键点</strong>（每图通常 ≤20 个标注）训出来的，于是它们只学会了“标注过的那几个点”——<strong>一旦查询一个没见过的关键点，或换一个没见过的物体类别，精度就大面积塌方</strong>。这道“benchmark 高分 vs 真实可用性”的裂缝，正是 MARCO 要补的。MARCO 的回答出人意料地朴素：<strong>只用单个 DINOv2 主干</strong>（外挂 adapter + 上采样头，参数开销 &lt;5%），不引入扩散、不引入 3D 模板、不依赖深度模型，靠一套新的<strong>训练框架</strong>把稀疏标注 densify 成整块物体表面的稠密监督。两件武器：① <strong>coarse-to-fine</strong> 的高斯 RBF 分布匹配目标，用余弦退火把核宽 $\sigma$ 从 3 缩到 1，先学区域级对齐、再逼出 subpatch 级精度；② <strong>dense self-distillation via flow anchoring</strong>——把 EMA 教师挖出的互最近邻（MNN）seed，经 Delaunay 三角剖分 + 分片仿射 warp densify 成稠密位移场，再在位移空间聚类、用 GT 关键点 anchor 过滤错配，把一把关键点变成<strong>数千条可靠伪对应</strong>。结果：SPair-71k / AP-10K / PF-PASCAL 全面 SOTA，最严格阈值 <strong>PCK@0.01 +8.9</strong>，未见关键点 <strong>SPair-U +5.1</strong>、未见类别 <strong>MP-100 +4.7</strong>，同时比扩散双编码器<strong>小 3×、快 10×</strong>。</p>
-
-<figure>
-  <a href="../assets/figures/marco/marco_fig1.png"><img src="../assets/figures/marco/marco_fig1.png" alt="MARCO teaser：(a) 在 seen 关键点上 PCK@0.10 领先 (b)(c) 未见关键点/未见类别上领先更多 (d) 单主干 323M 参数、RTX 4090 帧率远高于 950M 的双编码器 Geo-SC/Jamais Vu"></a>
-  <figcaption><strong>图 1（论文 Fig. 1，teaser）：一张图把“准 + 泛化 + 高效”三件事同时摆上桌。</strong>(a) 在<em>训练见过</em>的关键点与类别上，MARCO（绿）的 PCK@0.10 已经领先；(b)(c) 真正拉开差距的是<strong>未见关键点</strong>和<strong>未见类别</strong>——前任 SOTA（Geo-SC / Jamais Vu）一出域就掉得厉害，MARCO 掉得最少。(d) 右侧柱状对比效率：双编码器方法（Geo-SC、Jamais Vu）都是 <strong>950M</strong> 参数、RTX 4090 上帧率低；MARCO 单主干 <strong>323M</strong>，约 3× 更小、10× 更快。看图时盯住一件事：<strong>横轴从 in-domain 移到 out-of-domain 时，谁掉得慢</strong>——这正是全文要证明的“泛化”。</figcaption>
-</figure>
+<section id="lead">
+<p class="lead"><strong>Root question.</strong> Semantic correspondence asks a model to match the same semantic part across two images, such as a chair leg in one view and the same leg in another. The field has leaned on dual encoders, pairing DINOv2, a self-supervised vision backbone, with Stable Diffusion features for local detail. Those models are accurate, but the paper argues that they are heavy and still brittle once the queried part was not annotated during training. MARCO asks whether the missing ingredient is not another backbone, but a denser training signal. It keeps one frozen DINOv2 ViT-L/14 backbone, adds lightweight adapters and a 4x feature upsampler, and trains with two objectives: a coarse-to-fine keypoint loss for precision and a dense self-distillation loss for generalization. On Percentage of Correct Keypoints (PCK) — the share of predicted keypoints landing within 10% of the object size of the truth, so higher is better — MARCO reaches 86.7 PCK@0.10 on SPair-71k (87.2 with the object-mask training setup that several baselines also use) and 67.5 on the unseen-keypoint split SPair-U, while using 323M parameters instead of the 950M of the dual-encoder Geo-SC and Jamais Vu. The useful idea is simple: if sparse landmark labels make the representation collapse around labeled points, mine reliable matches from the model itself and spread them over the object surface.</p>
+<div class="hero-split">
+<div>
+<div class="socratic"><p class="question">Q: What should the reader look for before trusting the headline?</p><p class="guide">Guide: separate three claims that can be confused: in-domain accuracy on standard benchmarks, transfer to unseen keypoints, and transfer to unseen object categories.</p><p class="answer">A: On the aggregate metric MARCO leads all three: 86.7/87.2 on seen keypoints (SPair-71k), 67.5 average on unseen keypoints (SPair-U), and best in all five MP-100 domains. Watch the per-class SPair-U columns, though — MARCO leads on the mean but loses several individual classes, so "wins" here means the average, not a clean sweep.</p><p class="takeaway"><strong>Takeaway:</strong> The paper is strongest where a single DINOv2 model stays accurate after the query moves outside the sparse training keypoint vocabulary.</p></div>
+<div class="kv-grid"><div class="kv"><b>Task</b> Pixel-level semantic keypoint matching between image pairs.</div><div class="kv"><b>Mechanism</b> Coarse-to-fine Gaussian supervision plus flow-anchored dense self-distillation.</div><div class="kv"><b>Claim to verify</b> Better precision and better unseen-keypoint/category generalization, not one traded for the other.</div><div class="kv"><b>Main caveat</b> Sparse ground-truth keypoints are still needed as anchors during training.</div></div>
+</div>
+<figure class="hero-card"><a href="../assets/figures/marco/marco_fig1.png"><img src="../assets/figures/marco/marco_fig1.png" alt="MARCO teaser comparing seen keypoints, unseen keypoints, unseen categories, model size, and speed"></a><figcaption><strong>Figure 1 | The paper's promise in one view.</strong> The left panels separate seen-keypoint accuracy from unseen-keypoint and unseen-category transfer. The right panel gives the efficiency check: MARCO is the single-backbone 323M-parameter model, while Geo-SC and Jamais Vu use 950M-parameter dual encoders.</figcaption></figure>
+</div>
+</section>
 
 <section id="motivation">
-<h2>一、核心问题：稀疏关键点监督，把一个本来“满屏都对得上”的特征空间，缩成了只认那几个点</h2>
-
-<p><strong>问题。</strong>语义对应的标准设定是：给定源图与目标图，对源图上的某个像素（语义关键点，如“椅子的左前腿”），在目标图里找到指向同一语义部位的像素。难点在于同一部位会在<em>姿态、纹理、视角</em>上剧烈变化；而监督<strong>天生稀疏</strong>——人工标注一张图通常只给不到 20 个关键点。</p>
-
-<p><strong>常规解法为什么不够。</strong>这两年的主流是把 DINOv2（强语义）和 Stable Diffusion（强空间细节）拼成<strong>双编码器</strong>，靠两者互补刷高 benchmark。但这条路有两个代价：(1) <strong>臃肿</strong>——要从两个编码器各抽一遍特征，参数逼近 10 亿；(2) 更隐蔽也更致命的——<strong>用稀疏关键点训出来的模型泛化很差</strong>，在<em>没见过的关键点</em>和<em>没见过的类别</em>上同时失效。论文（与并行工作 Jamais Vu）都点出：这暴露了“benchmark 表现”和“真实可用性”之间的鸿沟，因为真实查询的点，几乎从不是标注里出现过的那几个。</p>
-
-<div class="socratic">
-<p class="question">引导问题：为什么“稀疏监督”会直接导致“泛化崩”？这两件事的因果链是什么？</p>
-<p class="guide">先想一个反直觉的事实：DINOv2 在<em>没被微调之前</em>，它的特征已经能在整块物体表面上给出一片“部分自洽”的对应流（Fig. 2a）。也就是说，泛化能力<em>原本就在</em>预训练特征里。那监督做了什么？</p>
-<p class="answer">监督把它<strong>收窄</strong>了。当你只用眼睛、鼻子这二十来个点的 loss 去微调，梯度只会把“这些标注点周围”的表示磨得更准，而<em>整块表面</em>的几何自洽性反而被破坏——表示<strong>塌缩（collapse）</strong>到标注点附近。Fig. 2b 把这件事拍得很清楚：监督微调后，原本铺满全身的对应流，<strong>收缩成只围着标注点的几团</strong>。论文一句话点破：稀疏监督会让微调后的模型在<em>未见关键点上还不如冻结的 DINOv2</em>。</p>
-<div class="takeaway">Takeaway：稀疏监督不是“学得不够多”，而是“学得太偏”——它把一个本来满屏都对得上的特征空间，优化成只认标注词表里那几个点。要泛化，就得把监督<strong>重新铺满整块物体表面</strong>。</div>
-</div>
-
-<p><strong>这个因果链有数字直接背书（来自消融表 Tab. 4，下文详述）。</strong>冻结 DINOv2 在 SPair-U（未见关键点）上是 <strong>54.9</strong>；MARCO 去掉稠密自蒸馏、只留稀疏监督（“Ours w/o dense loss”）反而掉到 <strong>41.8</strong>——比冻结的还低 13 分。这不是泛化“变弱了一点”，是稀疏监督<em>主动把预训练里自带的泛化能力磨掉了</em>。MARCO 的全部设计，都是为了把这 13 分（以及更多）赚回来。</p>
-
-<p><strong>并行工作的路与 MARCO 的路。</strong>并行的 Jamais Vu [32] 也意识到这个塌缩，它的解法是把物体点 lift 到<strong>3D 标准模板（canonical template）</strong>上。但 3D 模板有三个绑死：① 模板是<em>类别专属</em>的，换类别就失效；② 对高度可形变物体建模困难；③ 还要外挂一个单目深度模型估 3D 几何。MARCO 反其道而行——<strong>不引入任何预定义 3D 结构、不依赖类别先验、不需要外部深度</strong>，而是在训练过程中<em>直接从正在演化的特征空间里</em>发现稠密对应。换句话说，Jamais Vu 靠“外部几何先验”补泛化，MARCO 靠“把特征空间里本就存在的可靠结构挖出来并铺满”补泛化。</p>
+<h2>1. Motivation: sparse supervision can erase useful structure</h2>
+<p>Semantic correspondence has a built-in supervision mismatch. The desired output is dense: any pixel on the source object may be queried. The available labels are sparse: SPair-71k provides 20 keypoints per image pair, and AP-10K provides 17 animal keypoints shared across 54 species. A model trained only on those locations can become very good at those locations while forgetting how the rest of the object should move.</p>
+<p>The paper's visual evidence is the flow field around a pair of objects. Frozen DINOv2 already gives a partially coherent dense flow across the object surface. Fine-tuning with sparse keypoints improves landmarks but contracts the flow around the annotated points. MARCO's dense self-distillation is designed to push back against that contraction.</p>
+<figure class="fig-wide"><a href="../assets/figures/marco/marco_fig2.png"><img src="../assets/figures/marco/marco_fig2.png" alt="Semantic flow comparison for original DINOv2, coarse-to-fine supervision, and dense self-distillation"></a><figcaption><strong>Figure 2 | The failure mode is visible as a flow contraction.</strong> The frozen model has partial object-level flow. Sparse supervised fine-tuning sharpens the labeled landmarks but loses surface-wide coherence. Adding dense self-distillation restores a smoother object-level correspondence field, which is the mechanism the later ablations test numerically.</figcaption></figure>
+<div class="socratic"><p class="question">Q: Why can a model get better on annotated landmarks and worse on new landmarks?</p><p class="guide">Guide: follow where the gradients are. Sparse labels supervise a handful of positions; everything between them is trained only indirectly.</p><p class="answer">A: The model learns the labeled points first. If nothing protects the rest of the surface, the representation narrows around those points.</p><p class="takeaway"><strong>Takeaway:</strong> The core problem is not too little DINOv2 semantics. It is sparse training pressure that over-specializes those semantics.</p></div>
 </section>
 
 <section id="contribution">
-<h2>二、贡献拆解：一个单主干模型 + 一套稠密化训练框架 + 一个更难的泛化基准</h2>
-
-<p>论文在 §1 末把贡献明确列为三条，我按“它各自补上了哪一半问题”来转述：</p>
-
-<ol>
-<li><strong>一个统一的、可泛化的对应模型，且算力开销极小。</strong>只用单个 DINOv2 主干 + &lt;5% 的参数开销（adapter + 上采样头），就同时拿到<em>像素级 SOTA 精度</em>与<em>对未见关键点/类别的稳健泛化</em>。这条对应 teaser 的 (a)+(d)：既准又轻。</li>
-<li><strong>证明稀疏关键点监督可以被 densify 成整块物体表面的稠密对应</strong>——靠的是 DINOv2 特征空间里<em>自发涌现</em>的可靠匹配，而<strong>不</strong>依赖 3D 模板、类别先验或外部深度。这是全文的技术内核（§3.3 的 flow anchoring）。</li>
-<li><strong>提出一个更难的泛化基准</strong>（基于 MP-100 [48] 构建），同时测 (i) 已知类别里的<em>未见关键点</em>和 (ii) <em>未见类别</em>。论文指出现有基准（如 PF-WILLOW）太简单、SPair-U 规模太小（每类才加 4 个未见点），不足以评测真正的泛化。</li>
-</ol>
-
-<p><strong>读者视角的一句提炼。</strong>MARCO 真正新的不是“用 DINOv2 做对应”（那是老话题），而是<strong>把“稀疏 → 稠密”这步做成了一个自蒸馏闭环</strong>：模型自己当老师（EMA），从自己当前的特征里挖可靠匹配、densify 成稠密伪标签、再监督自己——而 GT 关键点只充当<em>过滤错配的锚点</em>，不再是唯一的监督来源。监督从“几十个点”变成“几千条对应”，泛化自然回来了。</p>
+<h2>2. Contributions: one model, one training principle, one harder test</h2>
+<p>The authors state three contributions. First, MARCO is a unified correspondence model that uses one DINOv2 backbone and still reaches the best reported scores in the paper's standard benchmark table. Second, the paper turns sparse keypoint supervision into dense pseudo-correspondences by mining reliable matches from DINOv2 feature space, densifying them with a piecewise-affine warp, and keeping only flow clusters that agree with ground-truth anchors. Third, it builds an MP-100 evaluation protocol that tests unseen keypoints inside familiar categories and unseen categories outside the SPair-71k taxonomy.</p>
+<p>The mechanism hypothesis is precise enough to falsify. If dense self-distillation is the real cause, then removing it should hurt unseen-keypoint transfer more than seen-keypoint accuracy. If the pseudo-labeling pipeline is useful rather than decorative, each filtering and densification step should move the SPair-U result in the predicted direction. The paper checks both in Table 4 and adds a broader applicability check by applying the dense self-distillation loss to Geo-SC in the supplement.</p>
+<div class="socratic"><p class="question">Q: What is new if DINOv2 was already known to produce semantic matches?</p><p class="guide">Guide: distinguish the feature source from the training signal. DINOv2 supplies a useful feature space, but MARCO changes how that space is adapted.</p><p class="answer">A: The novelty is the training loop. MARCO mines reliable DINOv2 matches, spreads them over the surface, and uses sparse labels only to reject bad flow clusters.</p><p class="takeaway"><strong>Takeaway:</strong> MARCO is less a new matching backbone than a way to stop sparse supervision from destroying a useful pretrained geometry.</p></div>
 </section>
 
 <section id="datasets">
-<h2>三、数据与基准：训练只用 SPair-71k，泛化要在没见过的关键点和类别上考</h2>
-
-<p>MARCO 的实验分两层：<strong>标准 in-domain 基准</strong>（训练域内）和<strong>零样本泛化基准</strong>（训练后直接迁移，不再微调）。</p>
-
-<div class="table-wrap"><table>
-<caption>表 A：MARCO 用到的数据集 / 基准（据论文 §4 Benchmarks 转写）。</caption>
-<thead><tr><th>数据集</th><th>规模</th><th>角色</th><th>考的是什么</th></tr></thead>
-<tbody>
-<tr><td><strong>SPair-71k</strong> [34]</td><td>53.4k train / 5.4k val / 12.2k test 对，18 类，每图 20 关键点</td><td>主训练集 + in-domain 测试</td><td>域内精度（各阈值 PCK）</td></tr>
-<tr><td><strong>PF-PASCAL</strong> [13]</td><td>2.9k train / 299 val / 308 test 对，20 类</td><td>in-domain 测试</td><td>域内精度（已接近饱和）</td></tr>
-<tr><td><strong>AP-10K</strong> [51]</td><td>261k train / 17k val / 36k test 对，54 物种，17 关键点</td><td>in-domain 测试（动物姿态）</td><td>同物种 / 跨物种 / 跨科 三档迁移</td></tr>
-<tr><td><strong>SPair-U</strong> [32]</td><td>SPair-71k 每类平均 +4 个未见关键点</td><td>零样本（训于 SPair-71k）</td><td>未见<em>关键点</em>（规模有限）</td></tr>
-<tr><td><strong>MP-100 协议（本文新提）</strong> [48]</td><td>~150k 关键点，100 类，归并成 5 个宏域</td><td>零样本（训于 SPair-71k）</td><td>未见<em>关键点</em> + 未见<em>类别</em>（更难）</td></tr>
-</tbody>
-</table></div>
-
-<p><strong>新基准为什么有必要。</strong>论文论证：PF-WILLOW 难度太低、不适合测泛化；SPair-U 虽首次引入未见关键点，但每类只加约 4 个点、规模太小。于是作者从 MP-100 重建一个协议，把 100 类归并成 5 个宏域（人脸 / 服饰 / 动物身体 / 家具 / 动物脸），沿<strong>两个泛化轴</strong>评测：(i) <strong>未见关键点</strong>——已知类别但标注全新的 landmark（如把 person 类从 SPair 的 7 个点扩到人脸 68 个 landmark）；(ii) <strong>未见类别</strong>——训练里根本没出现过的物体类型（家具、动物脸、动物身体），并移除与 SPair-71k 的重叠。</p>
-
-<figure>
-  <a href="../assets/figures/marco/marco_fig6.png"><img src="../assets/figures/marco/marco_fig6.png" alt="MARCO 在 MP-100 五个宏域上的密集关键点标注示例：人脸 68 点、服饰、动物身体、家具、动物脸，彩色圆点标出 landmark"></a>
-  <figcaption><strong>图 2（论文附录定性图，MP-100 关键点标注示例）：泛化要考的“密集且陌生”的 landmark。</strong>这些是 MP-100 协议里各宏域的关键点标注：人脸是 <strong>68 个</strong>密集 landmark（远超 SPair-71k 里 person 的 7 个点），服饰、家具、动物脸则是训练里没出现过的<em>类别</em>。看这张图是为了理解“未见关键点/未见类别”具体长什么样——查询的点要么是训练词表里没有的密集 landmark，要么属于全新物体类型。MARCO 必须靠“铺满表面的稠密监督”才能在这些点上对得准，而不能只靠记住 SPair 的二十来个标注点。</figcaption>
-</figure>
-
-<p><strong>评测指标：PCK@α。</strong>沿用前人 [28,32,53,54]，用 <strong>Percentage of Correct Keypoints</strong>：一个预测点若落在距 GT 关键点 $\alpha\cdot\max(h,w)$ 范围内（$h,w$ 为物体 bbox 尺寸）即算正确，报<em>逐图平均</em>的 PCK。$\alpha$ 越小越严格——$\alpha=0.01$ 是全文最吃精度的阈值，也是 MARCO 增益最大的地方。</p>
+<h2>3. Datasets: in-domain accuracy is not the same as generalization</h2>
+<p>The paper trains and evaluates on several correspondence benchmarks. Standard benchmarks ask whether the model matches known landmark vocabularies well. SPair-U and MP-100 ask a harder question: does the model transfer to landmarks or categories not present during SPair-71k training?</p>
+<div class="table-wrap"><table><caption><strong>Dataset and benchmark roles from the PDF.</strong> Counts are transcribed from the paper text.</caption><thead><tr><th>Dataset / protocol</th><th>Scale stated in paper</th><th>Role in the paper</th><th>What it tests</th></tr></thead><tbody><tr><td>SPair-71k</td><td>53.4k train, 5.4k val, 12.2k test image pairs; 18 categories; 20 keypoints per image</td><td>Main training and standard evaluation</td><td>Seen categories and seen keypoint definitions</td></tr><tr><td>PF-PASCAL</td><td>2.9k train, 299 val, 308 test pairs; 20 categories</td><td>Standard evaluation</td><td>Established semantic-correspondence benchmark, close to saturation in the paper's discussion</td></tr><tr><td>AP-10K</td><td>261k train, 17k val, 36k test pairs; 54 species; 17 shared keypoints</td><td>Standard evaluation</td><td>Animal pose transfer under intra-species, cross-species, and cross-family splits</td></tr><tr><td>SPair-U</td><td>Average of 4 additional unseen keypoints per category</td><td>Zero-shot evaluation after SPair-71k training</td><td>Unseen keypoints inside the SPair-71k taxonomy</td></tr><tr><td>MP-100 protocol</td><td>About 150k annotated keypoints over 100 object classes, grouped into five macro-domains</td><td>New zero-shot evaluation protocol</td><td>Unseen keypoints and unseen object categories</td></tr></tbody></table></div>
+<figure class="fig-wide"><a href="../assets/figures/marco/marco_fig6.png"><img src="../assets/figures/marco/marco_fig6.png" alt="MP-100 macro-domain samples with dense keypoint annotations"></a><figcaption><strong>Figure 3 | MP-100 makes the word "unseen" concrete.</strong> Human face expands a familiar person category into 68 facial landmarks. Apparel items add garment-specific keypoints. Animal body, home furniture, and animal face test object categories removed from the SPair-71k training taxonomy.</figcaption></figure>
+<p><strong>Metric.</strong> Percentage of Correct Keypoints (PCK@alpha) counts a prediction as correct if it falls within \(\alpha\cdot\max(h,w)\) of the ground-truth point, where \(h\) and \(w\) are the object bounding-box height and width. Lower alpha is stricter. PCK@0.01 asks for fine localization, while PCK@0.10 is a coarser semantic match.</p>
+<div class="socratic"><p class="question">Q: Why does the page keep separating seen keypoints, unseen keypoints, and unseen categories?</p><p class="guide">Guide: a model can memorize a keypoint vocabulary, transfer to new keypoints in known categories, or transfer to new categories. Those are different tests.</p><p class="answer">A: Standard PCK does not prove open-ended correspondence. SPair-U and MP-100 test what happens after the query leaves the training labels.</p><p class="takeaway"><strong>Takeaway:</strong> MARCO's generalization claim lives or dies on SPair-U and MP-100, not only on SPair-71k.</p></div>
 </section>
 
 <section id="pipeline">
-<h2>四、Pipeline：单主干 + 两条互补目标，训练时跑一套自蒸馏闭环</h2>
-
-<p>MARCO 的架构刻意“极简主义”：<strong>冻结的 DINOv2 ViT-L/14 主干</strong> + 两个轻量外挂件，总参数开销 &lt;5%。整套训练由两条目标驱动——一条管<em>精度</em>（coarse-to-fine），一条管<em>泛化</em>（dense self-distillation）。先看全景图。</p>
-
-<figure>
-  <a href="../assets/figures/marco/marco_fig3.png"><img src="../assets/figures/marco/marco_fig3.png" alt="MARCO 总览：DINOv2 加 adapter + 上采样头（红色）；EMA 教师挖互最近邻(a)，Delaunay 三角剖分+warp densify 成位移场(b)，位移空间聚类+GT anchor 出稠密伪标签(c)，coarse-to-fine 目标管精度"></a>
-  <figcaption><strong>图 3（论文 Fig. 3，总览）：把“稀疏 → 稠密”做成一个自蒸馏闭环。</strong>红色是新增的可学习件：插进 DINOv2 高层的 <strong>adapter</strong> + 一个把分辨率提 ×4 的<strong>上采样头</strong>，主干冻结。下方蓝色框是 <strong>coarse-to-fine</strong> 目标（管精度，§5）；右侧绿色框是 <strong>dense self-distillation via flow anchoring</strong> 三步（管泛化，§5）：<strong>(a)</strong> 用 EMA 教师在源/目标特征间挖<em>互最近邻</em>可靠匹配 + 并入稀疏 GT 关键点；<strong>(b)</strong> 把这些 seed 经 Delaunay 三角剖分 + 分片仿射 warp <em>densify</em> 成稠密位移场；<strong>(c)</strong> 在位移空间聚类、并 anchor 到 GT 关键点，得到几何自洽的稠密伪标签，再让学生去复刻。看图的主线：<strong>左边一把稀疏 GT 关键点，经过 a→b→c 三步，变成右边铺满物体的稠密伪对应</strong>。</figcaption>
-</figure>
-
-<h3>两个架构外挂件（§3.1）</h3>
-<ul>
-<li><strong>Adapter（AdaptFormer [4]）。</strong>在 transformer 高层逐 token 插一个瓶颈结构：先降维 $W_{\text{down}}\in\mathbb{R}^{D\times d}$、GELU、再升维 $W_{\text{up}}\in\mathbb{R}^{d\times D}$（$d\ll D$），以残差方式加回。主干权重<strong>全程冻结</strong>，只学这两个矩阵——用极小参数 enrich 高层特征的几何意识。</li>
-<li><strong>上采样头。</strong>DINOv2 每个 token 对应一个 14×14 的 patch，粒度太粗、限制了定位精度。前人常靠 CNN matcher / cross-attention 这类重模块去 refine，但代价大。MARCO 改用一个轻量上采样层把特征分辨率提 <strong>×4</strong>：先 $2\times2$ 转置卷积、GELU、再 $3\times3$ depthwise 卷积，恢复 sub-patch 结构而几乎不加算力。</li>
-</ul>
-
-<div class="equation">$$\hat F = \mathrm{DepthwiseConv}_{3\times3}\big(\mathrm{GELU}(\mathrm{ConvTranspose}_{2\times2}(F))\big)$$<div class="eq-caption">式 1（论文式 4–5 合写）：上采样头把 DINOv2 粗特征 $F$ 提到 4× 分辨率的稠密特征 $\hat F$</div></div>
-<div class="formula-note"><strong>公式读法。</strong>$F=\Phi_\theta(I)$ 是冻结 DINOv2 抽的粗特征（patch 级），$\hat F$ 是恢复了 sub-patch 细节的稠密特征。两步卷积：转置卷积把空间分辨率放大 ×4，depthwise 卷积在不混通道的前提下平滑细化。技术作用：让后续所有匹配/损失都在<em>更细的格点</em>上算，这是 PCK@0.01 这种严格阈值能涨 +8.9 的物理前提——没有 sub-patch 分辨率，再好的 loss 也卡在 patch 粒度上。</div>
+<h2>4. Pipeline: freeze the backbone, then densify the supervision</h2>
+<p>MARCO keeps DINOv2 as the semantic backbone and learns only lightweight additions. AdaptFormer modules are inserted into higher transformer layers to adapt high-level features without full fine-tuning. A compact upsampling head raises the DINOv2 feature resolution by 4x so that strict thresholds such as PCK@0.01 are not capped by the original patch grid.</p>
+<figure class="fig-wide"><a href="../assets/figures/marco/marco_fig3.png"><img src="../assets/figures/marco/marco_fig3.png" alt="MARCO overview with DINOv2 adapters, feature upsampling, coarse-to-fine loss, and dense self-distillation"></a><figcaption><strong>Figure 4 | The data flow has two jobs.</strong> The blue branch uses ground-truth keypoints to train precise localization through a coarse-to-fine distributional target. The green branch uses an exponential moving average teacher to mine reliable correspondences, densify them over the source object, filter them by ground-truth anchoring, and train the student on the resulting pseudo-labels.</figcaption></figure>
+<div class="table-wrap"><table><caption><strong>Pipeline stages.</strong> This table is reconstructed from the method text and algorithmic description, with all numeric settings taken from the paper.</caption><thead><tr><th>Stage</th><th>Input</th><th>Operation</th><th>Output</th><th>Why it exists</th></tr></thead><tbody><tr><td>Feature adaptation</td><td>DINOv2 ViT-L/14 features</td><td>Train AdaptFormer blocks in the last 12 transformer layers</td><td>Adapted descriptors</td><td>Improve geometric correspondence while keeping the pretrained backbone mostly fixed</td></tr><tr><td>Feature upsampling</td><td>Patch-level feature map</td><td>Use a 2x2 transposed convolution, GELU, then a 3x3 depthwise convolution</td><td>Feature grid at 4x resolution</td><td>Recover sub-patch localization detail</td></tr><tr><td>Coarse-to-fine supervision</td><td>Sparse keypoints</td><td>Anneal Gaussian target bandwidth from \(\sigma_{\max}=3\) to \(\sigma_{\min}=1\)</td><td>Sharper keypoint similarity maps</td><td>Learn broad parts first, then fine geometry</td></tr><tr><td>Flow anchoring</td><td>Teacher features and sparse ground-truth keypoints</td><td>Mine mutual nearest neighbors, Delaunay-densify them, cluster flow, keep ground-truth-anchored clusters</td><td>Dense pseudo-correspondences</td><td>Extend supervision beyond the annotated landmarks</td></tr><tr><td>Self-distillation</td><td>Dense pseudo-correspondences</td><td>Train the student with a regression loss while the teacher follows by exponential moving average</td><td>Surface-wide correspondence structure</td><td>Preserve the transferable geometry that sparse labels alone would collapse</td></tr></tbody></table></div>
+<div class="socratic"><p class="question">Q: Why freeze most of DINOv2 instead of fully fine-tuning it for the task?</p><p class="guide">Guide: the paper's appendix compares full fine-tuning with parameter-efficient adaptation. Full fine-tuning raises some in-domain performance but damages unseen-keypoint transfer.</p><p class="answer">A: The pretrained backbone already contains transferable structure. MARCO adjusts it lightly so the structure is not overwritten.</p><p class="takeaway"><strong>Takeaway:</strong> The architecture is conservative on purpose: learn enough for localization, but not so much that DINOv2 forgets its broad visual prior.</p></div>
 </section>
 
 <section id="method">
-<h2>五、方法核心：一条退火的 RBF 目标管精度，一条 flow-anchoring 自蒸馏管泛化</h2>
-
-<h3>5.1 Coarse-to-fine 目标：为什么不直接回归坐标，而要匹配一个会变窄的分布？</h3>
-
-<div class="socratic">
-<p class="question">引导问题：前人用 soft-argmax 回归关键点坐标 + $L_2$ loss，看起来天经地义，它错在哪？</p>
-<p class="guide">想象目标图里有两个长得很像的候选位置（比如对称的左右眼），soft-argmax 会取它们的<em>加权平均</em>位置。$L_2$ loss 会把预测往这个平均拉。</p>
-<p class="answer">于是在<strong>多模态分布</strong>下，soft-argmax + $L_2$ 会把预测<em>驱向竞争模式的均值</em>，而不是逼出一个尖锐的单峰——产生<strong>过平滑</strong>的响应，定位精度被拖垮。这是已知的不稳定性 [3,38,50]。</p>
-<div class="takeaway">Takeaway：坐标回归在“有多个相似候选”时会被平均化。要精确定位，得换成<strong>对整张概率图做监督</strong>，逼它在正确位置长出一个尖峰，而不是回归一个被平均掉的坐标。</div>
-</div>
-
-<p>MARCO 因此把坐标回归换成<strong>分布匹配</strong>：取源描述子 $\hat F^s[p_i^s]$，与目标特征格点算稠密相似度图 $S(p_i^s,u)=\langle\hat F^s[p_i^s],\hat F^t[u]\rangle$，再监督它去匹配一个以 GT 关键点为中心的<strong>高斯 RBF 核</strong>，用交叉熵（CE）loss：</p>
-
-<div class="equation">$$G(u;p_i^t)\propto\exp\!\Big(-\tfrac{\lVert u-p_i^t\rVert^2}{2\sigma_i^2}\Big),\qquad \mathcal{L}_{\text{sup}}=-\frac1K\sum_{i=1}^{K}\sum_{u\in\hat\Lambda}G(u;p_i^t)\,\log\mathrm{softmax}\,S(p_i^s,u)$$<div class="eq-caption">式 2（论文式 7–8）：高斯 RBF 目标核 + 交叉熵分布匹配，$\sigma_i$ 是核宽</div></div>
-<div class="formula-note"><strong>公式读法。</strong>$G$ 是“理想答案”——以 GT 目标点 $p_i^t$ 为中心、宽度 $\sigma_i$ 的高斯峰；CE loss 逼 softmax 后的相似度图 $S$ 去对齐这个高斯。关键变量是<strong>核宽 $\sigma$</strong>：原则上 $\sigma$ 只改峰的“胖瘦”、不动峰的位置，但作者发现它<em>强烈影响学习动力学</em>——$\sigma$ 大 → 鼓励对齐宽泛的语义部位（粗），$\sigma$ 小 → 强制尖锐定位但只对少数自信匹配有效、整体精度反而掉。</div>
-
-<p><strong>这里有一个真张力，所以不能用固定 $\sigma$。</strong>消融（Tab. 4）直接量出来：固定 $\sigma=1$ 把严格阈值做到最好（27.8@0.01）但粗阈值（81.0@0.10）和未见泛化（62.2）都掉；固定 $\sigma=3$ 正好相反（19.5@0.01，86.8@0.10）。两个固定值各自<em>塌一头</em>。MARCO 的解法是<strong>余弦退火</strong>：训练初期用宽核（$\sigma_{\max}=3$）促成稳定的区域级对齐，再逐步缩到窄核（$\sigma_{\min}=1$）逼出 sub-patch 级定位：</p>
-
-<div class="equation">$$\sigma(t)=\sigma_{\min}+\tfrac12(\sigma_{\max}-\sigma_{\min})\Big(1+\cos\tfrac{t}{T}\pi\Big)$$<div class="eq-caption">式 3（论文式 9）：核宽 $\sigma$ 的余弦退火，从 $\sigma_{\max}=3$ 缩到 $\sigma_{\min}=1$</div></div>
-<div class="formula-note"><strong>公式读法 + 双角度交叉验证。</strong>$t$ 是当前步、$T$ 是总步数，$\sigma$ 随训练从 3 平滑降到 1。<em>角度一（直觉）</em>：先“看大局”（哪个区域对哪个区域）再“抠细节”（区域内哪个像素对哪个像素），符合人对粗到细配准的常识。<em>角度二（数字）</em>：退火后拿到 27.0@0.01（≈ 固定 $\sigma=1$ 的 27.8）和 87.2@0.10（≈ 固定 $\sigma=3$ 的 86.8），相对各自最优只让出约 1 分，却<strong>同时避开了两个固定值各自的塌方</strong>——这正是“取两者之长”的可量化证据。</div>
-
-<h3>5.2 Dense self-distillation via flow anchoring：把一把关键点 densify 成数千条可靠对应</h3>
-
-<p>coarse-to-fine 解决了精度，但它<em>仍只在标注点上有监督</em>，继承了稀疏监督的偏置（Fig. 2b 的塌缩还在）。要补泛化，必须把监督铺满整块物体表面。MARCO 的做法分三步，全程用 <strong>EMA 教师</strong>（学生参数的指数滑动平均 $\theta_T\leftarrow\beta\theta_T+(1-\beta)\theta_S$）生成伪标签，稳定学习。</p>
-
-<p><strong>第一步：挖可靠 seed（互最近邻）。</strong>对教师上采样特征，每个源 patch $u$ 找它在目标里最相似的 $\mathrm{NN}^{s\to t}(u)$，反向也找 $\mathrm{NN}^{t\to s}(v)$，只保留<strong>双向都互指</strong>的对：</p>
-
-<div class="equation">$$\mathcal{P}_{\text{MNN}}=\big\{(u,v)\mid \mathrm{NN}^{s\to t}(u)=v\ \wedge\ \mathrm{NN}^{t\to s}(v)=u\big\}$$<div class="eq-caption">式 4（论文式 10–11）：互最近邻（MNN）——只信“你选我、我也选你”的匹配</div></div>
-<div class="formula-note"><strong>公式读法。</strong>MNN 是经典的“双向确认”过滤器：单向最近邻容易把多个源点都挤到同一个目标点（many-to-one 错配），互选则强制一对一的高置信匹配。把 MNN 与稀疏 GT 关键点并起来得到 <strong>seed 集</strong> $\mathcal{P}_{\text{seed}}=E\cup\mathcal{P}_{\text{MNN}}$，并用 SAM [22] 的物体 mask（或由 GT 关键点导出的 bbox）把 seed 限制在物体内部，压掉离群点。这一步把监督从“几十个 GT”扩到“几百个高置信匹配”，但还远不够稠密。</div>
-
-<p><strong>第二步：densify（Delaunay 三角剖分 + 分片仿射 warp）。</strong>取 seed 的源关键点集，做 Delaunay 三角剖分把它们的凸包切成不重叠三角形；每个源三角形 $\tau$ 的三个顶点换成各自的匹配目标点，就定义出目标三角形 $\tau'$；对每对三角形估一个<strong>仿射变换</strong> $W_{\tau\to\tau'}$，把三角形内<em>每个像素</em>都映射到目标。所有三角形的仿射拼成一张连续的<strong>分片仿射 warp</strong>，得到稠密位移场：</p>
-
-<div class="equation">$$u\ \longmapsto\ \hat D(u)=\hat W(u)-u$$<div class="eq-caption">式 5（论文式 12）：稠密位移场 $\hat D$——把每个源像素映到目标的位移</div></div>
-<div class="formula-note"><strong>公式读法。</strong>$\hat W$ 是分片仿射 warp（凸包内逐三角形仿射），$\hat D(u)$ 是源像素 $u$ 指向目标的位移向量。技术作用：把“离散的几百个匹配点”插值成“凸包内每个像素都有对应”的<em>连续场</em>——监督一下子从数百条变成数千条，覆盖整块表面。这步是 MARCO densify 的关键——前面 MNN 给点，这里把点变成面。</div>
-
-<p><strong>第三步：flow anchoring（聚类 + GT 锚定，过滤错配）。</strong>稠密位移场难免有错——对称（飞机左翼配到右翼）、遮挡、模型误差。怎么知道哪片位移可信？两个条件：<strong>(i) 局部运动一致 + (ii) 与 GT 对应一致</strong>。具体做法：在位移空间用 k-means 聚类（不手调 k——故意 over-cluster 再贪心合并到 BIC 最大），把“运动一致”的像素归到同一团 $\Omega_n$；然后<strong>只保留那些区域里恰好含一对 GT 关键点的团</strong>（anchor 到 GT）：</p>
-
-<div class="equation">$$\mathcal{P}_{\text{self}}=\Big\{\big(u,\,u+\hat D(u)\big)\ \Big|\ \exists\,n,(p_i^s,p_i^t)\in E:\ u\in C_n^s\ \wedge\ p_i^s\in C_n^s\ \wedge\ p_i^t\in C_n^t\Big\}$$<div class="eq-caption">式 6（论文式 13–15）：只留下“运动一致 + 含 GT 锚点”的聚类，作为最终稠密伪标签</div></div>
-<div class="formula-note"><strong>公式读法。</strong>$C_n^s$ / $C_n^t$ 是第 $n$ 个流聚类在源/目标的对应区域。条件说的是：保留那些“既运动连贯、又恰好包住一对真 GT 对应（$p_i^s\in C_n^s$ 且 $p_i^t\in C_n^t$）”的聚类。妙处在于——这能滤掉一类很隐蔽的错配：<em>运动很一致、但整体平移到了错误位置</em>（如对称翼）。光看“运动一致”会上当，加上“必须套住一个 GT 锚点”才能识破。GT 关键点在这里不再是唯一监督，而是降级成<strong>过滤器</strong>。</div>
-
-<figure>
-  <a href="../assets/figures/marco/marco_fig4.png"><img src="../assets/figures/marco/marco_fig4.png" alt="flow anchoring 示意：飞机源/目标图 → 稠密位移场 → k-means 聚类成多团 → 选中含 GT 锚点的团、丢弃对称错配的团 → 最终稠密伪对应"></a>
-  <figcaption><strong>图 4（论文 Fig. 4，flow anchoring 挖矿）：为什么“运动一致”还不够，要再加 GT 锚定。</strong>从飞机的稠密位移场出发，k-means 在位移空间聚出若干<em>运动一致</em>的团（不同颜色）。但下排左边点出陷阱：有的团运动很连贯、却整体配到了<strong>对称的错误部位</strong>（左翼 → 右翼）。判据是看这一团的流是否朝<em>正确</em>区域：<span style="color:#3f7a5f"><strong>Selected</strong></span> 团的流与 GT 对应一致（保留），<span style="color:#8a4f13"><strong>Discarded</strong></span> 团运动一致但指向错位置（丢弃）。右下是过滤后的最终稠密伪对应。看图主线：<strong>聚类负责“连贯”，GT 锚点负责“指对地方”，两个条件缺一不可。</strong></figcaption>
-</figure>
-
-<p><strong>学生用 $L_2$ 回归，而不是 CE——为什么这次反而用回归？</strong>因为伪标签<em>天生有噪</em>，再用 CE 那种“强制对齐一个尖锐高斯先验”会把噪声也学死。所以学生改用宽松的 $L_2$：</p>
-
-<div class="equation">$$\mathcal{L}_{\text{self}}=\frac{1}{|\mathcal{P}_{\text{self}}|}\sum_{(\hat u,\hat v)\in\mathcal{P}_{\text{self}}}\big\lVert\,\mathrm{soft\text{-}argmax}\,S(\hat u,u)-\hat v\,\big\rVert_2^2$$<div class="eq-caption">式 7（论文式 17）：学生对稠密伪标签的 $L_2$ 回归（伪标签有噪，故不加强先验）</div></div>
-<div class="formula-note"><strong>读法 + 与 5.1 的呼应。</strong>注意这与 5.1 的选择<em>看似矛盾</em>：5.1 说坐标回归不稳、要用 CE；这里却对伪标签用回归。差别在监督质量——5.1 的 GT 是精确的、值得用尖锐先验逼出单峰；而伪标签是噪的、用尖锐先验会过拟合错配，所以宽松的 $L_2$ 反而更稳。这正是“动机决定形式”的体现：监督越可信、先验可以越强。</div>
-
-<figure>
-  <a href="../assets/figures/marco/marco_fig2.png"><img src="../assets/figures/marco/marco_fig2.png" alt="DINOv2 flow consistency：(a) 原始 DINOv2 部分自洽的稠密对应流 (b) +coarse-to-fine 后收缩到标注点附近、几何一致性下降 (c) +dense self-distillation 后整块表面平滑自洽"></a>
-  <figcaption><strong>图 5（论文 Fig. 2，flow consistency）：稠密自蒸馏把塌缩的流“重新铺满”。</strong>语义流以 HSV 色编码。<strong>(a)</strong> 原始 DINOv2 已有一片<em>部分自洽</em>的稠密对应流；<strong>(b)</strong> 只加 coarse-to-fine（在稀疏 GT 上微调）后，流<strong>收缩</strong>到标注点附近、整体几何连贯性反而下降——这就是 §1 说的塌缩；<strong>(c)</strong> 再加 dense self-distillation 后，流在整块物体表面变得<strong>平滑、物体级自洽</strong>，比冻结编码器还好。这张图是 MARCO 因果链的视觉证据：<strong>稀疏监督会让流塌缩 (b)，稠密自蒸馏把它铺回去 (c)</strong>。</figcaption>
-</figure>
+<h2>5. Method: make the target sharp, then make the labels dense</h2>
+<h3>5.1 Lightweight adaptation and sub-patch features</h3>
+<p>Each AdaptFormer module applies a token-wise bottleneck and adds it back through a residual path. The backbone weights are frozen, so the learned matrices refine high-level features without rewriting the whole encoder.</p>
+<div class="equation">$$A(x)=\mathrm{GELU}(xW_{\mathrm{down}})W_{\mathrm{up}},\qquad x'=\mathrm{MLP}(x_{\mathrm{self}})+x_{\mathrm{self}}+A(x_{\mathrm{self}}),\qquad d\ll D$$<div class="eq-caption">Eq. 1: adapter update from the paper's Eq. 1-3. \(D\) is the embedding dimension and \(d\) is the bottleneck dimension.</div></div>
+<p>The upsampling head then increases feature resolution. This matters because a 14x14 patch token is too coarse when the metric threshold is only 1 percent of the object box.</p>
+<div class="equation">$$F_1=\mathrm{ConvTranspose}_{2\times2}(F),\qquad \hat F=\mathrm{DepthwiseConv}_{3\times3}\big(\mathrm{GELU}(F_1)\big)$$<div class="eq-caption">Eq. 2: feature upsampling from the paper's Eq. 4-5.</div></div>
+<div class="formula-note"><p class="note-title">How to read Eq. 1-2</p><p>The adapter changes the descriptor content. The upsampler changes the descriptor grid. Together they make DINOv2 both more correspondence-aware and more spatially precise, without adding a second encoder.</p></div>
+<h3>5.2 Coarse-to-fine supervised matching</h3>
+<p>For a source keypoint \(p_i^s\), MARCO compares its descriptor to every target-grid descriptor and gets a similarity map. Instead of regressing one coordinate with soft-argmax and an L2 loss, it supervises the whole map against a Gaussian radial basis function target centered on the ground-truth target keypoint \(p_i^t\).</p>
+<div class="equation">$$S(p_i^s,u)=\langle \hat F_s[p_i^s],\hat F_t[u]\rangle,\qquad G_{\sigma}(u;p_i^t)\propto \exp\!\left(-\frac{\lVert u-p_i^t\rVert_2^2}{2\sigma^2}\right)$$<div class="eq-caption">Eq. 3: similarity map and Gaussian target from the paper's Eq. 6-7.</div></div>
+<div class="equation">$$\mathcal{L}_{\mathrm{sup}}=-\frac{1}{K}\sum_{i=1}^{K}\sum_{u\in\hat\Lambda}G_{\sigma}(u;p_i^t)\log \mathrm{softmax}\,S(p_i^s,u)$$<div class="eq-caption">Eq. 4: distributional cross-entropy supervision from the paper's Eq. 8.</div></div>
+<p>The key variable is the bandwidth \(\sigma\). A wide Gaussian teaches rough semantic parts. A narrow Gaussian teaches precise localization. MARCO anneals from wide to narrow with a cosine schedule:</p>
+<div class="equation">$$\sigma(t)=\sigma_{\min}+\frac{1}{2}(\sigma_{\max}-\sigma_{\min})\left(1+\cos\frac{\pi t}{T}\right),\qquad \sigma_{\max}=3,\quad \sigma_{\min}=1$$<div class="eq-caption">Eq. 5: coarse-to-fine bandwidth schedule from the paper's Eq. 9 and implementation details.</div></div>
+<h3>5.3 Dense self-distillation via flow anchoring</h3>
+<p>The second objective builds pseudo-labels over the object surface. The exponential moving average teacher first finds mutual nearest-neighbor matches between source and target features:</p>
+<div class="equation">$$\mathrm{NN}_{s\to t}(u)=\arg\max_{v\in\hat\Lambda}\langle F_s^T[u],F_t^T[v]\rangle,\qquad \mathcal{P}_{\mathrm{MNN}}=\{(u,v)\mid \mathrm{NN}_{s\to t}(u)=v\wedge \mathrm{NN}_{t\to s}(v)=u\}$$<div class="eq-caption">Eq. 6: mutual nearest-neighbor seeds from the paper's Eq. 10-11.</div></div>
+<p>Those seeds are merged with sparse ground-truth correspondences. A Delaunay triangulation on the source seed points defines local triangles. Replacing each triangle's vertices with their target matches gives a piecewise-affine warp \(\hat W\), and the dense displacement is:</p>
+<div class="equation">$$u\mapsto D(u)=\hat W(u)-u$$<div class="eq-caption">Eq. 7: dense displacement field from the paper's Eq. 12.</div></div>
+<p>Dense flow alone is not enough, because symmetric parts can move coherently to the wrong target region. MARCO clusters displacement vectors, forms source and target regions for each cluster, and keeps only clusters whose flow is anchored by a ground-truth correspondence:</p>
+<div class="equation">$$C_n^s=\{u\mid D(u)\in\Omega_n\},\qquad C_n^t=\{u+D(u)\mid u\in C_n^s\}$$<div class="eq-caption">Eq. 8: source and target regions induced by one flow cluster, from the paper's Eq. 13-14.</div></div>
+<div class="equation">$$\mathcal{P}_{\mathrm{self}}=\{(u,u+D(u))\mid \exists n,\,(p_i^s,p_i^t)\in E:\ u\in C_n^s\wedge p_i^s\in C_n^s\wedge p_i^t\in C_n^t\}$$<div class="eq-caption">Eq. 9: ground-truth-anchored pseudo-label set from the paper's Eq. 15.</div></div>
+<figure class="fig-wide"><a href="../assets/figures/marco/marco_fig4.png"><img src="../assets/figures/marco/marco_fig4.png" alt="Flow anchoring with displacement field clustering, selected clusters, discarded clusters, and final pseudo-correspondences"></a><figcaption><strong>Figure 5 | Coherent motion is necessary but not sufficient.</strong> K-means clustering finds regions with similar displacement, but a symmetric part can still be consistently wrong. Ground-truth anchoring filters clusters by whether their flow points toward a known correct region.</figcaption></figure>
+<p>The student then regresses these pseudo-correspondences, while the teacher follows the student by exponential moving average:</p>
+<div class="equation">$$\mathcal{L}_{\mathrm{self}}=\frac{1}{|\mathcal{P}_{\mathrm{self}}|}\sum_{(\hat u,\hat v)\in\mathcal{P}_{\mathrm{self}}}\left\lVert \operatorname{softargmax}_{u\in\hat\Lambda}S(\hat u,u)-\hat v\right\rVert_2^2,\qquad \theta_T\leftarrow \beta\theta_T+(1-\beta)\theta_S$$<div class="eq-caption">Eq. 10: self-distillation loss and EMA teacher update from the paper's Eq. 16-17.</div></div>
+<div class="formula-note"><p class="note-title">Why CE for ground truth but L2 for pseudo-labels?</p><p>Ground-truth keypoints are trusted, so a sharp distributional target is useful. Pseudo-labels are noisy, so a softer regression target is safer. The loss form follows the reliability of the supervision.</p></div>
+<div class="socratic"><p class="question">Q: What closes the gap between sparse keypoint labels and dense pixel queries?</p><p class="guide">Guide: look at the role of the ground-truth keypoints. They are not used to label every pixel; they decide which mined flow regions are trustworthy.</p><p class="answer">A: The model mines many candidate matches, spreads them across triangles, and keeps the regions that agree with sparse anchors.</p><p class="takeaway"><strong>Takeaway:</strong> Sparse labels become a quality filter for dense pseudo-labels, not the whole supervision signal.</p></div>
 </section>
 
 <section id="training">
-<h2>六、训练配置</h2>
-<ul>
-<li><strong>主干 / 可学习件：</strong>DINOv2 ViT-L/14 [37]，主干冻结；只训<strong>上采样头</strong>和<strong>最后 12 层</strong>的 AdaptFormer [4] block。</li>
-<li><strong>优化：</strong>Adam [21]，学习率 $1\times10^{-4}$；教师 EMA 动量 $\beta=0.999$。</li>
-<li><strong>核宽退火：</strong>$\sigma_{\max}=3$、$\sigma_{\min}=1$（余弦退火，式 3）。</li>
-<li><strong>训练规模：</strong>10 epochs，batch size 16；训练时默认用 SAM [22] 物体 mask 限制像素（沿用 [10,31,32]）。</li>
-<li><strong>推理：</strong>用 Window soft-argmax（同 [32,54]）。</li>
-<li><strong>效率：</strong>单主干 323M 参数 vs 双编码器 950M（约 3× 更小、10× 更快，RTX 4090，Fig. 1d）。</li>
-</ul>
-<p class="note"><strong>论文未说明 / 估算声明。</strong>论文正文未披露训练总 GPU 卡数与墙钟时间（仅给 epoch/batch/优化器/LR），故本文<strong>不做 GPU-hours 估算</strong>（按论文披露数字粗略估算，不等同于实际账单；论文连可估的卡时基数都未给）。$\sigma$ 退火总步数 $T$、adapter 瓶颈维度 $d$ 的具体取值等细节论文称见 Supp. Mat.，正文未全列。</p>
+<h2>6. Training and compute: what the paper discloses</h2>
+<p>The implementation details are compact. MARCO uses DINOv2 ViT-L/14, trains the upsampling head and AdaptFormer blocks in the last 12 transformer layers, and keeps the main backbone frozen. The optimizer is Adam with learning rate \(1\times10^{-4}\). The teacher exponential moving average momentum is \(\beta=0.999\). Training runs for 10 epochs with batch size 16. Unless stated otherwise, candidate pixels are restricted to SAM-derived object masks during training; at inference the method uses Window soft-argmax as in Jamais Vu and Geo-SC.</p>
+<div class="table-wrap"><table><caption><strong>Supplementary Table 12, transcribed from the paper.</strong> Model size and inference speed are measured on an RTX 4090 with feature extraction at 840p, batched reference-target pairs, and the same soft-argmax keypoint prediction protocol.</caption><thead><tr><th>Method</th><th>Backbone</th><th>Params</th><th>FPS</th></tr></thead><tbody><tr><td>Geo-SC [54]</td><td>SD + DINOv2</td><td>950M</td><td>0.85</td></tr><tr><td>Jamais Vu [32]</td><td>SD + DINOv2</td><td>950M</td><td>0.85</td></tr><tr><td><strong>MARCO</strong></td><td><strong>DINOv2</strong></td><td><strong>323M</strong></td><td><strong>8.30</strong></td></tr></tbody></table></div>
+<p><strong>Reproduction cost.</strong> The PDF states the model, optimizer, learning rate, batch size, epochs, EMA momentum, and inference-speed protocol. It does not state training GPU count, wall-clock time, or total GPU-hours. No GPU-hour estimate is made here.</p>
+<div class="socratic"><p class="question">Q: Is the efficiency claim a different evaluation setup from the accuracy claim?</p><p class="guide">Guide: the supplement says all methods use the same evaluation protocol for the compute table: 840p feature extraction, batched pairs, and the same soft-argmax prediction.</p><p class="answer">A: The compute comparison is matched at inference. MARCO is smaller because it avoids the Stable Diffusion branch.</p><p class="takeaway"><strong>Takeaway:</strong> The reported speedup is not a free implementation trick; it follows from using one backbone instead of two.</p></div>
 </section>
 
 <section id="experiments">
-<h2>七、实验结果：域内 SOTA，且在最严格阈值与最难泛化上赢得最多</h2>
-
-<h3>7.1 标准 in-domain 基准（论文 Table 1）</h3>
-<p>下表为论文 Table 1 的<strong>代表性转写</strong>（原表含更多无监督/弱监督行与 PF-PASCAL 三个阈值，这里保留各家最强代表 + MARCO 两个变体；完整行见原文）。指标为逐图 PCK(%)，越高越好。</p>
-<div class="table-wrap"><table>
-<caption>表 1（论文 Table 1 代表性转写）：标准基准 PCK。† 训练用物体 mask；‡ 推理用 mask；§ 训练用深度图。MARCO 两行为“不限 mask / 限 mask”两个变体。</caption>
-<thead><tr><th>方法</th><th>编码器</th><th>SPair-71k @0.01</th><th>@0.05</th><th>@0.10</th><th>AP-10K(C.F.) @0.10</th><th>PF-PASCAL @0.05</th></tr></thead>
-<tbody>
-<tr><td>DINOv2+NN [53]</td><td>DINOv2</td><td>6.3</td><td>38.4</td><td>53.9</td><td>47.4</td><td>63.0</td></tr>
-<tr><td>SD+DINOv2（监督）[53]</td><td>DINOv2+SD</td><td>9.6</td><td>57.7</td><td>74.6</td><td>65.8</td><td>80.9</td></tr>
-<tr><td>GECO [14]</td><td>DINOv2</td><td>14.2</td><td>59.6</td><td>73.6</td><td>76.6</td><td>80.5</td></tr>
-<tr><td>Jamais Vu [32]</td><td>DINOv2+SD</td><td>20.5</td><td>71.9</td><td>82.5</td><td>—</td><td>—</td></tr>
-<tr><td>Geo-SC [54]（前 SOTA）</td><td>DINOv2+SD</td><td>21.7</td><td>72.8</td><td>83.2</td><td>78.5</td><td>85.3</td></tr>
-<tr style="background:#eef7f1"><td><strong>MARCO（不限 mask）</strong></td><td>DINOv2</td><td>26.6</td><td>75.5</td><td>86.7</td><td>82.5</td><td>90.3</td></tr>
-<tr style="background:#eef7f1"><td><strong>MARCO† (限 mask)</strong></td><td>DINOv2</td><td><strong>27.0</strong></td><td><strong>77.6</strong></td><td><strong>87.2</strong></td><td><strong>83.4</strong></td><td><strong>91.1</strong></td></tr>
-</tbody>
-</table></div>
-<p><strong>三点读法。</strong>(1) <strong>越严格越赢</strong>：在 PCK@0.01 上 MARCO 比 Geo-SC 高 +5.3（SPair-71k）、+10.0（AP-10K）——细粒度定位是 sub-patch 上采样头 + coarse-to-fine 退火的直接回报。(2) <strong>跨科最难处增益最大</strong>：AP-10K 跨科（cross-family）@0.10 上 MARCO 比 Geo-SC 高约 +4.9。(3) <strong>用 bbox 代替 SAM mask 结果几乎不变</strong>——说明 MARCO 不依赖精确分割，bbox 这种廉价框就够。而且这一切是<strong>单 DINOv2 主干</strong>做到的，对手都是 DINOv2+SD 双编码器。</p>
-
-<h3>7.2 泛化：未见关键点（SPair-U）与未见类别（MP-100）</h3>
-<p>训练只在 SPair-71k，零样本测 SPair-U 和 MP-100。论文 Table 2（MP-100，PCK@0.10，完整 7 行转写）：</p>
-<div class="table-wrap"><table>
-<caption>表 2（论文 Table 2 完整转写）：MP-100 泛化 PCK@0.10。* 为无监督方法。粗体最佳。</caption>
-<thead><tr><th>方法</th><th>未见关键点·人脸</th><th>未见类别·服饰</th><th>未见类别·动物身体</th><th>未见类别·家具</th><th>未见类别·动物脸</th></tr></thead>
-<tbody>
-<tr><td>DINOv2 [37] *</td><td>66.2</td><td>44.7</td><td>36.1</td><td>44.2</td><td>33.3</td></tr>
-<tr><td>DIFT [43] *</td><td>87.3</td><td>48.2</td><td>31.0</td><td>46.9</td><td>26.5</td></tr>
-<tr><td>SD+DINO [53] *</td><td>85.3</td><td>50.2</td><td>36.1</td><td>49.2</td><td>39.6</td></tr>
-<tr><td>GECO [14]</td><td>82.9</td><td>41.7</td><td>31.9</td><td>48.1</td><td>38.2</td></tr>
-<tr><td>Geo-SC [54]</td><td>85.2</td><td>42.9</td><td>38.9</td><td>49.6</td><td>49.2</td></tr>
-<tr><td>Jamais Vu [32]</td><td>85.5</td><td>45.7</td><td>39.3</td><td>52.7</td><td>47.7</td></tr>
-<tr style="background:#eef7f1"><td><strong>MARCO（ours）</strong></td><td><strong>87.5</strong></td><td><strong>55.9</strong></td><td><strong>42.3</strong></td><td><strong>60.4</strong></td><td><strong>52.6</strong></td></tr>
-</tbody>
-</table></div>
-<p><strong>关键对比。</strong>MARCO 在<em>每一个</em>宏域都最高：人脸（未见关键点）+2.0 超 Jamais Vu；服饰 +10.2、家具 +7.7 超 Jamais Vu；动物身体 +3.0、动物脸 +4.9。关键在于<strong>趋势</strong>——Geo-SC 是 in-domain 最强（表 1），但一出域就掉得厉害；Jamais Vu 为泛化设计、出域掉得少但 in-domain 偏弱。<strong>MARCO 不是“用域内换泛化”，而是两头都涨</strong>。</p>
-
-<p>SPair-U（未见关键点，论文 Table 3）逐类 18 项 + 平均，篇幅所限只转写<strong>平均列</strong>（全表 18 类见原文）：</p>
-<div class="table-wrap"><table>
-<caption>表 3（论文 Table 3，仅平均列转写）：SPair-U 未见关键点 PCK@0.10 平均，全部训于 SPair-71k。</caption>
-<thead><tr><th>方法</th><th>avg PCK@0.10</th></tr></thead>
-<tbody>
-<tr><td>DINOv2 [37] *（冻结）</td><td>54.9</td></tr>
-<tr><td>DIFT [43] *</td><td>47.4</td></tr>
-<tr><td>DINOv2+SD [53] *</td><td>59.4</td></tr>
-<tr><td>Geo-SC [54]</td><td>56.9</td></tr>
-<tr><td>Jamais Vu [32]（次优）</td><td>62.4</td></tr>
-<tr style="background:#eef7f1"><td><strong>MARCO（ours）</strong></td><td><strong>67.5</strong></td></tr>
-</tbody>
-</table></div>
-<p>MARCO 平均 <strong>67.5</strong>，比次优的 Jamais Vu 高 <strong>+5.1</strong>。注意一个细节：监督方法 Geo-SC（56.9）<em>没比冻结 DINOv2（54.9）高多少</em>——再次印证稀疏监督在未见关键点上几乎白训；而 MARCO 把它从 54.9 拉到 67.5。</p>
-
-<figure>
-  <a href="../assets/figures/marco/marco_fig7.png"><img src="../assets/figures/marco/marco_fig7.png" alt="MARCO 在 MP-100 多类（牛、沙发、人脸、裙子、鸟、巴士、床、自行车、松鼠、家具等）上的定性对应：彩色连线把源图关键点连到目标图对应点"></a>
-  <figcaption><strong>图 6（论文附录定性图，MP-100 多类对应）：泛化的视觉证据。</strong>每对图用彩色连线把源图关键点连到目标图对应位置，跨牛/沙发/人脸/裙子/鸟/巴士/床/自行车/松鼠/家具等大量<em>训练里没出现过的类别</em>。看连线是否“平行、不交叉、落在语义对应部位”——MARCO 即使在这些未见类别上也能给出几何连贯的稠密对应。这与表 2 的数字相互印证：稠密自蒸馏学到的不是“SPair 的 18 类关键点词表”，而是<strong>可迁移的物体级对应结构</strong>。</figcaption>
-</figure>
+<h2>7. Experiments: precision and generalization are checked separately</h2>
+<h3>7.1 Standard benchmarks</h3>
+<p>Table 1 is the main in-domain comparison. The table reports per-image PCK in percent; higher is better. Intra-species, cross-species, and cross-family AP-10K splits are abbreviated as I.S., C.S., and C.F.</p>
+<div class="table-wrap"><table><caption><strong>Table 1, transcribed from the paper.</strong> Evaluation on standard benchmarks. <sup>&sect;</sup> uses depth maps at training; <sup>&dagger;</sup> uses object masks at training; <sup>&Dagger;</sup> uses object masks at inference.</caption><thead><tr><th rowspan="2">Method</th><th rowspan="2">Encoders</th><th colspan="3">SPair-71k</th><th colspan="3">AP-10K I.S.</th><th colspan="3">AP-10K C.S.</th><th colspan="3">AP-10K C.F.</th><th colspan="3">PF-PASCAL</th></tr><tr><th>0.01</th><th>0.05</th><th>0.10</th><th>0.01</th><th>0.05</th><th>0.10</th><th>0.01</th><th>0.05</th><th>0.10</th><th>0.01</th><th>0.05</th><th>0.10</th><th>0.05</th><th>0.10</th><th>0.15</th></tr></thead><tbody><tr><td>DINOv2+NN [53]</td><td>DINOv2</td><td>6.3</td><td>38.4</td><td>53.9</td><td>6.4</td><td>41.0</td><td>60.9</td><td>5.3</td><td>37.0</td><td>57.3</td><td>4.4</td><td>29.4</td><td>47.4</td><td>63.0</td><td>79.2</td><td>85.1</td></tr><tr><td>DIFT [43]</td><td>SD</td><td>7.2</td><td>39.7</td><td>52.9</td><td>6.2</td><td>34.8</td><td>50.3</td><td>5.1</td><td>30.8</td><td>46.0</td><td>3.7</td><td>22.4</td><td>35.0</td><td>66.0</td><td>81.1</td><td>87.2</td></tr><tr><td>SD+DINOv2 [53]</td><td>DINOv2 + SD</td><td>7.9</td><td>44.7</td><td>59.9</td><td>7.6</td><td>43.5</td><td>62.9</td><td>6.4</td><td>39.7</td><td>59.3</td><td>5.2</td><td>30.8</td><td>48.3</td><td>71.5</td><td>85.8</td><td>90.6</td></tr><tr><td>DIY-SC [7] <sup>&dagger;</sup></td><td>DINOv2 + SD</td><td>10.1</td><td>53.8</td><td>71.6</td><td>&mdash;</td><td>&mdash;</td><td>70.6</td><td>&mdash;</td><td>&mdash;</td><td>69.8</td><td>&mdash;</td><td>&mdash;</td><td>57.8</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr><tr><td>DHF [30]</td><td>SD</td><td>8.7</td><td>50.2</td><td>64.9</td><td>8.0</td><td>45.8</td><td>62.7</td><td>6.8</td><td>42.4</td><td>60.0</td><td>5.0</td><td>32.7</td><td>47.8</td><td>78.0</td><td>90.4</td><td>94.1</td></tr><tr><td>SD+DINOv2 [53]</td><td>DINOv2 + SD</td><td>9.6</td><td>57.7</td><td>74.6</td><td>9.9</td><td>57.0</td><td>77.0</td><td>8.8</td><td>53.9</td><td>74.0</td><td>6.9</td><td>46.2</td><td>65.8</td><td>80.9</td><td>93.6</td><td>96.9</td></tr><tr><td>GECO [14] <sup>&dagger;</sup></td><td>DINOv2</td><td>14.2</td><td>59.6</td><td>73.6</td><td>19.2</td><td>67.1</td><td>82.5</td><td>17.4</td><td>64.9</td><td>81.2</td><td>14.5</td><td>60.4</td><td>76.6</td><td>80.5</td><td>92.3</td><td>95.7</td></tr><tr><td>Jamais Vu [32] <sup>&dagger;&sect;</sup></td><td>DINOv2 + SD</td><td>20.5</td><td>71.9</td><td>82.5</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr><tr><td>Geo-SC [54] <sup>&Dagger;</sup></td><td>DINOv2 + SD</td><td>21.7</td><td>72.8</td><td>83.2</td><td>23.2</td><td>73.2</td><td>87.7</td><td>21.7</td><td>70.3</td><td>85.9</td><td>18.3</td><td>63.2</td><td>78.5</td><td>85.3</td><td>95.0</td><td>97.4</td></tr><tr><td>MARCO (ours)</td><td>DINOv2</td><td>26.6</td><td>75.5</td><td>86.7</td><td>31.1</td><td>77.0</td><td>88.7</td><td>31.3</td><td>74.7</td><td>87.5</td><td>27.4</td><td>69.9</td><td>82.5</td><td>90.3</td><td>96.8</td><td>98.6</td></tr><tr><td><strong>MARCO (ours) <sup>&dagger;</sup></strong></td><td><strong>DINOv2</strong></td><td><strong>27.0</strong></td><td><strong>77.6</strong></td><td><strong>87.2</strong></td><td><strong>32.6</strong></td><td><strong>77.4</strong></td><td><strong>89.1</strong></td><td><strong>32.2</strong></td><td><strong>76.6</strong></td><td><strong>88.3</strong></td><td><strong>28.5</strong></td><td><strong>71.1</strong></td><td><strong>83.4</strong></td><td><strong>91.1</strong></td><td><strong>96.9</strong></td><td><strong>98.6</strong></td></tr></tbody></table></div>
+<p>How to read it: under the paper's Table 1 setup, MARCO has the highest reported value in every displayed SPair-71k, AP-10K, and PF-PASCAL column. The largest fine-threshold comparison against Geo-SC is at AP-10K cross-family PCK@0.01: MARCO's 27.4 (no masks) or 28.5 (training masks, &dagger;) versus Geo-SC's 18.3 (inference masks, &Dagger;) — a large margin, though the mask settings differ. At the coarser SPair-71k PCK@0.10 threshold, MARCO is 86.7 (or 87.2 with &dagger; training masks) versus Geo-SC's 83.2.</p>
+<h3>7.2 MP-100 generalization</h3>
+<div class="table-wrap"><table><caption><strong>Table 2, transcribed from the paper.</strong> MP-100 generalization, per-image PCK@0.10 in percent. Methods with <sup>*</sup> are unsupervised.</caption><thead><tr><th>Method</th><th>Human face</th><th>Apparel items</th><th>Animal body</th><th>Home furniture</th><th>Animal face</th></tr></thead><tbody><tr><td>DINOv2 <sup>*</sup> [37]</td><td>66.2</td><td>44.7</td><td>36.1</td><td>44.2</td><td>33.3</td></tr><tr><td>DIFT <sup>*</sup> [43]</td><td>87.3</td><td>48.2</td><td>31.0</td><td>46.9</td><td>26.5</td></tr><tr><td>SD + DINO <sup>*</sup> [53]</td><td>85.3</td><td>50.2</td><td>36.1</td><td>49.2</td><td>39.6</td></tr><tr><td>GECO [14]</td><td>82.9</td><td>41.7</td><td>31.9</td><td>48.1</td><td>38.2</td></tr><tr><td>Geo-SC [54]</td><td>85.2</td><td>42.9</td><td>38.9</td><td>49.6</td><td>49.2</td></tr><tr><td>Jamais Vu [32]</td><td>85.5</td><td>45.7</td><td>39.3</td><td>52.7</td><td>47.7</td></tr><tr><td><strong>MARCO (ours)</strong></td><td><strong>87.5</strong></td><td><strong>55.9</strong></td><td><strong>42.3</strong></td><td><strong>60.4</strong></td><td><strong>52.6</strong></td></tr></tbody></table></div>
+<p>How to read it: MARCO is best in all five MP-100 macro-domain columns. The matched comparison to Jamais Vu is 87.5 versus 85.5 on human face, 55.9 versus 45.7 on apparel items, 42.3 versus 39.3 on animal body, 60.4 versus 52.7 on home furniture, and 52.6 versus 47.7 on animal face.</p>
+<h3>7.3 SPair-U unseen-keypoint generalization</h3>
+<div class="table-wrap"><table><caption><strong>Table 3, transcribed from the paper.</strong> SPair-U unseen-keypoint PCK@0.10 in percent. The category headers appear as class icons in the PDF; this page labels them C1-C18 in the original left-to-right order. Methods with <sup>*</sup> are unsupervised.</caption><thead><tr><th>Method</th><th>C1</th><th>C2</th><th>C3</th><th>C4</th><th>C5</th><th>C6</th><th>C7</th><th>C8</th><th>C9</th><th>C10</th><th>C11</th><th>C12</th><th>C13</th><th>C14</th><th>C15</th><th>C16</th><th>C17</th><th>C18</th><th>avg</th></tr></thead><tbody><tr><td>DIFT <sup>*</sup> [43]</td><td>73.2</td><td>71.8</td><td>48.8</td><td>37.7</td><td>43.0</td><td>55.1</td><td>47.2</td><td>25.4</td><td>35.9</td><td>60.4</td><td>46.2</td><td>41.6</td><td>59.9</td><td>53.1</td><td>57.8</td><td>36.1</td><td>50.6</td><td>19.5</td><td>47.4</td></tr><tr><td>DINOv2 <sup>*</sup> [37]</td><td>88.2</td><td>75.6</td><td>79.0</td><td>52.9</td><td>39.8</td><td>54.1</td><td>60.0</td><td>43.9</td><td>34.8</td><td>67.2</td><td>64.6</td><td>53.6</td><td>75.8</td><td>79.1</td><td>37.8</td><td>45.6</td><td>53.3</td><td>8.4</td><td>54.9</td></tr><tr><td>DINOv2+SD <sup>*</sup> [53]</td><td>88.0</td><td>80.4</td><td>72.3</td><td>48.2</td><td>47.9</td><td>62.3</td><td>61.5</td><td>44.8</td><td>45.0</td><td>73.0</td><td>64.7</td><td>58.2</td><td>75.5</td><td>80.0</td><td>62.7</td><td>46.1</td><td>55.9</td><td>16.9</td><td>59.4</td></tr><tr><td>DHF [30]</td><td>71.4</td><td>58.1</td><td>39.1</td><td>35.8</td><td>44.7</td><td>74.0</td><td>40.2</td><td>33.5</td><td>27.4</td><td>52.0</td><td>50.4</td><td>41.6</td><td>56.5</td><td>51.6</td><td>41.6</td><td>30.0</td><td>42.5</td><td>14.5</td><td>43.3</td></tr><tr><td>GECO [14]</td><td>59.8</td><td>63.3</td><td>50.8</td><td>57.7</td><td>31.5</td><td>80.6</td><td>53.7</td><td>61.1</td><td>38.6</td><td>72.4</td><td>80.7</td><td>72.7</td><td>56.2</td><td>58.9</td><td>33.5</td><td>59.7</td><td>40.0</td><td>41.7</td><td>55.2</td></tr><tr><td>Geo-SC [54]</td><td>80.9</td><td>71.4</td><td>51.8</td><td>65.3</td><td>36.9</td><td>91.0</td><td>70.8</td><td>55.7</td><td>36.9</td><td>55.7</td><td>79.2</td><td>53.7</td><td>66.5</td><td>62.3</td><td>61.1</td><td>39.0</td><td>39.0</td><td>17.4</td><td>56.9</td></tr><tr><td>Jamais Vu [32]</td><td>80.3</td><td>74.5</td><td>70.6</td><td>67.1</td><td>40.2</td><td>92.9</td><td>72.7</td><td>53.8</td><td>45.8</td><td>68.5</td><td>75.3</td><td>62.0</td><td>67.8</td><td>65.4</td><td>68.1</td><td>45.4</td><td>47.9</td><td>30.5</td><td>62.4</td></tr><tr><td><strong>MARCO (ours)</strong></td><td><strong>86.6</strong></td><td><strong>78.2</strong></td><td>55.8</td><td><strong>71.7</strong></td><td>36.8</td><td>92.5</td><td><strong>79.2</strong></td><td><strong>62.7</strong></td><td><strong>62.9</strong></td><td>63.9</td><td>79.3</td><td><strong>69.6</strong></td><td><strong>73.7</strong></td><td><strong>78.1</strong></td><td><strong>74.2</strong></td><td><strong>55.4</strong></td><td>35.8</td><td><strong>51.9</strong></td><td><strong>67.5</strong></td></tr></tbody></table></div>
+<p>How to read it: the clean aggregate comparison is the average column. MARCO reaches 67.5, above Jamais Vu at 62.4, DINOv2+SD at 59.4, Geo-SC at 56.9, and frozen DINOv2 at 54.9. Individual class columns are more mixed, so the honest claim is strongest on the average and on the paper's broad generalization trend, not on every class.</p>
+<figure class="fig-wide"><a href="../assets/figures/marco/marco_fig7.png"><img src="../assets/figures/marco/marco_fig7.png" alt="Qualitative MARCO correspondences across MP-100 and SPair-71k image pairs"></a><figcaption><strong>Figure 6 | Qualitative evidence for the same claim.</strong> The colored lines show source-to-target keypoint matches across varied species, clothing, vehicles, and furniture. The figure is not a leaderboard, but it helps check whether the quantitative gains correspond to coherent geometry rather than isolated keypoint hits.</figcaption></figure>
+<div class="socratic"><p class="question">Q: Does Table 1 alone prove the method generalizes?</p><p class="guide">Guide: Table 1 mostly checks known benchmark settings. Generalization needs the MP-100 and SPair-U tables.</p><p class="answer">A: No. Table 1 proves precision on standard benchmarks; Tables 2 and 3 test the unseen space.</p><p class="takeaway"><strong>Takeaway:</strong> MARCO's claim is credible because the in-domain and out-of-domain tables both move in the same direction.</p></div>
 </section>
 
 <section id="ablations">
-<h2>八、消融：到底是哪一步在补泛化？</h2>
-<p>论文 Table 4 在 SPair-71k（域内，看 @0.01 / @0.10）与 SPair-U（未见关键点，看 @0.10）上分组消融——每组只改一个变量、其余固定。完整转写如下：</p>
-<div class="table-wrap"><table>
-<caption>表 4（论文 Table 4 完整转写）：分组消融 PCK(%)。</caption>
-<thead><tr><th>组</th><th>配置</th><th>SPair-71k @0.01</th><th>@0.10</th><th>SPair-U @0.10</th></tr></thead>
-<tbody>
-<tr><td rowspan="3">架构</td><td>DINOv2（冻结）</td><td>6.3</td><td>53.9</td><td>54.9</td></tr>
-<tr><td>+ Adapter</td><td>14.4</td><td>76.9</td><td>60.7</td></tr>
-<tr><td>+ Upsampling（ours）</td><td>27.0</td><td>87.2</td><td>67.5</td></tr>
-<tr><td rowspan="3">GT 监督</td><td>固定 σ=3</td><td>19.5</td><td>86.8</td><td>66.6</td></tr>
-<tr><td>固定 σ=1</td><td>27.8</td><td>81.0</td><td>62.2</td></tr>
-<tr><td>Coarse-to-fine（ours）</td><td>27.0</td><td>87.2</td><td>67.5</td></tr>
-<tr><td rowspan="5">稠密自蒸馏</td><td>无稠密 loss</td><td>26.8</td><td>85.6</td><td>41.8</td></tr>
-<tr><td>+ Raw flow（原始流）</td><td>25.2</td><td>84.6</td><td>49.6</td></tr>
-<tr><td>+ MNN 匹配</td><td>26.5</td><td>85.9</td><td>52.5</td></tr>
-<tr><td>+ Delaunay & warp</td><td>26.7</td><td>86.2</td><td>64.7</td></tr>
-<tr style="background:#eef7f1"><td>+ GT anchor（ours）</td><td><strong>27.0</strong></td><td><strong>87.2</strong></td><td><strong>67.5</strong></td></tr>
-</tbody>
-</table></div>
-<p><strong>三组各自的故事。</strong></p>
-<ul>
-<li><strong>架构组：</strong>adapter（@0.01: 6.3→14.4）和上采样头（→27.0）各贡献一大截 sub-patch 精度——这两个轻量件就把冻结 DINOv2 变成了精确对应主干。</li>
-<li><strong>GT 监督组：</strong>印证了 §5.1 的张力——固定 σ=1 域内细粒度最好（27.8@0.01）但泛化掉（62.2），固定 σ=3 反过来；退火同时保住两头（27.0 / 87.2 / 67.5）。</li>
-<li><strong>稠密自蒸馏组（最关键的一组）：</strong>这是一条干净的<strong>上升阶梯</strong>，专看 SPair-U 这列——无稠密 loss <strong>41.8</strong>（比冻结 DINOv2 的 54.9 还低，稀疏监督把泛化磨没了）→ 原始流 <strong>49.6</strong> → MNN <strong>52.5</strong>（仍不如冻结的，−2.4）→ +Delaunay densify <strong>64.7</strong>（+12.2，densify 是最大单跳）→ +GT anchor <strong>67.5</strong>（过滤对称/遮挡错配再 +2.8，且不伤域内）。<strong>每一步都把泛化往上抬，densify 这一跳贡献最大。</strong></li>
-</ul>
-<p class="note">更多消融（Window soft-argmax、bbox vs mask、更多超参）在 Supp. Material，正文未给完整数表，此处不逐项转写。</p>
+<h2>8. Ablations: the dense objective explains the generalization gain</h2>
+<p>The main ablation table separates three component groups. Architecture changes mostly raise both seen and unseen accuracy. The coarse-to-fine schedule balances fine localization and coarse semantic alignment. The dense self-distillation block is the decisive unseen-keypoint test.</p>
+<div class="table-wrap"><table><caption><strong>Table 4, transcribed from the paper.</strong> Per-image PCK in percent on SPair-71k and SPair-U. Each component group is assessed independently, keeping the others fixed.</caption><thead><tr><th>Group</th><th>Setting</th><th>SPair-71k @0.01</th><th>SPair-71k @0.10</th><th>SPair-U @0.10</th></tr></thead><tbody><tr><td rowspan="3">Architecture</td><td>DINOv2 (frozen)</td><td>6.3</td><td>53.9</td><td>54.9</td></tr><tr><td>+ Adapter</td><td>14.4</td><td>76.9</td><td>60.7</td></tr><tr><td>+ Upsampling (ours)</td><td>27.0</td><td>87.2</td><td>67.5</td></tr><tr><td rowspan="3">Supervision with GT</td><td>Fixed \(\sigma=3\)</td><td>19.5</td><td>86.8</td><td>66.6</td></tr><tr><td>Fixed \(\sigma=1\)</td><td>27.8</td><td>81.0</td><td>62.2</td></tr><tr><td>Coarse-to-fine (ours)</td><td>27.0</td><td>87.2</td><td>67.5</td></tr><tr><td rowspan="5">Dense self-distillation</td><td>Ours w/o dense loss</td><td>26.8</td><td>85.6</td><td>41.8</td></tr><tr><td>+ Raw flow</td><td>25.2</td><td>84.6</td><td>49.6</td></tr><tr><td>+ MNN matches</td><td>26.5</td><td>85.9</td><td>52.5</td></tr><tr><td>+ Delaunay &amp; warp</td><td>26.7</td><td>86.2</td><td>64.7</td></tr><tr><td><strong>+ GT anchor (ours)</strong></td><td><strong>27.0</strong></td><td><strong>87.2</strong></td><td><strong>67.5</strong></td></tr></tbody></table></div>
+<p>The dense-loss rows are the causal spine. Without dense loss, SPair-U drops to 41.8, far below frozen DINOv2 at 54.9. Mutual nearest neighbors alone recover only to 52.5. Delaunay densification jumps to 64.7. Ground-truth anchoring then reaches 67.5 while keeping SPair-71k at 87.2. That is the paper's cleanest validation of the "sparse-to-dense" mechanism.</p>
+<div class="table-wrap"><table><caption><strong>Supplementary Table 5, transcribed from the paper.</strong> General applicability of the dense self-distillation loss. Per-image PCK in percent on SPair-71k and SPair-U; models are trained on SPair-71k.</caption><thead><tr><th>Method</th><th>Encoders</th><th>SPair-71k 0.01</th><th>SPair-71k 0.05</th><th>SPair-71k 0.10</th><th>SPair-U 0.01</th><th>SPair-U 0.05</th><th>SPair-U 0.10</th></tr></thead><tbody><tr><td>Jamais Vu [32]</td><td>SD+DINO</td><td>20.5</td><td>71.9</td><td>82.5</td><td>4.2</td><td>37.8</td><td>62.4</td></tr><tr><td>Geo-SC [54]</td><td>SD+DINO</td><td>21.7</td><td>72.8</td><td>83.2</td><td>3.9</td><td>35.4</td><td>56.9</td></tr><tr><td>Geo-SC + dense self-distillation loss</td><td>SD+DINO</td><td>20.8</td><td>73.0</td><td>83.6</td><td>4.2</td><td>38.1</td><td>63.4</td></tr><tr><td><strong>MARCO (ours)</strong></td><td><strong>DINOv2</strong></td><td><strong>27.0</strong></td><td><strong>77.6</strong></td><td><strong>87.2</strong></td><td><strong>4.7</strong></td><td><strong>41.7</strong></td><td><strong>67.5</strong></td></tr></tbody></table></div>
+<p>Supplementary Table 5 gives an independent validation. Adding the dense self-distillation loss to Geo-SC raises SPair-U PCK@0.10 from 56.9 to 63.4 while leaving SPair-71k PCK@0.10 at 83.6. That does not match full MARCO's 67.5, but it supports the paper's claim that flow anchoring is a transferable training principle rather than only a MARCO-specific trick.</p>
+<div class="socratic"><p class="question">Q: Which ablation should a skeptical reader trust most?</p><p class="guide">Guide: prefer the row where the proposed cause is removed and the predicted failure appears. Here, the predicted failure is unseen-keypoint collapse.</p><p class="answer">A: The "w/o dense loss" row is the key. It keeps strong SPair-71k accuracy but collapses on SPair-U.</p><p class="takeaway"><strong>Takeaway:</strong> The mechanism is not just better features; it is dense supervision preventing sparse-label over-specialization.</p></div>
 </section>
 
 <section id="limitations">
-<h2>九、局限与复现门槛</h2>
-<ul>
-<li><strong>仍依赖稀疏 GT 关键点当锚点。</strong>flow anchoring 的过滤完全建立在“每个保留聚类里要含一对 GT 对应”上。所以 MARCO 是把<em>稀疏监督的利用率</em>做到极致，而非完全无监督——一个没有任何 GT 锚点的类别，这套过滤就无从施展。论文在结语里也把“进一步减少对稀疏监督的依赖、用上大规模无约束数据”列为下一步。</li>
-<li><strong>精度上限被 DINOv2 + 伪标签质量锁住。</strong>整套方法是“把 DINOv2 特征空间里<em>本就存在</em>的可靠结构挖出来铺满”。若某类物体在 DINOv2 特征里本就缺乏可靠 MNN（如极度可形变、纹理贫乏的物体），seed 稀、densify 出来的伪标签也会噪——这是方法的天然边界。</li>
-<li><strong>伪标签噪声与对称错配。</strong>论文坦承位移场“难免含错配”（对称、遮挡、模型误差），flow anchoring 是缓解而非根除；学生改用宽松 $L_2$ 也是对这层噪声的妥协。</li>
-<li><strong>训练时长 / 硬件未披露。</strong>正文仅给 10 epochs / batch 16 / Adam，<strong>未给 GPU 卡数与墙钟时间</strong>，故本文不做 GPU-hours 估算（按论文披露数字粗略估算，不等同于实际账单）。部分超参（$\sigma$ 退火总步 $T$、adapter 瓶颈维 $d$、MP-100 完整统计）置于 Supp. Material，正文未全列。</li>
-<li><strong>表格节选说明。</strong>本文 Table 1 为代表性节选转写（原表含更多无监督行与 PF-PASCAL 三阈值）、Table 3 仅转写平均列（全 18 类逐项见原文）；Table 2、Table 4 为完整转写。</li>
-</ul>
+<h2>9. Limitations: where the result should stop</h2>
+<div class="table-wrap"><table><caption><strong>Limitations and reproduction cost.</strong> Each row is stated by the paper or follows directly from its disclosed setup.</caption><thead><tr><th>Boundary</th><th>Paper evidence</th><th>How to read it</th></tr></thead><tbody><tr><td>Sparse anchors remain necessary</td><td>Flow clusters are retained when they contain ground-truth source and target keypoints.</td><td>MARCO densifies sparse supervision; it is not a fully unsupervised correspondence learner.</td></tr><tr><td>Pseudo-label quality depends on the feature space</td><td>Mutual nearest neighbors and Delaunay warps are mined from teacher features.</td><td>If DINOv2 does not provide reliable local seeds for a domain, the dense field can inherit that weakness.</td></tr><tr><td>Symmetry and occlusion remain hard</td><td>The paper explicitly filters erroneous matches caused by symmetries, occlusions, and model inaccuracies.</td><td>Ground-truth anchoring mitigates those errors but does not prove they disappear.</td></tr><tr><td>MP-100 is an evaluation protocol, not a new training corpus</td><td>Models are trained on SPair-71k and evaluated zero-shot on MP-100 splits.</td><td>The benchmark is valuable for stress-testing generalization, but results depend on this particular split construction.</td></tr><tr><td>Training compute is not fully disclosed</td><td>The PDF states epochs, batch size, optimizer, learning rate, EMA momentum, and inference speed, but not training GPU count or wall-clock time.</td><td>Reproduction cost cannot be estimated from the paper alone.</td></tr></tbody></table></div>
+<div class="socratic"><p class="question">Q: What would be the easiest overstatement?</p><p class="guide">Guide: compare "dense self-distillation helps generalization" with "the method solves semantic correspondence in general."</p><p class="answer">A: The paper supports the first claim, not the second. It still needs sparse anchors and DINOv2-quality seeds.</p><p class="takeaway"><strong>Takeaway:</strong> MARCO is best read as a strong sparse-supervision amplifier, not as the end of correspondence supervision.</p></div>
 </section>
 
 <section id="summary">
-<h2>十、总结：稀疏监督的问题不是“不够多”，而是“太偏”</h2>
-<p>MARCO 的洞见小而锋利：语义对应的泛化能力<strong>原本就在 DINOv2 的预训练特征里</strong>（Fig. 2a 满屏都对得上），是<em>稀疏关键点监督把它磨没了</em>（Fig. 2b 塌缩到标注点）。所以与其堆更大的双编码器、引入 3D 模板，不如<strong>把稀疏标注 densify 回整块物体表面</strong>——用 EMA 教师挖 MNN seed、Delaunay + 仿射 warp 插成稠密位移场、再用 GT 关键点 anchor 过滤错配，把一把关键点变成数千条可靠伪对应（Fig. 2c 把流重新铺满）。配上 coarse-to-fine 的退火 RBF 目标管 sub-patch 精度，单个 DINOv2 主干就同时拿下域内 SOTA（PCK@0.01 +8.9）、未见关键点（SPair-U +5.1）、未见类别（MP-100 +4.7），还比扩散双编码器小 3×、快 10×。</p>
-<p><strong>一句话 Takeaway。</strong>当监督信号稀疏、而你的特征提取器（预训练大模型）本身已携带可迁移结构时，正确的姿势往往<em>不是引入更多外部先验</em>，而是<strong>把模型自己当老师、把它特征里自发涌现的可靠结构挖出来、densify 成稠密自监督，再用那一把稀疏 GT 仅仅充当“过滤错配的锚点”</strong>。监督从“标注几个点”升级成“约束整块表面”，泛化就是这么赚回来的。这个“自蒸馏 densify + GT 锚定”的范式，适用面远不止语义对应。</p>
+<h2>10. Summary: the useful mental model</h2>
+<p><strong>In one sentence:</strong> MARCO treats sparse keypoint labels as anchors for selecting reliable dense pseudo-correspondences, so a single DINOv2 backbone can improve both fine localization and transfer beyond the seen keypoint vocabulary.</p>
+<div class="note"><p class="note-title">Three takeaways</p><ol><li><strong>The failure is targeted.</strong> Sparse supervised fine-tuning can make seen keypoints better while damaging object-wide flow.</li><li><strong>The fix is dense but filtered.</strong> MARCO mines mutual nearest neighbors, spreads them with Delaunay warps, and keeps only ground-truth-anchored flow clusters.</li><li><strong>The evidence comes from multiple angles.</strong> Figure 2 shows the flow restoration, Table 4 shows the causal ablation, Table 2 and Table 3 show zero-shot generalization, and Supplementary Table 5 shows the dense loss helps another model too.</li></ol></div>
+<div class="socratic"><p class="question">Q: What is the smallest version of the paper's idea?</p><p class="guide">Guide: remove the engineering details and keep the causal claim.</p><p class="answer">A: Do not let sparse labels be the whole teacher. Use them to validate dense labels the model can mine for itself.</p><p class="takeaway"><strong>Takeaway:</strong> The paper's design pattern is sparse labels as anchors, dense self-supervision as coverage.</p></div>
 </section>
 
-<section id="references">
-<h2>参考与署名</h2>
-<ul>
-<li><strong>原文：</strong>Claudia Cuttano, Gabriele Trivigno, Carlo Masone, Stefan Roth. <em>MARCO: Navigating the Unseen Space of Semantic Correspondence.</em> arXiv:2604.18267 v1（2026-04-20）。Politecnico di Torino / TU Darmstadt / hessian.AI / ELIZA。CVPR 2026 · <strong>Oral</strong>；Top Paper（候选，来自 SkalskiP/top-cvpr-2026-papers 策展榜单，非官方奖项）。</li>
-<li><strong>本文依据：</strong>全部数值、公式（式 1–7 对应论文式 4–17）、表格（Table 2 / Table 4 完整转写；Table 1 代表性节选；Table 3 仅平均列）均以 arXiv:2604.18267 v1 PDF 正文 + 附录图为准；论文未说明处已标注“论文未说明”。</li>
-<li><strong>代码：</strong>官方仓库 <a href="https://github.com/visinf/MARCO" target="_blank" rel="noopener">github.com/visinf/MARCO</a>（HTTP 200，已核查）；项目页 <a href="https://visinf.github.io/MARCO/" target="_blank" rel="noopener">visinf.github.io/MARCO</a>。CVF CVPR 2026 openaccess 页面当前 404（proceedings 尚未上线），故未链接。</li>
-<li><strong>方法论署名（红线说明）：</strong>本文的机制写作（动机先行、每个假设/近似显式标出、关键结论从 ≥2 角度交叉验证、重新推导而非罗列）采用了 <strong>苏剑林 / kexue.fm 的科学推导方法论</strong>。但本次 <code>kexue:su</code> 语料检索返回的卡片（SimBERTv2、CUR 分解检索、DGCNN 信息抽取、扩散模型恒等式蒸馏等）<strong>均与“语义对应 / DINOv2 特征匹配 / coarse-to-fine 关键点监督 / EMA 自蒸馏稠密伪标签”主题不吻合</strong>，按归因红线，<strong>不</strong>对本文任何具体技术主张做 <code>kexue.fm archive</code> 苏剑林引用——仅应用其方法论姿态，特此说明。</li>
-<li><strong>关键参照文献（论文引用，原编号）：</strong>DINOv2 [37]、Stable Diffusion [40]、AdaptFormer [4]、SAM [22]、Jamais Vu [32]、Geo-SC [54]、GECO [14]、DIFT [43]、SD+DINO [53]、DistillDIFT [10]、SCorrSAN [18]、DHF [30]；基准 SPair-71k [34]、PF-PASCAL [13]、AP-10K [51]、MP-100 [48]、SPair-U [32]、PF-WILLOW [13]。</li>
-</ul>
+<section id="references" class="references">
+<h2>Sources and figure provenance</h2>
+<ol>
+<li>Claudia Cuttano, Gabriele Trivigno, Carlo Masone, Stefan Roth. <em>MARCO: Navigating the Unseen Space of Semantic Correspondence.</em> arXiv:2604.18267v1 [cs.CV], 20 Apr 2026. The PDF states that the paper is to appear in the Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, Denver, CO, USA, 2026.</li>
+<li>All equations, tables, dataset counts, training settings, and numerical comparisons in this page are taken from <code>/tmp/marco.txt</code>, produced from the local PDF with <code>pdftotext -layout /data/weidong/Paper2Html/cvpr2026-best-papers-digest/sources/marco.pdf /tmp/marco.txt</code>. Explanatory framing is reader interpretation from the paper.</li>
+<li>Figure provenance: the in-text PNGs are local repository assets under <code>assets/figures/marco/</code>. Page Figure 1 uses <code>marco_fig1.png</code> from paper Figure 1; Page Figure 2 uses <code>marco_fig2.png</code> from paper Figure 2; Page Figure 3 uses <code>marco_fig6.png</code> from supplementary Figure 6; Page Figure 4 uses <code>marco_fig3.png</code> from paper Figure 3; Page Figure 5 uses <code>marco_fig4.png</code> from paper Figure 4; Page Figure 6 uses <code>marco_fig7.png</code> from supplementary Figure 7. The PDF Figure 5 macro-domain summary is not embedded because the repository asset set does not include <code>marco_fig5.png</code>.</li>
+<li>Referenced methods and datasets follow the paper's citation numbering, including DINOv2 [37], Stable Diffusion [40], AdaptFormer [4], SAM [22], Jamais Vu [32], Geo-SC [54], GECO [14], DIFT [43], SD+DINO [53], SPair-71k [34], PF-PASCAL [13], AP-10K [51], MP-100 [48], and SPair-U [32]. No external claims are added beyond the PDF text.</li>
+</ol>
 </section>
-
-</main>
-<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与基准</a></li><li><a href="#pipeline">Pipeline / 架构</a></li><li><a href="#method">方法 / 两条目标</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>MARCO: Navigating the Unseen Space of Semantic Correspondence</dd><dt>Venue</dt><dd>CVPR 2026 · Oral · Top Paper (candidate)</dd><dt>机构</dt><dd>Politecnico di Torino / TU Darmstadt / hessian.AI / ELIZA</dd><dt>任务</dt><dd>可泛化语义对应（单 DINOv2 主干 + 稠密化自蒸馏）</dd><dt>arXiv</dt><dd>2604.18267 v1</dd><dt>Topic</dt><dd>Semantic Correspondence · Feature Matching · Generalization</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：in→out-of-domain 谁掉得慢；单主干 323M vs 950M</li><li>图 3：稀疏 GT 经 a→b→c densify 成稠密伪对应</li><li>式 3：核宽 σ 余弦退火 3→1（coarse-to-fine）</li><li>式 6：聚类 + GT 锚定过滤对称错配</li><li>图 4：聚类管“连贯”、GT 锚点管“指对地方”</li><li>表 2：MP-100 每个宏域都最高（未见类别 +7~10）</li><li>表 4：稠密自蒸馏阶梯 41.8→67.5（densify 跳最大）</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> MARCO 深读</p><p><span class="status-good">figures</span> 6 张 PNG（fig1/2/3/4/6/7，原生分辨率）</p><p><span class="status-good">tables</span> Table 2/4 完整 + Table 1 节选 + Table 3 平均列</p><p><span class="status-good">formula</span> 式 1–7（对应论文式 4–17）</p><p><span class="status-warn">scope</span> 仍需稀疏 GT 当锚点；精度被 DINOv2/伪标签质量锁；训练时长未披露</p></div></section></aside></div>
+</main><footer class="article-footer">Paper Digest · MARCO deep-read. Formulas are written as MathJax TeX; information not disclosed in the paper is marked as not stated.</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">Contents</h2><div class="side-body"><ol><li><a href="#lead">Lead</a></li><li><a href="#motivation">Motivation</a></li><li><a href="#contribution">Contributions</a></li><li><a href="#datasets">Datasets</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">Method</a></li><li><a href="#training">Training</a></li><li><a href="#experiments">Experiments</a></li><li><a href="#ablations">Ablations</a></li><li><a href="#limitations">Limitations</a></li><li><a href="#summary">Summary</a></li><li><a href="#references">References</a></li></ol></div></section><section class="side-card"><h2 class="side-title">Paper Info</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>MARCO: Navigating the Unseen Space of Semantic Correspondence</dd><dt>Venue</dt><dd>CVPR 2026 digest entry; source PDF arXiv:2604.18267v1</dd><dt>Team</dt><dd>Politecnico di Torino; TU Darmstadt; hessian.AI; ELIZA</dd><dt>Backbone</dt><dd>DINOv2 ViT-L/14 with AdaptFormer and 4x upsampling</dd><dt>Task</dt><dd>Semantic correspondence under seen and unseen keypoints</dd></dl></div></section><section class="side-card"><h2 class="side-title">Key Evidence</h2><div class="side-body"><ul><li>Figure 2: sparse supervision contracts dense flow</li><li>Eq. 5: coarse-to-fine bandwidth schedule</li><li>Eq. 6-10: flow anchoring and self-distillation</li><li>Table 2: MP-100 zero-shot generalization</li><li>Table 4: dense self-distillation ablation</li></ul></div></section><section class="side-card"><h2 class="side-title">Status</h2><div class="side-body"><p><span class="status-good">completed</span> English MARCO rewrite</p><p><span class="status-good">figures</span> 6 local PNGs reused</p><p><span class="status-good">tables</span> Main Tables 1-4 plus Supplementary Tables 5 and 12 transcribed</p><p><span class="status-warn">scope</span> Sparse ground-truth anchors still required during training</p></div></section></aside></div>
 </body>
 </html>

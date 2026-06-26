@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>虚拟结肠外翻与旋转深读：为什么把肠子"翻过来看"要沿光滑的外表面中心线？</title>
-<meta name="description" content="Virtual Colonoscopy / CTC · Zhang, Zhao, Lu, Li, Wang, Virtual eversion and rotation of colon based on outer surface centerline (Medical Physics 2010) 学术深读">
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtual eversion: why a smoother outer centerline makes the inside-out colon readable</title>
+<meta name="description" content="Paper Digest · Virtual eversion and rotation of colon based on outer surface centerline — Medical Physics 2010 English deep-read">
 <script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+/* ===== Paper2Html shell · refined academic theme ===== */
 :root{
   --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
   --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
@@ -250,9 +250,9 @@ body.lb-lock{overflow:hidden}
     var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
     var overlay=document.createElement("div");
     overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
-    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+    overlay.innerHTML='<button class="lb-close" aria-label="Close">×</button>'+
       '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
-      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+      '<div class="lb-hint">Click anywhere or press Esc to close</div>';
     document.body.appendChild(overlay);
     var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
     function openLB(src,cap){
@@ -309,7 +309,7 @@ body.lb-lock{overflow:hidden}
     (function(){
       var title=document.querySelector(".site-title");if(!title)return;
       var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
-      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      var hp=nav.filter(function(a){return /home/i.test(a.textContent);})[0];
       if(hp)home=hp.getAttribute("href");
       else if(document.querySelector(".home"))home="index.html";
       if(!home)return;
@@ -327,12 +327,12 @@ body.lb-lock{overflow:hidden}
         function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
         if(!head.querySelector(".quick-links")){
           var bar=document.createElement("div");bar.className="quick-links";
-          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+          bar.innerHTML='<span class="ql-label">Links</span>'+chips();head.appendChild(bar);
         }
         var sb=document.querySelector(".sidebar");
         if(sb&&!sb.querySelector(".quick-links-side")){
           var card=document.createElement("section");card.className="side-card";
-          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          card.innerHTML='<h2 class="side-title">Links</h2><div class="side-body quick-links-side">'+chips()+'</div>';
           sb.insertBefore(card,sb.firstChild);
         }
       }
@@ -350,181 +350,340 @@ body.lb-lock{overflow:hidden}
 </script>
 </head>
 <body>
-<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>Medical Physics 2010 · 虚拟结肠镜 / CTC</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
-<div class="wrap"><div class="breadcrumbs">首页 &gt; 虚拟结肠镜 / CTC &gt; 结肠外翻 &gt; 外表面中心线</div>
-<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">24</span><span class="month">JUN</span></div><h1 id="paper-title">虚拟结肠外翻与旋转深读：为什么把肠子"翻过来看"，采样要沿光滑的<u>外表面</u>中心线？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-24</span><span>Medical Physics, 37(10) 2010: 5518–5529</span><span>来源：Wiley/AAPM PDF（机构访问下载）</span></div><div class="tags"><span class="tag orange">Virtual Colonoscopy / CTC</span><span class="tag">Colonoscopy</span><span class="tag">Virtual Eversion</span><span class="tag">Visualization</span><span class="tag green">SJTU · Jun Zhao Lab</span><span class="tag">MathJax checked</span></div></header>
-<main class="content">
+<header class="site-header">
+  <div class="site-header-inner">
+    <div><p class="site-title">Paper Digest<small>Medical Physics 2010 · CT colonography visualization</small></p></div>
+    <nav class="top-nav"><a href="../index.html">Home</a><a href="#lead">Lead</a><a href="#pipeline">Pipeline</a><a href="#method">Method</a><a href="#experiments">Experiments</a><a href="#limitations">Limitations</a></nav>
+  </div>
+</header>
 
-<!-- LEAD -->
-<p id="abstract" class="lead"><strong>导读。</strong>虚拟结肠外翻（Virtual Eversion，VE）是一种很反直觉的可视化：把结肠的内表面（黏膜面）<strong>翻到外面</strong>，同时保持结肠原来的弯曲走形——像把袜子外翻但不拉直。这样一来，整段黏膜面既能在全局视角一次看全、又能局部放大细看，不必像虚拟结肠镜那样沿管腔一路"飞越"。它和虚拟结肠镜（VC）、虚拟展平（VF）是三种互补的看结肠方式。麻烦在于：外翻的采样要沿"中心线"建电场来一对一地把内表面点翻到参考面外侧，而传统用的<strong>内表面中心线</strong>因为黏膜皱襞而<u>蜿蜒锯齿</u>，建出的电场线不规则、相互交叉，于是高曲率处出现"翻坏的区域"（皱襞重叠、表面撕裂），息肉藏在里面找不到。本文的回答是：改用结肠<strong>外表面中心线</strong>——外表面光滑、没有皱襞，中心线随之光滑，电场线均匀，外翻就忠实了。配套三件事：用<u>并联双 sigmoid</u>的改进 GAC 水平集把真外表面（连造影剂区）抠出来；用<u>电场线 + 双线性插值</u>的混合采样把外翻提速；用<u>虚拟旋转</u>把高曲率处挤成一团的结构转开看清。结果：外翻基于外表面中心线，比基于内表面的"翻坏区域"少 71%（6.8→1.9 个/例）；CT 上外翻计算耗时从 983 s 降到 75 s（少 92%）；阅片时间比虚拟结肠镜少约 77%，检出率持平。</p>
+<div class="wrap">
+  <div class="breadcrumbs">Home &gt; Medical Imaging &gt; Virtual Colonoscopy &gt; Virtual Eversion</div>
 
-<!-- HERO -->
-<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>一句话贡献</b>把虚拟外翻的采样中心线从锯齿状的<strong>内表面中心线</strong>换成光滑的<strong>外表面中心线</strong>，让"把肠子翻过来看"在高曲率处不再翻坏。</div><div class="kv"><b>关键机制</b>外翻=沿采样线把内表面点关于参考（外）面做保测地距离的反射 $E=2R-I$；光滑外中心线 → 均匀电场线 → 忠实反射。配并联 sigmoid 抠外表面、混合采样提速、虚拟旋转看背面。</div><div class="kv"><b>核心证据</b>翻坏区域 6.8→1.9 个/例（少 71%）；外翻计算 983 s→75 s（少 92%）；阅片 CT 98 s vs VC 434 s（少 77%），检出 36/46 vs 37/46。</div><div class="kv"><b>复现门槛</b>87 套 CT + 2 个体模；阅片样本小（20 套做性能对比）；电场/采样参数 $k{=}10,n{=}40,m{=}10$ 等经验设定；2010 年单机 CPU；代码未开源。</div></div></div><figure class="hero-card"><a href="../assets/figures/eversion/eversion_fig8.png"><img src="../assets/figures/eversion/eversion_fig8.png" alt="体模外翻结果：外表面中心线 vs 内表面中心线"></a><figcaption><strong>图 8 · 外翻效果对比（论文 Fig. 8）。</strong>（a）体模 A、（d）体模 B；（b）（e）基于<strong>外表面中心线</strong>的外翻——皱襞规整、表面完整；（c）（f）基于<strong>内表面中心线</strong>的外翻——皱襞与息肉被翻坏。同一根肠子、同一套外翻算法，只换了"沿哪条中心线采样"，结果天差地别。这就是全文的赌注。</figcaption></figure></div>
+  <article class="article" aria-labelledby="paper-title">
+    <header class="article-head clearfix">
+      <div class="date-card"><span class="day">26</span><span class="month">JUN</span></div>
+      <h1 id="paper-title">Virtual eversion: why a smoother outer centerline makes the inside-out colon readable</h1>
+      <div class="article-meta"><span>Paper2Html</span><span>2026-06-26</span><span>Medical Physics 37(10), 5518-5529, 2010</span><span>Source: local PDF</span></div>
+      <div class="tags"><span class="tag orange">Virtual Colonoscopy</span><span class="tag">CT Colonography</span><span class="tag">Virtual Eversion</span><span class="tag">Outer Surface Centerline</span><span class="tag green">Deterministic Geometry</span><span class="tag">MathJax checked</span></div>
+    </header>
 
-<!-- MOTIVATION -->
-<section id="motivation"><h2>1. 核心问题：要"把肠子翻过来看"，沿哪条线采样？</h2>
-<p>虚拟结肠镜（VC）让医生沿管腔"飞越"检查，视野小、易把息肉漏在皱襞背面，且耗时。虚拟外翻是另一条路：把内表面（黏膜）翻到外侧、serosa 翻到内侧，同时<strong>保持结肠原本的弯曲路径</strong>。好处是两点——① 外翻后的肠子可以用全局视角快速浏览、再用局部视角精看；② 外翻保留了解剖结构的骨架、形状与空间关系。它不像展平那样把肠子摊平丢掉走形，而是"原地翻面"。</p>
-<p>但外翻怎么实现？经典做法是在中心线上建一个"局部电场模型"：把中心线点当正电荷，放出电场线作采样线，沿采样线把内表面上的点逐点翻到参考面外侧。问题就卡在<strong>用哪条中心线</strong>：传统用<strong>内表面中心线</strong>，而内表面布满皱襞，导致中心线呈<u>锯齿状蜿蜒</u>。中心线越锯齿，建出的电场越不规则、电场线越容易相互交叉，外翻就越扭曲——高曲率处出现"翻坏的区域"（皱襞重叠、表面撕裂），息肉就藏在这些坏区里。</p>
-<figure class="fig-wide"><a href="../assets/figures/eversion/eversion_fig3.png"><img src="../assets/figures/eversion/eversion_fig3.png" alt="内表面 vs 外表面中心线及其电场线"></a><figcaption><strong>图 3 · 病根的可视化（论文 Fig. 3）。</strong>（a）<strong>内表面</strong>中心线（受皱襞影响而锯齿）→ 电场线不规则、易交叉；（b）<strong>外表面</strong>中心线（光滑）→ 电场线均匀。采样线一旦不规则，"把点翻到外侧"的反射就会错位——这正是高曲率处翻坏的直接原因。</figcaption></figure>
-<div class="socratic"><p class="question">问：为什么"中心线锯齿"会直接翻译成"外翻翻坏"？中间的因果链是什么？</p><p class="guide">引导：外翻 = 沿采样线做反射；采样线 = 中心线上的电场线。把这条链一节一节接起来。</p><p class="answer">答：链是这样的——皱襞让<u>内表面</u>凹凸 → 内表面中心线被带得<u>锯齿</u> → 以锯齿中心线点为电荷的<u>局部电场不规则</u> → 放出的<u>电场（采样）线相互交叉、疏密不均</u> → 沿这些线把内表面点反射到外侧时<u>错位</u> → 高曲率处出现皱襞重叠/表面撕裂的"翻坏区域"。换成<strong>外表面</strong>：外表面没有皱襞、本就光滑 → 外表面中心线光滑 → 电场均匀、电场线不交叉 → 反射忠实。一句话：<u>外翻的质量，被采样中心线的光滑度决定，而光滑度由"沿内还是外表面"决定。</u></p><p class="takeaway"><strong>Takeaway：</strong>翻坏不是外翻算法本身的毛病，而是"沿锯齿内表面中心线采样"的后果。换成光滑外表面中心线，是从源头治。这与同组《结肠展平（外表面法）》是同一思想的两次应用。</p></div>
-</section>
+    <main class="content">
+      <section id="lead">
+        <p id="abstract" class="lead">Virtual colonoscopy (VC), also called computed-tomographic colonography (CTC), lets a radiologist inspect the colon lumen from a CT scan instead of using an optical scope. Virtual eversion (VE) is a visualization trick that turns the colon inner surface outward, so the mucosal surface that normally faces the lumen becomes visible from outside. A centerline is a path through the middle of the colon, and many VC tools use it as the camera path or sampling axis. The problem is that the inner-surface centerline follows folds and polyps, so it can be jagged in exactly the places where eversion needs a stable axis. The paper therefore builds the sampling centerline from the smoother outer colon surface, meaning the serosal-side boundary of the colon wall rather than the mucosal-side lumen boundary. A bad or collapsed everted region is an improperly everted patch, such as overlapping folds or cracked surfaces, that makes a polyp hard to inspect. The core operation is a distance-preserving reflection along each sampling line: an inner-surface point \(I\) is reflected across the matching outer reference point \(R\) to an everted point \(E\), so \(E=2R-I\). On 87 CT data sets, the reported improperly everted regions fall from 6.8 to 1.9 per case; the reading-time results come from small studies &mdash; two phantoms and 20 CT data sets read by two radiologists &mdash; and should be read as feasibility evidence, not a clinical endpoint.</p>
 
-<!-- CONTRIBUTION -->
-<section id="contribution"><h2>2. 整体解读与贡献：一个核心 + 两个工程支撑 + 一个观察工具</h2>
-<p><strong>作者明确提出的贡献。</strong>针对外翻临床化的三个痛点逐一作答：（1）<strong>翻坏区域多</strong> → 改用<strong>外表面中心线</strong>做外翻采样，并提出改进的 GAC 水平集来抠出真外表面（连造影剂区也准）。（2）<strong>外翻太慢</strong> → 设计<strong>混合采样</strong>（电场线 + 双线性插值），用廉价插值替换 99% 的电场采样线。（3）<strong>看不全（背面/聚拢区）</strong> → 提出<strong>虚拟旋转</strong>与两条导航路径（PNP、SNP）。在 2 个体模 + 87 套 CT 上验证。</p>
-<p><strong>读者能进一步推断的是</strong>——四个阶段看似各管一段，主线只有一条：<em>让"沿中心线的采样"既忠实又便宜</em>。外表面中心线负责"忠实"（光滑→电场均匀→反射不错位），混合采样负责"便宜"（插值代替电场计算）。改进水平集是为前者服务（先得有真外表面才能算外表面中心线），虚拟旋转是为后者收尾（再忠实也总有高曲率处聚拢，转开看）。所以这是一篇"把一个核心想法（外表面更光滑）配齐工程链路、做到能临床用"的系统论文，而不是四个独立技巧的拼盘。</p>
-<div class="table-wrap"><table><caption><strong>表 A.</strong> 三个痛点 → 三个对策（外加一个核心）。</caption><thead><tr><th>痛点</th><th>本文对策</th><th>机制</th></tr></thead><tbody>
-<tr><td>高曲率处翻坏区域多</td><td><strong>外表面中心线</strong>做外翻（核心）</td><td>光滑中心线 → 均匀电场 → 忠实反射</td></tr>
-<tr><td>抠不到真外表面（造影剂区失准）</td><td>并联双 sigmoid 的改进 GAC 水平集</td><td>同时满足空气区与造影剂区两种边界趋势</td></tr>
-<tr><td>外翻太慢</td><td>混合采样（电场线 + 双线性插值）</td><td>插值替换 99% 电场线，8 乘 3 加/点</td></tr>
-<tr><td>背面/聚拢结构看不全</td><td>虚拟旋转 + PNP/SNP 导航</td><td>移位采样线下标 $j$ 旋转，转开聚拢的皱襞</td></tr>
-</tbody></table></div>
-</section>
+        <div class="hero-split">
+          <div>
+            <div class="kv-grid">
+              <div class="kv"><b>Root question</b>Can VE keep the colon path stable if the sampling axis comes from the smooth outer wall instead of the folded inner wall?</div>
+              <div class="kv"><b>Construction</b>Segment the inner and outer surfaces, extract the outer surface centerline, generate sampling lines, then reflect inner-surface points across the outer reference surface.</div>
+              <div class="kv"><b>Bad-region result</b>Improperly everted regions drop from 6.8 to 1.9 per CT case; the paper reports this as 71% less than the previous inner-centerline method.</div>
+              <div class="kv"><b>Runtime result</b>Eversion computation drops from 983 &plusmn; 264 s to 75 &plusmn; 14 s on the paper's Intel Pentium E5400 2.5 GHz CPU-era setup.</div>
+            </div>
+          </div>
+          <figure class="hero-card">
+            <a href="../assets/figures/eversion/eversion_fig10.png"><img src="../assets/figures/eversion/eversion_fig10.png" alt="Outer and inner centerline eversion details"></a>
+            <figcaption><strong>Figure 10 · The main visual claim.</strong> Panels (a) and (c) show outer-surface-centerline eversion with fewer faulty folds. Panels (b) and (d) show inner-surface-centerline eversion, where the arrows point to folded or cracked artifacts. This is the qualitative counterpart to the 6.8 to 1.9 bad-region count.</figcaption>
+          </figure>
+        </div>
+      </section>
 
-<!-- DATASETS -->
-<section id="datasets"><h2>3. 数据与任务：2 个体模 + 87 套 CT，怎么量"翻得好不好"？</h2>
-<p>验证用两类数据。<strong>体模</strong>：A 为圆柱（内径 45.5 mm、外径 49.4 mm、长 520 mm、18 条模拟皱襞），B 为五段圆柱拼的"结肠模型"（内/外径同 A、长 1010 mm、36 条皱襞）；在 A、B 内植入直径 3.9 mm 的息肉，派生出 A1–A5、B1–B5 共 10 个体模，每个含 2–5 颗息肉。<strong>CT</strong>：来自美国 NCIA，体数据 $512\times512\times344$ 到 $512\times512\times535$，间距 $0.625\times0.625\times1.25$ mm；47 套仰卧、40 套俯卧，52 例患者、85 颗息肉。任务是构造一个"可视化 + 阅片"系统，量两件事：<strong>翻坏区域的数量</strong>（验证外翻是否忠实）与<strong>阅片时间/检出率</strong>（验证是否好用）。</p>
-<div class="table-wrap"><table><caption><strong>表 B.</strong> 任务与数据在方法中的作用。</caption><thead><tr><th>项目</th><th>论文披露</th><th>输入 → 输出</th><th>作用</th><th>缺失信息</th></tr></thead><tbody>
-<tr><td>体模 A/B</td><td>圆柱/五段，含 18/36 皱襞，植入 3.9 mm 息肉</td><td>已知几何 → 外翻结果</td><td>受控对比外/内中心线外翻质量</td><td>体模与真实肠壁力学差异</td></tr>
-<tr><td>CT 数据</td><td>NCIA 87 套（52 例，85 颗息肉）</td><td>CT → 内/外表面、中心线、外翻面</td><td>真实场景验证 + 阅片性能</td><td>外部独立数据集（无）</td></tr>
-<tr><td>翻坏区域计数</td><td>内法 6.8 个/例，外法 1.9 个/例</td><td>外翻面 → 人工计数</td><td>外翻忠实度的主指标</td><td>计数者一致性未报告</td></tr>
-<tr><td>阅片性能</td><td>20 套 CT，2 位放射科医生</td><td>外翻/VC 视图 → 时间 + 检出</td><td>是否"好用"的辅助指标</td><td>样本偏小</td></tr>
-</tbody></table></div>
-</section>
+      <section id="motivation">
+        <h2>1. Motivation: VE is useful only if the turned-out surface is trustworthy</h2>
+        <p>VC gives a local fly-through view, but the paper frames that view as slow and vulnerable to folds hiding important mucosal surface. Flattening and unraveling methods give a larger overview, but they can make polyp locations hard to interpret. VE tries to keep the colon's path while exposing the inner surface in a global and local view.</p>
+        <p>The earlier centerline-based VE method had a geometric weakness. It built its sampling rays from the inner surface centerline using a partial electrical field, a geometric device that fans sampling rays out from the axis (not a physical claim about the tissue, as &sect;5 details). Because the inner surface contains haustral folds and polyps, that centerline can bend back and forth. Sampling lines generated from such a flexuous axis can intersect, oversample, or undersample the wall, which produces overlapping folds or cracks after eversion.</p>
+        <p>The paper's motivating observation is simple: the outer colon surface is smoother than the inner surface. If the centerline is extracted from that smoother outer surface, the sampling field becomes steadier. That should make the reflected inner surface more faithful.</p>
+        <div class="socratic">
+          <p class="question">Q: Why does the centerline matter if VE ultimately displays the inner mucosa?</p>
+          <p class="guide">Guide: focus on how the surface is sampled before it is reflected.</p>
+          <p class="answer">A: The centerline defines the rays that touch the colon wall. Jagged rays make a jagged reflection. Smooth rays make the inside-out surface easier to trust.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The paper is not changing the disease target; it is changing the geometric axis used to expose it.</p>
+        </div>
+      </section>
 
-<!-- PIPELINE -->
-<section id="pipeline"><h2>4. Pipeline：外翻的四个阶段</h2>
-<figure class="fig-wide"><a href="../assets/figures/eversion/eversion_fig5.png"><img src="../assets/figures/eversion/eversion_fig5.png" alt="采样与外翻示意图"></a><figcaption><strong>图 5 · 外翻的核心操作（论文 Fig. 5）。</strong>一条采样线 $IL$ 与内表面（IS）交于 I1、I2、I3，与参考面（RS=外表面）交于 R1。外翻就是把每个内表面交点关于 R1 沿采样线<u>反射</u>到外侧得到 E1、E2、E3，且保持沿线的测地距离：$E_k$ 到 R1 的距离 = $I_k$ 到 R1 的距离。这张图是整条 pipeline 的落点——前面所有阶段都是为了让这条采样线和这个反射"摆正"。</figcaption></figure>
-<ol>
-<li><strong>阶段 1 · 内/外表面分割。</strong>内表面用细胞增殖算法（Lu et al.）从 CTC 抠出；外表面用改进的 GAC 水平集（并联双 sigmoid）抠出真外表面，再用测地距离做"假连接分离（FCS）"修掉水平集过膨胀的虚假连通。</li>
-<li><strong>阶段 2 · 外表面中心线提取与优化。</strong>用 Ming et al. 的 MST 中心线法作用在外表面上（外表面无皱襞 → 中心线光滑，图 3b），移动平均滤波再平滑，三次样条插值提分辨率（相邻两点间插 4 点）。</li>
-<li><strong>阶段 3 · 内/外表面采样。</strong>在外表面中心线上建局部电场，放出稀疏"关键线"，再用双线性插值生成密集采样线（混合采样）。详见第 5 节。</li>
-<li><strong>阶段 4 · 外翻实现。</strong>以光滑外表面为参考面，沿每条采样线把内表面交点反射到外侧（图 5，$E=2R-I$），扫完所有采样线即得外翻面。</li>
-</ol>
-<div class="socratic"><p class="question">问：为什么参考面要取<strong>外</strong>表面，而不是把内表面膨胀出来的一个壳？</p><p class="answer">答：早期做法是把内表面膨胀得到参考壳，但膨胀的壳<u>继承了内表面的皱襞</u>，且要给每个病例、每段肠壁挑合适的膨胀/腐蚀半径（肠壁厚度还随段变化），既不鲁棒也不准。本文直接从 CT 抠<u>真</u>外表面（serosa 边界），它天然光滑、厚度信息真实——所以外翻反射 $E=2R-I$ 里的 R 落在一个可靠、光滑的面上，反射才忠实。这是"参考面应是真外表面"而非"膨胀近似"的关键。</p><p class="takeaway"><strong>Takeaway：</strong>四阶段的次序不是随意的——必须先有"真外表面"（阶段 1）才能有"光滑外中心线"（阶段 2），才能有"均匀采样线"（阶段 3），最后反射（阶段 4）才不会错位。</p></div>
-</section>
+      <section id="contribution">
+        <h2>2. Contribution: replace the axis, then rotate the view</h2>
+        <p>The authors present four connected contributions. First, they modify a geodesic active contour (GAC) level set method, where a level set represents a moving surface implicitly and lets it stop near image-derived boundaries. This modification is used to segment the real outer colon surface even near contrast fluid. Second, they extract and smooth the outer surface centerline, then use it for VE instead of the conventional inner surface centerline.</p>
+        <p>Third, they reduce computation with a hybrid sampling scheme. Only selected key lines are generated by the partial electrical field, and the dense sampling lines between them are generated by bilinear interpolation. Fourth, they add virtual rotation (VR), which rotates the everted surface around the centerline so that folds gathered in high-curvature regions can separate visually.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/eversion/eversion_fig3.png"><img src="../assets/figures/eversion/eversion_fig3.png" alt="Inner and outer surface centerlines with electrical lines"></a>
+          <figcaption><strong>Figure 3 · Why the outer centerline is the paper's main lever.</strong> Panel (a) uses the inner surface centerline and produces irregular electrical lines. Panel (b) uses the smoother outer surface centerline and produces more uniform lines. The figure explains why changing the centerline changes the eversion quality.</figcaption>
+        </figure>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Reader-side decomposition of the paper's contributions.</strong></caption>
+            <thead><tr><th>Move</th><th>What the paper changes</th><th>Why it matters</th><th>Evidence used later</th></tr></thead>
+            <tbody>
+              <tr><td>Outer surface segmentation</td><td>Parallel sigmoid filters inside a GAC level set speed image, plus false-connection subtraction.</td><td>The outer surface becomes the reference surface for reflection.</td><td>Figures 1-2 and the method description.</td></tr>
+              <tr><td>Outer centerline sampling</td><td>The centerline comes from the outer surface rather than the inner surface.</td><td>Sampling lines become more uniform in high-curvature regions.</td><td>Figures 3, 8, 9, and 10.</td></tr>
+              <tr><td>Hybrid sampling</td><td>Electrical key lines are mixed with bilinear interpolated lines.</td><td>The computation no longer traces every dense line through the costly electrical model.</td><td>983 &plusmn; 264 s to 75 &plusmn; 14 s.</td></tr>
+              <tr><td>Virtual rotation</td><td>The everted surface is rotated by shifting the sampling-line angular coordinate.</td><td>Front, rear, and lateral views can be inspected without rebuilding the eversion.</td><td>Figure 6.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-<!-- METHOD -->
-<section id="method"><h2>5. 方法核心：抠真外表面、混合采样、保距反射</h2>
-<p>按 kexue 姿态重推三处：① 怎么把<strong>真外表面</strong>抠出来（并联 sigmoid 的动机）；② 混合采样<strong>为什么又快又准</strong>；③ 外翻这步<strong>反射</strong>的几何到底是什么。</p>
+      <section id="datasets">
+        <h2>3. Data and evaluation: phantoms, 87 CT sets, and a small reader study</h2>
+        <p>The paper evaluates the geometry on two simulated colon phantoms and on 87 CTC data sets from the U.S. National Cancer Imaging Archive. The CT data volumes range from \(512 \times 512 \times 344\) to \(512 \times 512 \times 535\), with spacing of \(0.625 \times 0.625 \times 1.25\ \mathrm{mm}^3\). The 87 sets contain 47 supine scans and 40 prone scans from 52 patients with 85 polyps.</p>
+        <p>The phantoms are designed to stress the centerline choice. Phantom A is a straight cylindrical model with 18 simulated folds. Phantom B is a colon-like model with five cylindrical parts and 36 simulated folds. The authors implant 3.9 mm simulated polyps and derive ten variants, A1-A5 and B1-B5.</p>
+        <p>The reading-time comparison uses 20 CT data sets and two radiologists, each reading the same 23 polyps. The paper separately counts bad everted regions across the larger 87-set CT data.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Evaluation material reported by the paper.</strong></caption>
+            <thead><tr><th>Material</th><th>Scale</th><th>Used for</th><th>Important caveat</th></tr></thead>
+            <tbody>
+              <tr><td>Phantom A</td><td>Inner diameter 45.5 mm, outer diameter 49.4 mm, length 520 mm, 18 folds.</td><td>Reading time and implanted-polyp detection in a controlled straight model.</td><td>Simulated folds and 3.9 mm implanted polyps are not clinical anatomy.</td></tr>
+              <tr><td>Phantom B</td><td>Inner diameter 45.5 mm, outer diameter 49.4 mm, length 1010 mm, 36 folds.</td><td>Reading time and implanted-polyp detection in a more colon-like model.</td><td>Still a geometric phantom, not patient data.</td></tr>
+              <tr><td>CT validation set</td><td>87 CT data sets, 52 patients, 85 polyps.</td><td>Bad-region counts, computation time, and VR examples.</td><td>External testing beyond this source is not reported.</td></tr>
+              <tr><td>Reader study subset</td><td>20 CT data sets, 2 radiologists.</td><td>VC versus VE reading time and polyps found.</td><td>The sample is small; the paper reports observation performance, not a clinical trial.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-<h3>5.1 并联双 sigmoid：在空气区与造影剂区都抠对外表面</h3>
-<p><strong>动机。</strong>水平集要"贴着外表面停下来"，靠的是一张 speed image：外表面处速度接近 0（边界停住），其它处接近 1（继续扩张）。Van Uitert 用 CT 方向导数 + 两个串联 sigmoid 造 speed image。问题是：空气区边界与造影剂区边界的方向导数<strong>趋势不同</strong>（图 1），串联两个 sigmoid 只能照顾其中一种——把空气区外表面调准了，造影剂区就错（图 2b：低速黑区被错标在内表面附近，水平集会停在内表面而非外表面）。</p>
-<div class="equation">$$f_1(i)=\frac{1}{1+e^{-(x_i-\beta_1)/\alpha_1}},\qquad f_2(i)=\frac{1}{1+e^{-(x_i-\beta_2)/\alpha_2}}$$<div class="eq-caption">式 1：两个 sigmoid 滤波器（$x_i$ 为方向导数图第 $i$ 点）。本文取 $\alpha_1{=}-4,\beta_1{=}-10$；$\alpha_2{=}4,\beta_2{=}-60$（外表面处方向导数约 20–50）。</div></div>
-<div class="equation">$$S(i)=1-\big[f_1(i)+f_2(i)-1\big]=2-f_1(i)-f_2(i)$$<div class="eq-caption">式 2：把两个 sigmoid <strong>并联</strong>合成 speed image。外表面边界处 $S\approx0$（黑），其余 $\approx1$（白）。</div></div>
-<div class="formula-note"><p class="note-title">公式读法：串联 vs 并联，差在"能不能同时照顾两种边界"</p><p>串联是先过一个再过另一个，输出受制于先过的那个，只能拟合<u>一种</u>趋势；并联是两个各自判断、再用 $2-f_1-f_2$ 合成——只要<u>任一</u>个判出"这里是外表面边界"，合成速度就压到 0。于是空气区与造影剂区的外表面能<u>同时</u>被正确停住（图 2c）。水平集再配 ITK 的 GAC（advection 0.2、propagation 0.2、curvature 0.4、max RMS 0.01、150 迭代）即可贴出真外表面。残留的"过膨胀/假连接"用基于测地距离的 FCS 分离掉。</p></div>
-<div class="formula-note"><p class="note-title">数学补遗 1 · 为什么"并联两个反向 sigmoid"= 一个软带通</p><p>把式 2 改写成 $S=(1-f_1)+(1-f_2)$。$S$ 要在外表面处 $\to0$，就需 $f_1\to1$ <u>且</u> $f_2\to1$。设 $f_1$ 是在阈 $a$ 处上升的软台阶（$x>a$ 时 $f_1\to1$）、$f_2$ 是在阈 $b$ 处下降的软台阶（$x\lt b$ 时 $f_2\to1$），则
-$$S\approx0\iff f_1{\approx}1\ \text{且}\ f_2{\approx}1\iff a\lt x\lt b,$$
-即 $S$ 是一个中心落在外表面方向导数带 $(a,b)$ 上的<strong>软带通（smoothed top-hat）</strong>。空气区与造影剂区的外表面只要方向导数都落进 $(a,b)$，就被<u>同时</u>判成 $S\approx0$。反观<strong>串联</strong> $f_1\!\circ\!f_2$：两个单调 sigmoid 复合仍是单调软台阶，只有<u>一个</u>阈值、只能贴一侧趋势——这正是 Van Uitert 法在造影剂区失准（图 2b）的根。（注：式 1 中 $\alpha,\beta$ 由原文给定，其符号约定使带 $(a,b)$ 恰好罩住方向导数约 20–50 的外表面。）</p></div>
-<figure class="fig-grid">
-<figure><a href="../assets/figures/eversion/eversion_fig1.png"><img src="../assets/figures/eversion/eversion_fig1.png" alt="空气区与造影剂区边界的不同趋势"></a><figcaption><strong>图 1 · 两种边界趋势不同（论文 Fig. 1）。</strong>空气区边界与造影剂区边界在方向导数上趋势相反——这就是串联 sigmoid 只能照顾一种、必须并联的根由。</figcaption></figure>
-<figure><a href="../assets/figures/eversion/eversion_fig2.png"><img src="../assets/figures/eversion/eversion_fig2.png" alt="不同方法的 speed image"></a><figcaption><strong>图 2 · speed image 对比（论文 Fig. 2）。</strong>（a）原始 CT；（b）Van Uitert 串联法：低速黑区错标在内表面附近（水平集会停在内表面）；（c）本文并联法：黑区正确落在外表面，水平集停在外表面。</figcaption></figure>
-</figure>
+      <section id="pipeline">
+        <h2>4. Pipeline: from CT volume to an inspectable everted colon</h2>
+        <p>The full pipeline has four stages. It starts with colon lumen segmentation, where the inner surface is extracted from the CTC volume. It then segments the outer surface with the modified GAC level set method and removes false connections. After that, the method extracts, smooths, and interpolates the outer centerline. Finally, it samples both surfaces and reflects inner-surface points across the outer reference surface.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/eversion/eversion_fig2.png"><img src="../assets/figures/eversion/eversion_fig2.png" alt="Speed images for outer surface segmentation"></a>
+          <figcaption><strong>Figure 2 · Outer-surface segmentation is not just dilation.</strong> Panel (a) is the original CT slice. Panel (b), from the earlier speed-image construction, places low-speed regions incorrectly near the inner surface in contrast-fluid regions. Panel (c), from the improved parallel-filter construction, places low-speed regions around the outer surface, so the level set can stop at the intended boundary.</figcaption>
+        </figure>
+        <figure>
+          <a href="../assets/figures/eversion/eversion_fig1.png"><img src="../assets/figures/eversion/eversion_fig1.png" alt="Different directional-derivative trends on air and contrast fluid boundaries"></a>
+          <figcaption><strong>Figure 1 · Why the speed image needs two parallel sigmoid filters.</strong> Air-region boundaries and contrast-fluid-region boundaries have different directional-derivative trends. A single serial filter can fit one trend and miss the other, which is why the paper changes the filter construction before running the level set.</figcaption>
+        </figure>
+        <p>Once the centerline is ready, the pipeline changes from segmentation to sampling. Key points along the outer surface centerline generate electrical key lines. Dense sampling lines are interpolated between adjacent key lines. Each sampling line intersects the inner surface at one or more points and the smooth outer reference surface at one point. Those intersections are the input to VE.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/eversion/eversion_fig5.png"><img src="../assets/figures/eversion/eversion_fig5.png" alt="Surface sampling and eversion schematic"></a>
+          <figcaption><strong>Figure 5 · The reflection step in one sampling line.</strong> A sampling line can hit the folded inner surface multiple times, shown as \(I_1\), \(I_2\), and \(I_3\), but it crosses the smoother outer reference surface once at \(R_1\). VE places the everted points on the far side of \(R_1\) at the same line distance, which is the geometric meaning of \(E=2R-I\).</figcaption>
+        </figure>
+        <div class="socratic">
+          <p class="question">Q: What is the smallest version of the pipeline?</p>
+          <p class="answer">A: Draw one ray from the outer centerline. Mark where it hits the inner wall and the outer wall. Put the inner-wall point the same distance beyond the outer wall. Repeat for all rays.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The whole method is a controlled reflection, not a learned transformation.</p>
+        </div>
+      </section>
 
-<h3>5.2 混合采样：电场线打底，双线性插值提速</h3>
-<p><strong>动机。</strong>外翻要在外表面中心线上建局部电场放出采样线。每个采样点的电场向量要对 $2m{+}1$ 个电荷求和（式 3），是三次运算，逐点算极贵。</p>
-<div class="equation">$$\vec{EP}(P)=\sum_{i=-m}^{m}\frac{KP_i-P}{\lVert KP_i-P\rVert^{3}}$$<div class="eq-caption">式 3：位置 $P$ 处的电场向量，$KP_i$ 为关键点（正电荷），$m{=}10$ 为局部电场尺度。</div></div>
-<div class="formula-note"><p class="note-title">数学补遗 2 · 电场线为何"均匀、不交叉"——库仑势的视角</p><p>式 3 每一项 $\frac{KP_i-P}{\lVert KP_i-P\rVert^3}$ 的模是 $1/\lVert KP_i-P\rVert^2$，是指向电荷 $KP_i$ 的<strong>平方反比</strong>场。整场是一个势函数的梯度：
-$$\vec{EP}(P)=\nabla_P\,\Phi(P),\qquad \Phi(P)=\sum_{i=-m}^{m}\frac{1}{\lVert KP_i-P\rVert},$$
-因为 $\nabla_P\frac1{\lVert KP_i-P\rVert}=\frac{KP_i-P}{\lVert KP_i-P\rVert^3}$；无电荷处 $\Phi$ 调和（$\nabla^2\Phi=0$）。采样线就是场的<u>积分曲线</u> $\dot P=\vec{EP}(P)$；由 Picard–Lindelöf 唯一性，在 $\vec{EP}$ Lipschitz 的区域（远离电荷）<strong>积分曲线互不相交</strong>。于是只要电荷（关键点）沿一条<u>光滑</u>中心线均匀排布，场就处处良态、电场线像梳齿般均匀展开；而<u>锯齿</u>中心线把电荷挤到凹处，局部 $\vec{EP}$ 剧烈起伏、采样线在凹侧拥塞乃至数值穿插——这是"中心线光滑度 → 采样线规整度"的场论解释，也是补遗 3 反射能否忠实的前提。</p></div>
-<p>于是只在<strong>稀疏关键点</strong>（每 $k{=}10$ 个中心线点取一个，即 10%）上建电场、放出 $n{=}40$ 条"关键线"，再用<strong>双线性插值</strong>在每四条相邻关键线之间填出密集采样线：</p>
-<div class="equation">$$P=(1-u)(1-v)\,P_{i,j,n}+(1-u)v\,P_{i,j+1,n}+u(1-v)\,P_{i+1,j,n}+uv\,P_{i+1,j+1,n}$$<div class="eq-caption">式 12：四条相邻关键线之间的双线性插值。$k{=}10$ 时插值线数是关键线的 100 倍。</div></div>
-<div class="formula-note"><p class="note-title">公式读法：为什么"贵的少算、便宜的多算"既快又不失真</p><p>电场线（关键线）保证了<u>方向正确</u>（局部垂直中心线、均匀分布），但算一个点要 $2m{+}1$ 次三次运算与除法；双线性插值一个点只要 8 次乘法 + 3 次加法。本文让 99% 的采样线由插值生成——因为外表面中心线<u>光滑</u>，关键线已经均匀，插值出来的线自然也均匀、不失真。这就是"忠实由外中心线保证、便宜由插值实现"。CT 上外翻计算从 983 s 降到 75 s（少 92%）。</p></div>
-<figure><a href="../assets/figures/eversion/eversion_fig4.png"><img src="../assets/figures/eversion/eversion_fig4.png" alt="关键线生成的伪代码"></a><figcaption><strong>图 4 · 关键线生成伪代码（论文 Fig. 4）。</strong>每条关键线从关键点出发、按步长 $\lambda{=}0.2$ 沿电场方向延伸，最多 $\mathrm{MAX\_STEP}{=}500$ 步。它是式 3 电场的离散积分过程。</figcaption></figure>
+      <section id="method">
+        <h2>5. Method: the centerline makes the reflection well behaved</h2>
+        <h3>Outer surface segmentation</h3>
+        <p>The modified outer-surface segmentation begins from the colon inner surface. The paper computes a directional derivative image and passes it through two sigmoid filters in parallel. The goal is to make the speed image low near the true outer wall and high elsewhere, so the GAC level set expands quickly through easy regions and slows at the boundary.</p>
+        <div class="equation">$$
+f_1(i)=\frac{1}{1+e^{-(x_i-\beta_1)/\alpha_1}},\qquad
+f_2(i)=\frac{1}{1+e^{-(x_i-\beta_2)/\alpha_2}}
+$$<div class="eq-caption">Eq. 1: \(x_i\) is the directional-derivative value at point \(i\); the paper sets \(\alpha_1=-4\), \(\beta_1=-10\), \(\alpha_2=4\), and \(\beta_2=-60\).</div></div>
+        <div class="equation">$$
+S(i)=1-\bigl(f_1(i)+f_2(i)-1\bigr)=2-f_1(i)-f_2(i)
+$$<div class="eq-caption">Eq. 2: \(S(i)\) is the speed image value used by the GAC level set segmentation.</div></div>
+        <p>The paper then removes false connections using geodesic distance information. Here geodesic distance means shortest-path distance along the segmented structure, not straight Euclidean distance through tissue. If a connection region has a maximum geodesic distance above the threshold, it is treated as a false connection.</p>
 
-<h3>5.3 外翻：关于外表面的保测地距离反射</h3>
-<p>有了均匀采样线，外翻本身只是一步几何反射。以外表面为参考面 RS，内表面为 IS。一条采样线 $IL$ 与 IS 交于 $I_1,I_2,I_3$、与 RS 交于 $R_1$（图 5）。把每个内表面交点关于 $R_1$ 反射到外侧：</p>
-<div class="equation">$$E_k = 2R_1 - I_k\qquad(k=1,2,3)$$<div class="eq-caption">式（外翻）：$E_k$ 为外翻点在采样线上的下标。判据是"$E_k$ 到 $R_1$ 的测地距离 = $I_k$ 到 $R_1$ 的测地距离"，即沿采样线把内点翻到外侧、距离不变。</div></div>
-<div class="formula-note"><p class="note-title">公式读法：外翻 = 沿采样线对参考面做镜像</p><p>$E=2R-I$ 就是"以 $R$ 为镜心、把 $I$ 翻到对侧等距处"。这一步把黏膜（内表面）送到了 serosa（外表面）之外——黏膜成了外表面、可被全局俯视。它能不能翻好，完全取决于采样线 $IL$ 摆得正不正：若采样线（来自电场/中心线）规则均匀，反射就忠实；若锯齿内中心线把采样线弄交叉，反射就错位、翻坏。这把第 1 节的因果链落到了一行公式上。</p></div>
-<div class="formula-note"><p class="note-title">数学补遗 3 · $E=2R-I$ 是弧长坐标里的等距镜像</p><p>沿一条采样线 $IL$ 用<u>弧长</u>（沿线测地距离）作一维坐标，记内表面交点坐标为 $I$、参考（外）面交点为 $R$。外翻要求"翻到外侧、且到 $R$ 的距离不变"，即找 $E$ 使
-$$\underbrace{\,|E-R|=|I-R|\,}_{\text{保距}}\ \text{且}\ \underbrace{\,\mathrm{sgn}(E-R)=-\,\mathrm{sgn}(I-R)\,}_{\text{翻到另一侧}}\ \Longrightarrow\ E-R=-(I-R)\ \Longrightarrow\ E=2R-I.$$
-这就是一维坐标里关于点 $R$ 的<strong>镜像反射</strong>：内表面每个点被等距翻到参考面另一侧，黏膜（IS）整体翻成外表面、serosa 翻成内表面，而沿线弧长完全保持——所以解剖的<u>骨架、形状、空间关系</u>不被拉伸，这正是外翻相对展平"保走形"的数学含义。反射的忠实度 $=$ 弧长坐标的可靠度 $=$ 采样线 $IL$ 的规整度（补遗 2），一环扣一环回到"外表面中心线更光滑"。</p></div>
+        <h3>Outer centerline and sampling lines</h3>
+        <p>The outer surface centerline is extracted with a minimum-cost spanning tree method and smoothed with a moving average filter. The paper then increases its resolution with cubic spline interpolation. Four points are interpolated between two original neighboring centerline points.</p>
+        <p>Selected key points on the centerline are treated as positive electrical charges. The partial electrical field at a position \(P\) is computed from neighboring key points \(KP_i\). This field is not a physical claim about the colon; it is a geometric device for generating surface-sampling lines.</p>
+        <div class="equation">$$
+\mathcal{E}(P)=\sum_{i=-m}^{m}\frac{KP_i-P}{\lVert KP_i-P\rVert^3}
+$$<div class="eq-caption">Eq. 3: \(\mathcal{E}(P)\) is the sampling field; \(m=10\) is the scale of the partial electrical field.</div></div>
+        <figure>
+          <a href="../assets/figures/eversion/eversion_fig4.png"><img src="../assets/figures/eversion/eversion_fig4.png" alt="Pseudocode for key line generation"></a>
+          <figcaption><strong>Figure 4 · The costly part of sampling is confined to key lines.</strong> The pseudocode extends each key line step by step through the partial electrical field until MAX_STEP is reached. The later bilinear interpolation is faster because it reuses these key lines instead of tracing every dense sampling line through Eq. 3.</figcaption>
+        </figure>
+        <p>Dense sampling would be expensive if every line were generated by Eq. 3. The hybrid method uses electrical lines only at sparse key positions and fills the rest by bilinear interpolation. The interpolated lines outnumber the electrical key lines by about 100 to 1, so the paper substitutes cheap interpolation for roughly 99% of all sampling lines and traces the costly electrical field only on the sparse key lines.</p>
+        <div class="equation">$$
+P'_{i',j',n}=(1-u)(1-v)P_{i,j,n}+(1-u)vP_{i,j+1,n}+u(1-v)P_{i+1,j,n}+uvP_{i+1,j+1,n}
+$$<div class="eq-caption">Eq. 4: \(P'_{i',j',n}\) is a point on an interpolated sampling line, built from four adjacent key-line points.</div></div>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table I from the paper.</strong> Summary of parameters for surface sampling.</caption>
+            <thead><tr><th>Parameter</th><th>Value in paper</th><th>Caption</th></tr></thead>
+            <tbody>
+              <tr><td>\(p\)</td><td>Changeable</td><td>Point number on the outer surface centerline.</td></tr>
+              <tr><td>\(k\)</td><td>10</td><td>Parameter to control the key points' density and interpolation lines density.</td></tr>
+              <tr><td>\(m\)</td><td>10</td><td>Scale of the partial electrical field model.</td></tr>
+              <tr><td>\(n\)</td><td>40</td><td>Parameter to control the key lines' density.</td></tr>
+              <tr><td>\(\rho\)</td><td>0.2</td><td>Step length of the sampling lines.</td></tr>
+              <tr><td>MAX_STEP</td><td>500</td><td>Threshold to prevent the key lines from becoming too long.</td></tr>
+              <tr><td>CP</td><td>-</td><td>Centerline points.</td></tr>
+              <tr><td>KP</td><td>-</td><td>Key points.</td></tr>
+              <tr><td>\(N_i\)</td><td>-</td><td>Tangential direction of the centerline at point \(KP_i\).</td></tr>
+              <tr><td>\(L_i\)</td><td>-</td><td>Unit projection vector of \(KP_i\) on the plane that is perpendicular to \(N_i\).</td></tr>
+              <tr><td>\(KL_{i,j}\)</td><td>-</td><td>\(j\)th key line of the \(i\)th key point.</td></tr>
+              <tr><td>\(P_{i,j,n}\)</td><td>-</td><td>\(n\)th point on \(KL_{i,j}\).</td></tr>
+              <tr><td>\(v_{i,j}\)</td><td>-</td><td>Initial vector of \(KL_{i,j}\).</td></tr>
+              <tr><td>\(IL_{i',j'}\)</td><td>-</td><td>Interpolated line and also the sampling line; its relationship to \(KL_{i,j}\) is defined by the paper's bilinear interpolation equations.</td></tr>
+              <tr><td>\(P'_{i',j',n}\)</td><td>-</td><td>\(n\)th point on \(IL_{i',j'}\).</td></tr>
+            </tbody>
+          </table>
+        </div>
 
-<h3>5.4 虚拟旋转：把高曲率处聚拢的结构转开</h3>
-<p>再忠实的外翻，高曲率处也会有若干结构挤成一团、背面看不到。虚拟旋转的做法是只<strong>平移采样线下标 $j$</strong>、其它坐标不动，把外翻面整体转一个角 $\theta$：</p>
-<div class="equation">$$j'=\Big(j+\frac{\theta}{2\pi}\,kn\Big)\bmod kn$$<div class="eq-caption">式 15：虚拟旋转。$kn$ 为一个中心线点上的采样线数。转 $\theta$ 即把每个外翻点沿环向移动相应下标。</div></div>
-<p>配合两条导航路径（图 7）：PNP（平行于结肠，配相机距离参数 CD，观察时转动看背面）与 SNP（螺旋绕行，移动相机即可看遍正背面）。旋转 30°/90°/180° 后，原本叠在一起的皱襞被转开，藏在其中的息肉得以辨认（图 6）。</p>
-<figure class="fig-grid">
-<figure><a href="../assets/figures/eversion/eversion_fig6.png"><img src="../assets/figures/eversion/eversion_fig6.png" alt="虚拟旋转结果"></a><figcaption><strong>图 6 · 虚拟旋转（论文 Fig. 6）。</strong>（a）外翻肠的放大；（b）旋转 30°；（c）90°；（d）180°。（d）中箭头指向一颗在（a）里几乎无法辨认、转开聚拢皱襞后才显形的息肉。</figcaption></figure>
-<figure><a href="../assets/figures/eversion/eversion_fig7.png"><img src="../assets/figures/eversion/eversion_fig7.png" alt="PNP 与 SNP 导航路径"></a><figcaption><strong>图 7 · 两条导航路径（论文 Fig. 7）。</strong>PNP 平行结肠（看时旋转见背面），SNP 螺旋绕行（移动相机见正背面）。选哪条取决于医生习惯。</figcaption></figure>
-</figure>
-</section>
+        <h3>Distance-preserving reflection</h3>
+        <p>For each sampling line, the inner surface can have several intersections because folds create multiple hits. The outer reference surface is smoother, so the paper treats its intersection as the reference point \(R\). VE then puts each inner point on the other side of \(R\) while preserving the line distance to \(R\).</p>
+        <div class="equation">$$
+\lVert E-R\rVert=\lVert R-I\rVert,\qquad E=2R-I
+$$<div class="eq-caption">Eq. 5: \(I\) is an inner-surface sample point, \(R\) is the matching outer reference-surface point on the same sampling line, and \(E\) is the everted point.</div></div>
+        <p>This equation is the whole eversion in miniature. It does not learn a deformation. It reflects each sampled mucosal point across the local outer reference point defined by the outer centerline sampling system.</p>
 
-<!-- TRAINING -->
-<section id="training"><h2>6. "训练"与算力账本：无学习参数的几何管线</h2>
-<p>和本专题另外两篇一样，这是一条确定性几何管线，没有可学习参数、没有训练过程。账本就是几何计算的耗时与那几个采样参数。</p>
-<div class="table-wrap"><table><caption><strong>表 I（论文）.</strong> 采样的关键参数。</caption><thead><tr><th>参数</th><th>取值</th><th>含义</th></tr></thead><tbody>
-<tr><td>$k$</td><td>10</td><td>每 10 个中心线点取一个关键点（控制关键点/插值线密度）</td></tr>
-<tr><td>$n$</td><td>40</td><td>每个关键点放出的关键线数</td></tr>
-<tr><td>$m$</td><td>10</td><td>局部电场模型尺度（$2m{+}1$ 个电荷）</td></tr>
-<tr><td>$\lambda$</td><td>0.2</td><td>采样线步长</td></tr>
-<tr><td>MAX_STEP</td><td>500</td><td>关键线最大步数（防越界）</td></tr>
-</tbody></table></div>
-<div class="note"><p class="note-title">算力说明</p><p>硬件为 Intel Pentium E5400 2.5 GHz、3 GB 内存（2010 年单机）。外翻计算：旧法（基于内表面、纯电场采样）$983\pm264$ s/例，本文（外中心线 + 混合采样）$75\pm14$ s/例，少约 92%。这是 2010 年 CPU 的数字，不做跨硬件折算。无 GPU。</p></div>
-</section>
+        <h3>Virtual rotation and navigation</h3>
+        <p>VR is implemented after the everted points exist. It shifts the angular coordinate \(j'\) of the sampling line while keeping the centerline coordinate fixed. This separates visually gathered folds in high-curvature regions and reveals rear views without moving the camera around the colon.</p>
+        <div class="equation">$$
+j''=\left(j'+\frac{kn}{2\pi}\theta\right)\bmod(kn)
+$$<div class="eq-caption">Eq. 6: rotating by angle \(\theta\) shifts the sampling-line index; \(k\) and \(n\) are the sampling-density parameters from Table I.</div></div>
+        <figure class="fig-wide">
+          <a href="../assets/figures/eversion/eversion_fig6.png"><img src="../assets/figures/eversion/eversion_fig6.png" alt="Virtual rotation of an everted colon"></a>
+          <figcaption><strong>Figure 6 · Rotation makes a hidden polyp visible.</strong> In panel (a), gathered folds make the region difficult to interpret. As the everted colon is virtually rotated by 30&deg;, 90&deg;, and 180&deg;, the folds separate. The arrowed polyp is clearest in panel (d).</figcaption>
+        </figure>
+        <figure>
+          <a href="../assets/figures/eversion/eversion_fig7.png"><img src="../assets/figures/eversion/eversion_fig7.png" alt="Parallel and spiral navigation paths"></a>
+          <figcaption><strong>Figure 7 · Two camera paths for the everted surface.</strong> The parallel navigation path (PNP) runs alongside the colon and relies on rotation to see the rear. The spiral navigation path (SNP) winds around the colon, so moving the camera along it naturally visits front and rear views.</figcaption>
+        </figure>
+        <div class="socratic">
+          <p class="question">Q: Is the improvement coming from a better reflection formula?</p>
+          <p class="answer">A: No. The reflection formula is simple. The improvement comes from choosing a smoother reference axis and sampling field before applying it.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The formula is \(E=2R-I\); the method's hard part is making \(R\) and the sampling line stable.</p>
+        </div>
+      </section>
 
-<!-- EXPERIMENTS -->
-<section id="experiments"><h2>7. 主实验：翻坏少 71%、计算快 92%、阅片省 77%</h2>
-<p>实验分两层。第一层<strong>忠实度</strong>：数"翻坏区域"的个数（外中心线 vs 内中心线，体模 + CT）；第二层<strong>可用性</strong>：阅片时间与检出率（外翻 vs 虚拟结肠镜）。</p>
-<figure class="fig-wide"><a href="../assets/figures/eversion/eversion_fig10.png"><img src="../assets/figures/eversion/eversion_fig10.png" alt="CT 外翻细节：外表面 vs 内表面中心线"></a><figcaption><strong>图 10 · CT 外翻细节（论文 Fig. 10）。</strong>（a）（c）基于<strong>外表面中心线</strong>——皱襞规整、外翻准确；（b）（d）基于<strong>内表面中心线</strong>——黑箭头处是翻坏的伪影（皱襞叠错、表面撕裂）。这与图 8 的体模结论一致：换中心线，翻坏立减。</figcaption></figure>
-<p>定量上，CT 数据里"翻坏区域"从旧法（内中心线）平均 <strong>6.8 个/例</strong> 降到本文（外中心线）<strong>1.9 个/例</strong>，少 <strong>71%</strong>；剩下的少量翻坏都集中在高曲率处，可用虚拟旋转逐个看清。阅片性能：</p>
-<div class="table-wrap"><table><caption><strong>表 II（论文）.</strong> 体模上虚拟结肠镜（VC）vs 虚拟外翻（VE）阅片对比。</caption><thead><tr><th>体模 · 医生</th><th>VC 阅片（s）</th><th>VE 阅片（s）</th><th>时间缩减</th><th>VC 检出</th><th>VE 检出</th><th>真实息肉</th></tr></thead><tbody>
-<tr><td>A · No.1</td><td>84</td><td>28</td><td>67%</td><td>19</td><td>20</td><td>20</td></tr>
-<tr><td>A · No.2</td><td>68</td><td>28</td><td>59%</td><td>16</td><td>19</td><td>20</td></tr>
-<tr><td>B · No.1</td><td>164</td><td>52</td><td>62%</td><td>12</td><td>13</td><td>13</td></tr>
-<tr><td>B · No.2</td><td>119</td><td>45</td><td>68%</td><td>12</td><td>13</td><td>13</td></tr>
-</tbody></table></div>
-<div class="table-wrap"><table><caption><strong>表 III（论文）.</strong> CT 上 VC vs VE 阅片对比（均值）。</caption><thead><tr><th>项目</th><th>虚拟结肠镜 VC</th><th>虚拟外翻 VE</th><th>差异</th></tr></thead><tbody>
-<tr><td>平均阅片时间</td><td>434 s</td><td>98 s</td><td>少约 77%</td></tr>
-<tr><td>检出 / 总息肉</td><td>37 / 46</td><td>36 / 46</td><td>基本持平</td></tr>
-<tr><td>外翻计算耗时</td><td>983 ± 264 s（旧法）</td><td>75 ± 14 s（本文）</td><td>少约 92%</td></tr>
-<tr><td>翻坏区域</td><td>6.8 个/例（内中心线）</td><td>1.9 个/例（外中心线）</td><td>少约 71%</td></tr>
-</tbody></table></div>
-<figure><a href="../assets/figures/eversion/eversion_fig9.png"><img src="../assets/figures/eversion/eversion_fig9.png" alt="体模与 CT 的内外表面中心线"></a><figcaption><strong>图 9 · 内/外中心线对照（论文 Fig. 9）。</strong>（a）体模、（b）分割后的 CT。光滑实线是外表面中心线，蜿蜒虚线是内表面中心线——后者的锯齿正是翻坏的源头。</figcaption></figure>
-<div class="socratic"><p class="question">问：体模和 CT 这两组实验，能不能算"换中心线"这一变量的干净对照？</p><p class="answer">答：能。体模与 CT 上都做了"同一外翻算法 + 仅切换内/外中心线"的对照（图 8 体模、图 10 CT）：外中心线下皱襞规整、内中心线下翻坏。量化指标（翻坏区域 6.8→1.9，少 71%）只随"沿哪条中心线"改变，其它环节不变——这是对核心设计的纯净消融。可用性指标（阅片 77% 省时、检出持平；计算 92% 提速）则验证"外翻 + 混合采样"作为系统相对 VC 的价值。需诚实标注：阅片对比只用了 20 套 CT、2 位医生，样本偏小，检出率"持平"的统计显著性论文未给。</p><p class="takeaway"><strong>Takeaway：</strong>"换外中心线"由翻坏计数（6.8→1.9）干净验证；"外翻系统好用"由阅片/计算时间验证。前者是机制证据，后者是可用性证据，分层清晰。</p></div>
-</section>
+      <section id="training">
+        <h2>6. Training and compute: no learned model, but a disclosed CPU setup</h2>
+        <p>There is no trained model in this paper. The method is deterministic geometry: segmentation, centerline extraction, sampling, reflection, and rotation. The paper does tune algorithmic parameters, such as \(k=10\), \(m=10\), \(n=40\), \(\rho=0.2\), and MAX_STEP \(=500\), but it does not train a classifier or neural network.</p>
+        <p>The implementation is described as C++ on Microsoft Visual Studio .NET with the Insight Segmentation and Registration Toolkit (ITK) for segmentation and the Visualization Toolkit (VTK) for the virtual colonoscopy program. The hardware is a personal computer with an Intel Pentium E5400 2.5 GHz processor and 3 GB memory. Those are the paper's reported CPU-era numbers; no GPU hardware is involved or stated.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Implementation details reported by the paper.</strong></caption>
+            <thead><tr><th>Item</th><th>Paper statement</th><th>What is not stated</th></tr></thead>
+            <tbody>
+              <tr><td>Programming environment</td><td>Visual Studio .NET, C++.</td><td>Compiler version and source code release are not stated in the paper.</td></tr>
+              <tr><td>Segmentation toolkit</td><td>ITK.</td><td>Exact ITK version is not stated in the paper.</td></tr>
+              <tr><td>VC visualization toolkit</td><td>VTK and C++.</td><td>Exact VTK version is not stated in the paper.</td></tr>
+              <tr><td>Hardware</td><td>Intel Pentium E5400 2.5 GHz processor, 3 GB memory.</td><td>Operating system and disk setup are not stated in the paper.</td></tr>
+              <tr><td>Training</td><td>No trained model.</td><td>Not applicable; this is a deterministic geometry pipeline.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-<!-- ABLATIONS -->
-<section id="ablations"><h2>8. 消融视角：每个组件都对应一个被修掉的失败模式</h2>
-<p>这篇论文的"消融"是隐式但完整的——每个组件都对着一个具体失败模式：① 不用外中心线（用内中心线）→ 翻坏 6.8 个/例（图 8c/f、图 10b/d）；② 不用并联 sigmoid（用 Van Uitert 串联）→ 造影剂区外表面抠错、水平集停在内表面（图 2b）；③ 不用混合采样（纯电场线）→ 外翻 983 s/例；④ 不用虚拟旋转 → 高曲率处聚拢的息肉看不到（图 6a）。逐一打开/关上，对应指标就退化，这就是组件有效性的证据。</p>
-<div class="socratic"><p class="question">问：把这些连起来，"外表面更光滑"这条主线的因果闭合吗？</p><p class="answer">答：闭合。外表面光滑（前提）→ 外中心线光滑（图 3/9）→ 电场线均匀、混合采样可插值（5.2）→ 反射 $E=2R-I$ 忠实（图 5）→ 翻坏减少（6.8→1.9，图 8/10）；而抠到真外表面又依赖并联 sigmoid（图 2），残余高曲率翻坏再由虚拟旋转兜底（图 6）。每一环都有图或数支撑，主线从"光滑"一路推到"翻坏少、又快又好用"。</p><p class="takeaway"><strong>Takeaway：</strong>这不是堆 trick——四个组件围绕"外表面更光滑"形成一条闭合因果链，各自修掉一个可观测的失败模式。</p></div>
-</section>
+      <section id="experiments">
+        <h2>7. Experiments: fewer bad regions, faster eversion, shorter reading</h2>
+        <p>There are two different kinds of time in the paper. Eversion computation time is the time to generate a VE result from a full CT data set. Reading time is the time a radiologist spends inspecting VC or VE output to find polyps. The paper reports both, so they should not be merged into one claim.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/eversion/eversion_fig8.png"><img src="../assets/figures/eversion/eversion_fig8.png" alt="Phantoms and virtual eversion results"></a>
+          <figcaption><strong>Figure 8 · Phantom validation separates centerline choice from patient noise.</strong> Panels (a) and (d) show phantoms A and B. Panels (b) and (e) show clear outer-centerline eversion. Panels (c) and (f) show the inner-centerline version, where folds and implanted polyps are improperly everted.</figcaption>
+        </figure>
+        <figure>
+          <a href="../assets/figures/eversion/eversion_fig9.png"><img src="../assets/figures/eversion/eversion_fig9.png" alt="Inner and outer surface centerlines of phantom and CT colon data"></a>
+          <figcaption><strong>Figure 9 · The axis difference exists in both phantom and CT data.</strong> The smooth line is the outer surface centerline, and the flexuous dashed line is the inner surface centerline. The visual pattern matches the method's assumption: the outer centerline represents the colon path more steadily.</figcaption>
+        </figure>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Bad-region and computation-time results from the paper text.</strong> The previous method is the inner-surface-centerline VE method cited by the paper; the proposed method is outer-surface-centerline VE with hybrid sampling.</caption>
+            <thead><tr><th>Measure</th><th>Previous method</th><th>Proposed method</th><th>Paper's reported reduction</th><th>How to read it</th></tr></thead>
+            <tbody>
+              <tr><td>Improperly everted regions per CT case</td><td>6.8 on average</td><td>1.9 on average</td><td>71% less</td><td>These are bad everted patches such as overlapping folds or cracked surfaces.</td></tr>
+              <tr><td>Eversion computation time per full CT data set</td><td>983 &plusmn; 264 s</td><td>75 &plusmn; 14 s</td><td>92% less</td><td>This is computation time, not radiologist reading time.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table II from the paper.</strong> Observations on phantoms using VC and VE.</caption>
+            <thead><tr><th>Phantom</th><th>Radiologist</th><th>Average VC reading time (s)</th><th>Average VE reading time (s)</th><th>Time reduction (%)</th><th>Polyps found by VC</th><th>Polyps found by VE</th><th>Actual polyps</th></tr></thead>
+            <tbody>
+              <tr><td>A</td><td>No. 1</td><td>84</td><td>28</td><td>67</td><td>19</td><td>20</td><td>20</td></tr>
+              <tr><td>A</td><td>No. 2</td><td>68</td><td>28</td><td>59</td><td>16</td><td>19</td><td>20</td></tr>
+              <tr><td>B</td><td>No. 1</td><td>164</td><td>52</td><td>62</td><td>12</td><td>13</td><td>13</td></tr>
+              <tr><td>B</td><td>No. 2</td><td>119</td><td>45</td><td>68</td><td>12</td><td>13</td><td>13</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Table II supports the paper's claim that VE can reduce reading time on the two phantoms while keeping nearly all implanted polyps visible. It also shows why the phantom result should stay separate from patient data: the actual-polyp counts are 20 and 13, and the anatomy is simulated.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Table III from the paper.</strong> Observations on CT data using VC and VE.</caption>
+            <thead><tr><th>Radiologist</th><th>Average VC reading time (s)</th><th>Average VE reading time (s)</th><th>Time reduction (%)</th><th>Polyps found by VC</th><th>Polyps found by VE</th><th>Actual polyps</th></tr></thead>
+            <tbody>
+              <tr><td>No. 1</td><td>476</td><td>105</td><td>78</td><td>19</td><td>20</td><td>23</td></tr>
+              <tr><td>No. 2</td><td>392</td><td>91</td><td>77</td><td>18</td><td>16</td><td>23</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Using the table averages, VC reading time is 434 s and VE reading time is 98 s, which is roughly a 77% reduction. The detection counts are close rather than clearly better for VE: across the two readers &mdash; the same 23 polyps scored twice, so 46 reader-polyp opportunities &mdash; VC finds 37 and VE finds 36. The per-reader split is mixed: reader 1 improves with VE (19 to 20 of 23) while reader 2 drops (18 to 16). That is why the strongest supported claim is faster reading with similar sensitivity in this small setup, not superior detection.</p>
+        <div class="socratic">
+          <p class="question">Q: Do the numbers show that VE finds more polyps than VC?</p>
+          <p class="answer">A: No. VE is faster in this study. The polyp counts are similar, and VC is one count higher when the two readers are summed.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> The paper's strongest quantitative result is efficiency plus fewer bad eversions, not a proven sensitivity gain.</p>
+        </div>
+      </section>
 
-<!-- LIMITATIONS -->
-<section id="limitations"><h2>9. 局限与复现门槛</h2>
-<div class="table-wrap"><table><caption><strong>表 C.</strong> 局限、风险与复现门槛。</caption><thead><tr><th>边界</th><th>论文信息</th><th>读者应如何理解</th></tr></thead><tbody>
-<tr><td>阅片样本小</td><td>性能对比仅 20 套 CT、2 位医生</td><td>检出"持平"的统计显著性未给；结论需更大样本</td></tr>
-<tr><td>高曲率残余翻坏</td><td>外中心线仍余 1.9 个/例翻坏，集中在高曲率</td><td>需靠虚拟旋转逐个查看，未完全消除</td></tr>
-<tr><td>依赖外表面分割质量</td><td>整条链建立在真外表面/外中心线之上</td><td>造影剂复杂或分割失败 → 中心线失真 → 外翻失真</td></tr>
-<tr><td>大量经验参数</td><td>$k{=}10,n{=}40,m{=}10,\lambda{=}0.2$，sigmoid $\alpha,\beta$ 等</td><td>换设备/造影方案可能需重调；无敏感性分析</td></tr>
-<tr><td>外翻视觉习惯</td><td>"翻面"是反直觉视角</td><td>需要医生训练适应（与展平的 split 类似）</td></tr>
-<tr><td>规模与年代</td><td>87 套 CT、2010 年单机 CPU</td><td>结论限于该规模；未与深度学习方法比较</td></tr>
-</tbody></table></div>
-<div class="socratic"><p class="question">问：这篇论文最容易被过度宣传成什么？</p><p class="answer">答：最容易被讲成"虚拟外翻全面优于虚拟结肠镜、又快又准还省一大半时间"。更严谨的说法是：在 2 个体模 + 87 套 CT 上，<u>仅把外翻采样的中心线从内换到外</u>，翻坏区域减少 71%，这是干净、可信的机制结论；外翻系统相对 VC 在阅片时间上省约 77%、检出基本持平，但这是 20 套、2 位医生的小样本观察，统计显著性未给。它的真正价值是把"外表面更光滑"这条思想配齐工程链路、做成可用的外翻+旋转系统，并为同组后续的展平（外表面法）打下基础。</p><p class="takeaway"><strong>Takeaway：</strong>强项是机制对照干净（翻坏 6.8→1.9）、系统完整、提速明显；边界是阅片样本小、参数多、高曲率残余、未对比深度方法。</p></div>
-</section>
+      <section id="ablations">
+        <h2>8. Ablations: what evidence isolates the mechanism?</h2>
+        <p>The paper does not run a modern parameter ablation grid. Its mechanism evidence comes from matched geometric comparisons. The clearest comparison is inner surface centerline versus outer surface centerline: the centerline changes, while the task remains VE of the same colon surface. Figures 8-10 and the 6.8 to 1.9 bad-region count all point to the same conclusion.</p>
+        <p>The runtime evidence isolates a second design choice. The previous electrical-line sampling computes many expensive sampling lines directly. The proposed hybrid sampler substitutes bilinear interpolation for most of those dense lines. The computation time drops from 983 &plusmn; 264 s to 75 &plusmn; 14 s, which is consistent with the paper's explanation that interpolation replaces most electrical-line calculations.</p>
+        <p>VR is evaluated qualitatively rather than by a table. Figure 6 shows a polyp that is hard to recognize before rotation and clearer after rotation. That is useful evidence for inspection, but it is not a measured detection-rate ablation of VR by itself.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Mechanism checks available in the paper.</strong></caption>
+            <thead><tr><th>Mechanism</th><th>Comparison in the paper</th><th>Supported conclusion</th><th>Boundary</th></tr></thead>
+            <tbody>
+              <tr><td>Outer centerline</td><td>Inner-centerline VE versus outer-centerline VE.</td><td>Outer-centerline VE produces fewer improper eversions.</td><td>The paper does not sweep centerline smoothing choices.</td></tr>
+              <tr><td>Hybrid sampling</td><td>Previous eversion computation time versus proposed computation time.</td><td>Hybrid sampling makes VE much faster on the reported CPU setup.</td><td>The exact contribution of each parameter is not isolated.</td></tr>
+              <tr><td>Virtual rotation</td><td>Before/after rotation view in a high-curvature region.</td><td>Rotation can separate gathered folds and reveal hidden structure.</td><td>No standalone reader-time or sensitivity table for VR alone is reported.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-<!-- SUMMARY -->
-<section id="summary"><h2>结语：几点学术判断</h2>
-<p><strong>一句话总结：</strong>当"把肠子翻过来看"会在高曲率处翻坏，根因不是外翻算法，而是<strong>沿锯齿状内表面中心线采样</strong>；换成光滑的<strong>外表面中心线</strong>，让电场均匀、反射忠实，翻坏自然减少。</p>
-<div class="guide"><strong>三个 takeaway：</strong><ol>
-<li><strong>采样中心线的光滑度决定外翻质量。</strong>外翻=沿采样线对外表面做保距反射 $E=2R-I$；采样线来自中心线电场，中心线越锯齿、反射越错位。换外表面中心线，翻坏从 6.8 降到 1.9 个/例。</li>
-<li><strong>忠实与便宜可以分开拿。</strong>外表面中心线保证"忠实"（均匀电场），双线性插值保证"便宜"（替换 99% 电场线），外翻计算从 983 s 降到 75 s。</li>
-<li><strong>同一思想的系统化。</strong>"外表面更光滑"在这里催生外翻/旋转系统，在同组《结肠展平（外表面法）》里催生展平矫正——两篇是一条主线的两次落地，互为印证。</li>
-</ol></div>
-<p>阅读路径建议：先看首图 Fig. 8 直观感受"换中心线，翻坏立减" → 图 3 看锯齿内中心线如何把电场线弄乱 → 图 5 抓住外翻的反射本质 $E=2R-I$ → 第 5 节跟着式 1–3、12、15 重推抠外表面/混合采样/旋转 → 表 II/III 看忠实度与可用性 → 第 9 节校准边界。</p>
-</section>
+      <section id="limitations">
+        <h2>9. Limitations: where the evidence stops</h2>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Limits and missing details stated from the paper.</strong></caption>
+            <thead><tr><th>Boundary</th><th>Paper evidence</th><th>How to read it</th></tr></thead>
+            <tbody>
+              <tr><td>Small reader study</td><td>The CT reading-time comparison uses 20 data sets and 2 radiologists.</td><td>The roughly 77% reading-time reduction is a feasibility result from a small study, not established clinical performance.</td></tr>
+              <tr><td>Reading-time granularity</td><td>Tables report average VC and VE reading times by radiologist.</td><td>Some VE reading-time detail, such as per-dataset times and variance, is not recoverable from the paper layout.</td></tr>
+              <tr><td>Parameter sensitivity</td><td>The paper reports fixed settings such as \(k=10\), \(m=10\), \(n=40\), \(\rho=0.2\), and MAX_STEP \(=500\).</td><td>No parameter-sensitivity analysis is reported.</td></tr>
+              <tr><td>External test set</td><td>The CT data come from the U.S. National Cancer Imaging Archive, with 87 data sets and a 20-data-set reader subset.</td><td>No external test set is reported.</td></tr>
+              <tr><td>Segmentation dependence</td><td>Most missed CT polyps are described as not accurately segmented in the inner surface.</td><td>VE cannot display a polyp correctly if the upstream inner-surface segmentation misses it.</td></tr>
+              <tr><td>Code and reproducibility</td><td>The paper states C++, ITK, VTK, CPU, and memory, but not release details.</td><td>Public code, exact toolkit versions, and exact random or case ordering details are not stated in the paper.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The practical conclusion should stay narrow. The paper supports outer-surface-centerline VE as a faster and cleaner deterministic visualization method on its phantoms and reported CT data. It does not prove that VE alone should replace VC in clinical reading.</p>
+      </section>
 
-<!-- REFERENCES -->
-<section id="references" class="references"><h2>资料来源与图像说明</h2><ol>
-<li>Danfeng Zhang, Jun Zhao, Lin Lu, Lei Li, Zhizhong Wang. <em>Virtual eversion and rotation of colon based on outer surface centerline</em>. Medical Physics, 37(10), 2010: 5518–5529. DOI: 10.1118/1.3490084. 通讯作者 junzhao@sjtu.edu.cn（上海交通大学生物医学工程学院）。</li>
-<li>本文所有公式（式 1–3、12、15 及外翻反射 $E=2R-I$）、表格（表 I–III）与数字均以 Wiley/AAPM PDF 为准，经机构网络下载核对；表 II/III 为论文原表逐项转写（部分 VE 绝对时间因原文排版无法逐格还原，已按论文明确给出的均值与缩减比转写），未做"按表 X"式转述。</li>
-<li>关键相关工作：外翻概念提出 Zhao et al.（Int. J. Biomed. Imaging 2008，[11]）；外表面边界检测/水平集 Van Uitert &amp; Summers（IEEE TMI 2007，[16]）；GAC 水平集 Caselles et al.（IJCV 1997）+ ITK；MST 中心线 Ming et al.（IEEE TMI 2002，[15]）；混合分割 Franaszek et al.（IEEE TMI 2006，[20]）；假连接分离 Lu et al.（[26]）。本文是同组《结肠展平（外表面法）》（CMPB 2014，本专题另文）所引用的外表面中心线来源 [25]。</li>
-<li>方法学说明（kexue:su 红线）：机制推导按苏剑林 / kexue.fm "动机先行、假设显式、≥2 路交叉验证"姿态展开；检索语料库仅返回与<u>连续黎曼几何测地线</u>相关卡片（如 [archives/3977]、[archives/9368]），与本文使用的<strong>体素图测地距离 / 电场采样</strong>属不同范畴，故仅作概念对照、<strong>不</strong>将本文算法归因于苏剑林。</li>
-<li>图像说明：图 1–10 均为本地 PNG，由 Wiley/AAPM PDF 以 300 DPI 按图注锚点裁切（图 4、5 因同页双栏单独按图形 bbox 裁出），路径位于 <code>assets/figures/eversion/</code>；无装饰性配图。</li>
-</ol></section>
-</main><footer class="article-footer">Paper Digest · 虚拟结肠外翻与旋转（外表面中心线）。公式已按 MathJax TeX 预检；论文未披露的信息统一标注为"论文未说明"。</footer></article>
-<aside class="sidebar">
-  <section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">研究动机</a></li><li><a href="#contribution">贡献解读</a></li><li><a href="#datasets">任务与数据</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">方法</a></li><li><a href="#training">算力账本</a></li><li><a href="#experiments">主实验</a></li><li><a href="#ablations">消融视角</a></li><li><a href="#limitations">局限</a></li></ol></div></section>
-  <section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Virtual eversion and rotation of colon based on outer surface centerline</dd><dt>Venue</dt><dd>Medical Physics 37(10) 2010: 5518–5529</dd><dt>Topic</dt><dd>虚拟结肠镜 · 结肠外翻 / CTC</dd><dt>Code</dt><dd>未开源</dd><dt>Compute</dt><dd>Intel Pentium E5400 2.5 GHz / 3 GB，外翻约 75 s/例</dd></dl></div></section>
-  <section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> 10 图 + 表 I/II/III 转写</p><p><span class="status-good">figures</span> 10 张 PNG 素材入库</p><p><span class="status-good">formula</span> MathJax 预检通过</p><p><span class="status-warn">scope</span> 阅片样本小（20 套/2 医生），未对比深度方法</p></div></section>
-</aside></div></body></html>
+      <section id="summary">
+        <h2>10. Summary: the useful lesson</h2>
+        <p><strong>In one sentence:</strong> VE becomes more stable when the colon is reflected from sampling lines built on the smooth outer surface centerline instead of the jagged inner surface centerline.</p>
+        <div class="guide">
+          <strong>Three takeaways:</strong>
+          <ol>
+            <li>The key construction is geometric: \(I\) is reflected across \(R\) to \(E=2R-I\), and the outer centerline makes that reflection better behaved.</li>
+            <li>The strongest quantitative evidence is fewer bad everted regions, 6.8 to 1.9 per CT case, and faster eversion computation, 983 &plusmn; 264 s to 75 &plusmn; 14 s.</li>
+            <li>The roughly 77% reading-time reduction is promising but bounded by the small 20-dataset, two-radiologist reader study.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="references" class="references">
+        <h2>Sources and local assets</h2>
+        <ol>
+          <li>Danfeng Zhang, Jun Zhao, Lin Lu, Lei Li, and Zhizhong Wang. <em>Virtual eversion and rotation of colon based on outer surface centerline.</em> Medical Physics, 37(10):5518-5529, 2010. DOI: 10.1118/1.3490084.</li>
+          <li>All equations, tables, figures, and numeric claims in this page are based on the local source PDF <code>sources/eversion.pdf</code>.</li>
+          <li>Local image assets used in this page live under <code>../assets/figures/eversion/</code>: <code>eversion_fig1.png</code> through <code>eversion_fig10.png</code> and <code>eversion_thumb.png</code>.</li>
+          <li>Related methods and background cited by the paper include virtual endoscopy, VC/CTC, virtual flattening, smart virtual fly-over, geodesic active contours, outer colon wall segmentation, centerline extraction, ITK, and VTK.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="article-footer">Paper Digest · Virtual eversion deep-read. Missing implementation details are marked "Not stated in the paper."</footer>
+  </article>
+
+  <aside class="sidebar">
+    <section class="side-card"><h2 class="side-title">Contents</h2><div class="side-body"><ol><li><a href="#lead">Lead</a></li><li><a href="#motivation">Motivation</a></li><li><a href="#contribution">Contribution</a></li><li><a href="#datasets">Data</a></li><li><a href="#pipeline">Pipeline</a></li><li><a href="#method">Method</a></li><li><a href="#training">Training</a></li><li><a href="#experiments">Experiments</a></li><li><a href="#ablations">Ablations</a></li><li><a href="#limitations">Limitations</a></li><li><a href="#summary">Summary</a></li><li><a href="#references">References</a></li></ol></div></section>
+    <section class="side-card"><h2 class="side-title">Paper Info</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>Virtual eversion and rotation of colon based on outer surface centerline</dd><dt>Venue</dt><dd>Medical Physics 2010</dd><dt>Task</dt><dd>CTC visualization</dd><dt>Method type</dt><dd>Deterministic geometry</dd><dt>Code</dt><dd>Not stated in the paper.</dd></dl></div></section>
+    <section class="side-card"><h2 class="side-title">Key Numbers</h2><div class="side-body"><ul><li>Bad regions: 6.8 to 1.9 per CT case</li><li>Eversion compute: 983 &plusmn; 264 s to 75 &plusmn; 14 s</li><li>CT reading: 434 s VC to 98 s VE on average</li><li>Reader subset: 20 CT data sets, 2 radiologists</li></ul></div></section>
+    <section class="side-card"><h2 class="side-title">Status</h2><div class="side-body"><p><span class="status-good">completed</span> English rewrite</p><p><span class="status-good">figures</span> 10 local PNGs reused</p><p><span class="status-good">tables</span> Paper Tables I-III transcribed</p><p><span class="status-warn">scope</span> Small reader study</p></div></section>
+  </aside>
+</div>
+</body>
+</html>

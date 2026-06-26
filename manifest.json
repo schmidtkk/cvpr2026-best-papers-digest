@@ -1,12 +1,12 @@
 {
   "site": "Paper Digest",
-  "subtitle": "按研究领域浏览 Best Paper / Best Student Paper 获奖论文深读",
+  "subtitle": "Browse deep dives into Best Paper / Best Student Paper award papers by research area",
   "generated_date": "2026-06-09",
   "scope": "best_papers_first",
   "processing_policy": {
     "writing": "Paper2Html academic blog; Socratic question→guidance→answer→takeaway; figures are evidence, not decoration",
     "figures": "High-resolution local PNG extracted from paper PDF, supplementary PDF, or official project/home pages",
-    "missing_info": "论文未说明",
+    "missing_info": "Not specified in the paper",
     "formula_check": "No ASCII control chars, no Math input error literal, balanced $$, local image paths verified"
   },
   "verification_sources": {
@@ -104,7 +104,7 @@
       "formula_check": "passed",
       "short": "D4RT",
       "topic": "3D & Geometry · Dynamic 4D Reconstruction",
-      "blurb": "用统一 query decoder 把 4D tracking、depth、pose、all-pixels reconstruction 接到同一个 feedforward Transformer。",
+      "blurb": "Uses a unified query decoder to connect 4D tracking, depth, pose, and all-pixels reconstruction to the same feedforward Transformer.",
       "tags": "Best Paper 3D Geometry D4RT dynamic scene reconstruction tracking"
     },
     {
@@ -121,11 +121,11 @@
       "page_path": "papers/sam3d.html",
       "thumbnail": "assets/figures/sam3d/sam3d_thumb.png",
       "status": "completed",
-      "figures_count": 20,
+      "figures_count": 13,
       "formula_check": "passed",
       "short": "SAM 3D",
       "topic": "3D & Geometry · Foundation Model",
-      "blurb": "从单张自然图像恢复物体 geometry、texture 与 layout，通过 model/human-in-the-loop 数据引擎做真实图像对齐。",
+      "blurb": "Recovers object geometry, texture, and layout from a single natural image, using a model/human-in-the-loop data engine for real-image alignment.",
       "tags": "Honorable 3D Geometry SAM 3D reconstruction texture layout"
     },
     {
@@ -142,11 +142,11 @@
       "page_path": "papers/nitrogen.html",
       "thumbnail": "assets/figures/nitrogen/nitrogen_fig1_overview_pdf_crop.png",
       "status": "completed",
-      "figures_count": 13,
+      "figures_count": 11,
       "formula_check": "passed",
       "short": "NitroGen",
       "topic": "Embodied AI · Gaming Agents",
-      "blurb": "从公开视频中恢复 action labels，训练跨商业游戏的 vision-action foundation policy。",
+      "blurb": "Recovers action labels from public videos and trains a vision-action foundation policy across commercial games.",
       "tags": "Honorable Embodied AI NitroGen gaming agents video action foundation model"
     },
     {
@@ -165,10 +165,10 @@
       "status": "completed_high_quality_rebuild",
       "figures_count": 18,
       "formula_check": "passed",
-      "missing_info": "训练总时长、steps/epochs、完整 LR schedule、采样步数等已标注论文未说明",
+      "missing_info": "Total training time, steps/epochs, full LR schedule, sampling steps, and other marked items are not specified in the paper",
       "short": "Native",
       "topic": "3D & Geometry · Structured Latents",
-      "blurb": "用 O-Voxel 保留复杂拓扑与 PBR 材质，再用 SC-VAE 压成 compact SLat，支撑约 4B flow-matching 3D 生成模型。",
+      "blurb": "Uses O-Voxel to preserve complex topology and PBR materials, then compresses it into compact SLat with SC-VAE to support an about 4B flow-matching 3D generation model.",
       "tags": "Student 3D Geometry Native O-Voxel structured latents PBR flow"
     },
     {
@@ -185,14 +185,14 @@
       "page_path": "papers/chordedit.html",
       "thumbnail": "assets/figures/chordedit/chordedit_fig1_teaser_thumb.png",
       "status": "completed",
-      "figures_count": 22,
+      "figures_count": 12,
       "formula_check": "passed",
       "pdf": "https://openaccess.thecvf.com/content/CVPR2026/papers/Lu_ChordEdit_One-Step_Low-Energy_Transport_for_Image_Editing_CVPR_2026_paper.pdf",
       "supplement": "https://openaccess.thecvf.com/content/CVPR2026/supplemental/Lu_ChordEdit_One-Step_Low-Energy_CVPR_2026_supplemental.pdf",
       "notes": "ChordEdit deep-dive page with PDF/Supp/project figures and MathJax formula preflight.",
       "short": "ChordEdit",
       "topic": "Image Editing · Transport / One-step T2I Editing",
-      "blurb": "用低能量 Chord Control Field 替代 naive drift difference，实现 training-free、inversion-free 的 one-step 实时图像编辑。",
+      "blurb": "Uses a low-energy Chord Control Field instead of naive drift difference to achieve training-free, inversion-free one-step real-time image editing.",
       "tags": "Student Honorable Editing ChordEdit image editing transport"
     },
     {
@@ -202,7 +202,7 @@
       "category": "3DGS / Segmentation",
       "short": "B³-Seg",
       "topic": "3DGS Segmentation · Bayesian Active Sampling",
-      "blurb": "把 training-free / camera-free 的 3DGS 分割重写成 Beta–Bernoulli 贝叶斯更新 + 解析 EIG 主动视角选择，并证明贪心选视角有 (1−1/e) 近似最优界。",
+      "blurb": "Recasts training-free / camera-free 3DGS segmentation as Beta–Bernoulli Bayesian updates + analytic EIG active view selection, and proves greedy view selection has a (1−1/e) approximate optimality bound.",
       "tags": "Top Paper candidate 3DGS Segmentation Bayesian EIG submodular training-free camera-free",
       "authors": "Hiromichi Kamata; Samuel Arthur Munro; Fuminori Homma",
       "links": {
@@ -211,7 +211,7 @@
       "page_path": "papers/b3seg.html",
       "thumbnail": "assets/figures/b3seg/b3seg_fig1_teaser.png",
       "status": "completed",
-      "figures_count": 12,
+      "figures_count": 15,
       "formula_check": "passed"
     },
     {
@@ -221,7 +221,7 @@
       "category": "Multimodal LLM / 4D",
       "short": "4D-RGPT",
       "topic": "Multimodal LLM · Region-level 4D VQA",
-      "blurb": "用 Perceptual 4D Distillation 把冻结 4D 专家的潜在 + 显式表征蒸馏进 MLLM 主干，配时间戳编码与区域级提示，做深度感知的 4D 视频问答；并提出 R4D-Bench。",
+      "blurb": "Uses Perceptual 4D Distillation to distill frozen 4D experts' latent + explicit representations into the MLLM backbone, with timestamp encoding and region-level prompts, for depth-aware 4D video QA; also introduces R4D-Bench.",
       "tags": "Top Paper candidate Multimodal LLM 4D VQA distillation NVIDIA region-level depth temporal R4D-Bench",
       "authors": "Chiao-An Yang; Ryo Hachiuma; Sifei Liu; Subhashree Radhakrishnan; Raymond A. Yeh; Yu-Chiang Frank Wang; Min-Hung Chen",
       "links": {
@@ -231,7 +231,7 @@
       "page_path": "papers/rgpt.html",
       "thumbnail": "assets/figures/rgpt/rgpt_fig1_overview.png",
       "status": "completed",
-      "figures_count": 9,
+      "figures_count": 17,
       "formula_check": "passed"
     },
     {
@@ -241,7 +241,7 @@
       "category": "3D Reconstruction / LRM",
       "short": "tttLRM",
       "topic": "Large Reconstruction Model · Test-Time Training",
-      "blurb": "把跨视角记忆从注意力 KV cache 换成被梯度更新的 fast weights（TTT/LaCT），实现线性复杂度、长上下文（64 视角）、高分辨率且自回归流式的前馈 3DGS 重建。",
+      "blurb": "Replaces cross-view memory from attention KV cache with gradient-updated fast weights (TTT/LaCT), achieving linear complexity, long context (64 views), high resolution, and autoregressive streaming feedforward 3DGS reconstruction.",
       "tags": "Top Paper candidate 3D Reconstruction LRM test-time training TTT LaCT fast weights long context autoregressive Adobe",
       "authors": "Chen Wang; Hao Tan; Wang Yifan; Zhiqin Chen; Yuheng Liu; Kalyan Sunkavalli; Sai Bi; Lingjie Liu; Yiwei Hu",
       "links": {
@@ -252,7 +252,7 @@
       "page_path": "papers/tttlrm.html",
       "thumbnail": "assets/figures/tttlrm/tttlrm_fig1_teaser.png",
       "status": "completed",
-      "figures_count": 11,
+      "figures_count": 16,
       "formula_check": "passed"
     },
     {
@@ -262,7 +262,7 @@
       "category": "Image Tokenizer / Generation",
       "short": "MacTok",
       "topic": "Continuous Tokenizer · Posterior Collapse",
-      "blurb": "用随机 + DINO 语义掩码重建和全局/局部表征对齐，防止少 token 连续 tokenizer 的 posterior collapse，64/128 token 即取得 ImageNet SOTA gFID。",
+      "blurb": "Uses random + DINO semantic mask reconstruction and global/local representation alignment to prevent posterior collapse in few-token continuous tokenizers, reaching ImageNet SOTA gFID with just 64/128 token.",
       "tags": "Top Paper candidate Image Tokenizer generation posterior collapse masking DINO alignment 1D continuous VAE Fudan",
       "authors": "Guanghao Li; Yuxiang Yan; Xin Gao; Hengyu Zeng; Jiaoyang Ruan; Junpeng Ma; Haoyu Albert Wang; Jian Pu",
       "links": {
@@ -271,7 +271,7 @@
       "page_path": "papers/mactok.html",
       "thumbnail": "assets/figures/mactok/mactok_fig1_masking.png",
       "status": "completed",
-      "figures_count": 9,
+      "figures_count": 11,
       "formula_check": "passed"
     },
     {
@@ -281,7 +281,7 @@
       "category": "World Model / Video",
       "short": "Delta Tokens",
       "topic": "Generative World Model · Delta Tokens",
-      "blurb": "用 Best-of-Many 单前向出多样未来、再把相邻帧 VFM 特征差压成一个 delta token（视频 3D→1D，1024× 压缩），让生成式世界模型既多样又便宜。",
+      "blurb": "Uses Best-of-Many to produce diverse futures in a single forward pass, then compresses adjacent-frame VFM feature differences into one delta token (video 3D→1D, 1024× compression), making the generative world model both diverse and cheap.",
       "tags": "Top Paper candidate world model video Best-of-Many delta token VFM feature space mode averaging Amazon generative",
       "authors": "Tommie Kerssies; Gabriele Berton; Ju He; Qihang Yu; Wufei Ma; Daan de Geus; Gijs Dubbelman; Liang-Chieh Chen",
       "links": {
@@ -291,7 +291,7 @@
       "page_path": "papers/deltatok.html",
       "thumbnail": "assets/figures/deltatok/deltatok_fig1_outline.png",
       "status": "completed",
-      "figures_count": 9,
+      "figures_count": 15,
       "formula_check": "passed"
     },
     {
@@ -301,7 +301,7 @@
       "category": "Neural PDE / Physics",
       "short": "MSPT",
       "topic": "Neural PDE · Multi-Scale Attention",
-      "blurb": "用 ball-tree 切空间连续 patch、patch 内做局部注意力 + 对池化 supernode 做全局注意力，复杂度线性项主导，单卡扩展到百万点物理仿真并取得 SOTA 精度。",
+      "blurb": "Uses a ball-tree to split spatially continuous patch, applies local attention within patch + global attention over pooled supernode, keeps complexity dominated by the linear term, and scales single-GPU physical simulation to million-point settings with SOTA accuracy.",
       "tags": "Top Paper candidate Neural PDE physics multi-scale attention ball tree supernode pooling efficient transformer million points Amsterdam",
       "authors": "Pedro M. P. Curvo; Jan-Willem van de Meent; Maksim Zhdanov",
       "links": {
@@ -311,7 +311,7 @@
       "page_path": "papers/mspt.html",
       "thumbnail": "assets/figures/mspt/mspt_fig1.png",
       "status": "completed",
-      "figures_count": 11,
+      "figures_count": 17,
       "formula_check": "passed"
     },
     {
@@ -321,7 +321,7 @@
       "category": "Human Mesh Recovery / Pose Estimation",
       "short": "SAM 3D Body",
       "topic": "Human Mesh Recovery · Promptable Enc–Dec",
-      "blurb": "共享编码器 + 身体/手部双解码器拆解优化冲突，用手腕+肘部 re-prompt 缝回一致全身；配 VLM 数据引擎与多阶段网格拟合标注（700 万图），成为首个身手两端同时立住的单模型。",
+      "blurb": "Shared encoder + separate body/hand dual decoders disentangle optimization conflicts, while wrist + elbow re-prompt stitches the result back into a consistent full body; with a VLM data engine and multi-stage mesh-fitting labels (700 ten-thousand images), it becomes the first single model that works robustly for both body and hands.",
       "tags": "Top Paper candidate Human Mesh Recovery pose estimation promptable two-way decoder Momentum Human Rig data engine Meta MHR",
       "authors": "Xitong Yang; Devansh Kukreja; Don Pinkus; Anushka Sagar; Taosha Fan; Jinhyung Park; Soyong Shin; Jinkun Cao; Jiawei Liu; Nicolas Ugrinovic; Matt Feiszli; Jitendra Malik; Piotr Dollar; Kris Kitani",
       "links": {
@@ -332,7 +332,7 @@
       "page_path": "papers/sam3dbody.html",
       "thumbnail": "assets/figures/sam3dbody/sam3dbody_fig1.png",
       "status": "completed",
-      "figures_count": 13,
+      "figures_count": 18,
       "formula_check": "passed"
     },
     {
@@ -341,8 +341,8 @@
       "title": "LLaDA-MedV: Exploring Large Language Diffusion Models for Biomedical Image Understanding",
       "category": "Medical AI (CVPR 2026)",
       "short": "LLaDA-MedV",
-      "topic": "Medical AI · 掩码扩散语言 VLM",
-      "blurb": "首个生物医学掩码扩散 VLM：从固定长度全掩码画布迭代填空，长度成为输入超参而非 EOS 早停；开放式对话领先 ARM、闭合式 VQA 三连 SOTA（84.93/92.31/95.15）。",
+      "topic": "Medical AI · Masked Diffusion Language VLM",
+      "blurb": "The first biomedical masked diffusion VLM: it iteratively fills in a fixed-length fully masked canvas, making length an input hyperparameter rather than EOS early stopping; it leads ARM in open-ended dialogue and achieves three consecutive SOTA results on closed-ended VQA (84.93/92.31/95.15).",
       "tags": "Medical Medical AI biomedical VLM masked diffusion LLaDA visual instruction tuning VQA length control closed-form SOTA ASU",
       "authors": "Xuanzhao Dong; Wenhui Zhu; Xiwen Chen; Zhipeng Wang; Peijie Qiu; Shao Tang; Xin Li; Yalin Wang",
       "links": {
@@ -353,13 +353,13 @@
       "page_path": "papers/lladamedv.html",
       "thumbnail": "assets/figures/lladamedv/lladamedv_thumb.png",
       "status": "completed",
-      "figures_count": 7,
+      "figures_count": 10,
       "formula_check": "passed",
-      "missing_info": "训练总时长、steps/epochs、完整 LR schedule 等已标注论文未说明",
+      "missing_info": "Total training time, steps/epochs, full LR schedule, and other marked items are not specified in the paper",
       "issues": [
         "medical"
       ],
-      "subtopic": "医学 VLM / 多模态理解",
+      "subtopic": "Medical VLM / Multimodal Understanding",
       "subtopic_key": "med-vlm"
     },
     {
@@ -368,8 +368,8 @@
       "title": "VoxTell: Free-Text Promptable Universal 3D Medical Image Segmentation",
       "category": "Medical AI (CVPR 2026)",
       "short": "VoxTell",
-      "topic": "Medical AI · 文本提示 3D 医学分割 / 多尺度视觉-语言融合",
-      "blurb": "把文本融合从 MaskFormer 的“末端一次点积”改成“每个解码尺度都融一次 + 深监督”：62K+ CT/MRI/PET、1087 概念上训练，11 个未见数据集零样本平均 Dice 70.85（次优 SAT 51.23），真实放射报告整句提示下 50.2 而 SAT 仅 0.0。",
+      "topic": "Medical AI · Text-Prompted 3D Medical Segmentation / Multi-Scale Vision-Language Fusion",
+      "blurb": "Changes text fusion from MaskFormer's 'single final dot product' to 'fusion at every decoding scale + deep supervision': trained on 62K+ CT/MRI/PET and 1087 concepts, on 11 unseen datasets it reaches zero-shot average Dice 70.85 (runner-up SAT 51.23), and 50.2 under full-sentence prompts from real radiology reports while SAT gets only 0.0.",
       "tags": "Medical Medical AI text-promptable segmentation 3D CT MRI PET vision-language fusion multi-scale deep supervision UNet ResEncL Qwen3-Embedding open-vocabulary zero-shot DKFZ nnU-Net",
       "authors": "Maximilian Rokuss; Moritz Langenberg; Yannick Kirchhoff; Fabian Isensee; Benjamin Hamm; Constantin Ulrich; Sebastian Regnery; Lukas Bauer; Efthimios Katsigiannopulos; Tobias Norajitra; Klaus Maier-Hein",
       "links": {
@@ -380,13 +380,13 @@
       "page_path": "papers/voxtell.html",
       "thumbnail": "assets/figures/voxtell/voxtell_fig1.png",
       "status": "completed",
-      "figures_count": 9,
+      "figures_count": 14,
       "formula_check": "passed",
-      "missing_info": "总训练 steps/epochs、完整 LR schedule、表 1/表 3 个别数据集精确名置于附录（正文按模态行+点名数值核对）",
+      "missing_info": "Total training steps/epochs, full LR schedule, and the exact names of individual datasets in Table 1/Table 3 are placed in the appendix (main-text values checked by modality row + named numbers)",
       "issues": [
         "medical"
       ],
-      "subtopic": "影像分割 / 像素级推理",
+      "subtopic": "Image Segmentation / Pixel-Level Reasoning",
       "subtopic_key": "med-seg"
     },
     {
@@ -395,8 +395,8 @@
       "title": "Scaling Self-Supervised and Cross-Modal Pretraining for Volumetric CT Transformers",
       "category": "Medical AI (CVPR 2026)",
       "short": "SPECTRE",
-      "topic": "Medical AI · 体积 CT 基础模型 / 两级 3D Transformer + 视觉-语言对齐",
-      "blurb": "首个纯 transformer 的体积 CT 基础模型：把算不动的 3D 全局注意力拆成“局部 ViT 24 层窗口内细看（代价随窗口数线性）+ 全局 ViT 4 层在窗口描述子上做全注意力（G≪m 故廉价）”，配各向异性 patch / 3D RoPE，先 DINOv3 式自监督再 SigLIP 对齐放射报告。仅用公开 CT 数据 229,619 序列，6 个生物标志物基准冻结-kNN 4/6 第一，CT-RATE 零样本检索 Recall@5 17.5（CT-CLIP 仅 2.9）。",
+      "topic": "Medical AI · Volumetric CT Foundation Model / Two-Level 3D Transformer + Vision-Language Alignment",
+      "blurb": "The first pure-transformer volumetric CT foundation model: it splits otherwise unaffordable 3D global attention into 'local ViT 24-layer close inspection inside windows (cost linear in the number of windows) + global ViT 4-layer full attention over window descriptors (cheap because G≪m)', with anisotropic patch / 3D RoPE, then performs DINOv3-style self-supervision followed by SigLIP alignment to radiology reports. Using only public CT data, 229,619 sequences, across 6 biomarker benchmarks it ranks first in 4/6 frozen-kNN tests and reaches CT-RATE zero-shot retrieval Recall@5 17.5 (CT-CLIP only 2.9).",
       "tags": "Medical Medical AI volumetric CT foundation model 3D ViT two-level attention windowed attention 3D RoPE anisotropic tokenization DINOv3 SigLIP self-supervised vision-language alignment SEoMT segmentation zero-shot retrieval open-data TU Eindhoven",
       "authors": "Cris Claessens; Christiaan Viviers; Giacomo D'Amicantonio; Egor Bondarev; Fons van der Sommen",
       "links": {
@@ -407,13 +407,13 @@
       "page_path": "papers/spectre.html",
       "thumbnail": "assets/figures/spectre/spectre_fig1.png",
       "status": "completed",
-      "figures_count": 13,
+      "figures_count": 18,
       "formula_check": "passed",
-      "missing_info": "总 GPU 卡数/墙钟时间论文未披露（仅给 batch/steps/epoch）；生物标志物 AUC 正文无数值表（图 3 柱高为图中读数）；表 1/3 个别数据集精确名以附录为准",
+      "missing_info": "Total GPU count/wall-clock time is not disclosed in the paper (only batch/steps/epoch are given); biomarker AUC has no numeric table in the main text (Figure 3 bar heights are readings from the figure); exact names of individual datasets in Tables 1/3 should follow the appendix",
       "issues": [
         "medical"
       ],
-      "subtopic": "3D 基础模型 / 表征与生成",
+      "subtopic": "3D Foundation Models / Representation and Generation",
       "subtopic_key": "med-foundation"
     },
     {
@@ -422,8 +422,8 @@
       "title": "X-PCR: A Benchmark for Cross-modality Progressive Clinical Reasoning in Ophthalmic Diagnosis",
       "category": "Medical AI (CVPR 2026)",
       "short": "X-PCR",
-      "topic": "Medical AI · 眼科诊断推理基准 / 六阶段带依赖推理链 + 跨模态对齐评测",
-      "blurb": "把眼科诊断从“一堆独立选择题”改造成“带因果依赖的六阶段推理链（IQA→AL→LC→DD→SG→CD）+ 跨六模态对齐推理”，再叠难度分层与不确定性感知（UAS/ECE）打分：26,415 张专家核验图、177,868 VQA、52 病、51 个公开数据集。一个 Chain Completion Rate 就把缺陷逼现——21 个 MLLM 里最强的 GPT-5 单步均分 76.24%，六步全对率却仅 24.47%，无一模型超过主治医师（79.91%）。",
+      "topic": "Medical AI · Ophthalmic Diagnostic Reasoning Benchmark / Six-Stage Dependent Reasoning Chain + Cross-Modal Alignment Evaluation",
+      "blurb": "Turns ophthalmic diagnosis from 'a pile of independent multiple-choice questions' into 'a six-stage reasoning chain with causal dependencies (IQA→AL→LC→DD→SG→CD) + cross-six-modality alignment reasoning', then adds difficulty stratification and uncertainty-aware (UAS/ECE) scoring: 26,415 expert-verified images, 177,868 VQA, 52 diseases, 51 public datasets. A single Chain Completion Rate exposes the flaw: among 21 MLLMs, the strongest, GPT-5, averages 76.24% on single steps, but only 24.47% across all six steps, and no model exceeds attending physicians (79.91%).",
       "tags": "Medical Medical AI benchmark ophthalmic diagnosis MLLM progressive clinical reasoning chain completion rate cross-modal alignment uncertainty-aware UAS ECE calibration VQA six-stage CFP OCT FFA ICGA RetCam external-photography GPT-5 difficulty-stratified Shenzhen University",
       "authors": "Gui Wang; Zehao Zhong; YongSong Zhou; Yudong Li; Ende Wu; Wooi Ping Cheah; Rong Qu; Jianfeng Ren; Linlin Shen",
       "links": {
@@ -436,11 +436,11 @@
       "status": "completed",
       "figures_count": 8,
       "formula_check": "passed",
-      "missing_info": "具体 GPU 小时数/墙钟时间论文未披露（仅给 A100 单卡/多卡分工与零样本确定性解码）；表 2/3/4 为原 21 行表的代表性节选转写（完整行见原文）",
+      "missing_info": "Exact GPU hours/wall-clock time are not disclosed in the paper (only A100 single-GPU/multi-GPU division of work and zero-shot deterministic decoding are given); Tables 2/3/4 are representative excerpt transcriptions from the original 21-row tables (see original paper for all rows)",
       "issues": [
         "medical"
       ],
-      "subtopic": "评测基准",
+      "subtopic": "Evaluation Benchmark",
       "subtopic_key": "med-benchmark"
     },
     {
@@ -449,8 +449,8 @@
       "title": "SurgCoT: Advancing Spatiotemporal Reasoning in Surgical Videos through a Chain-of-Thought Benchmark",
       "category": "Medical AI (CVPR 2026)",
       "short": "SurgCoT",
-      "topic": "Medical AI · 手术视频时空推理 / Chain-of-Thought 评测基准",
-      "blurb": "首个跨专科手术视频 CoT 推理基准：把大时空问题拆成“视频级→片段级→帧级”三阶段（Q1→Q2→Q3，上一级 Answer 进下一级条件），每级用五元组 Question→Option→Knowledge→Clue→Answer 标注，把 reason-then-decide 显式化。7 专科 35 术式 2,841 视频、19,345 主问题 + 59,177 子问题，评 10 个 MLLM × 5 维 × 三档（BL/KE/FC）。最尖锐的发现：主问题答对、子步骤大面积答错（GPT-5 主 87.58% 但 Q3 仅 50.51%，Claude 主 87.54% / Q3 30.44%）——高准确率多是捷径而非真推理。",
+      "topic": "Medical AI · Surgical Video Spatiotemporal Reasoning / Chain-of-Thought Benchmark",
+      "blurb": "The first cross-specialty surgical video CoT reasoning benchmark: it decomposes large spatiotemporal problems into three stages, 'video-level → clip-level → frame-level' (Q1→Q2→Q3, the higher-level Answer conditions the next level), annotates each level with a five-tuple Question→Option→Knowledge→Clue→Answer, and makes reason-then-decide explicit. 7 specialties, 35 procedures, 2,841 videos, 19,345 main questions + 59,177 subquestions, evaluating 10 MLLMs × 5 dimensions × three settings (BL/KE/FC). The sharpest finding: main questions are answered correctly while substeps are broadly wrong (GPT-5 main 87.58% but Q3 only 50.51%, Claude main 87.54% / Q3 30.44%), so high accuracy is often shortcutting rather than real reasoning.",
       "tags": "Medical Medical AI surgical video benchmark spatiotemporal reasoning chain-of-thought CoT MLLM evaluation five-tuple annotation progressive reasoning Knowledge Clue causal action ordering anomaly onset tracking shortcut learning Shenzhen University CVI-SZU",
       "authors": "Gui Wang; YongSong Zhou; Kaijun Deng; Wooi Ping Cheah; Rong Qu; Jianfeng Ren; Linlin Shen",
       "links": {
@@ -461,13 +461,13 @@
       "page_path": "papers/surgcot.html",
       "thumbnail": "assets/figures/surgcot/surgcot_fig1_teaser_thumb.png",
       "status": "completed",
-      "figures_count": 8,
+      "figures_count": 9,
       "formula_check": "passed",
-      "missing_info": "评测总耗时/API 成本/数据集是否完整公开放出论文未披露；图 3 数据分布正文无数值表；正文写评测 12 模型而主表实测 10 个、开源模型命名（Intern3.5-VL-8B / InternVL-8B）不完全一致，本页以表头实测为准",
+      "missing_info": "Total evaluation time/API cost/whether the full dataset is publicly released are not disclosed in the paper; Figure 3 data distribution has no numeric table in the main text; the main text says 12 models are evaluated while the main table actually reports 10, and open-source model names (Intern3.5-VL-8B / InternVL-8B) are not fully consistent, so this page follows the measured table headers",
       "issues": [
         "medical"
       ],
-      "subtopic": "外科 / 内窥镜",
+      "subtopic": "Surgery / Endoscopy",
       "subtopic_key": "med-surgical"
     },
     {
@@ -476,8 +476,8 @@
       "title": "Uni-Hema: Unified Model for Digital Hematopathology",
       "category": "Medical AI (CVPR 2026)",
       "short": "Uni-Hema",
-      "topic": "Medical AI · 数字血液病理 / 统一多任务多模态模型",
-      "blurb": "首个面向数字血液病理（DHP）的统一视觉-语言模型：一套共享主干（ResNet-50 + DINO-DETR 编解码 + T5 文本编解码），靠 Hema-Former 把“层级化视觉特征 + 任务相关 query”在不同粒度上分流——CMF 跨模态融合（语言）、TGVR top-K 文本调制（检测/形态学）、SCFE 文本无关单细胞特征（分类）、QGMF 用 Einstein 求和把病灶 query ⊗ 像素特征生成分割 logits（像素）。46 个公开集（≈70 万图 + 22K QA + 7K MLM）单卡 RTX 4090 约 8 天、6 阶段渐进冻结联合训练一次。检测 mean mAP50 61.1、分类 mean F1 92.5、形态学 77.2（AttriDet 62.6），未见域分类 mean F1 90.8 居首；代价是小样本任务被单训模型反超、分割边缘略糊。",
+      "topic": "Medical AI · Digital Hematopathology / Unified Multi-Task Multimodal Model",
+      "blurb": "The first unified vision-language model for digital hematopathology (DHP): a shared backbone (ResNet-50 + DINO-DETR encoder-decoder + T5 text encoder-decoder), with Hema-Former routing 'hierarchical visual features + task-related query' at different granularities: CMF cross-modal fusion (language), TGVR top-K text modulation (detection/morphology), SCFE text-independent single-cell features (classification), and QGMF using Einstein summation to turn lesion query ⊗ pixel features into segmentation logits (pixels). 46 public sets (≈70 ten-thousand images + 22K QA + 7K MLM), single RTX 4090 for about 8 days, one 6-stage progressively frozen joint training run. Detection mean mAP50 61.1, classification mean F1 92.5, morphology 77.2 (AttriDet 62.6), and unseen-domain classification mean F1 90.8 ranks first; the cost is that small-sample tasks are overtaken by single-task models and segmentation edges are slightly blurred.",
       "tags": "Medical Medical AI digital hematopathology DHP unified model multi-task multi-modal Hema-Former cross-modal fusion text-guided refinement single-cell feature extractor query-guided mask former Einstein summation detection segmentation classification morphology VQA masked language modeling ResNet DINO-DETR T5 Mask DINO progressive training RTX 4090 ITU Punjab Chughtai Lab leukemia malaria anemia sickle cell",
       "authors": "Abdul Rehman; Iqra Rasool; Ayesha Imran; Mohsen Ali; Waqas Sultani",
       "links": {
@@ -487,13 +487,13 @@
       "page_path": "papers/unihema.html",
       "thumbnail": "assets/figures/unihema/unihema_fig1.png",
       "status": "completed",
-      "figures_count": 8,
+      "figures_count": 11,
       "formula_check": "passed",
-      "missing_info": "Step 2 的 epoch/batch 与各阶段 LR/优化器等细节在附录（本页未取得补充材料，标论文未说明）；总训练仅给“约 8 天/单卡 4090”，GPU-小时为粗略估算；Table 1 含更多数据集行，本页保留代表行 + Mean；CVF 页未上线，仅 arXiv + 代码链接",
+      "missing_info": "Details such as Step 2 epoch/batch and each stage's LR/optimizer are in the appendix (supplementary material was not available for this page, marked as not specified in the paper); total training is only reported as 'about 8 days/single 4090', so GPU-hours are a rough estimate; Table 1 contains more dataset rows, and this page keeps representative rows + Mean; CVF page is not online, only arXiv + code links",
       "issues": [
         "medical"
       ],
-      "subtopic": "病理 / 组织",
+      "subtopic": "Pathology / Tissue",
       "subtopic_key": "med-pathology"
     },
     {
@@ -502,8 +502,8 @@
       "title": "LEMON: A Large Endoscopic MONocular Dataset and Foundation Model for Perception in Surgical Settings",
       "category": "Medical AI (CVPR 2026)",
       "short": "LEMON",
-      "topic": "Medical AI · 手术内窥镜大数据集 + 增强自蒸馏基础模型",
-      "blurb": "私有手术数据喂不饱基础模型，LEMON 改走纯公开路线：从 YouTube 爬约 1.8 万段视频，用一条多级 curation 流水线（视频→帧→区域逐粒度剔非手术内容）削到 4194 段/938h/85M 帧/35 术式，是目前最大的开放手术数据集。基础模型 LemonFM 在 DINO 自蒸馏上加一路“增强蒸馏”——把同术式他人最近邻帧 + 时间相邻帧也当正视图，显式训入跨病人/跨帧不变性（3× 距离阈值为质量旋钮）。线性探测+全微调双协议在 4 任务 6 数据集全面领先：相位 Jaccard 最高 +9.5pp、分割 +10.3pp mDice，且 50% 标注微调仍压过别人 100%。",
+      "topic": "Medical AI · Large Surgical Endoscopy Dataset + Augmented Self-Distillation Foundation Model",
+      "blurb": "Private surgical data is not enough to feed foundation models, so LEMON switches to a fully public route: crawl about 1.8 ten-thousand videos from YouTube, then use a multi-level curation pipeline (video→frame→region, progressively removing non-surgical content by granularity) to reduce them to 4194 clips/938h/85M frames/35 procedures, making it the largest open surgical dataset to date. The foundation model LemonFM adds an 'augmented distillation' branch on top of DINO self-distillation: nearest-neighbor frames from other people undergoing the same procedure + temporally adjacent frames are also treated as positive views, explicitly training cross-patient/cross-frame invariance (3× distance threshold as a quality knob). Under both linear probing and full fine-tuning protocols, it leads across 4 tasks and 6 datasets: phase Jaccard up to +9.5pp, segmentation +10.3pp mDice, and fine-tuning with 50% labels still beats others using 100%.",
       "tags": "Medical Medical AI surgical endoscopy dataset foundation model self-supervised DINO knowledge distillation augmented distillation nearest-neighbor mining ConvNeXt linear probing full fine-tuning phase recognition tool detection action recognition semantic segmentation YouTube curation data efficiency King's College London",
       "authors": "Chengan Che; Chao Wang; Tom Vercauteren; Sophia Tsoka; Luis C. Garcia-Peraza-Herrera",
       "links": {
@@ -513,13 +513,13 @@
       "page_path": "papers/lemon.html",
       "thumbnail": "assets/figures/lemon/lemon_fig1_teaser_thumb.png",
       "status": "completed",
-      "figures_count": 11,
+      "figures_count": 15,
       "formula_check": "passed",
-      "missing_info": "预训练端到端墙钟总时长论文未披露（仅给 8×V100、batch、epoch 与 per-step 训练时间表 12）；图 1 雷达为按轴刻度的图中读数，精确数值以表 3/4 为准；LEMON 数据靠 YouTube 链接分发，原视频被删则条目失效，无法保证逐帧完全复现",
+      "missing_info": "End-to-end pretraining wall-clock time is not disclosed in the paper (only 8×V100, batch, epoch, and per-step training time in Table 12 are given); Figure 1 radar chart values are readings from axis ticks, with exact values governed by Tables 3/4; LEMON data is distributed via YouTube links, so entries fail if original videos are deleted, and exact frame-level reproduction cannot be guaranteed",
       "issues": [
         "medical"
       ],
-      "subtopic": "外科 / 内窥镜",
+      "subtopic": "Surgery / Endoscopy",
       "subtopic_key": "med-surgical"
     },
     {
@@ -528,8 +528,8 @@
       "title": "OctoMed: Data Recipes for State-of-the-Art Multimodal Medical Reasoning",
       "category": "Medical AI (CVPR 2026)",
       "short": "OctoMed",
-      "topic": "Medical AI · 医学多模态推理的「数据配方」：纯 SFT 蒸馏 + 拒绝采样多轨迹",
-      "blurb": "当大家忙着发明新损失、堆 RL、上更大 backbone 时，OctoMed 把赌注全压在「喂什么数据」上：从强 teacher（DeepSeek-R1 / GPT-4o）蒸馏带推理轨迹的样本、用拒绝采样只留答对的轨迹，把规模推到 800 万样本 / 68 亿 token（目前最大医学多模态推理数据集），只做监督微调就把 7B 学生（Qwen2.5-VL）调到跨分布开源 SOTA，多模态分类反超它的 teacher GPT-4o（67.29 vs 53.96）、整体压过大它 4 倍的 MedGemma-27B。三条机制：每题多条正确轨迹（1→16）当正则化、把 MedQA 峰值从 75.16 抬到 85.01（比多训 epoch 更值）；CoT 利于推理、direct 利于感知分类；不同长度轨迹混训涌现出「按题难度自校准推理长度」——难题写长、易题写短，无显式监督。",
+      "topic": "Medical AI · Data Recipe for Medical Multimodal Reasoning: Pure SFT Distillation + Rejection-Sampled Multi-Trajectory Data",
+      "blurb": "While others are busy inventing new losses, stacking RL, and using larger backbone, OctoMed bets everything on 'what data to feed': distilling samples with reasoning trajectories from strong teacher models (DeepSeek-R1 / GPT-4o), using rejection sampling to keep only correct trajectories, and scaling to 800 ten-thousand samples / 68 hundred-million token (currently the largest medical multimodal reasoning dataset). With supervised fine-tuning alone, it tunes a 7B student (Qwen2.5-VL) to cross-distribution open-source SOTA, surpasses its teacher GPT-4o in multimodal classification (67.29 vs 53.96), and overall beats the 4× larger MedGemma-27B. Three mechanisms: multiple correct trajectories per question (1→16) act as regularization, lifting the MedQA peak from 75.16 to 85.01 (more valuable than training extra epoch); CoT helps reasoning, while direct helps perceptual classification; mixing trajectories of different lengths yields 'question-difficulty-calibrated reasoning length' without explicit supervision: long answers for hard questions, short answers for easy ones.",
       "tags": "Medical Medical AI multimodal medical reasoning data recipe SFT distillation rejection sampling reasoning traces multiple trajectories regularization CoT vs direct prompting emergent task-aware thinking reasoning length self-calibration DeepSeek-R1 GPT-4o teacher Qwen2.5-VL-7B student 8M examples 6.8B tokens OOD generalization knowledge distillation UW-Madison Microsoft Research",
       "authors": "Timothy Ossowski; Sheng Zhang; Qianchu Liu; Guanghui Qin; Reuben Tan; Tristan Naumann; Junjie Hu; Hoifung Poon",
       "links": {
@@ -539,13 +539,13 @@
       "page_path": "papers/octomed.html",
       "thumbnail": "assets/figures/octomed/octomed_fig1_thumb.png",
       "status": "completed",
-      "figures_count": 13,
+      "figures_count": 17,
       "formula_check": "passed",
-      "missing_info": "无公开训练/数据代码仓库（仅放出 HF 模型权重 OctoMed/OctoMed-7B）；teacher 调用总量、GPU 卡数、墙钟时间、API 成本论文未披露，故不做算力估算；8M 数据集的具体混合比例/采样配额/teacher prompt 仅给框架，逐项复现需自行重建；图 4/图 8 因 caption 紧贴正文未被 caption-anchored 抽取器命中，改用 PyMuPDF 按页坐标裁剪同区域（非盲裁页面渲染）；附录定性图 S1–S3 未抽取，相关三条特性据论文文字转述。",
+      "missing_info": "No public training/data code repository (only HF model weights OctoMed/OctoMed-7B are released); total teacher calls, GPU count, wall-clock time, and API cost are not disclosed in the paper, so no compute estimate is made; the exact mixture ratios/sampling quotas/teacher prompt for the 8M dataset are only given as a framework, and item-by-item reproduction would require rebuilding them; Figure 4/Figure 8 were missed by the caption-anchored extractor because captions are tightly attached to the main text, so PyMuPDF page-coordinate cropping was used on the same regions (not blind page rendering); appendix qualitative Figures S1–S3 were not extracted, and the three related properties are paraphrased from the paper text.",
       "issues": [
         "medical"
       ],
-      "subtopic": "医学 VLM / 多模态理解",
+      "subtopic": "Medical VLM / Multimodal Understanding",
       "subtopic_key": "med-vlm"
     },
     {
@@ -554,8 +554,8 @@
       "title": "MedMO: Grounding and Understanding Multimodal Large Language Model for Medical Images",
       "category": "Medical AI (CVPR 2026)",
       "short": "MedMO",
-      "topic": "Medical AI · 医学多模态大模型 / 理解 + grounding 的四阶段后训练",
-      "blurb": "从 Qwen3-VL-8B 后训练、仅用公开数据的开源医学多模态大模型：把“看懂影像”和“框出病灶”这对数据经济学相反的需求，拆成四阶段渐进后训练——18.5M 低分辨率（768²）先打底跨模态对齐，再升到 1280² 注入 grounding，指令微调对齐问答口吻，最后 GRPO 强化。RL 阶段引入纯几何、可验证的 bounding-box 奖励（对角线归一 L1 + GIoU + 匈牙利匹配 + FP/FN 惩罚），只打磨空间精度而不毒化语言。MedMO-8B-Next 在 VQA 均分 72.7%、grounding 六任务均分 56.8（最强基线 17.2），DeepLesion 上 40.5 IoU 对多个基线的 0.00。",
+      "topic": "Medical AI · Medical Multimodal Large Model / Four-Stage Post-Training for Understanding + Grounding",
+      "blurb": "An open-source medical multimodal large model post-trained from Qwen3-VL-8B and using only public data: it separates the data-economics conflict between 'understanding images' and 'boxing lesions' into four-stage progressive post-training: 18.5M low-resolution (768²) data first establishes cross-modal alignment, then resolution rises to 1280² to inject grounding, instruction tuning aligns the QA style, and GRPO reinforcement comes last. The RL stage introduces purely geometric, verifiable bounding-box rewards (diagonal-normalized L1 + GIoU + Hungarian matching + FP/FN penalties), polishing spatial precision without poisoning language. MedMO-8B-Next reaches VQA average 72.7% and grounding six-task average 56.8 (strongest baseline 17.2), and 40.5 IoU on DeepLesion against 0.00 for multiple baselines.",
       "tags": "Medical Medical AI multimodal LLM MLLM VLM medical grounding bounding box GRPO verifiable reward GIoU Hungarian matching Qwen3-VL post-training curriculum learning resolution escalation visual question answering report generation MedTrinity DeepLesion open-source MBZUAI",
       "authors": "Ankan Deria; Komal Kumar; Adinath Madhavrao Dukre; Eran Segal; Salman Khan; Imran Razzak",
       "links": {
@@ -566,13 +566,13 @@
       "page_path": "papers/medmo.html",
       "thumbnail": "assets/figures/medmo/medmo_fig1.png",
       "status": "completed",
-      "figures_count": 10,
+      "figures_count": 12,
       "formula_check": "passed",
-      "missing_info": "各模态在 26M 语料中的精确占比表、Stage 4 的 λ_FP/λ_FN 取值与各阶段 epoch 数论文未说明；表 1/2 为节选转写（完整逐基准数值见原文）；训练 GPU·小时为按披露数字粗略估算",
+      "missing_info": "The exact modality proportions in the 26M corpus, Stage 4 λ_FP/λ_FN values, and epoch counts for each stage are not specified in the paper; Tables 1/2 are excerpt transcriptions (see original paper for full per-benchmark values); training GPU-hours are rough estimates based on disclosed numbers",
       "issues": [
         "medical"
       ],
-      "subtopic": "医学 VLM / 多模态理解",
+      "subtopic": "Medical VLM / Multimodal Understanding",
       "subtopic_key": "med-vlm"
     },
     {
@@ -581,8 +581,8 @@
       "title": "Med-CMR: A Fine-Grained Benchmark Integrating Visual Evidence and Clinical Logic for Medical Complex Multimodal Reasoning",
       "category": "Medical AI (CVPR 2026)",
       "short": "Med-CMR",
-      "topic": "Medical AI · 医学复杂多模态推理评测基准 / 七维能力分解 + 双轨打分",
-      "blurb": "首个对临床复杂推理做细粒度（七维）能力分解的医学多模态基准：把“医学多模态推理”这一个总分拆成 3 视觉（小目标检测/细节判别/空间理解）+ 4 推理（时序预测/因果推理/长尾泛化/多源整合）共七维，配 MCQ 正确率 + 开放题四维加权 LLM 打分（视觉准确性/真值正确性各权 4、一致性/连贯性各权 1）的双轨协议。20,653 道题源自真实期刊病例，覆盖 11 系统 × 12 模态，经专家+模型两阶段审查。18 个模型评测：GPT-5 居首（MCQ 57.81/开放 48.70），但医学微调模型并不稳定优于通用模型、长尾泛化全场最难。",
+      "topic": "Medical AI · Complex Medical Multimodal Reasoning Benchmark / Seven-Dimensional Capability Decomposition + Dual-Track Scoring",
+      "blurb": "The first medical multimodal benchmark to decompose clinical complex reasoning into fine-grained (seven-dimensional) capabilities: it splits the single overall score of 'medical multimodal reasoning' into 3 visual dimensions (small-object detection/detail discrimination/spatial understanding) + 4 reasoning dimensions (temporal prediction/causal reasoning/long-tail generalization/multi-source integration), with a dual-track protocol of MCQ accuracy + open-ended four-dimensional weighted LLM scoring (visual accuracy/ground-truth correctness each weight 4, consistency/coherence each weight 1). 20,653 questions come from real journal cases, covering 11 systems × 12 modalities, reviewed in two stages by experts + models. 18 models evaluated: GPT-5 ranks first (MCQ 57.81/open 48.70), but medically fine-tuned models are not consistently better than general models, and long-tail generalization is the hardest across the field.",
       "tags": "Medical Medical AI medical multimodal benchmark MLLM evaluation complex reasoning fine-grained capability decomposition seven dimensions VQA MCQ open-ended LLM-as-Judge long-tail generalization GPT-5 Qwen3-VL clinical reasoning small-object detection causal reasoning temporal prediction multi-source integration NUS Nanjing-University TUM",
       "authors": "Haozhen Gong; Xiaozhong Ji; Yuansen Liu; Wenbin Wu; Xiaoxiao Yan; Jingjing Liu; Kai Wu; Jiazhen Pan; Bailiang Jian; Jiangning Zhang; Xiaobin Hu; Hongwei Bran Li",
       "links": {
@@ -592,13 +592,13 @@
       "page_path": "papers/medcmr.html",
       "thumbnail": "assets/figures/medcmr/medcmr_fig1.png",
       "status": "completed",
-      "figures_count": 6,
+      "figures_count": 11,
       "formula_check": "passed",
-      "missing_info": "评测 GPU 卡数/墙钟时间论文未披露（纯评测无训练，不做 GPU-hours 估算）；无可运行的独立代码仓/数据下载（仅核到项目主页 github.com/LsmnBmnc/Med-CMR）；表 2/3 为完整 18 行转写，图 3 的 r/p 取自图内标注，无独立病灶级 mask/bbox 视觉接地核验",
+      "missing_info": "Evaluation GPU count/wall-clock time are not disclosed in the paper (pure evaluation with no training, so no GPU-hours estimate is made); no runnable standalone code repository/data download is available (only the project page github.com/LsmnBmnc/Med-CMR was verified); Tables 2/3 are complete 18-row transcriptions, Figure 3 r/p are taken from labels inside the figure, and there is no independent lesion-level mask/bbox visual-grounding verification",
       "issues": [
         "medical"
       ],
-      "subtopic": "评测基准",
+      "subtopic": "Evaluation Benchmark",
       "subtopic_key": "med-benchmark"
     },
     {
@@ -607,8 +607,8 @@
       "title": "OraPO: Oracle-educated Reinforcement Learning for Data-efficient and Factual Radiology Report Generation",
       "category": "Medical AI (CVPR 2026)",
       "short": "OraPO",
-      "topic": "Medical AI · 数据高效放射报告生成 / Oracle 教育式 GRPO + 事实级奖励",
-      "blurb": "首个把 DPO 耦合进 GRPO 的 RL 算法：GRPO 在 RRG 上一上来约 30% 的 group 全 0 奖励、advantage≈0、梯度近乎消失，OraPO 把这些“失败 rollout”当现成负例、以 ground-truth 为正例做轻量 DPO，正好补上 GRPO 缺的梯度；按 per-prompt 的 Zero-Reward Rate 自适应退火在 GRPO/DPO 间切换（“先教育后探索”飞轮），配偏 recall 的 FactScore 事实级稠密奖励。单阶段纯 RL、3B Qwen2.5-VL、1K 样本、4×A10，CheXpert Plus F1 0.341 / Recall 0.832、MIMIC-CXR F1 0.357，较前 SOTA 数据少 2–3 个数量级。",
+      "topic": "Medical AI · Data-Efficient Radiology Report Generation / Oracle-Educated GRPO + Fact-Level Rewards",
+      "blurb": "The first RL algorithm to couple DPO into GRPO: at the start of RRG training, about 30% of GRPO groups have all-0 rewards, advantage≈0, and nearly vanished gradients; OraPO treats these 'failed rollout' samples as ready-made negatives and ground-truth as positives for lightweight DPO, exactly supplying the gradient GRPO lacks. It adaptively anneals between GRPO/DPO by per-prompt Zero-Reward Rate (a 'teach first, then explore' flywheel), with recall-biased FactScore fact-level dense rewards. Single-stage pure RL, 3B Qwen2.5-VL, 1K samples, 4×A10, CheXpert Plus F1 0.341 / Recall 0.832, MIMIC-CXR F1 0.357, using 2–3 orders of magnitude less data than the previous SOTA.",
       "tags": "Medical Medical AI radiology report generation RRG GRPO DPO direct preference optimization reinforcement learning RL-only FactScore reward zero-reward rate data-efficient chest X-ray CheXpert-Plus MIMIC-CXR Qwen2.5-VL recall clinical effectiveness Oracle-Health University-of-Queensland",
       "authors": "Zhuoxiao Chen; Hongyang Yu; Ying Xu; Yadan Luo; Long Duong; Yuan-Fang Li",
       "links": {
@@ -617,13 +617,13 @@
       "page_path": "papers/orapo.html",
       "thumbnail": "assets/figures/orapo/orapo_fig1.png",
       "status": "completed",
-      "figures_count": 9,
+      "figures_count": 12,
       "formula_check": "passed",
-      "missing_info": "无公开代码仓（已核查 arXiv/GitHub，仅 awesome-RRG 列表收录，无官方实现）；CVF 2026 proceedings 页尚未上线（核查 403）；完整超参/LR/优化器/步数论文称见 Supplementary，正文未全列；训练总 GPU 卡时/墙钟时间与 FactS 的 GPT-4.1 调用成本论文未披露，不做 GPU-hours 估算；表 1/表 2 为代表性节选转写（原文 20+/16 行），表 3/4/5 为完整转写；附录图 3 定性例为整页文本对照表，按惯例转写为表格而非贴图",
+      "missing_info": "No public code repository (checked arXiv/GitHub; only included in the awesome-RRG list, no official implementation); CVF 2026 proceedings page is not yet online (checked 403); complete hyperparameters/LR/optimizer/steps are said to be in Supplementary and are not fully listed in the main text; total training GPU card-hours/wall-clock time and FactS GPT-4.1 call cost are not disclosed in the paper, so no GPU-hours estimate is made; Tables 1/Table 2 are representative excerpt transcriptions (original has 20+/16 rows), Tables 3/4/5 are complete transcriptions; appendix Figure 3 qualitative example is a full-page text comparison table and was transcribed as a table rather than pasted as an image by convention",
       "issues": [
         "medical"
       ],
-      "subtopic": "报告生成",
+      "subtopic": "Report Generation",
       "subtopic_key": "med-report"
     },
     {
@@ -632,8 +632,8 @@
       "title": "CURE: Curriculum-guided Multi-task Training for Reliable Anatomy Grounded Report Generation",
       "category": "Medical AI (CVPR 2026)",
       "short": "CURE",
-      "topic": "Medical AI · 可靠放射报告生成 / 误差感知课程 + 解剖级报告重构",
-      "blurb": "不加任何新数据，只动训练方法学：把 finding-generation 重构成逐区域、正常异常都监督的 AGRG（把异常基率从 phrase-grounding 的 ≈1 拉回真实值），再用误差归一化课程 p_i=e_i/∑e_j 把稀缺采样预算动态倒向短板。一块 LoRA 微调的 MedGemma-4B：解剖级定位 IoU 0.249→0.601（翻倍），六区域异常幻觉 26.5%→8.78%（−18.6pt）。",
+      "topic": "Medical AI · Reliable Radiology Report Generation / Error-Aware Curriculum + Anatomy-Level Report Reconstruction",
+      "blurb": "Adds no new data and changes only the training methodology: it reconstructs finding-generation into region-by-region AGRG supervising both normal and abnormal findings (pulling the abnormal base rate back from phrase-grounding's ≈1 to the real value), then uses an error-normalized curriculum p_i=e_i/∑e_j to dynamically steer scarce sampling budget toward weak spots. A LoRA-tuned MedGemma-4B: anatomy-level localization IoU 0.249→0.601 (doubles), six-region abnormality hallucination 26.5%→8.78% (−18.6pt).",
       "tags": "Medical Medical AI radiology report generation RRG visual grounding anatomy-grounded AGRG error-aware curriculum learning self-paced learning hallucination MedGemma-4B LoRA MAIRA-2 Chest ImaGenome MS-CXR PadChest-GR VinDr-CXR public-data-only",
       "authors": "Pablo Messina; Andrés Villa; Juan León Alcázar; Karen Sánchez; Carlos Hinojosa; Denis Parra; Álvaro Soto; Bernard Ghanem",
       "links": {
@@ -644,13 +644,13 @@
       "page_path": "papers/cure.html",
       "thumbnail": "assets/figures/cure/cure_fig1.png",
       "status": "completed",
-      "figures_count": 14,
+      "figures_count": 15,
       "formula_check": "passed",
-      "missing_info": "GPU 卡数与墙钟时间论文未披露（仅给 LoRA r16/4-bit、有效 batch 25、9000 步）；自适应 α 取值、表 5/表 7 完整列置于附录（正文节选代表性列并注明全表见原文）",
+      "missing_info": "GPU count and wall-clock time are not disclosed in the paper (only LoRA r16/4-bit, effective batch 25, and 9000 steps are given); adaptive α values and complete columns for Tables 5/Table 7 are in the appendix (main text excerpts representative columns and notes that full tables are in the original paper)",
       "issues": [
         "medical"
       ],
-      "subtopic": "报告生成",
+      "subtopic": "Report Generation",
       "subtopic_key": "med-report"
     },
     {
@@ -659,8 +659,8 @@
       "title": "IBISAgent: Reinforcing Pixel-Level Visual Reasoning in MLLMs for Universal Biomedical Object Referring and Segmentation",
       "category": "Medical AI (CVPR 2026)",
       "short": "IBISAgent",
-      "topic": "Medical AI · 像素级视觉推理智能体 / 把分割重写成多步 MDP",
-      "blurb": "不改 MLLM 架构、不引入隐式 <SEG> token：把生物医学分割重写成多步 Markov 决策——模型交替吐 <think> 推理与 <action> 文本点击坐标(Target,±1,Coordinate2d)，调用冻结的 MedSAM2 把点击变 mask、半透明叠回原图当观测，一点一看迭代精修。两段训练：冷启动 SFT(456K 自动模拟点击轨迹) + GRPO(无 KL) RL 配五类细粒度规则奖励(格式/答案/区域点击放置 正点落FN负点落FP/渐进IoU单调不降/轨迹长度)。基座 Qwen2.5-VL-7B、16×A100。三测试集 IoU 全面领先(域内 85.58、域外 80.63、外院 72.09，对手最高仅 50.74)，去掉细粒度奖励 IoU 崩到 11.77；代价是 ~3× 推理延迟。",
+      "topic": "Medical AI · Pixel-Level Visual Reasoning Agent / Recasting Segmentation as a Multi-Step MDP",
+      "blurb": "Does not modify the MLLM architecture or introduce an implicit <SEG> token: it recasts biomedical segmentation as a multi-step Markov decision process. The model alternates between emitting <think> reasoning and <action> textual click coordinates (Target,±1,Coordinate2d), calls frozen MedSAM2 to turn clicks into masks, overlays them semi-transparently back onto the original image as observations, and iteratively refines one click at a time. Two-stage training: cold-start SFT(456K automatically simulated click trajectories) + GRPO(no KL) RL with five types of fine-grained rule rewards (format/answer/region click placement: positive points land on FN, negative points land on FP/progressive IoU monotonically non-decreasing/trajectory length). Base Qwen2.5-VL-7B, 16×A100. It leads across all three test sets in IoU (in-domain 85.58, out-of-domain 80.63, external-hospital 72.09, best opponent only 50.74); removing fine-grained rewards collapses IoU to 11.77; the cost is ~3× inference latency.",
       "tags": "Medical Medical AI agentic MLLM pixel-level visual reasoning biomedical segmentation referring segmentation reasoning segmentation mask refinement Markov decision process MDP cold-start SFT GRPO reinforcement learning fine-grained rule reward region-based click placement progressive IoU reward MedSAM2 tool-augmented Qwen2.5-VL BiomedParseData decoupled reasoning cross-domain generalization Zhejiang University Shanghai AI Lab",
       "authors": "Yankai Jiang; Qiaoru Li; Binlu Xu; Haoran Sun; Chao Ding; Junting Dong; Yuxiang Cai; Xuhong Zhang; Jianwei Yin",
       "links": {
@@ -671,13 +671,13 @@
       "page_path": "papers/ibisagent.html",
       "thumbnail": "assets/figures/ibisagent/ibisagent_fig1.png",
       "status": "completed",
-      "figures_count": 13,
+      "figures_count": 18,
       "formula_check": "passed",
-      "missing_info": "总 GPU 小时/墙钟时间论文未披露（仅给 16×A100、SFT 10ep/RL 12ep、batch 256）；正文未列完整 VQA 数值表（未臆造）；外院 held-out 数据为三家医疗中心私有不公开，该项结果第三方无法直接复现；代码仓库存在但 README releases 标 TODO/部分，端到端复现门槛偏高",
+      "missing_info": "Total GPU hours/wall-clock time are not disclosed in the paper (only 16×A100, SFT 10ep/RL 12ep, batch 256 are given); the main text does not list a complete VQA numeric table (none was invented); external-hospital held-out data comes from three private medical centers and is not public, so that result cannot be directly reproduced by third parties; the code repository exists but README releases are marked TODO/partial, making end-to-end reproduction relatively hard",
       "issues": [
         "medical"
       ],
-      "subtopic": "影像分割 / 像素级推理",
+      "subtopic": "Image Segmentation / Pixel-Level Reasoning",
       "subtopic_key": "med-seg"
     },
     {
@@ -686,8 +686,8 @@
       "title": "CARE: A Molecular-Guided Foundation Model with Adaptive Region Modeling for Whole Slide Image Analysis",
       "category": "Medical AI (CVPR 2026)",
       "short": "CARE",
-      "topic": "Medical AI · 病理全切片基础模型 / 自适应区域 + 分子引导对齐",
-      "blurb": "把 WSI 的“怎么切区域”从固定网格改成可学习的软路由：soft inclusion 软归属 + top-3 候选 + “语义×空间”得分重指派出形态连贯的自适应区域（像 NLP 的词级 token），Region Structuring Loss 把“期望排名”拉向 E*=0.5 顶住塌缩，SPF 用“覆盖先验⊕门控语义”聚成 WSI/ROI 表示；再用 iBOT 自监督→RNA→蛋白 InfoNCE 的分子引导课程。仅约 1/10 数据、34,277 WSI，33 任务平均分子预测 LR 69.5、生存 C-index 58.0 双双领先，形态分类追平最强 TITAN。",
+      "topic": "Medical AI · Pathology Whole-Slide Foundation Model / Adaptive Regions + Molecular-Guided Alignment",
+      "blurb": "Changes WSI 'how to cut regions' from a fixed grid to learnable soft routing: soft inclusion assignments + top-3 candidates + 'semantic×spatial' score-based reassignment produce morphologically coherent adaptive regions (like word-level token in NLP). Region Structuring Loss pulls the 'expected ranking' toward E*=0.5 to resist collapse, SPF pools WSI/ROI representations with 'coverage prior ⊕ gated semantics', and a molecular-guided curriculum follows iBOT self-supervision→RNA→protein InfoNCE. With only about 1/10 data, 34,277 WSI, it leads on 33-task average molecular prediction LR 69.5 and survival C-index 58.0, while matching the strongest TITAN on morphology classification.",
       "tags": "Medical Medical AI pathology whole slide image WSI foundation model adaptive region ARG soft inclusion region structuring loss RSL SPF molecular guided RNA protein cross-modal alignment iBOT InfoNCE CONCH scGPT ESM-2 ROI linear probing TCGA GTEx data-efficient XJTU Cambridge",
       "authors": "Di Zhang; Zhangpeng Gong; Xiaobo Pang; Jiashuai Liu; Junbo Lu; Hao Cui; Jiusong Ge; Zhi Zeng; Kai Yi; Yinghua Li; Si Liu; Tingsong Yu; Haoran Wang; Mireia Crispin-Ortuzar; Weimiao Yu; Chen Li; Zeyu Gao",
       "links": {
@@ -698,13 +698,13 @@
       "page_path": "papers/care.html",
       "thumbnail": "assets/figures/care/care_fig1.png",
       "status": "completed",
-      "figures_count": 14,
+      "figures_count": 19,
       "formula_check": "passed",
-      "missing_info": "预训练 GPU 卡数/墙钟/epoch 论文未披露（仅给下游单卡 RTX 4090、关键超参 k=8/λRSL=0.1/E*=0.5/λSPF=0.5）；表 1 为按任务类的平均，33 任务逐项数值在附录（图 4 为热力图）；表 4/表 5 取代表性行并注明完整列见原文",
+      "missing_info": "Pretraining GPU count/wall-clock/epoch are not disclosed in the paper (only downstream single RTX 4090 and key hyperparameters k=8/λRSL=0.1/E*=0.5/λSPF=0.5 are given); Table 1 reports averages by task category, while per-task values for all 33 tasks are in the appendix (Figure 4 is a heatmap); Tables 4/Table 5 use representative rows and note that the full columns are in the original paper",
       "issues": [
         "medical"
       ],
-      "subtopic": "病理 / 组织",
+      "subtopic": "Pathology / Tissue",
       "subtopic_key": "med-pathology"
     },
     {
@@ -714,7 +714,7 @@
       "category": "Vision-Language Models",
       "short": "Molmo2",
       "topic": "Open Video-Language Model · Pointing / Grounding",
-      "blurb": "权重、数据、代码全开且不蒸馏闭源模型的 SoTA 视频-语言模型族：9 个新数据集 + packing/message-tree（×15 训练）+ token 加权，把 2D pointing 延拓到时空，视频指点/追踪压过 Gemini 3 Pro。",
+      "blurb": "A SoTA video-language model family with open weights, data, and code, without distilling closed-source models: 9 new datasets + packing/message-tree (×15 training) + token weighting extend 2D pointing into space-time, and video pointing/tracking surpasses Gemini 3 Pro.",
       "tags": "Top Paper candidate Vision-Language Model video understanding grounding pointing tracking open weights open data no distillation packing message-tree token weighting AllenAI",
       "authors": "Christopher Clark; Jieyu Zhang; Zixian Ma; Jae Sung Park; Mohammadreza Salehi; Rohun Tripathi; Sangho Lee; Ali Farhadi; Ranjay Krishna",
       "links": {
@@ -724,7 +724,7 @@
       "page_path": "papers/molmo2.html",
       "thumbnail": "assets/figures/molmo2/molmo2_teaser.png",
       "status": "completed",
-      "figures_count": 9,
+      "figures_count": 14,
       "formula_check": "passed"
     },
     {
@@ -734,7 +734,7 @@
       "category": "Video Matting / Segmentation",
       "short": "MatAnyone 2",
       "topic": "Video Matting · Learned Quality Evaluator",
-      "blurb": "用一个无需真值 alpha 的 Matting Quality Evaluator（MQE）逐像素判可靠/错误，既当训练在线监督、又当离线数据仲裁器，融合视频抠像（语义稳）与图像抠像（边界利）造出 28K 片段 / 2.4M 帧的真实数据集 VMReal；再配 reference-frame 策略治长视频外观突变。纯 CNN、仅需首帧 mask，合成与真实基准全指标第一。",
+      "blurb": "Uses a Matting Quality Evaluator (MQE) that needs no ground-truth alpha to classify each pixel as reliable/error, serving both as online training supervision and offline data arbiter. It fuses video matting (semantically stable) and image matting (boundary-friendly) to build VMReal, a real dataset with 28K clips / 2.4M frames, and adds a reference-frame strategy to handle appearance changes in long videos. Pure CNN, only the first-frame mask is needed, and it ranks first on all metrics across synthetic and real benchmarks.",
       "tags": "Top Paper candidate Video Matting learned quality evaluator MQE memory propagation reference frame real-world dataset VMReal DINOv3 alpha matting NTU SenseTime",
       "authors": "Peiqing Yang; Shangchen Zhou; Kai Hao; Qingyi Tao",
       "links": {
@@ -746,7 +746,7 @@
       "page_path": "papers/matanyone2.html",
       "thumbnail": "assets/figures/matanyone2/matanyone2_fig1.png",
       "status": "completed",
-      "figures_count": 17,
+      "figures_count": 19,
       "formula_check": "passed"
     },
     {
@@ -756,7 +756,7 @@
       "category": "Segmentation",
       "short": "VGGT-Segmentor",
       "topic": "Cross-View Segmentation · Ego–Exo Correspondence",
-      "blurb": "发现 VGGT 在 ego–exo 跨视角分割里逐像素点投影会系统性漂移，但 object-level 注意力仍稳定对齐；据此冻结 VGGT、只加轻量 Union Segmentation Head（Mask Prompt Fusion 做区域共识 → Point-Guided Prediction 把漂移点降级成稀疏 prompt → Mask Refinement 迭代修边），再用单图自监督训练甩掉配对标注。Ego–Exo4D 上 67.7/68.0 IoU 创 SOTA，零配对标注预训练版反超全监督前 SOTA DOMR。",
+      "blurb": "Finds that VGGT's pixelwise point projection systematically drifts in ego–exo cross-view segmentation, while object-level attention remains stably aligned. Based on this, it freezes VGGT and adds only a lightweight Union Segmentation Head (Mask Prompt Fusion builds region consensus → Point-Guided Prediction demotes drifting points into sparse prompt → Mask Refinement iteratively cleans boundaries), then removes paired-label requirements through single-image self-supervised training. On Ego–Exo4D, 67.7/68.0 IoU sets SOTA, and the zero-paired-label pretrained version surpasses the previous fully supervised SOTA DOMR.",
       "tags": "Top Paper candidate Segmentation Cross-View VGGT geometry-enhanced Ego-Exo4D Union Segmentation Head point projection drift mask refinement self-supervised single-image Beihang",
       "authors": "Yulu Gao; Bohao Zhang; Zongheng Tang; Jitong Liao; Wenjun Wu; Si Liu",
       "links": {
@@ -767,7 +767,7 @@
       "page_path": "papers/vggtseg.html",
       "thumbnail": "assets/figures/vggtseg/vggtseg_fig1.png",
       "status": "completed",
-      "figures_count": 10,
+      "figures_count": 15,
       "formula_check": "passed"
     },
     {
@@ -777,7 +777,7 @@
       "category": "3D Vision",
       "short": "MuM",
       "topic": "Multi-View MIM · Geometric Self-Supervision",
-      "blurb": "把 MAE 的统一掩码 + 像素重建原样推广到同一场景的任意多视图：所有视图都掩 75%，共享权重 ViT-L 编码器逐帧独立编码，再用带跨帧注意力的轻量 ViT-B decoder 联合重建——对称、无参考帧，n=1 自动退化为 MAE。几何作为“高掩码下做对多视图重建”的副产品被压进编码器。仅用约 DINOv3 1/30 量级算力，MuM 作为冻结特征编码器在多视图三维重建、稠密匹配、相对位姿等几乎所有几何任务上反超 DINOv3 与 CroCo v2（语义任务仍逊于 DINOv3）。",
+      "blurb": "Extends MAE's unified masking + pixel reconstruction unchanged to arbitrary multi-view images of the same scene: all views are masked 75%, a shared-weight ViT-L encoder encodes each frame independently, and a lightweight ViT-B decoder with cross-frame attention reconstructs jointly: symmetric, no reference frame, and n=1 automatically degenerates to MAE. Geometry is compressed into the encoder as a byproduct of 'doing multi-view reconstruction under high masking'. Using only about DINOv3 1/30-scale compute, MuM as a frozen feature encoder surpasses DINOv3 and CroCo v2 on almost all geometry tasks such as multi-view three-dimensional reconstruction, dense matching, and relative pose (semantic tasks still lag DINOv3).",
       "tags": "Top Paper candidate 3D Vision Multi-View Masked Image Modeling MIM MAE self-supervised representation geometric features CroCo DINOv3 dense matching feedforward reconstruction relative pose ViT RoPE Chalmers",
       "authors": "David Nordström; Johan Edstedt; Fredrik Kahl; Georg Bökman",
       "links": {
@@ -787,7 +787,7 @@
       "page_path": "papers/mum.html",
       "thumbnail": "assets/figures/mum/mum_fig1.png",
       "status": "completed",
-      "figures_count": 11,
+      "figures_count": 17,
       "formula_check": "passed"
     },
     {
@@ -797,7 +797,7 @@
       "category": "Object Tracking / Correspondence",
       "short": "V²-SAM",
       "topic": "Cross-View Object Correspondence · Ego–Exo",
-      "blurb": "SAM2 要\"目标视角里的坐标\"才能分割，可跨视角下那个坐标恰好是未知量。V²-SAM 用两个互补的 prompt 生成器把它\"造\"出来：V²-Anchor 借 DINOv3 几何特征做跨视角匹配→前景约束→稀疏分层→质心，首次为 SAM2 解锁跨视角坐标提示（全程不可训练）；V²-Visual 用 VPMatcher 从特征与结构两路映射外观；再以 Anchor/Visual/Fusion 三专家 + 点级循环一致选择器 PCCS 按实例挑最可靠的预测。Ego-Exo4D 48.0 总 IoU、DAVIS-17 78.8 J&F、HANDAL-X 77.2 IoU 三榜 SOTA，仅 15M 可训练参数（约 ObjectRelator 的 1%）。",
+      "blurb": "SAM2 needs 'coordinates in the target view' to segment, but under cross-view settings that coordinate is exactly unknown. V²-SAM uses two complementary prompt generators to 'create' it: V²-Anchor uses DINOv3 geometric features for cross-view matching→foreground constraint→sparse hierarchy→centroid, unlocking cross-view coordinate prompts for SAM2 for the first time (entirely non-trainable); V²-Visual uses VPMatcher to map appearance through both feature and structure paths; then three experts, Anchor/Visual/Fusion, plus the point-level cycle-consistency selector PCCS choose the most reliable prediction per instance. Ego-Exo4D 48.0 total IoU, DAVIS-17 78.8 J&F, and HANDAL-X 77.2 IoU are SOTA on all three leaderboards, with only 15M trainable parameters (about 1% of ObjectRelator).",
       "tags": "Top Paper candidate SAM2 DINOv3 cross-view correspondence object tracking Ego-Exo Ego-Exo4D multi-prompt experts cyclic consistency PCCS coordinate prompt segmentation HANDAL-X DAVIS INSAIT Tsinghua Fudan",
       "authors": "Jiancheng Pan; Runze Wang; Tianwen Qian; Yanwei Fu; Xiangyang Xue; Xiaomeng Huang; Luc Van Gool; Danda Pani Paudel; Yuqian Fu",
       "links": {
@@ -809,7 +809,7 @@
       "page_path": "papers/v2sam.html",
       "thumbnail": "assets/figures/v2sam/v2sam_fig1.png",
       "status": "completed",
-      "figures_count": 19,
+      "figures_count": 20,
       "formula_check": "passed"
     },
     {
@@ -819,7 +819,7 @@
       "category": "Segmentation",
       "short": "INSID3",
       "topic": "Training-Free In-Context Segmentation · DINOv3",
-      "blurb": "一张标注样例就要在任意域、任意粒度上分割任意概念——这件事同时需要跨图语义匹配与图内区域分组，前人因此要么微调 VFM（毁泛化）要么拼接 DINOv2+SAM（臃肿、粒度被锁）。INSID3 发现一个冻结 DINOv3 本就同时具备这两种能力，唯一拦路虎是一条系统性的位置偏置（不同图同坐标 patch 无视语义虚假高相似）。它用噪声图估出低维位置子空间、再用训练自由的正交投影把它投掉；然后原始特征做凝聚聚类（图内分组）、去偏特征做反向对应+跨图相似选种子、最后跨图语义×图内自相似乘法聚合补全。9 基准四域全面 SOTA，平均 +7.5% mIoU，仅 304M（约 SAM 流水线 1/3），零 mask 监督；去偏迁移到语义对应再涨 +6.6% PCK。",
+      "blurb": "One annotated example is expected to segment any concept in any domain and at any granularity: this simultaneously needs cross-image semantic matching and in-image region grouping, so prior work either fine-tunes VFM (hurting generalization) or stitches DINOv2+SAM together (bulky and locked in granularity). INSID3 finds that a frozen DINOv3 already has both capabilities; the only blocker is a systematic positional bias (patches at the same coordinates in different images show spuriously high similarity regardless of semantics). It estimates a low-dimensional position subspace from noise images and removes it with training-free orthogonal projection; then raw features do agglomerative clustering (in-image grouping), debiased features do reverse correspondence + cross-image similarity seed selection, and finally cross-image semantics × in-image self-similarity multiplicative aggregation completes the mask. 9 benchmarks across four domains reach SOTA across the board, average +7.5% mIoU, only 304M (about 1/3 of the SAM pipeline), zero mask supervision; transferring debiasing to semantic correspondence adds another +6.6% PCK.",
       "tags": "Top Paper candidate training-free in-context segmentation DINOv3 feature matching positional debiasing orthogonal projection one-shot segmentation part segmentation personalized segmentation self-supervised VFM agglomerative clustering semantic correspondence SPair-71k COCO LVIS PASCAL-Part Oral",
       "authors": "Claudia Cuttano; Gabriele Trivigno; Christoph Reich; Daniel Cremers; Carlo Masone; Stefan Roth",
       "links": {
@@ -830,7 +830,7 @@
       "page_path": "papers/insid3.html",
       "thumbnail": "assets/figures/insid3/insid3_fig1.png",
       "status": "completed",
-      "figures_count": 15,
+      "figures_count": 22,
       "formula_check": "passed"
     },
     {
@@ -840,7 +840,7 @@
       "category": "Object Tracking / Point Tracking",
       "short": "RWPT (Verifier-Guided)",
       "topic": "Point Tracking · Verifier-Guided Pseudo-Labeling",
-      "blurb": "长时点跟踪几乎全在合成数据上训练，搬到真实视频会因 sim-to-real 域差掉点；自训练用伪标签是出路，但单个 teacher 的可靠性逐帧波动、不同 teacher 误差弱相关，朴素地随机选/平均会把噪声放大成漂移。本文把问题重定义为逐帧可靠性估计，提出 verifier——一个不直接预测坐标的 meta-model：它用冻结 CoTracker3 特征比较 query 局部外观与各候选局部外观，经 Candidate Transformer（受限 cross-attn + 时序 self-attn）输出逐帧候选可靠性分布，用候选到 GT 距离的负 softmax 做软对比目标训练，全程仅需合成标注。verifier 既能当推理集成、也能引导真实世界微调。基座 Track-On2 → Track-On-R：EgoPoints、RoboTAP、Kinetics、DAVIS 四基准全 SOTA（EgoPoints δ_avg 61.7→67.3），且用数据更少。",
+      "blurb": "Long-horizon point tracking is almost entirely trained on synthetic data, and performance drops on real videos due to the sim-to-real domain gap. Self-training with pseudo-labels is the way out, but a single teacher's reliability fluctuates frame by frame, different teachers' errors are weakly correlated, and naive random selection/averaging amplifies noise into drift. This work redefines the problem as framewise reliability estimation and proposes verifier, a meta-model that does not directly predict coordinates: it uses frozen CoTracker3 features to compare the query's local appearance with each candidate's local appearance; through Candidate Transformer (restricted cross-attn + temporal self-attn), it outputs a framewise candidate reliability distribution, trained with a soft contrastive target from the negative softmax of candidate-to-GT distances, requiring only synthetic labels throughout. verifier can serve both as inference ensembling and as guidance for real-world fine-tuning. Base Track-On2 → Track-On-R: EgoPoints, RoboTAP, Kinetics, and DAVIS all reach SOTA (EgoPoints δ_avg 61.7→67.3), while using less data.",
       "tags": "Top Paper candidate point tracking TAP track any point verifier verifier-guided pseudo-labeling self-training teacher ensemble Track-On-R Track-On2 CoTracker3 BootsTAPIR EgoPoints RoboTAP DAVIS Kinetics reliability estimation sim-to-real Koc University Shanghai Jiao Tong",
       "authors": "Görkay Aydemir; Fatma Güney; Weidi Xie",
       "links": {
@@ -851,7 +851,7 @@
       "page_path": "papers/rwpt.html",
       "thumbnail": "assets/figures/rwpt/rwpt_fig1.png",
       "status": "completed",
-      "figures_count": 7,
+      "figures_count": 10,
       "formula_check": "passed"
     },
     {
@@ -861,7 +861,7 @@
       "category": "3D Vision / Visual Localization",
       "short": "AsymLoc",
       "topic": "Visual Localization · Asymmetric Feature Matching",
-      "blurb": "视觉定位的两端算力预算本就不对称：地图库图像离线建好、可任意用大模型，查询图像却要在智能眼镜这类边缘设备上实时算。AsymLoc 据此提出非对称视觉定位——地图端用大教师 T 离线抽特征、查询端用小到 0.04M 参数的学生 S 在线抽特征，再用零参数互最近邻匹配把两边对上。难点是两个不同模型的特征天生不兼容、又不想塞 LightGlue 这类 13M 重匹配器。AsymLoc 把对齐做进检测器-描述子联合空间：几何匹配损失 L_match 借已知单应钉住空间对应，联合检测-描述子蒸馏损失 L_KD 用行/列双向 KL 让学生复刻教师的联合可匹配性分布（对齐关系而非向量）。SiLK 教师下 0.13M 学生在 Aachen 达教师 95.5% 精度、推理量低一个数量级；25× 更小学生仍保留 96%+ 教师精度，全面压过对称基线与改编自图像检索的非对称蒸馏方法。",
+      "blurb": "The compute budgets at the two ends of visual localization are inherently asymmetric: map-library images are built offline and can freely use large models, while query images must be processed in real time on edge devices such as smart glasses. AsymLoc therefore proposes asymmetric visual localization: the map side uses a large teacher T to extract features offline, the query side uses a student S as small as 0.04M parameters to extract features online, and zero-parameter mutual nearest-neighbor matching aligns the two sides. The challenge is that features from two different models are naturally incompatible, and adding a 13M rematcher such as LightGlue is undesirable. AsymLoc puts alignment into the joint detector-descriptor space: geometric matching loss L_match anchors spatial correspondences via known homographies, and joint detector-descriptor distillation loss L_KD uses row/column bidirectional KL to make the student replicate the teacher's joint matchability distribution (aligning relations, not vectors). Under a SiLK teacher, a 0.13M student reaches 95.5% of teacher accuracy on Aachen with an order of magnitude less inference compute; a 25× smaller student still preserves 96%+ teacher accuracy, beating symmetric baselines and asymmetric distillation methods adapted from image retrieval across the board.",
       "tags": "Top Paper candidate Visual Localization Asymmetric Feature Matching detector descriptor knowledge distillation mutual nearest neighbor camera pose 6-DoF retrieval edge on-device SuperPoint SiLK LightGlue HPatches ScanNet IMC2022 Aachen UT-Austin Amazon",
       "authors": "Mohammad Omama; Gabriele Berton; Eric Foxlin; Yelin Kim",
       "links": {
@@ -880,7 +880,7 @@
       "category": "Segmentation",
       "short": "Retrieve & Segment",
       "topic": "Open-Vocabulary Segmentation · Retrieval-Augmented Test-Time Adaptation",
-      "blurb": "开放词表分割落后全监督，根因是 VLM 只有图像级监督、加上语言本身有歧义。RNS 给每个类补上几张像素标注图当视觉支撑，把零样本改造成少样本，核心问题随之变成——文本支撑和视觉支撑怎么融合。与 kNN-CLIP / FREEDA 的后期手工相加不同，RNS 在原型层先把两种模态融成 f=λt+(1-λ)v，再用检索（每个 query patch 从视觉支撑取 k 近邻）为每张测试图现搭训练集，per-image 训一个轻量线性分类器、A100 上 <1 秒。图 5 检索消融、表 1 去组件、图 3/4 full/partial 支撑三路独立验证。DINOv3.txt+SAM、每类 20 张图把与全监督的差距压到 11.5 mIoU，比零样本 +34，且只用约 964 张标注（全监督用 20k）。",
+      "blurb": "Open-vocabulary segmentation lags fully supervised methods because VLMs have only image-level supervision and language itself is ambiguous. RNS gives each class a few pixel-labeled images as visual support, turning zero-shot into few-shot; the core question becomes how to fuse text support and visual support. Unlike the late manual addition in kNN-CLIP / FREEDA, RNS first fuses the two modalities at the prototype level as f=λt+(1-λ)v, then uses retrieval (for each query patch, take k nearest neighbors from visual support) to assemble an on-the-fly training set for each test image and train a lightweight linear classifier per-image on A100 in <1 second. Three independent validations: Figure 5 retrieval ablation, Table 1 component removal, and Figures 3/4 full/partial support. DINOv3.txt+SAM with 20 images per class narrows the gap to full supervision to 11.5 mIoU, +34 over zero-shot, using only about 964 annotations (full supervision uses 20k).",
       "tags": "Top Paper candidate open-vocabulary segmentation retrieval-augmented few-shot test-time adaptation test-time training modality fusion prototype fusion VLM CLIP DINOv3 SAM zero-shot personalized segmentation Highlight",
       "authors": "Tilemachos Aravanis; Vladan Stojnić; Bill Psomas; Nikos Komodakis; Giorgos Tolias",
       "links": {
@@ -890,7 +890,7 @@
       "page_path": "papers/retseg.html",
       "thumbnail": "assets/figures/retseg/retseg_fig1.png",
       "status": "completed",
-      "figures_count": 9,
+      "figures_count": 12,
       "formula_check": "passed"
     },
     {
@@ -900,7 +900,7 @@
       "category": "Pose Estimation / Motion Capture",
       "short": "MAMMA",
       "topic": "Markerless Multi-Person Motion Capture · SMPL-X",
-      "blurb": "Vicon 这类基于标记的系统是动捕金标准，却要贴反光球、逐段手工清洗噪声标记，多人贴身时尤其崩。MAMMA 把监督信号从稀疏关键点升级为 512 个密集 2D 表面地标——用 ViT + mask-CNN + 每个地标一个可学习 query 的 transformer decoder（MammaNet），每帧每视角吐出地标位置/不确定度/可见性/接触；再用 SAM2 mask 条件 + 对称极线距离做 100% 跨视角认人，最后无姿态先验、无初始化地多视角重投影拟合 SMPL-X。全程仅用合成数据 MammaSyn（BEDLAM 扩到 32 相机 + 互动/手部）训练。Hi4D 19 关节 MPJPE 12.44mm（前 SOTA AvatarPose 32.10），对 Vicon+MoSh 的留出标记误差只差 0.862mm、动画肉眼难辨，并把采集到 SMPL-X 全流程从约 72 小时压到 26 小时。",
+      "blurb": "Marker-based systems such as Vicon are the gold standard for motion capture, but they require reflective markers and manual segment-by-segment cleanup of noisy markers, and they especially fail when multiple people are in close contact. MAMMA upgrades supervision from sparse keypoints to 512 dense 2D surface landmarks: ViT + mask-CNN + a transformer decoder with one learnable query per landmark (MammaNet) outputs landmark position/uncertainty/visibility/contact for every frame and view; then SAM2 mask conditioning + symmetric epipolar distance performs 100% cross-view person association, and finally multi-view reprojection fits SMPL-X without pose priors or initialization. It is trained entirely on synthetic data MammaSyn (BEDLAM expanded to 32 cameras + interaction/hands). Hi4D 19-joint MPJPE 12.44mm (previous SOTA AvatarPose 32.10), held-out marker error against Vicon+MoSh is only 0.862mm, animation is visually indistinguishable, and the full capture-to-SMPL-X pipeline drops from about 72 hours to 26 hours.",
       "tags": "Top Paper candidate markerless mocap motion capture multi-person multi-view keypoints dense 2D landmarks surface landmarks SMPL-X SMPL pose estimation triangulation epipolar correspondence SAM2 mask conditioning landmark queries transformer decoder BEDLAM MammaSyn Vicon Harmony4D Hi4D CHI3D MOYO contact reprojection optimization Max Planck CMU",
       "authors": "Hanz Cuevas-Velasquez; Anastasios Yiannakidis; Soyong Shin; Giorgio Becherini; Markus Höschle; Joachim Tesch; Taylor Obersat; Tsvetelina Alexiadis; Eni Halilaj; Michael J. Black",
       "links": {
@@ -911,7 +911,7 @@
       "page_path": "papers/mamma.html",
       "thumbnail": "assets/figures/mamma/mamma_fig1.png",
       "status": "completed",
-      "figures_count": 14,
+      "figures_count": 24,
       "formula_check": "passed"
     },
     {
@@ -921,7 +921,7 @@
       "category": "Segmentation",
       "short": "SA-FARI",
       "topic": "Multi-Animal Tracking Dataset · Camera Trap Video Segmentation",
-      "blurb": "野生动物多目标追踪（MAT）是物种/个体/行为识别的底座，却十年没起飞——瓶颈不在模型，而在数据集：现有数据集几乎总要牺牲规模（<1h 标注）、物种多样性（≤5 种）、时空多样性（单保护区几天）或标注质量（mask 多自动生成、无人工核验）之一。SA-FARI 一次做齐这四件互斥的事：741 个独立采样点、4 大洲、10 年（2014–2024）、99 个物种、11,609 段相机陷阱视频，做出 16,224 条逐帧人工核验的 masklet 和 942,702 个框/mask（约 46 小时）——总时长 5×、物种多样性 2× 于此前任何 MAT 数据集，且是首个大规模带人工核验时空分割的野生 MAT 数据集。关键机制是借 SAM 3 data engine 的 human-AI-in-the-loop（自动伪标注→双人 + SAM2 在环修正→穷举性检查）把穷举标注成本压下来。两条独立验证：把训练集喂给 SOTA 模型 HOTA 涨 20+ 点、微调 SAM 3 三倍提升（训练价值）；按 small-mask/challenging/multi/night 切 test 集暴露失败模式——小目标拖检测、遮挡运动拖关联（诊断价值）。",
+      "blurb": "Multi-animal tracking (MAT) for wildlife is the foundation for species/individual/behavior recognition, but it has not taken off in ten years. The bottleneck is not the model but the dataset: existing datasets almost always sacrifice one of scale (<1h annotated), species diversity (≤5 species), spatiotemporal diversity (a few days in one protected area), or annotation quality (masks mostly auto-generated, no human verification). SA-FARI does all four mutually exclusive things at once: 741 independent sampling sites, 4 continents, 10 years (2014–2024), 99 species, 11,609 camera-trap videos, producing 16,224 frame-by-frame human-verified masklets and 942,702 boxes/masks (about 46 hours): 5× total duration and 2× species diversity over any previous MAT dataset, and the first large-scale wild MAT dataset with human-verified spatiotemporal segmentation. The key mechanism uses the SAM 3 data engine's human-AI-in-the-loop process (automatic pseudo-labeling→dual annotators + SAM2 in-loop correction→exhaustiveness checks) to reduce exhaustive annotation cost. Two independent validations: feeding the training set to SOTA models raises HOTA by 20+ points, and fine-tuning SAM 3 gives a threefold boost (training value); slicing the test set by small-mask/challenging/multi/night exposes failure modes: small targets hurt detection, and occlusion/motion hurts association (diagnostic value).",
       "tags": "Top Paper candidate dataset benchmark multi-animal tracking MAT video segmentation SAM SAM 3 camera trap wildlife conservation animal masklet tracking spatio-temporal segmentation open-vocabulary HOTA long-tail re-identification Conservation X Labs Meta",
       "authors": "Dante Francisco Wasmuht; Otto Brookes; Maximillian Schall; Pablo Palencia; Chris Beirne; Tilo Burghardt; Majid Mirmehdi; Hjalmar Kühl; Mimi Arandjelovic; Sam Pottie; Peter Bermant; Brandon Asheim; Yi Jin Toh; Adam Elzinga; Jason Holmberg; Andrew Whitworth; Eleanor Flatt; Laura Gustafson; Chaitanya Ryali; Yuan-Ting Hu; Baishan Guo; Andrew Westbury; Kate Saenko; Didac Surís",
       "links": {
@@ -932,7 +932,7 @@
       "page_path": "papers/safari.html",
       "thumbnail": "assets/figures/safari/safari_fig1.png",
       "status": "completed",
-      "figures_count": 10,
+      "figures_count": 12,
       "formula_check": "passed"
     },
     {
@@ -941,8 +941,8 @@
       "title": "MARCO: Navigating the Unseen Space of Semantic Correspondence",
       "category": "Semantic Correspondence",
       "short": "MARCO",
-      "topic": "Semantic Correspondence · 单 DINOv2 主干 + 稠密化自蒸馏",
-      "blurb": "语义对应的主流配方是 DINOv2+Stable Diffusion 双编码器，准但近 10 亿参数，且用稀疏关键点（每图 ≤20 点）训出来的模型一换没见过的关键点/类别就塌方（Fig.2b：监督把满屏对得上的流收缩到标注点附近）。MARCO 只用单个 DINOv2 主干（+<5% 参数的 adapter+上采样头），靠一套训练框架补这道缝：① coarse-to-fine 的高斯 RBF 分布匹配，余弦退火把核宽 σ 从 3 缩到 1，先区域级对齐再逼 subpatch 级精度，避开 soft-argmax L2 在多模态下被拉向均值；② dense self-distillation via flow anchoring——EMA 教师挖互最近邻 seed，Delaunay 三角剖分+分片仿射 warp densify 成稠密位移场，再在位移空间聚类、用 GT 关键点 anchor 过滤对称/遮挡错配，把一把关键点变成数千条可靠伪对应，让稀疏监督铺满整块物体表面。SPair-71k/AP-10K/PF-PASCAL 全面 SOTA，最严格阈值 PCK@0.01 +8.9，未见关键点 SPair-U +5.1、未见类别 MP-100 +4.7，且比扩散双编码器小 3×、快 10×。消融阶梯（SPair-U @0.10）：无稠密 loss 41.8→MNN 52.5→+Delaunay 64.7→+GT anchor 67.5。",
+      "topic": "Semantic Correspondence · Single DINOv2 Backbone + Densified Self-Distillation",
+      "blurb": "The mainstream semantic correspondence recipe is a DINOv2+Stable Diffusion dual encoder, accurate but close to 10 hundred-million parameters, and a model trained with sparse keypoints (≤20 points per image) collapses when switched to unseen keypoints/categories (Fig.2b: supervision shrinks the dense matchable flow across the image down around annotated points). MARCO uses only a single DINOv2 backbone (+ adapter + upsampling head with <5% parameters) and fills this gap with a training framework: first, coarse-to-fine Gaussian RBF distribution matching, with cosine annealing shrinking kernel width σ from 3 to 1, first aligning regions and then enforcing subpatch-level precision, avoiding soft-argmax L2 being pulled to the mean under multimodality; second, dense self-distillation via flow anchoring: an EMA teacher mines mutual-nearest-neighbor seeds, Delaunay triangulation + piecewise-affine warp densify them into a dense displacement field, then clusters in displacement space and uses GT keypoint anchor filtering for symmetry/occlusion mismatches, turning a handful of keypoints into thousands of reliable pseudo-correspondences so sparse supervision covers the whole object surface. SPair-71k/AP-10K/PF-PASCAL reach SOTA across the board, strictest threshold PCK@0.01 +8.9, unseen-keypoint SPair-U +5.1, unseen-category MP-100 +4.7, while being 3× smaller and 10× faster than diffusion dual encoders. Ablation ladder (SPair-U @0.10): no dense loss 41.8→MNN 52.5→+Delaunay 64.7→+GT anchor 67.5.",
       "tags": "Top Paper candidate Semantic Correspondence feature matching DINOv2 generalization unseen keypoints unseen categories self-distillation EMA teacher coarse-to-fine Gaussian RBF dense pseudo-labels mutual nearest neighbor Delaunay triangulation piecewise-affine warp flow anchoring SPair-71k AP-10K PF-PASCAL MP-100 SPair-U single-backbone Politecnico di Torino TU Darmstadt hessian.AI",
       "authors": "Claudia Cuttano; Gabriele Trivigno; Carlo Masone; Stefan Roth",
       "links": {
@@ -953,9 +953,9 @@
       "page_path": "papers/marco.html",
       "thumbnail": "assets/figures/marco/marco_fig1.png",
       "status": "completed",
-      "figures_count": 11,
+      "figures_count": 15,
       "formula_check": "passed",
-      "missing_info": "训练总 GPU 卡数/墙钟时间论文未披露（仅给 10 epochs/batch 16/Adam/LR 1e-4），不做 GPU-hours 估算；σ 退火总步 T、adapter 瓶颈维 d、MP-100 完整统计置于 Supp. Material；Table 1 代表性节选转写、Table 3 仅平均列（全 18 类见原文），Table 2/4 完整转写；CVF CVPR 2026 页 404（未上线）故未链接"
+      "missing_info": "Total training GPU count/wall-clock time are not disclosed in the paper (only 10 epochs/batch 16/Adam/LR 1e-4 are given), so no GPU-hours estimate is made; σ annealing total step T, adapter bottleneck dimension d, and complete MP-100 statistics are in Supp. Material; Table 1 is a representative excerpt transcription, Table 3 includes only average columns (all 18 classes are in the original paper), and Tables 2/4 are complete transcriptions; CVF CVPR 2026 page returns 404 (not online), so it is not linked"
     },
     {
       "id": "btb3d",
@@ -963,8 +963,8 @@
       "title": "Better Tokens for Better 3D: Advancing Vision-Language Modeling in 3D Medical Imaging",
       "category": "Medical AI (NeurIPS 2025)",
       "short": "BTB3D",
-      "topic": "Medical AI · 3D 医学影像 VLM tokenizer / 小波频域 + 因果卷积 + LFQ + 三阶段课程",
-      "blurb": "把 3D 医学 VLM 的瓶颈从「语言主干大小」重新定位到「体素 token 的保真与可扩展」：3D Haar 小波频域压缩 + 因果 3D 卷积 + lookup-free 量化 + 三阶段课程，在 >300 切片上不增显存地泛化，报告生成临床 F1 +40%、text-to-CT 的 FID −75%。",
+      "topic": "Medical AI · 3D Medical Imaging VLM Tokenizer / Wavelet Frequency Domain + Causal Convolution + LFQ + Three-Stage Curriculum",
+      "blurb": "Repositions the bottleneck of 3D medical VLM from 'language backbone size' to 'fidelity and scalability of voxel token': 3D Haar wavelet frequency-domain compression + causal 3D convolution + lookup-free quantization + three-stage curriculum generalize to >300 slices without increasing memory, with report generation clinical F1 +40% and text-to-CT FID −75%.",
       "tags": "Medical Medical AI 3D medical imaging CT VLM tokenizer wavelet causal convolution lookup-free quantization LFQ three-stage curriculum report generation text-to-CT CT-RATE RadChestCT LLaMA flow matching NeurIPS 2025",
       "authors": "Ibrahim Ethem Hamamci; Sezgin Er; Suprosanna Shit; Hadrien Reynaud; Dong Yang; Pengfei Guo; Marc Edgar; Daguang Xu; Bernhard Kainz; Bjoern Menze",
       "links": {
@@ -977,11 +977,11 @@
       "issues": [
         "medical"
       ],
-      "subtopic": "3D 基础模型 / 表征与生成",
+      "subtopic": "3D Foundation Models / Representation and Generation",
       "subtopic_key": "med-foundation",
-      "figures_count": 12,
+      "figures_count": 14,
       "formula_check": "passed",
-      "missing_info": "训练总 GPU 小时/墙钟时间未披露；未做因果 vs 双向卷积对照；仅胸部 CT 验证"
+      "missing_info": "Total GPU hours/wall-clock time are not disclosed; no causal vs bidirectional convolution comparison; only chest CT validation"
     },
     {
       "id": "colonflat",
@@ -989,8 +989,8 @@
       "title": "Virtual colon flattening method based on colonic outer surface",
       "category": "Virtual Colonoscopy / CTC",
       "short": "ColonFlatten",
-      "topic": "虚拟结肠镜 · 结肠展平 / 形变矫正",
-      "blurb": "把展平的形变矫正基准从毛糙的结肠内表面换成光滑的外表面：用测地距离场的“球内极差”切肠壁粘连(OSE)、用“等距面 velocity”自动分弯道(DCA)。60 例 CT 上检出率 79.6% vs 67.1/71.9/72.7%，每例假阳性 0.16 vs 0.32/0.21/0.26。",
+      "topic": "Virtual Colonoscopy · Colon Flattening / Distortion Correction",
+      "blurb": "Switches the flattening distortion-correction benchmark from the rough inner colon surface to the smooth outer surface: uses the 'in-sphere range' of the geodesic distance field to cut colon-wall adhesions (OSE), and uses 'isodistant-surface velocity' to automatically split turns (DCA). On 60 CT cases, detection rate is 79.6% vs 67.1/71.9/72.7%, with false positives per case 0.16 vs 0.32/0.21/0.26.",
       "tags": "Colonoscopy CTC Colon Flattening Medical virtual colonoscopy outer surface geodesic distortion correction SJTU Jun Zhao CMPB",
       "authors": "Lin Lu; Jun Zhao",
       "links": {
@@ -999,9 +999,9 @@
       "page_path": "papers/colonflat.html",
       "thumbnail": "assets/figures/colonflat/colonflat_thumb.png",
       "status": "completed",
-      "figures_count": 19,
+      "figures_count": 20,
       "formula_check": "passed",
-      "missing_info": "端到端用时、各阈值敏感性分析、子模块独立消融论文未说明"
+      "missing_info": "End-to-end runtime, threshold sensitivity analyses, and independent submodule ablations are not specified in the paper"
     },
     {
       "id": "cadctc",
@@ -1009,8 +1009,8 @@
       "title": "High-Performance CAD-CTC Scheme Using Shape Index, Multiscale Enhancement Filters, and Radiomic Features",
       "category": "Virtual Colonoscopy / CTC",
       "short": "CAD-CTC",
-      "topic": "虚拟结肠镜 · 息肉 CAD / CTC",
-      "blurb": "把 Shape Index 与 dot/line/plane 多尺度增强滤波器搬到“高斯平滑测地距离场(GDF)”上生成息肉候选，再用 640 维 radiomics + Random Forests 削减假阳性。≥5mm 达 98.1% by-polyp / 95.3% per-scan @1.3 FP/例；换坐标系使候选 FP 从 104.5 降到 58.8。",
+      "topic": "Virtual Colonoscopy · Polyp CAD / CTC",
+      "blurb": "Moves Shape Index and dot/line/plane multiscale enhancement filters onto a 'Gaussian-smoothed geodesic distance field (GDF)' to generate polyp candidates, then uses 640-dimensional radiomics + Random Forests to reduce false positives. ≥5mm reaches 98.1% by-polyp / 95.3% per-scan @1.3 FP/case; changing the coordinate system reduces candidate FP from 104.5 to 58.8.",
       "tags": "Colonoscopy CTC CAD polyp detection Medical radiomics geodesic distance field shape index random forests false positive reduction SJTU Jun Zhao IEEE TBME",
       "authors": "Yacheng Ren; Jingchen Ma; Junfeng Xiong; Lin Lu; Jun Zhao",
       "links": {
@@ -1021,7 +1021,7 @@
       "status": "completed",
       "figures_count": 17,
       "formula_check": "passed",
-      "missing_info": "训练/推理用时与硬件、SMOTE 倍率、阈值敏感性分析论文未说明；无外部测试集"
+      "missing_info": "Training/inference runtime and hardware, SMOTE multiplier, and threshold sensitivity analysis are not specified in the paper; no external test set"
     },
     {
       "id": "eversion",
@@ -1029,8 +1029,8 @@
       "title": "Virtual eversion and rotation of colon based on outer surface centerline",
       "category": "Virtual Colonoscopy / CTC",
       "short": "Virtual Eversion",
-      "topic": "虚拟结肠镜 · 结肠外翻 / CTC",
-      "blurb": "把结肠“翻过来看”(虚拟外翻)：采样中心线从锯齿状内表面中心线换成光滑外表面中心线，外翻=沿采样线对外表面做保距反射 E=2R-I。翻坏区域 6.8→1.9 个/例(少71%)，外翻计算 983s→75s(少92%)，阅片比 VC 省约 77%。",
+      "topic": "Virtual Colonoscopy · Colon Eversion / CTC",
+      "blurb": "Turns the colon 'inside out' (virtual eversion): the sampling centerline is changed from the jagged inner-surface centerline to the smooth outer-surface centerline, and eversion performs a distance-preserving reflection of the outer surface along sampling lines, E=2R-I. Failed eversion regions drop from 6.8→1.9 per case (71% fewer), eversion computation from 983s→75s (92% less), and reading time is about 77% shorter than VC.",
       "tags": "Colonoscopy CTC virtual eversion rotation Medical visualization outer surface centerline level set electric field sampling SJTU Jun Zhao Medical Physics",
       "authors": "Danfeng Zhang; Jun Zhao; Lin Lu; Lei Li; Zhizhong Wang",
       "links": {
@@ -1039,9 +1039,9 @@
       "page_path": "papers/eversion.html",
       "thumbnail": "assets/figures/eversion/eversion_thumb.png",
       "status": "completed",
-      "figures_count": 16,
+      "figures_count": 19,
       "formula_check": "passed",
-      "missing_info": "阅片对比样本小(20套/2医生)；部分VE绝对阅片时间原文排版无法逐格还原；参数敏感性分析未给；无外部测试集"
+      "missing_info": "Small reading-comparison sample (20 sets/2 doctors); some VE absolute reading times cannot be restored cell by cell from the original formatting; no parameter sensitivity analysis; no external test set"
     }
   ]
 }

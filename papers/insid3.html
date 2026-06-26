@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>INSID3 深读：上下文分割明明同时需要"跨图语义匹配"和"图内区域分组"，为什么一个冻结的 DINOv3 就能把两件事都办了——还不用任何解码器、微调或 SAM？</title>
-<meta name="description" content="INSID3（CVPR 2026 Oral / Top Paper candidate）深读：一张标注样例就要在任意域、任意粒度上分割任意概念，这件事的硬约束是——既要跨图建立语义对应（找到目标图里同一概念），又要图内把像素聚成连贯区域（把概念补全成完整 mask）。前人要么微调 VFM（毁掉泛化），要么把 DINOv2 + SAM 拼起来（架构臃肿、粒度被 SAM 锁死）。本文用 kexue:su 方法论拆解 INSID3 如何只靠一个冻结 DINOv3 同时拿下这两件事：先诊断出 DINOv3 特征里一条系统性的'位置偏置'（不同图同坐标的 patch 会无视语义地虚假互相匹配），再用一个训练自由的正交投影把它从噪声图估出的低维位置子空间里投掉；然后用原始特征做凝聚聚类（图内分组）、用去偏特征做反向对应 + 跨图相似度选种子、最后把跨图语义×图内自相似相乘做聚合补全。9 个基准、四个域全面 SOTA，平均 +7.5% mIoU，参数只有 304M（约 SAM 流水线的 1/3），去偏还能迁移到语义对应任务上拿 +6.6% PCK。">
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INSID3: training-free in-context segmentation from DINOv3 alone</title>
+<meta name="description" content="Paper Digest · INSID3: Training-Free In-Context Segmentation with DINOv3 — deep-read">
 <script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+/* ===== Paper2Html shell ===== */
 :root{
   --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
   --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
@@ -250,9 +250,9 @@ body.lb-lock{overflow:hidden}
     var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
     var overlay=document.createElement("div");
     overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
-    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+    overlay.innerHTML='<button class="lb-close" aria-label="Close">×</button>'+
       '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
-      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+      '<div class="lb-hint">Click anywhere or press Esc to close</div>';
     document.body.appendChild(overlay);
     var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
     function openLB(src,cap){
@@ -309,7 +309,7 @@ body.lb-lock{overflow:hidden}
     (function(){
       var title=document.querySelector(".site-title");if(!title)return;
       var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
-      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      var hp=nav.filter(function(a){return /home/i.test(a.textContent);})[0];
       if(hp)home=hp.getAttribute("href");
       else if(document.querySelector(".home"))home="index.html";
       if(!home)return;
@@ -327,12 +327,12 @@ body.lb-lock{overflow:hidden}
         function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
         if(!head.querySelector(".quick-links")){
           var bar=document.createElement("div");bar.className="quick-links";
-          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+          bar.innerHTML='<span class="ql-label">Links</span>'+chips();head.appendChild(bar);
         }
         var sb=document.querySelector(".sidebar");
         if(sb&&!sb.querySelector(".quick-links-side")){
           var card=document.createElement("section");card.className="side-card";
-          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          card.innerHTML='<h2 class="side-title">Links</h2><div class="side-body quick-links-side">'+chips()+'</div>';
           sb.insertBefore(card,sb.firstChild);
         }
       }
@@ -350,275 +350,527 @@ body.lb-lock{overflow:hidden}
 </script>
 </head>
 <body>
-<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>Segmentation · 一个冻结的 DINOv3，把"跨图语义匹配"与"图内区域分组"合并到同一套特征里</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">Pipeline</a><a href="#method">方法</a><a href="#experiments">实验</a><a href="#limitations">局限</a></nav></div></header>
-<div class="wrap"><div class="breadcrumbs"><a href="../index.html">首页</a> &gt; CVPR 2026 &gt; Segmentation &gt; INSID3</div>
-<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">INSID3 深读：上下文分割明明同时需要"跨图语义匹配"和"图内区域分组"，为什么一个冻结的 DINOv3 就能把两件事都办了——还不用任何解码器、微调或 SAM？</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>CVPR 2026 Oral · Top Paper (candidate) · Politecnico di Torino / TU Darmstadt / TU Munich</span><span>来源：arXiv:2603.28480 v1 PDF（正文 + 补充材料）</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag">Training-Free</span><span class="tag green">In-Context Segmentation</span><span class="tag">DINOv3</span><span class="tag">Feature Matching</span><span class="tag">Positional Debiasing</span><span class="tag">MathJax checked</span></div></header>
-<main class="content">
+<header class="site-header">
+  <div class="site-header-inner">
+    <div>
+      <p class="site-title">Paper Digest<small>Top Paper (candidate) · In-Context Segmentation / DINOv3 / Training-Free Vision</small></p>
+    </div>
+    <nav class="top-nav">
+      <a href="../index.html">Home</a>
+      <a href="#lead">Lead</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#experiments">Experiments</a>
+      <a href="#limitations">Limitations</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap">
+  <div class="breadcrumbs">Home &gt; CVPR 2026 &gt; In-Context Segmentation &gt; INSID3</div>
+  <article class="article" aria-labelledby="paper-title">
+    <header class="article-head clearfix">
+      <div class="date-card"><span class="day">26</span><span class="month">Jun</span></div>
+      <h1 id="paper-title">INSID3: training-free in-context segmentation from DINOv3 alone</h1>
+      <div class="article-meta">
+        <span>Paper2Html</span>
+        <span>2026-06-26</span>
+        <span>CVPR 2026 Top Paper (candidate)</span>
+        <span>Source: arXiv:2603.28480 PDF</span>
+      </div>
+      <div class="tags">
+        <span class="tag orange">In-Context Segmentation</span>
+        <span class="tag">DINOv3</span>
+        <span class="tag">Training-Free</span>
+        <span class="tag green">Dense Self-Supervision</span>
+        <span class="tag">Positional Debiasing</span>
+        <span class="tag">MathJax checked</span>
+      </div>
+    </header>
+    <main class="content">
 
-<p id="abstract" class="lead"><strong>导读。</strong>上下文分割（in-context segmentation, ICS）的任务设定很苛刻：只给<strong>一张标注样例</strong>（参考图 + 它上面的一个二值 mask），就要在目标图里把<strong>同一个概念</strong>抠出来——而这个"概念"可以是整只狗（语义）、狗的耳朵（部件）、或者"我家那只狗"（个体）；目标域还可能是自然图、医学 X 光、水下、航拍。这件事的底层约束是<strong>两件必须同时成立的事</strong>：① <strong>跨图语义匹配</strong>——在目标图里找到和参考概念语义对应的位置；② <strong>图内区域分组</strong>——把这些位置补全成一块空间连贯、粒度正确的 mask。前人要么<strong>微调</strong> VFM 装一个分割解码器（in-domain 涨点但泛化崩盘、粒度被训练分布锁死），要么把 <strong>DINOv2 + SAM</strong> 拼成多阶段流水线（泛化好但架构臃肿、mask 粒度被 SAM 的先验锁死）。本文的核心张力是：<strong>这两件事真的需要两套模型、外加 mask 监督吗？</strong>INSID3 的答案是——<strong>一个冻结的 DINOv3 就够了</strong>。它发现 DINOv3 的稠密特征本就同时具备强<strong>图内自相似</strong>（天然把同一物体/部件聚在一起）和<strong>跨图语义对应</strong>，唯一的拦路虎是一条隐蔽的<strong>位置偏置</strong>（不同图里相同坐标的 patch 会无视语义地虚假高相似）。INSID3 用一个<strong>训练自由的正交投影</strong>把位置成分投掉，再用"原始特征做图内聚类、去偏特征做跨图匹配"的分工，把两件事统一进同一套表征。结果：语义/部件/个体三类一共 9 个基准全面领先，平均 <strong>+7.5% mIoU</strong>，参数 <strong>304M</strong>（约 SAM 流水线 945M 的 1/3），<strong>零 mask 监督、零微调</strong>；顺手把去偏迁移到语义对应任务上还能拿 <strong>+6.6% PCK</strong>。</p>
+      <section id="lead">
+        <h2>1. Lead</h2>
+        <p class="lead"><strong>The short version.</strong> In-context segmentation, or ICS, asks a model to see one annotated support image and then segment the same visual concept in a query image. The support image is the example with a mask; the query image is the image to be segmented. This is harder than ordinary one-shot classification because the model needs two abilities at once: cross-image semantic matching, which finds the same concept across images, and intra-image region grouping, which turns matched patches into one coherent mask. Prior systems either fine-tune a vision foundation model, or VFM, which can narrow generalization, or combine DINOv2 with the Segment Anything Model, or SAM, which adds a large mask-supervised component and fixes much of the mask granularity through SAM. INSID3 argues that a frozen DINOv3 backbone already contains both ingredients, if its cross-image features are first corrected for positional bias. Positional bias here means that patches at the same image coordinate can score as similar even when their semantics differ. The paper removes that bias with a training-free orthogonal projection, then clusters raw DINOv3 features, selects a seed cluster with debiased cross-image matching, and expands it by combining semantic similarity with self-similarity. On the main 1-shot average over nine segmentation columns, INSID3 reports 55.1 mIoU, where mIoU means mean Intersection-over-Union; that is +7.5 points over the best training-free baseline, GF-SAM, which scores 47.6 mIoU. (A stricter like-for-like gap, against a GF-SAM rebuilt with the same DINOv3 backbone and debiasing, is smaller but still positive; the experiments give it.)</p>
 
-<figure id="fig-teaser"><a href="../assets/figures/insid3/insid3_fig1.png"><img src="../assets/figures/insid3/insid3_fig1.png" alt="INSID3 总览：左侧一张标注样例驱动任意概念分割（物体/部件/医学/航拍），右侧雷达图对比泛化性"></a><figcaption><strong>图 1（teaser）：一张样例驱动一切，且泛化吊打两条旧路线。</strong>左：单张标注样例就能把概念从整物体、到部件、再到医学/航拍图里抠出来。右雷达图是关键论据——橙色（微调方法，如 SegIC/DiffewS）只在自家训练域（灰底标注）里强，一出分布就塌（如 iSAID、X-Ray）；蓝色（SAM 流水线，如 Matcher/GF-SAM）泛化更稳但靠大而多阶段的架构；紫色 INSID3 用<strong>单一 backbone</strong> 把雷达图撑到最外圈，说明"鲁棒分割"可以直接从 DINOv3 的自监督稠密表征里<strong>涌现</strong>，而不必靠 mask 监督喂出来。</figcaption></figure>
+        <div class="hero-split">
+          <div>
+            <div class="kv-grid">
+              <div class="kv"><b>Setup</b>One annotated support image and one query image. The concept can be an object, a part, or a personalized instance.</div>
+              <div class="kv"><b>Core claim</b>A single frozen DINOv3 model can support both correspondence and mask formation without a decoder, fine-tuning, SAM, mask supervision, or category supervision.</div>
+              <div class="kv"><b>Key fix</b>Estimate a positional subspace from one noise image, project it out, and use the debiased features only for cross-image matching.</div>
+              <div class="kv"><b>Important caveat</b>INSID3 is not numerically best on every single dataset column. COCO-20i is stronger for fine-tuned SegIC and published GF-SAM, and X-Ray is stronger for SegGPT.</div>
+            </div>
+          </div>
+          <figure class="hero-card">
+            <a href="../assets/figures/insid3/insid3_fig1.png"><img src="../assets/figures/insid3/insid3_fig1.png" alt="INSID3 overview and cross-dataset comparison"></a>
+            <figcaption><strong>Paper Figure 1.</strong> The overview shows one annotated example driving segmentation across objects, parts, medical images, marine scenes, and aerial views. The comparison plot separates fine-tuned methods, SAM-based training-free pipelines, and INSID3. The point to read from the figure is not that every column is won, but that the single-backbone method generalizes broadly across domains and granularities.</figcaption>
+          </figure>
+        </div>
+      </section>
 
-<aside class="note"><div class="note-title">方法论说明（kexue:su）</div>本文的机制部分用 <code>kexue:su</code> 的科学推导姿态来组织：先讲"为什么需要"再讲"是什么"、每个近似/假设显式标出、关键结论从 ≥2 条独立路径交叉验证。检索 <code>kexue:su</code> 语料库时<strong>未命中任何与"位置偏置 / 正交投影去偏 / DINO 特征匹配 / 上下文分割"主题相关的卡片</strong>，因此全文<strong>不</strong>对苏剑林做任何 <code>[archives/XXXX]</code> 归因——只借用方法论，不虚构引用（详见 §参考与诚实边界）。</aside>
+      <section id="motivation">
+        <h2>2. Motivation: why ICS needs both matching and grouping</h2>
+        <p>ICS is a reference-conditioned segmentation problem. The reference mask says what the concept means in this episode, not what a fixed label vocabulary means in training. One episode may ask for a whole dog. Another may ask for a dog ear. A third may ask for one particular object instance among distractors.</p>
+        <p>That setup creates a two-part requirement. First, the model must match the support concept to the query image. Second, it must know where the matched concept stops inside the query. A good point match is not enough, because the output is a mask. A good generic mask proposal is not enough either, because the desired granularity comes from the support annotation.</p>
+        <p>The paper describes two dominant approaches. Fine-tuned methods such as SegIC and DiffewS inject segmentation behavior into a VFM through task-specific supervision. They can do well in-domain, but the paper reports drops when the test distribution moves away from the training distribution. Training-free systems such as Matcher and GF-SAM keep generalization by combining DINOv2 correspondence with SAM masks. That avoids downstream fine-tuning, but it brings a large two-model architecture and inherits mask-level supervision from SAM pretraining.</p>
+        <div class="socratic">
+          <p class="question">Q: why is DINOv3 different enough to revisit the design?</p>
+          <p class="answer">A: The paper argues that DINOv3 is not only a stronger semantic matcher. It also has dense, localized patch features that group into coherent regions within one image. That means the same feature space may handle both cross-image matching and intra-image grouping.</p>
+          <p class="takeaway"><strong>Takeaway:</strong> INSID3 is a minimality test: if DINOv3 already carries both signals, SAM and a trained decoder may be unnecessary for this task.</p>
+        </div>
+        <figure class="fig-wide">
+          <a href="../assets/figures/insid3/insid3_fig2.png"><img src="../assets/figures/insid3/insid3_fig2.png" alt="Region-level grouping from DINOv3 features"></a>
+          <figcaption><strong>Paper Figure 2.</strong> The figure pairs input images with agglomerative clusters computed from dense DINOv3 features. Agglomerative clustering means a bottom-up merge process: it starts from small patch groups and merges similar neighboring regions until a similarity threshold stops the process. The resulting maps are the paper's visual evidence that raw DINOv3 features already carry useful region structure.</figcaption>
+        </figure>
+      </section>
 
-<section id="motivation">
-<h2>核心问题：ICS 的两个矛盾需求，为什么逼出了"两套模型"——而它们真的必须吗？<a class="anchor" href="#motivation">#</a></h2>
+      <section id="contribution">
+        <h2>3. Contributions: what the paper adds</h2>
+        <p>The paper's first contribution is the INSID3 pipeline itself. It performs ICS with one frozen DINOv3-L backbone, 304 million parameters, no segmentation decoder, no SAM, no fine-tuning, and no mask or category-level supervision for INSID3.</p>
+        <p>The second contribution is a diagnosis of DINOv3's positional bias. Cross-image similarity maps can light up target patches that share the support coordinate rather than the support semantics. The authors estimate a low-dimensional positional subspace from a noise image and remove it with an orthogonal projection. Orthogonal projection here means subtracting the component of each feature that lies in a chosen subspace, leaving only the component in the perpendicular complement.</p>
+        <p>The third contribution is the segmentation recipe built around the two feature views. Raw DINOv3 features keep their spatial regularity for clustering and self-similarity. Debiased features are used for reverse correspondence and cross-image semantic similarity. Reverse correspondence means each query patch asks which support patch is its nearest neighbor; the patch is kept as a candidate only if that nearest support patch lies inside the support mask.</p>
+        <p>The fourth contribution is evidence across one-shot semantic, part, personalized, 5-shot, semantic correspondence, backbone, SAM3, empty-mask, and runtime evaluations. The headline +7.5 mIoU average is against published GF-SAM on the nine main 1-shot columns. The fairer comparison to the authors' own GF-SAM<sup>&dagger;</sup> plus debiasing row is +6.3 mIoU, because that row already imports DINOv3 and the paper's debiasing into a SAM-based baseline.</p>
+      </section>
 
-<p>先把任务讲清楚。给参考图 $I^r$ 和它的二值 mask $M^r$，再给目标图 $I^t$，要在 $I^t$ 里输出"同一概念"的 mask。注意"概念"的粒度是开放的：可以是语义类（"狗"，分割目标图里所有狗）、部件（"狗耳朵"）、个体（"我家这只狗"）。这意味着任何把粒度写死的设计都会在某个设定上翻车。</p>
+      <section id="datasets">
+        <h2>4. Datasets and metrics</h2>
+        <p>The main one-shot table covers nine columns. Six are one-shot semantic segmentation datasets: LVIS-92<sup>i</sup>, COCO-20<sup>i</sup>, ISIC2018, SUIM, iSAID-5<sup>i</sup>, and Chest X-Ray. Two are one-shot part segmentation datasets: PASCAL-Part and PACO-Part. One is one-shot personalized segmentation: PerMIS.</p>
+        <p>mIoU is the main segmentation metric. It measures the intersection between predicted and ground-truth masks divided by their union, then averages across cases. The semantic-correspondence study uses SPair-71k and PCK@T. PCK means percentage of correct keypoints; a prediction is correct when it lands within a normalized distance threshold T from the ground-truth keypoint.</p>
+        <p>Input images are resized to 1024 by 1024 for the main ICS experiments, following SAM-based baselines. The final masks are predicted at patch resolution, bilinearly interpolated to the original resolution, and refined with a conditional random field, or CRF. A CRF is a post-processing model that encourages nearby pixels with compatible appearance to share labels.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Dataset coverage in the main 1-shot table.</strong> This is a task map, not a result table.</caption>
+            <thead>
+              <tr><th>Task group</th><th>Datasets</th><th>Concept type</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>One-shot semantic segmentation</td><td>LVIS-92<sup>i</sup>, COCO-20<sup>i</sup>, ISIC2018, SUIM, iSAID-5<sup>i</sup>, Chest X-Ray</td><td>All pixels belonging to the support concept class</td></tr>
+              <tr><td>One-shot part segmentation</td><td>PASCAL-Part, PACO-Part</td><td>The same object part named by the support mask</td></tr>
+              <tr><td>One-shot personalized segmentation</td><td>PerMIS</td><td>The same personalized instance under distractors and appearance changes</td></tr>
+              <tr><td>Semantic correspondence</td><td>SPair-71k</td><td>Keypoint transfer across related images</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-<div class="socratic">
-<p class="question">问：要完成这件事，最少需要哪几种能力？</p>
-<p class="guide">引导：把"从一张样例到一张目标 mask"拆成必经的两步。第一步，你得在目标图里<strong>找到</strong>概念在哪——这需要跨两张图建立语义对应（参考概念 ↔ 目标位置）。第二步，找到的位置往往只是概念的一部分（比如只命中了狗头），你得把它<strong>补全</strong>成一块完整、连贯、粒度正确的区域——这需要在目标图<strong>图内</strong>判断"哪些像素属于同一概念"。</p>
-<p class="answer">答：① <strong>跨图语义匹配</strong>（cross-image correspondence）+ ② <strong>图内区域分组</strong>（intra-image grouping）。前者要求特征"无视位置、只看语义"地跨图对齐；后者要求特征"位置连贯地"把同物体/部件聚团。这两个需求<strong>对特征的诉求恰好相反</strong>——一个要抹掉空间、一个要利用空间。前人之所以走向"两套模型"，正是因为他们手里的 VFM 没法同时满足这两条。</p>
-<div class="takeaway">Takeaway：ICS 的难不在"分割"本身，而在"<strong>同一套特征要同时服务两个相反诉求</strong>"。谁能用一套表征兼顾，谁就能甩掉外挂。</div>
+      <section id="pipeline">
+        <h2>5. Pipeline: one feature space, two uses</h2>
+        <figure class="fig-wide">
+          <a href="../assets/figures/insid3/insid3_fig3.png"><img src="../assets/figures/insid3/insid3_fig3.png" alt="INSID3 pipeline"></a>
+          <figcaption><strong>Paper Figure 3.</strong> The pipeline extracts DINOv3 features for the support and query images, removes positional directions for cross-image matching, clusters the query image, selects candidate clusters by reverse correspondence, picks one seed cluster by support-to-query similarity, and expands it with a combined semantic and structural score.</figcaption>
+        </figure>
+        <p>INSID3 starts by extracting dense patch features from the frozen encoder $\Phi$. The paper writes the support and query features as</p>
+        <div class="equation">
+          $$
+          F_r=\Phi(I_r), \qquad F_t=\Phi(I_t).
+          $$
+          <div class="eq-caption">Eq. 1: $I_r$ is the support image, $I_t$ is the query image, and $F_r,F_t \in \mathbb{R}^{P \times D}$ are D-dimensional patch embeddings over P patches.</div>
+        </div>
+        <p>The pipeline then splits into two feature views. Raw features $F_t$ are used to cluster the query into regions, because their local spatial structure is useful. Debiased features $\tilde F_r$ and $\tilde F_t$ are used for correspondence, because absolute coordinate information can be harmful when two different images are being matched.</p>
+        <p>A seed is the first query cluster selected as the most likely part of the support concept. The seed is often only a partial localization, such as the head of a person or the neck of a giraffe. The final step asks which other candidate clusters should be merged with that seed.</p>
+      </section>
+
+      <section id="method">
+        <h2>6. Method: remove coordinate bias, then aggregate clusters</h2>
+        <h3>6.1 Positional subspace removal</h3>
+        <p>The paper's diagnosis starts from a simple similarity map. Average the support features inside the support mask to form a prototype $p_r$, then score each query patch by its inner product with that prototype. DINOv3 captures semantics, but the same map can also show bright activations at matching absolute coordinates. That is positional bias.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/insid3/insid3_fig4.png"><img src="../assets/figures/insid3/insid3_fig4.png" alt="Positional bias in DINOv3 features"></a>
+          <figcaption><strong>Paper Figure 4.</strong> The figure compares original and debiased similarity maps for region and keypoint prompts. Original DINOv3 features show coordinate-aligned responses in target images; debiased features suppress those responses while keeping semantic matches visible. The PCA panel supports the paper's claim that low-complexity inputs expose a stable positional subspace.</figcaption>
+        </figure>
+        <p>INSID3 estimates that subspace once from a Gaussian noise image. The steps are:</p>
+        <div class="equation">
+          $$
+          I_{\mathrm{noise}} \sim \mathcal{N}(0,1), \qquad
+          F_{\mathrm{noise}}=\Phi(I_{\mathrm{noise}}), \qquad
+          F_{\mathrm{noise}}=U\Sigma V^\top, \qquad
+          B=[v_1,\ldots,v_s].
+          $$
+          <div class="eq-caption">Eq. 2: $B$ contains the top s right singular vectors of the noise-image features and is treated as a basis for positional directions.</div>
+        </div>
+        <p>The debiased support and query features are then projected onto the orthogonal complement of that basis:</p>
+        <div class="equation">
+          $$
+          \tilde F_r = F_r\left(I_D-BB^\top\right), \qquad
+          \tilde F_t = F_t\left(I_D-BB^\top\right).
+          $$
+          <div class="eq-caption">Eq. 3: $I_D$ is the D-dimensional identity matrix. $BB^\top$ projects a feature onto the positional subspace, so $I_D-BB^\top$ removes that component.</div>
+        </div>
+        <p>The paper fixes the debiasing rank to $s=500$. It uses raw features for clustering and self-similarity, but debiased features for all cross-image matching steps.</p>
+
+        <h3>6.2 Clustering and reverse correspondence</h3>
+        <p>For the query image, INSID3 partitions raw DINOv3 features into disjoint clusters $\{G_1,\ldots,G_K\}$. The paper uses agglomerative clustering with threshold $\tau=0.6$. K-means would require choosing K up front; DBSCAN is described as brittle in high-dimensional feature spaces. Agglomerative clustering gives one threshold that controls granularity.</p>
+        <div class="equation">
+          $$
+          \bigcup_{k=1}^{K} G_k=\Omega, \qquad
+          G_i \cap G_j=\emptyset \quad \forall i \ne j.
+          $$
+          <div class="eq-caption">Eq. 4: the clusters cover all patch indices $\Omega$ and do not overlap.</div>
+        </div>
+        <p>Candidate localization uses reverse correspondence. For each query patch $i$, INSID3 finds the nearest support patch $j$ in debiased feature space. It keeps query patches whose nearest support patch lies inside the support mask:</p>
+        <div class="equation">
+          $$
+          \mathrm{NN}(i)=\arg\max_{j\in\Omega}\left\langle \tilde F_i^t,\tilde F_j^r \right\rangle,
+          \qquad
+          C_{\mathrm{NN}}=\left\{i\in\Omega \mid M^r_{\mathrm{NN}(i)}=1\right\}.
+          $$
+          <div class="eq-caption">Eq. 5: reverse matching uses the query patch as the question and the support image as the search space. $M^r$ is the support mask.</div>
+        </div>
+        <p>A query cluster becomes a candidate if it overlaps $C_{\mathrm{NN}}$. This step uses negative evidence from the unmasked support background: if a query patch's nearest support neighbor lands outside the mask, it is not reliable support for the concept.</p>
+
+        <h3>6.3 Seed selection and multiplicative aggregation</h3>
+        <p>INSID3 next computes debiased prototypes for each candidate cluster and the support mask, then chooses the seed cluster with the highest cross-image score:</p>
+        <div class="equation">
+          $$
+          \tilde p_k^t = \frac{1}{|G_k|}\sum_{i\in G_k}\tilde F_i^t,
+          \qquad
+          \tilde p_r = \frac{1}{|R|}\sum_{j\in R}\tilde F_j^r,
+          \qquad
+          s_k^{\mathrm{cross}}=\left\langle \tilde p_k^t,\tilde p_r \right\rangle,
+          \qquad
+          G^*=\arg\max_{G_k\in C_{\mathrm{cand}}}s_k^{\mathrm{cross}}.
+          $$
+          <div class="eq-caption">Eq. 6: $R$ is the support foreground patch set; $C_{\mathrm{cand}}$ is the set of candidate clusters; $G^*$ is the seed.</div>
+        </div>
+        <p>A seed alone is usually too small. To recover the full concept, INSID3 combines cross-image semantic similarity with intra-image self-similarity. The self-similarity score uses raw query features, because raw DINOv3 features preserve the local region structure that the method wants for grouping.</p>
+        <div class="equation">
+          $$
+          \bar p_k^t=\frac{1}{|G_k|}\sum_{i\in G_k}F_i^t,\qquad
+          s_k^{\mathrm{intra}}=\left\langle \bar p_k^t,\bar p_*^t \right\rangle,
+          \qquad
+          S_k=s_k^{\mathrm{cross}}\cdot s_k^{\mathrm{intra}},
+          \qquad
+          M_{\mathrm{final}}=G^*\cup\left\{G_k\in C_{\mathrm{cand}}\mid S_k\ge \alpha\right\}.
+          $$
+          <div class="eq-caption">Eq. 7: $\bar p_*^t$ is the raw-feature prototype of the seed cluster, $S_k$ is the multiplicative aggregation score, and $\alpha=0.2$ is the merge threshold.</div>
+        </div>
+        <div class="formula-note">
+          <p class="note-title">Why multiplication matters</p>
+          <p>The product requires a cluster to satisfy both tests. A region that matches the support semantically but is structurally far from the seed is down-weighted. A region that sits near the seed in the query but does not match the support concept is also down-weighted. Addition would let one high score compensate for one weak score; the paper chooses multiplication to make both signals load-bearing.</p>
+        </div>
+      </section>
+
+      <section id="training">
+        <h2>7. Training: none for INSID3 itself</h2>
+        <p>INSID3 itself is training-free. The debiasing projection is computed from feature statistics of a noise image, not learned from masks or labels. Clustering, reverse correspondence, seed selection, aggregation, interpolation, and CRF refinement are also inference-time procedures.</p>
+        <p>DINOv3 is not trained by INSID3. The paper describes DINOv3 as a self-supervised VFM trained on massive-scale image corpora, with significant data and model scaling, a Gram anchoring objective, and high-resolution post-training. The exact pretraining data composition for DINOv3 is not stated in the INSID3 paper.</p>
+        <p>The three scalar hyperparameters are selected once on the COCO-20<sup>i</sup> training split with 3-fold cross-validation and then fixed across semantic, part, and personalized segmentation. There is no dataset-specific or task-specific tuning reported for the main INSID3 runs.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 6.</strong> Hyperparameter overview.</caption>
+            <thead><tr><th>Hyperparameter</th><th>Value</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td>$\tau$</td><td>0.6</td><td>Clustering sensitivity</td></tr>
+              <tr><td>$\alpha$</td><td>0.2</td><td>Aggregation threshold</td></tr>
+              <tr><td>$s$</td><td>500</td><td>Debias rank</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="experiments">
+        <h2>8. Experiments: where INSID3 wins, and where it does not</h2>
+        <p>The main comparison groups methods by supervision regime. Task-specific fine-tuning rows use semantic and mask supervision. Training-free SAM pipelines use a mask-supervised SAM component. INSID3 is the only row in the main table labeled as training-free with unsupervised pretraining only.</p>
+        <p class="mini">Marker disclosure: <sup>&dagger;</sup> marks a GF-SAM variant that replaces DINOv2 with DINOv3. The paper's gray shading marks rows trained on the corresponding train split; in this HTML transcription, those rows are represented by the supervision-group labels instead of shading.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 1.</strong> One-shot semantic, part, and personalized segmentation. mIoU in percent, higher is better.</caption>
+            <thead>
+              <tr>
+                <th>Group</th><th>Method</th><th>Encoder</th><th>#Param</th>
+                <th>LVIS-92<sup>i</sup></th><th>COCO-20<sup>i</sup></th><th>ISIC</th><th>SUIM</th><th>iSAID</th><th>X-Ray</th><th>PASCAL</th><th>PACO</th><th>PerMIS</th><th>Avg</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>Painter [63]</td><td>ViT</td><td>354 M</td><td>10.5</td><td>33.1</td><td>Not reported</td><td>Not reported</td><td>Not reported</td><td>Not reported</td><td>30.4</td><td>14.1</td><td>Not reported</td><td>Not reported</td></tr>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>SegGPT [64]</td><td>ViT</td><td>354 M</td><td>18.6</td><td>56.1</td><td>37.5</td><td>34.9</td><td>30.9</td><td><strong>87.5</strong></td><td>35.8</td><td>13.5</td><td>18.7</td><td>37.1</td></tr>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>SINE [38]</td><td>DINOv2</td><td>373 M</td><td>31.2</td><td>64.5</td><td>25.8</td><td>50.7</td><td>38.3</td><td>39.8</td><td>36.2</td><td>23.3</td><td>42.5</td><td>39.1</td></tr>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>DiffewS [74]</td><td>Stable Diffusion</td><td>890 M</td><td>31.4</td><td>71.3</td><td>27.8</td><td>48.9</td><td>47.5</td><td>41.6</td><td>34.0</td><td>22.8</td><td>35.2</td><td>40.1</td></tr>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>SegIC [41]</td><td>DINOv2</td><td>310 M</td><td><strong>44.6</strong></td><td><strong>76.1</strong></td><td>25.3</td><td>52.5</td><td>46.1</td><td>34.5</td><td>39.9</td><td>25.9</td><td>51.8</td><td>44.1</td></tr>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>SegIC (COCO) [41]</td><td>DINOv2</td><td>310 M</td><td>35.7</td><td>75.6</td><td>22.5</td><td>52.9</td><td>40.8</td><td>30.8</td><td>38.6</td><td>25.1</td><td>44.9</td><td>40.8</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>PerSAM [72]</td><td>SAM</td><td>640 M</td><td>11.5</td><td>23.0</td><td>23.9</td><td>28.7</td><td>19.2</td><td>31.7</td><td>32.5</td><td>22.5</td><td>48.6</td><td>26.8</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>Matcher [39]</td><td>DINOv2 + SAM</td><td>945 M</td><td>33.0</td><td>52.7</td><td>38.6</td><td>44.1</td><td>33.3</td><td>70.8</td><td>42.9</td><td>34.7</td><td>63.8</td><td>46.0</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>GF-SAM [69]</td><td>DINOv2 + SAM</td><td>945 M</td><td>35.2</td><td>58.7</td><td>48.7</td><td>53.1</td><td>47.1</td><td>51.0</td><td>44.5</td><td>36.3</td><td>54.1</td><td>47.6</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>GF-SAM<sup>&dagger;</sup> [69]</td><td>DINOv3 + SAM</td><td>945 M</td><td>31.8</td><td>54.8</td><td>50.9</td><td>50.5</td><td>46.7</td><td>56.1</td><td>44.9</td><td>34.4</td><td>52.6</td><td>47.0</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>GF-SAM<sup>&dagger;</sup> + INSID3 debias</td><td>DINOv3 + SAM</td><td>945 M</td><td>34.6</td><td>55.9</td><td>51.8</td><td>52.9</td><td>47.6</td><td>60.0</td><td>46.2</td><td>36.1</td><td>54.5</td><td>48.8</td></tr>
+              <tr><td>Training-free: unsupervised pretraining</td><td><strong>INSID3 (ours)</strong></td><td>DINOv3</td><td><strong>304 M</strong></td><td>41.8</td><td>57.6</td><td><strong>54.4</strong></td><td><strong>54.9</strong></td><td><strong>52.1</strong></td><td>78.8</td><td><strong>50.5</strong></td><td><strong>38.7</strong></td><td><strong>67.0</strong></td><td><strong>55.1</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Read the table in like-for-like blocks. Against published training-free SAM pipelines, INSID3 beats PerSAM, Matcher, and GF-SAM on the nine-column average, with 55.1 versus 47.6 for GF-SAM. It also uses 304 M parameters versus 945 M for Matcher and GF-SAM, about one third of the parameter count. Against the authors' stronger diagnostic baseline, GF-SAM<sup>&dagger;</sup> plus INSID3 debiasing, the gap is 55.1 minus 48.8, or +6.3 mIoU. Against task-specific fine-tuning, INSID3 has the best average, but it loses individual columns: SegIC leads LVIS-92<sup>i</sup> and COCO-20<sup>i</sup>, while SegGPT leads X-Ray. On COCO-20<sup>i</sup>, published GF-SAM also has a small numeric lead over INSID3, 58.7 versus 57.6; the paper gives no confidence intervals, so this should be read as a small table gap rather than a calibrated statistical claim.</p>
+
+        <figure class="fig-wide">
+          <a href="../assets/figures/insid3/insid3_fig5.png"><img src="../assets/figures/insid3/insid3_fig5.png" alt="Qualitative comparison against GF-SAM and SegIC"></a>
+          <figcaption><strong>Paper Figure 5.</strong> The qualitative comparison covers semantic, part, and personalized examples. The failure mode highlighted for SAM-based pipelines is over- or under-segmentation from decoupling correspondence and mask generation. The failure mode highlighted for fine-tuned SegIC is weaker generalization away from its training distribution.</figcaption>
+        </figure>
+
+        <h3>Semantic correspondence isolates the debiasing step</h3>
+        <p>Semantic correspondence removes the mask-generation problem and asks only whether patch features find the right keypoint in another image. This makes it a direct test of the positional-bias correction. The main table reports DINOv3 Small, Base, and Large on SPair-71k.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 2.</strong> Semantic correspondence on SPair-71k. PCK@T in percent, higher is better.</caption>
+            <thead>
+              <tr><th>T</th><th>Small original</th><th>Small debias</th><th>Base original</th><th>Base debias</th><th>Large original</th><th>Large debias</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>0.05</td><td>26.8</td><td>27.9</td><td>29.2</td><td>32.3</td><td>32.7</td><td>33.6</td></tr>
+              <tr><td>0.10</td><td>43.8</td><td>45.7</td><td>45.0</td><td>50.0</td><td>50.6</td><td>52.0</td></tr>
+              <tr><td>0.15</td><td>53.2</td><td>55.6</td><td>54.0</td><td>59.9</td><td>60.3</td><td>62.1</td></tr>
+              <tr><td>0.20</td><td>59.8</td><td>62.6</td><td>59.8</td><td>66.4</td><td>66.4</td><td>68.6</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The largest reported gain in this table is +6.6 PCK for DINOv3-Base at T=0.20. Gains are consistent across all rows, but not equal across backbones: DINOv3-Large gains +0.9 to +2.2, while DINOv3-Base gains +3.1 to +6.6.</p>
+
+        <h3>Five-shot extension</h3>
+        <p>The supplement extends INSID3 to five support examples by changing only the correspondence stage. A query patch is retained if a majority of its nearest support neighbors fall inside the five support masks, and the support prototype is averaged across examples. The rest of the pipeline is unchanged.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 7.</strong> Five-shot semantic and part segmentation. mIoU in percent, higher is better.</caption>
+            <thead>
+              <tr>
+                <th>Group</th><th>Method</th><th>Encoder</th><th>#Param</th>
+                <th>LVIS-92<sup>i</sup></th><th>COCO-20<sup>i</sup></th><th>ISIC</th><th>SUIM</th><th>iSAID</th><th>X-Ray</th><th>PASCAL</th><th>PACO</th><th>Avg</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>SegGPT [64]</td><td>ViT</td><td>354 M</td><td>25.4</td><td>67.9</td><td>45.2</td><td>33.7</td><td>35.9</td><td><strong>89.1</strong></td><td>42.8</td><td>14.1</td><td>44.3</td></tr>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>SINE [38]</td><td>DINOv2</td><td>373 M</td><td>35.5</td><td>66.1</td><td>28.6</td><td>54.8</td><td>40.5</td><td>40.6</td><td>36.4</td><td>25.4</td><td>41.0</td></tr>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>DiffewS [74]</td><td>Stable Diffusion</td><td>890 M</td><td>35.4</td><td><strong>72.2</strong></td><td>32.7</td><td>49.8</td><td>48.0</td><td>45.1</td><td>39.7</td><td>26.1</td><td>43.6</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>Matcher [39]</td><td>DINOv2 + SAM</td><td>945 M</td><td>40.0</td><td>60.7</td><td>35.0</td><td>50.6</td><td>34.3</td><td>71.2</td><td>45.8</td><td>33.6</td><td>46.4</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>GF-SAM [69]</td><td>DINOv2 + SAM</td><td>945 M</td><td>44.2</td><td>66.8</td><td>55.2</td><td>58.1</td><td>52.4</td><td>52.9</td><td>51.2</td><td>41.9</td><td>52.8</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>GF-SAM<sup>&dagger;</sup> [69]</td><td>DINOv3 + SAM</td><td>945 M</td><td>42.8</td><td>64.4</td><td>56.7</td><td>58.6</td><td>53.2</td><td>54.7</td><td>50.3</td><td>39.3</td><td>52.5</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>GF-SAM<sup>&dagger;</sup> + INSID3 debias</td><td>DINOv3 + SAM</td><td>945 M</td><td>43.6</td><td>64.6</td><td>58.2</td><td>59.2</td><td>54.1</td><td>59.1</td><td>51.4</td><td>40.2</td><td>53.8</td></tr>
+              <tr><td>Training-free: unsupervised pretraining</td><td><strong>INSID3 (ours)</strong></td><td>DINOv3</td><td><strong>304 M</strong></td><td><strong>47.2</strong></td><td>65.1</td><td><strong>63.9</strong></td><td><strong>61.7</strong></td><td><strong>56.9</strong></td><td>80.1</td><td><strong>57.1</strong></td><td><strong>46.8</strong></td><td><strong>59.9</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Five support examples instead of one raise INSID3's average to 59.9 on the 5-shot Table 7. That table has eight columns &mdash; PerMIS is dropped &mdash; so 59.9 is an 8-column average and is not directly comparable to the 9-column 55.1 above. It is still not a sweep: DiffewS leads COCO-20<sup>i</sup> and SegGPT leads X-Ray. Against the strongest row that includes the authors' debiasing in GF-SAM<sup>&dagger;</sup>, INSID3's average gap is +6.1 mIoU.</p>
+
+        <h3>Backbone and SAM3 checks</h3>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 8.</strong> Backbone analysis for INSID3 on COCO-20<sup>i</sup>. mIoU in percent, higher is better.</caption>
+            <thead><tr><th>DINOv3</th><th>DINOv2</th><th>Franca</th><th>Perception Encoder</th><th>Stable Diffusion</th></tr></thead>
+            <tbody><tr><td><strong>57.6</strong></td><td>45.1</td><td>39.2</td><td>48.4</td><td>33.2</td></tr></tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 9.</strong> Comparison with SAM3 on COCO-20<sup>i</sup>. mIoU in percent, higher is better.</caption>
+            <thead><tr><th>Group</th><th>Method</th><th>mIoU</th></tr></thead>
+            <tbody>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>Segment Anything 3, video-style propagation</td><td>26.7</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>Segment Anything 3, image concatenation</td><td>52.9</td></tr>
+              <tr><td>Training-free: unsupervised pretraining</td><td><strong>INSID3 (ours)</strong></td><td><strong>57.6</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The backbone table supports the paper's central premise: DINOv3 is not a drop-in label for any VFM. Under the INSID3 recipe, DINOv3 is 12.5 mIoU above DINOv2 on COCO-20<sup>i</sup>. The SAM3 table is narrower: it only tests COCO-20<sup>i</sup> and two adaptations that the authors designed for this cross-image setting.</p>
+
+        <h3>Runtime</h3>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 11.</strong> Computational analysis against previous methods. Runtime is milliseconds per in-context example on a single RTX 4090; lower is better.</caption>
+            <thead><tr><th>Group</th><th>Method</th><th>Backbone</th><th>Resolution</th><th>Runtime</th></tr></thead>
+            <tbody>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>SegGPT [64]</td><td>ViT</td><td>640<sup>2</sup></td><td>110 ms</td></tr>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>SegIC [41]</td><td>DINOv2</td><td>896<sup>2</sup></td><td>301 ms</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>PerSAM [72]</td><td>SAM</td><td>1024<sup>2</sup></td><td>504 ms</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>Matcher [39]</td><td>DINOv2 + SAM</td><td>1024<sup>2</sup></td><td>9000 ms</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>GF-SAM [69]</td><td>DINOv2 + SAM</td><td>1024<sup>2</sup></td><td>1030 ms</td></tr>
+              <tr><td>Training-free: unsupervised pretraining</td><td><strong>INSID3 (ours)</strong></td><td>DINOv3</td><td>1024<sup>2</sup></td><td><strong>302 ms</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 12.</strong> INSID3 runtime breakdown on a single RTX 4090.</caption>
+            <thead><tr><th>Component</th><th>Runtime</th></tr></thead>
+            <tbody>
+              <tr><td>Encoder forward + debiasing</td><td>78 ms</td></tr>
+              <tr><td>Compute similarity + cluster scoring</td><td>3 ms</td></tr>
+              <tr><td>Clustering</td><td>166 ms</td></tr>
+              <tr><td>CRF refinement</td><td>55 ms</td></tr>
+              <tr><td><strong>Total inference time</strong></td><td><strong>302 ms</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 13.</strong> INSID3 runtime across resolutions on a single RTX 3090.</caption>
+            <thead><tr><th>512 px</th><th>720 px</th><th>896 px</th><th>1024 px</th><th>1440 px</th><th>1600 px</th><th>1760 px</th></tr></thead>
+            <tbody><tr><td>93 ms</td><td>180 ms</td><td>230 ms</td><td>302 ms</td><td>689 ms</td><td>930 ms</td><td>1102 ms</td></tr></tbody>
+          </table>
+        </div>
+        <p>The runtime claim is strongest against training-free SAM pipelines at 1024<sup>2</sup>: INSID3 reports 302 ms, GF-SAM reports 1030 ms, and Matcher reports 9000 ms. SegIC is similar at 301 ms, but its table row is a fine-tuned method at 896<sup>2</sup>, so it is not the same setting.</p>
+      </section>
+
+      <section id="ablations">
+        <h2>9. Ablations: the projection and aggregation both matter</h2>
+        <h3>Debiasing across DINO generations</h3>
+        <p>The appendix directly compares DINOv2 and DINOv3 under the same semantic-correspondence protocol. Debiasing changes DINOv2 by only +0.3 PCK at each reported threshold, but changes DINOv3-Base by +3.1, +5.0, and +6.6. This supports the paper's claim that the positional-bias issue is much more visible in DINOv3.</p>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 4.</strong> Semantic correspondence on SPair-71k (the DINOv3 rows here are the Base backbone, so its 66.4 at <em>T</em>=0.20 is the Base-debiased value, not the Large-original one from the earlier table). PCK@T in percent, higher is better.</caption>
+            <thead><tr><th>Backbone</th><th>Features</th><th>PCK@0.05</th><th>PCK@0.10</th><th>PCK@0.20</th></tr></thead>
+            <tbody>
+              <tr><td>DINOv2</td><td>Original</td><td>34.4</td><td>50.5</td><td>66.8</td></tr>
+              <tr><td>DINOv2</td><td>Debias</td><td>34.7 (+0.3)</td><td>50.8 (+0.3)</td><td>67.1 (+0.3)</td></tr>
+              <tr><td>DINOv3</td><td>Original</td><td>29.2</td><td>45.0</td><td>59.8</td></tr>
+              <tr><td>DINOv3</td><td>Debias</td><td>32.3 (+3.1)</td><td>50.0 (+5.0)</td><td>66.4 (+6.6)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <figure class="fig-wide">
+          <a href="../assets/figures/insid3/insid3_fig8.png"><img src="../assets/figures/insid3/insid3_fig8.png" alt="DINOv2 and DINOv3 positional bias comparison"></a>
+          <figcaption><strong>Paper Figure 8.</strong> The appendix visualization compares keypoint similarity maps from DINOv3 and DINOv2. DINOv3 shows stronger coordinate-aligned artifacts before debiasing; DINOv2 shows weaker positional structure. This figure explains why the same projection has a larger quantitative effect on DINOv3.</figcaption>
+        </figure>
+
+        <h3>Alternative debiasing strategies</h3>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 5.</strong> Different training-free debiasing strategies on COCO-20<sup>i</sup>. mIoU in percent, higher is better.</caption>
+            <thead><tr><th>Method</th><th>mIoU</th></tr></thead>
+            <tbody>
+              <tr><td>No debiasing</td><td>54.5</td></tr>
+              <tr><td>Augmentations, 4 views</td><td>55.7</td></tr>
+              <tr><td>Augmentations, 12 views</td><td>56.5</td></tr>
+              <tr><td>Ours, SVD from 1 noise image</td><td>57.6</td></tr>
+              <tr><td>SVD from 5 noise images</td><td>57.7</td></tr>
+              <tr><td>SVD from 10 noise images</td><td>57.7</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Augmentation averaging helps, but it needs multiple DINOv3 forward passes. One noise image plus SVD reaches 57.6 mIoU, only 0.1 below the 5-image and 10-image variants. The table does not include variance, so that 0.1 difference should be treated as within table resolution rather than as a meaningful ranking.</p>
+
+        <h3>Clustering and aggregation</h3>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 3.</strong> Effect of clustering and aggregation on COCO-20<sup>i</sup> and PASCAL-Part. mIoU in percent, higher is better.</caption>
+            <thead><tr><th>Variant</th><th>COCO</th><th>PASCAL-Part</th></tr></thead>
+            <tbody>
+              <tr><td>No clustering: thresholding similarity map at 0.55</td><td>44.2</td><td>35.4</td></tr>
+              <tr><td>Clustering without aggregation: coarse clustering, $\tau=0.5$</td><td>50.6</td><td>31.1</td></tr>
+              <tr><td>Clustering without aggregation: fine clustering, $\tau=0.6$</td><td>42.8</td><td>36.2</td></tr>
+              <tr><td>Ours: clustering with aggregation, cross similarity only</td><td>54.6</td><td>48.5</td></tr>
+              <tr><td>Ours: clustering with aggregation, self + cross similarity</td><td><strong>57.6</strong></td><td><strong>50.5</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>This table is the cleanest evidence for the final aggregation formula. Thresholding the support-to-query similarity map is weak. Selecting a single cluster helps only after choosing task-specific granularity, and the same threshold cannot serve object and part segmentation equally well. Aggregation with both cross-image and self-similarity reaches the best results on both COCO-20<sup>i</sup> and PASCAL-Part.</p>
+        <figure class="fig-wide">
+          <a href="../assets/figures/insid3/insid3_fig7.png"><img src="../assets/figures/insid3/insid3_fig7.png" alt="INSID3 hyperparameter analysis"></a>
+          <figcaption><strong>Paper Figure 7.</strong> The hyperparameter study varies debiasing rank and clustering granularity. The debiasing curve improves over no debiasing and then saturates before too many directions are removed. The clustering curve shows the expected trade-off: finer partitions help parts, while over-clustering hurts object-level masks.</figcaption>
+        </figure>
+
+        <h3>Empty-mask corner case</h3>
+        <div class="table-wrap">
+          <table>
+            <caption><strong>Paper Table 10.</strong> Absence of the reference concept. Correct empty predictions in percent, higher is better.</caption>
+            <thead><tr><th>Group</th><th>Method</th><th>Correct empty predictions</th></tr></thead>
+            <tbody>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>SegGPT [64]</td><td>79</td></tr>
+              <tr><td>Fine-tuning: semantic + mask supervision</td><td>SegIC [41]</td><td>36</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>PerSAM [72]</td><td>n.a.</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>Matcher [39]</td><td>n.a.</td></tr>
+              <tr><td>Training-free: mask-supervised pretraining</td><td>GF-SAM [69]</td><td>n.a.</td></tr>
+              <tr><td>Training-free: unsupervised pretraining</td><td><strong>INSID3 (ours)</strong></td><td><strong>85</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The empty-mask result matters because many SAM-based methods always return a non-empty mask. INSID3 can return empty by subjecting the seed itself to the aggregation criterion: if no cluster has enough cross-image evidence, the output stays empty.</p>
+      </section>
+
+      <section id="limitations">
+        <h2>10. Limitations and caveats</h2>
+        <p>The supplement states four limitations. First, INSID3 handles one target concept at a time. Multiple concepts require separate reference prompts. Second, the support prompt is a mask; the paper does not provide a point-prompt or box-prompt version. Third, the current formulation produces semantic masks, not separate instance masks for each matched object. Fourth, final quality depends on the representation learned by the frozen self-supervised backbone.</p>
+        <p>There are also reading caveats from the tables. INSID3 is strongest in average generalization and in non-COCO, non-X-Ray columns, but it does not win every cell. The authors' debiased GF-SAM<sup>&dagger;</sup> row is not prior work; it is a diagnostic baseline that gives SAM-based pipelines the same DINOv3 and debiasing ingredients. Comparisons to SegIC, DiffewS, SINE, SegGPT, and Painter are not supervision-matched, because those methods use task-specific training or semantic and mask supervision.</p>
+        <p>Finally, the paper's no-supervision claim applies to INSID3 and to the use of frozen DINOv3 features in this pipeline. SAM-based baselines include mask-supervised pretraining. DINOv3 itself is a pretrained self-supervised VFM; INSID3 does not train it.</p>
+      </section>
+
+      <section id="summary">
+        <h2>11. Summary</h2>
+        <p><strong>In one sentence:</strong> INSID3 shows that frozen DINOv3 features can be turned into an in-context segmenter by removing positional bias for cross-image matching, clustering raw features for region proposals, and multiplying semantic alignment with self-similarity to grow a seed into a mask.</p>
+        <div class="note">
+          <p class="note-title">Three takeaways</p>
+          <ol>
+            <li>The method is training-free, but not feature-free: it relies on the dense self-supervised structure of DINOv3.</li>
+            <li>The positional-bias correction is small but load-bearing. It improves semantic correspondence by up to +6.6 PCK and raises COCO-20<sup>i</sup> segmentation from 54.5 to 57.6 mIoU in the no-debias versus one-noise-SVD comparison.</li>
+            <li>The aggregation step is what turns a matched part into a full mask. On COCO-20<sup>i</sup> and PASCAL-Part, self + cross aggregation beats thresholding, one-cluster selection, and cross-only aggregation.</li>
+          </ol>
+        </div>
+        <figure class="fig-wide">
+          <a href="../assets/figures/insid3/insid3_fig10.png"><img src="../assets/figures/insid3/insid3_fig10.png" alt="Additional qualitative INSID3 results"></a>
+          <figcaption><strong>Paper Figure 10.</strong> The appendix shows additional support and query pairs across full objects, fine-grained parts, aerial images, marine images, medical images, and everyday scenes. It is qualitative evidence for the paper's main scope claim: the same pipeline is used across domains and semantic granularities.</figcaption>
+        </figure>
+      </section>
+
+      <section id="references" class="references">
+        <h2>12. References and provenance</h2>
+        <ol>
+          <li>Claudia Cuttano<sup>*</sup>, Gabriele Trivigno<sup>*</sup>, Christoph Reich, Daniel Cremers, Carlo Masone, Stefan Roth. <em>INSID3: Training-Free In-Context Segmentation with DINOv3.</em> arXiv:2603.28480v1 [cs.CV], 30 Mar 2026. To appear in CVPR 2026. <sup>*</sup> equal contribution. PDF used for this page: <code>sources/insid3.pdf</code>.</li>
+          <li>The paper reports the project URL as <code>https://visinf.github.io/INSID3</code>. External project content was not used for the result claims in this page.</li>
+          <li>All equations, result tables, dataset names, marker meanings, parameter counts, runtimes, and limitations in this page are taken from the supplied PDF. Missing pretraining data details are marked as "Not stated in the paper."</li>
+          <li>Figure provenance: local PNGs reused from <code>assets/figures/insid3/</code>. Available files are <code>insid3_fig1.png</code>, <code>insid3_fig2.png</code>, <code>insid3_fig3.png</code>, <code>insid3_fig4.png</code>, <code>insid3_fig5.png</code>, <code>insid3_fig7.png</code>, <code>insid3_fig8.png</code>, and <code>insid3_fig10.png</code>. No local PNG was available for paper Figure 6 or paper Figure 9.</li>
+        </ol>
+      </section>
+
+    </main>
+    <footer class="article-footer">Paper Digest · INSID3 deep-read. The page is grounded in the supplied PDF; missing information is marked explicitly.</footer>
+  </article>
+  <aside class="sidebar">
+    <section class="side-card">
+      <h2 class="side-title">Contents</h2>
+      <div class="side-body">
+        <ol>
+          <li><a href="#lead">Lead</a></li>
+          <li><a href="#motivation">Motivation</a></li>
+          <li><a href="#contribution">Contributions</a></li>
+          <li><a href="#datasets">Datasets</a></li>
+          <li><a href="#pipeline">Pipeline</a></li>
+          <li><a href="#method">Method</a></li>
+          <li><a href="#training">Training</a></li>
+          <li><a href="#experiments">Experiments</a></li>
+          <li><a href="#ablations">Ablations</a></li>
+          <li><a href="#limitations">Limitations</a></li>
+          <li><a href="#summary">Summary</a></li>
+          <li><a href="#references">References</a></li>
+        </ol>
+      </div>
+    </section>
+    <section class="side-card">
+      <h2 class="side-title">Paper Info</h2>
+      <div class="side-body">
+        <dl class="meta-list">
+          <dt>Title</dt><dd>INSID3: Training-Free In-Context Segmentation with DINOv3</dd>
+          <dt>Venue</dt><dd>CVPR 2026</dd>
+          <dt>arXiv</dt><dd>2603.28480</dd>
+          <dt>Backbone</dt><dd>DINOv3-L, frozen</dd>
+          <dt>Main metric</dt><dd>mIoU</dd>
+        </dl>
+      </div>
+    </section>
+    <section class="side-card">
+      <h2 class="side-title">Key Evidence</h2>
+      <div class="side-body">
+        <ul>
+          <li>Table 1: 1-shot average 55.1 mIoU</li>
+          <li>Table 2: up to +6.6 PCK from debiasing</li>
+          <li>Table 3: self + cross aggregation wins</li>
+          <li>Table 7: 5-shot average 59.9 mIoU</li>
+          <li>Table 11: 302 ms at 1024<sup>2</sup></li>
+        </ul>
+      </div>
+    </section>
+    <section class="side-card">
+      <h2 class="side-title">Status</h2>
+      <div class="side-body">
+        <p><span class="status-good">drafted</span> English deep-read</p>
+        <p><span class="status-good">figures</span> reused local PNGs</p>
+        <p><span class="status-warn">caveat</span> not every column is won</p>
+      </div>
+    </section>
+  </aside>
 </div>
-
-<p>顺着这个矛盾看前人两条路线，就知道它们各自的代价：</p>
-<ul>
-<li><strong>路线 A：微调 VFM 装解码器</strong>（SegIC 在 DINOv2 上训分割头、DiffewS 微调 Stable Diffusion）。它把"分割"显式地教给模型，in-domain 涨点很猛（SegIC 在 COCO-20$^i$ 上 76.1 mIoU），但代价是<strong>把模型绑死在训练分布上</strong>：换到 iSAID（航拍）、X-Ray（医学）就大幅掉点，粒度也被训练标注锁死。这相当于<strong>用监督把泛化换成了 in-domain 精度</strong>。</li>
-<li><strong>路线 B：拼接冻结 VFM</strong>（Matcher / GF-SAM = DINOv2 找对应 + SAM 出 mask）。它保住了泛化（都是冻结的预训练模型），但<strong>语义匹配和 mask 生成分属两个特征空间</strong>，必须靠点选、prompt 工程、mask 过滤、打分这些胶水步骤来协调；架构臃肿（945M）、推理慢（GF-SAM 1030ms vs INSID3 302ms），且 mask 的粒度被 SAM 的预训练先验锁死，做不好部件级。</li>
-</ul>
-
-<p>那么真正的问题来了：<strong>有没有一个 backbone，本身就同时具备"图内连贯分组"和"跨图语义对应"？</strong>本文押注 DINOv3 [56]。它是纯自监督 VFM，用 Gram anchoring 目标 + 高分辨率后训练，设计目标是产出稠密、局部化的特征。论文 Fig. 2 给出第一条直觉证据：对 DINOv3 稠密特征做凝聚聚类，得到的簇<strong>天然贴合物体级和部件级的连贯区域</strong>——也就是说"图内分组"这件事 DINOv3 已经免费送了。</p>
-
-<figure id="fig-cluster"><a href="../assets/figures/insid3/insid3_fig2.png"><img src="../assets/figures/insid3/insid3_fig2.png" alt="对 DINOv3 稠密特征做凝聚聚类，每对图左为输入、右为聚类图，簇贴合物体与部件级区域"></a><figcaption><strong>图 2：DINOv3 的图内分组是免费的。</strong>每对图左为输入、右为对 DINOv3 稠密特征做凝聚聚类的结果。簇边界自发贴合物体与部件——披萨被切成连贯块、人/家具各成一团。这是 INSID3 敢只用一个 backbone 的底气：能力 ②（图内分组）不需要任何监督，已经写在 DINOv3 的特征里。剩下的问题只在能力 ①（跨图匹配）。</figcaption></figure>
-</section>
-
-<section id="contribution">
-<h2>贡献拆解：三句话，但每一句都对应一个可独立验证的主张<a class="anchor" href="#contribution">#</a></h2>
-<p>论文自陈三条贡献，我按"主张 → 它要证明什么 → 用什么证据"重排，方便后面逐条核对（避免把营销当结论）：</p>
-<div class="table-wrap"><table>
-<caption>表 A：贡献 → 主张 → 验证证据（reader 重排，便于核对）</caption>
-<thead><tr><th>贡献</th><th>它声称什么</th><th>用什么证据验证（本文后续章节）</th></tr></thead>
-<tbody>
-<tr><td>① 单一自监督 VFM 足以做训练自由 ICS</td><td>不需要解码器/微调/模型拼接，DINOv3 一个就够</td><td>表 1（9 基准全面领先且仅 304M）；Fig. 2（图内分组免费）；表 8（换掉 DINOv3 即崩）</td></tr>
-<tr><td>② 跨域跨粒度泛化更强</td><td>对微调法与 SAM 流水线平均 +7.5% mIoU</td><td>表 1（语义/部件/个体三类）；表 7（5-shot）；Fig. 5/10（定性）</td></tr>
-<tr><td>③ 揭示并修正 DINOv3 的位置偏置</td><td>一个训练自由的正交投影，且能迁移到 ICS 之外</td><td>Fig. 4/8（相似图）；表 2/4（SPair-71k 语义对应 +6.6% PCK）；Fig. 9（PCA 不伤语义）</td></tr>
-</tbody>
-</table></div>
-<aside class="note"><div class="note-title">作者声称 vs reader 推断（不可混淆）</div>"分割可以从自监督表征中涌现"是<strong>作者的核心论点</strong>，证据是表 1 + 表 8。reader 该补的一句谨慎话：表 8 只在 COCO-20$^i$ 上做了 backbone 替换，证明的是"<strong>在该基准上</strong>，DINOv3 的双重特性是 INSID3 成立的<strong>必要条件</strong>"；它没有声称别的自监督模型经过专门适配后绝无可能——这一点论文也没夸大。</aside>
-</section>
-
-<section id="datasets">
-<h2>数据与评测：9 个基准横跨四个域，全在"分布外"考泛化<a class="anchor" href="#datasets">#</a></h2>
-<p>INSID3 训练自由，所以"数据"指的全是<strong>评测</strong>基准。它把 ICS 统一成三类任务、9 个数据集，且关键在于这些数据集大多<strong>不是任何方法的训练域</strong>，专门拷问泛化：</p>
-<div class="table-wrap"><table>
-<caption>表 B：评测基准一览（据论文 §4 转写）</caption>
-<thead><tr><th>任务</th><th>数据集</th><th>规模 / 域</th></tr></thead>
-<tbody>
-<tr><td rowspan="6">语义（一类的所有实例）</td><td>COCO-20$^i$</td><td>80 类物体（常见自然图）</td></tr>
-<tr><td>LVIS-92$^i$</td><td>920 类，强长尾</td></tr>
-<tr><td>ISIC2018</td><td>皮肤病灶（医学）</td></tr>
-<tr><td>Chest X-Ray</td><td>肺部筛查 X 光（医学）</td></tr>
-<tr><td>iSAID-5$^i$</td><td>15 类，遥感/航拍</td></tr>
-<tr><td>SUIM</td><td>8 类，水下成像</td></tr>
-<tr><td rowspan="2">部件（同一物体部件）</td><td>PASCAL-Part</td><td>15 类共 56 个部件</td></tr>
-<tr><td>PACO-Part</td><td>75 类共 303 个部件</td></tr>
-<tr><td>个体（同一实例）</td><td>PerMIS</td><td>16 类，存在大量视觉相似干扰实例</td></tr>
-</tbody>
-</table></div>
-<p>评测协议：每个设定给<strong>一张</strong>标注参考 mask（1-shot；补充材料另测 5-shot），主指标 mIoU。语义对应迁移实验用 SPair-71k，指标 PCK@T。实现细节：DINOv3-Large 编码器，输入 resize 到 $1024\times1024$（对齐 SAM 类方法），mask 在 patch 分辨率预测后双线性插值回原图，并按 [21,22,40,60] 用一个 CRF [36] 后处理并精修。</p>
-</section>
-
-<section id="pipeline">
-<h2>Pipeline 全景：一条"去偏 → 聚类 → 选种子 → 聚合"的单 backbone 流水线<a class="anchor" href="#pipeline">#</a></h2>
-<p>先给整体地图，再逐块拆机制。INSID3 在<strong>同一个冻结 DINOv3 特征空间</strong>里串起四步，没有第二个网络：</p>
-<figure id="fig-pipeline" class="fig-wide"><a href="../assets/figures/insid3/insid3_fig3.png"><img src="../assets/figures/insid3/insid3_fig3.png" alt="INSID3 全管线：参考图与目标图过 DINOv3，位置去偏，目标图聚类得候选簇，反向对应+参考原型选种子簇，跨图相似度×自相似度聚合出最终 mask"></a><figcaption><strong>图 3：INSID3 全管线。</strong>从左到右：参考图与目标图各过一次冻结 DINOv3 →（关键）对特征做<strong>位置去偏</strong>，专供跨图匹配用 → 目标图按<strong>原始</strong>特征做凝聚聚类，分成连贯候选簇 → 用<strong>反向对应</strong>在去偏空间筛出与参考重叠的候选簇，并用参考原型按<strong>跨图相似度</strong>选出最对齐的"种子簇" → 最后把<strong>跨图相似度（语义对齐）×自相似度（图内结构一致）</strong>相乘，从种子簇向外聚合出空间完整的 mask。注意分工：<strong>原始特征</strong>用于图内（聚类/自相似），<strong>去偏特征</strong>用于跨图（匹配/种子选择）。</figcaption></figure>
-
-<div class="socratic">
-<p class="question">问：为什么是"去偏特征做跨图、原始特征做图内"这样反着用？</p>
-<p class="guide">引导：回到 §核心问题那对相反诉求。跨图匹配要"无视位置只看语义"——位置信息是<strong>有害</strong>的，要投掉。图内分组要"位置连贯地聚团"——空间结构是<strong>有益</strong>的，要留着。</p>
-<p class="answer">答：所以 INSID3 把 DINOv3 特征的两种成分<strong>按用途分离</strong>：cross-image 用去偏特征（消位置）、intra-image 用原始特征（留结构）。这正是它能用"一套表征服务两个相反诉求"的关键工程决策——不是换模型，而是<strong>对同一组特征做两种读法</strong>。</p>
-<div class="takeaway">Takeaway：INSID3 真正的"算法"不是某个新网络，而是一个<strong>关于"何时该信任 DINOv3 的位置信息、何时该投掉它"的认识论决策</strong>。</div>
-</div>
-</section>
-
-<section id="method">
-<h2>方法 / 四个机制：从"位置偏置诊断"到"乘法聚合"，每步都先讲动机<a class="anchor" href="#method">#</a></h2>
-
-<h3>机制 0：诊断——DINOv3 特征里藏着一条"位置偏置"</h3>
-<p><strong>动机先行。</strong>能力 ①（跨图匹配）若直接用 DINOv3 原始特征做，会出什么问题？论文用一个诊断工具回答：给参考 mask 算一个<strong>参考原型</strong> $p^r$（前景 patch 特征的均值），再算它和每个目标 patch 的相似度，可视化成相似图。</p>
-<div class="equation">$$p^r=\frac{1}{|R|}\sum_{j\in R}F^r_j,\qquad \mathrm{sim}(i)=\langle F^t_i,\,p^r\rangle$$<div class="eq-caption">式 1：参考原型与跨图相似图（$R$ 为前景 patch 索引集，$F^r,F^t$ 为参考/目标稠密特征）</div></div>
-<p class="formula-note"><strong>公式读法。</strong>$p^r$ 把参考概念压成一个 $D$ 维向量（"这个概念长什么样"的语义指纹）；$\mathrm{sim}(i)$ 是目标图每个位置和这个指纹的内积。理想情况下，只有目标图里语义对应的位置才该高亮。</p>
-<p>但 Fig. 4 暴露了问题：相似图除了正确的语义高亮外，还<strong>稳定地在"与参考相同的绝对坐标"处虚假高亮</strong>，与语义无关——尤其在目标图语义稀薄处（如均匀背景）。也就是说"参考概念在左上 → 目标图左上无脑亮一片"。</p>
-<figure id="fig-bias"><a href="../assets/figures/insid3/insid3_fig4.png"><img src="../assets/figures/insid3/insid3_fig4.png" alt="位置偏置：用物体区域(a)和关键点(b)做参考，原始DINOv3相似图在相同坐标处虚假高亮，去偏后被抑制；(c)噪声/平坦图的PCA揭示稳定的低维位置子空间"></a><figcaption><strong>图 4：位置偏置的证据与根因。</strong>(a) 用物体区域、(b) 用单个关键点做参考，原始 DINOv3 相似图都出现<strong>与参考坐标对齐</strong>的结构化高亮（无视语义）；去偏后被抑制。(c) 对<strong>低语义复杂度</strong>输入（噪声、平坦纹理）做 PCA，揭示出一个<strong>稳定的低维位置子空间</strong>——这正是偏置的载体。作者假设它源于 DINOv3 的 Gram anchoring：该目标约束 patch 嵌入的协方差/全局统计稳定，提升了空间一致性，却可能"误放大"绝对空间相关，在语义弱处残留成位置偏置。（DINOv2 几乎没有这条偏置，见 §消融。）</figcaption></figure>
-
-<aside class="socratic">
-<p class="question">问：怎么把一个"看不见摸不着"的位置偏置<strong>估计</strong>出来，还不用训练？</p>
-<p class="guide">引导：偏置的特征是"和语义无关、只和坐标有关"。那就喂一张<strong>没有任何语义</strong>的图——纯高斯噪声——它过 DINOv3 后剩下的结构性成分，只可能来自位置。</p>
-<p class="answer">答：用噪声图 $I^{noise}\sim\mathcal N(0,1)$ 的特征 $F^{noise}=\Phi(I^{noise})$ 做 SVD，取前 $s$ 个右奇异向量当作<strong>位置子空间的基</strong> $B$。这是一个干净的"控制变量"实验：剥掉语义这个混淆变量，留下的就是位置子空间。</p>
-</aside>
-<div class="equation">$$F^{noise}=U\Sigma V^{\top},\quad B=V_{[:,1:s]};\qquad \tilde F^{r}=F^{r}\!\left(\mathbb{1}_D-BB^{\top}\right),\;\; \tilde F^{t}=F^{t}\!\left(\mathbb{1}_D-BB^{\top}\right)$$<div class="eq-caption">式 2：从噪声图估位置子空间基 $B$，再把参考/目标特征投到 $B$ 的正交补，得去偏特征 $\tilde F$</div></div>
-<p class="formula-note"><strong>公式读法。</strong>$BB^{\top}$ 是投影到位置子空间的投影矩阵；$\mathbb{1}_D-BB^{\top}$ 就是投到它的<strong>正交补</strong>。一句话：把每个 patch 特征里"位置说了算"的那几个方向减掉，剩下"语义说了算"的部分。整个 $B$ 离线算一次、存起来，推理时只多一次矩阵乘——几乎零开销（补充材料表 12：去偏并入 forward 共 78ms）。</p>
-<div class="note"><div class="note-title">这里有两个被显式标出的近似（kexue:su 第 2 条）</div>
-<strong>近似 1：</strong>用<strong>一张</strong>噪声图估的子空间，就当作所有图共享的位置子空间。成立条件——位置编码是输入无关的、低维且稳定的。论文用补充表 5 验证：用 5 张/10 张噪声图、甚至黑/白/渐变图估，结果几乎不变（57.6 vs 57.7 mIoU），说明子空间确实稳定。<br>
-<strong>近似 2：</strong>被投掉的方向<strong>不含语义</strong>。这不是默认成立的——万一投掉了有用的语义维度呢？论文用 Fig. 9 / 表 2 验证：去偏后 PCA 压缩反而<strong>更</strong>利于语义对应（Debias+PCA 全程优于 PCA-original），说明被投掉的确实主要是位置而非语义。这两条验证下面 §消融会再展开。</div>
-
-<h3>机制 1：图内分组——凝聚聚类，而不是 K-means / DBSCAN</h3>
-<p><strong>动机先行。</strong>ICS 粒度是开放的，所以聚类<strong>不能预设簇数</strong>。K-means 要先定 $K$（与开放世界冲突）；DBSCAN 在高维特征里"密度"概念失效、且常需先降维。INSID3 选<strong>凝聚聚类</strong>（agglomerative）：自底向上逐步合并局部相似 patch，天然契合 DINOv3 特征的空间平滑性，且只有一个阈值 $\tau$ 直观地控制粒度——不固定簇数。</p>
-<div class="equation">$$\bigcup_{k=1}^{K}G_k=\Omega,\qquad G_i\cap G_j=\varnothing\;\;\forall i\neq j$$<div class="eq-caption">式 3：用（原始）目标特征把 patch 集 $\Omega$ 划成 $K$ 个互不相交的连贯簇 $\{G_1,\dots,G_K\}$</div></div>
-<p class="formula-note"><strong>公式读法。</strong>这一步刻意用<strong>原始</strong>特征（不去偏）——因为图内分组要的就是空间结构。$\tau$ 大→簇细（利于部件），$\tau$ 小→簇粗（利于整物体），论文固定 $\tau=0.6$ 取折中。</p>
-
-<h3>机制 2：选种子——反向对应 + 跨图相似度，在去偏空间里挑</h3>
-<p><strong>动机先行。</strong>直接拿式 1 的相似图阈值化为什么不行？因为参考原型常常"过度激活"相关概念：拿"人头"的原型去匹配，会把整个人都点亮。要在<strong>正确粒度</strong>上匹配，需要更克制的机制。INSID3 用<strong>反向对应</strong>（backward correspondence）：对每个目标 patch $i$，反过来找它在参考图里<strong>最像</strong>的 patch；只有当这个最近邻落在参考 mask 内，才保留 $i$。</p>
-<div class="equation">$$\mathrm{NN}(i)=\arg\max_{j\in\Omega}\langle \tilde F^{t}_i,\tilde F^{r}_j\rangle,\qquad C_{NN}=\{\,i\mid M^{r}_{\mathrm{NN}(i)}=1\,\}$$<div class="eq-caption">式 4：反向对应——目标 patch $i$ 的参考最近邻须落在 mask 内，才算候选（在去偏空间 $\tilde F$ 里算）</div></div>
-<p class="formula-note"><strong>公式读法。</strong>"反向"的妙处在于<strong>隐式利用了参考图里没标的负样本</strong>：如果目标 patch 更像参考图里的背景（mask 外），它就被否决。这把"过度激活"自然压住了。再把候选 $C_{NN}$ 与预先算好的簇取交，得到候选簇集合 $C_{cand}=\{G_k\mid G_k\cap C_{NN}\neq\varnothing\}$。</p>
-<p>然后在<strong>去偏</strong>空间为每个候选簇 $G_k$ 和参考区域各算原型，用跨图相似度选出最对齐的<strong>种子簇</strong>：</p>
-<div class="equation">$$s^{cross}_k=\langle\tilde p^{t}_k,\tilde p^{r}\rangle,\qquad G^{*}=\arg\max_{G_k\in C_{cand}}s^{cross}_k$$<div class="eq-caption">式 5：种子簇 = 在去偏空间里与参考原型跨图相似度最高的候选簇</div></div>
-
-<h3>机制 3：聚合补全——跨图语义 × 图内自相似的乘法门</h3>
-<p><strong>动机先行。</strong>种子簇 $G^{*}$ 通常只覆盖概念<strong>最具判别力的一部分</strong>（人头、长颈鹿的脖子）。要补全成完整概念，得决定"还该并入哪些簇"。只靠跨图相似度 $s^{cross}$ 不稳——遮挡/视角变化下，语义相关区域可能反而不相似。所以 INSID3 引入<strong>第二条独立线索</strong>：图内自相似——DINOv3 同图内同概念的簇在特征空间里彼此靠近。两条线索<strong>相乘</strong>：</p>
-<div class="equation">$$s^{intra}_k=\langle\bar p^{t}_k,\bar p^{t}_{*}\rangle,\qquad S_k=s^{cross}_k\cdot s^{intra}_k,\qquad M_{final}=G^{*}\cup\{\,G_k\in C_{cand}\mid S_k\ge\alpha\,\}$$<div class="eq-caption">式 6：自相似（候选簇 vs 种子簇，原始特征）× 跨图语义，超阈值 $\alpha$ 的簇并入种子，得最终 mask</div></div>
-<p class="formula-note"><strong>公式读法。</strong>$s^{intra}_k$ 在<strong>原始</strong>特征里算（图内要结构）、$s^{cross}_k$ 在<strong>去偏</strong>空间里算（跨图要语义）——又一次"两种读法"。<strong>乘法</strong>是关键：一个簇必须<strong>既</strong>语义对得上参考、<strong>又</strong>结构上贴着种子，才会被并入；任一条接近 0，乘积就被否决。这是个"双门 AND"，比加法/单线索都更稳。</p>
-<div class="takeaway">机制总结：去偏（消位置）→ 原始特征聚类（图内分组）→ 反向对应+跨图相似选种子（克制的定位）→ 跨图×自相似聚合（补全）。全程一个冻结 DINOv3、三个标量超参（$\tau{=}0.6,\alpha{=}0.2,s{=}500$），零训练。</div>
-</section>
-
-<section id="training">
-<h2>训练配置：没有训练——但"零超参调优"这件事本身也要验证<a class="anchor" href="#training">#</a></h2>
-<p>INSID3 <strong>训练自由</strong>，所以这一节谈的是"超参与算力"，而不是优化器/学习率。论文的核心声明是：<strong>只有三个标量超参，且一次性在 COCO-20$^i$ 训练集上用 3 折交叉验证选定后，跨所有数据集/域/任务全部固定，不做任何 dataset/task 特定调优。</strong></p>
-<div class="table-wrap"><table>
-<caption>表 C：INSID3 的全部超参（补充材料表 6）</caption>
-<thead><tr><th>超参</th><th>含义</th><th>取值</th></tr></thead>
-<tbody>
-<tr><td>$\tau$</td><td>凝聚聚类敏感度（控粒度）</td><td>0.6</td></tr>
-<tr><td>$\alpha$</td><td>聚合阈值（控并簇严格度）</td><td>0.2</td></tr>
-<tr><td>$s$</td><td>去偏秩（投掉的位置方向数）</td><td>500</td></tr>
-</tbody>
-</table></div>
-<p><strong>算力 / 推理成本（补充材料表 11–13）。</strong>单张 RTX 4090、$1024\times1024$ 下，INSID3 单样例推理 <strong>302ms</strong>，而最强基线 GF-SAM 要 1030ms、Matcher 要 9000ms。细分（表 12）：编码+去偏 78ms、相似度与簇打分 3ms、凝聚聚类 166ms（主成本，token 数二次复杂度）、CRF 精修 55ms。论文坦言所有计时为 32 位精度、100 次平均，半精度还能更快。<em>本文不涉及训练算力，故无 GPU-hours；上述推理时延为论文披露数字，不等同于你机器上的实际账单。</em></p>
-<aside class="note"><div class="note-title">为什么"零调优"是个需要验证的主张</div>训练自由方法最容易被质疑的就是"是不是偷偷为每个数据集调了 $\tau/\alpha$"。论文用<strong>固定三个超参 + 跨 9 个基准全面领先</strong>来正面回应；补充材料 5-shot（表 7）更进一步——直接复用 1-shot 的全部超参、不引入任何新组件，仍稳涨，说明这套配置确实通用而非过拟合到某个基准。</aside>
-</section>
-
-<section id="experiments">
-<h2>实验结果：9 个基准全面领先，且赢在"分布外"<a class="anchor" href="#experiments">#</a></h2>
-<p>主结果是表 1（1-shot，mIoU%）。我把原表完整转写（这是论文最核心的论据，不做"按表 1"式略写）。灰底=该方法在对应数据集训练集上训过；INSID3 是表中<strong>唯一</strong>既不预训练用 mask 监督、也不微调的方法。</p>
-<div class="table-wrap"><table>
-<caption>表 1（完整转写）：1-shot 语义/部件/个体分割对比（mIoU %, ↑）。最佳加粗。† 为用 DINOv3 特征的 GF-SAM 变体。</caption>
-<thead><tr><th>方法</th><th>Encoder</th><th>#Param</th><th>LVIS-92$^i$</th><th>COCO-20$^i$</th><th>ISIC</th><th>SUIM</th><th>iSAID</th><th>X-Ray</th><th>PASCAL</th><th>PACO</th><th>PerMIS</th><th>Avg</th></tr></thead>
-<tbody>
-<tr><td colspan="13" style="background:#eef3f7;font-style:italic">任务特定微调：语义 + mask 监督</td></tr>
-<tr><td>Painter</td><td>ViT</td><td>354M</td><td>10.5</td><td>33.1</td><td>–</td><td>–</td><td>–</td><td>–</td><td>30.4</td><td>14.1</td><td>–</td><td>–</td></tr>
-<tr><td>SegGPT</td><td>ViT</td><td>354M</td><td>18.6</td><td>56.1</td><td>37.5</td><td>34.9</td><td>30.9</td><td>87.5</td><td>35.8</td><td>13.5</td><td>18.7</td><td>37.1</td></tr>
-<tr><td>SINE</td><td>DINOv2</td><td>373M</td><td>31.2</td><td>64.5</td><td>25.8</td><td>50.7</td><td>38.3</td><td>39.8</td><td>36.2</td><td>23.3</td><td>42.5</td><td>39.1</td></tr>
-<tr><td>DiffewS</td><td>Stable Diffusion</td><td>890M</td><td>31.4</td><td>71.3</td><td>27.8</td><td>48.9</td><td>47.5</td><td>41.6</td><td>34.0</td><td>22.8</td><td>35.2</td><td>40.1</td></tr>
-<tr><td>SegIC</td><td>DINOv2</td><td>310M</td><td>44.6</td><td>76.1</td><td>25.3</td><td>52.5</td><td>46.1</td><td>34.5</td><td>39.9</td><td>25.9</td><td>51.8</td><td>44.1</td></tr>
-<tr><td>SegIC (COCO)</td><td>DINOv2</td><td>310M</td><td>35.7</td><td>75.6</td><td>22.5</td><td>52.9</td><td>40.8</td><td>30.8</td><td>38.6</td><td>25.1</td><td>44.9</td><td>40.8</td></tr>
-<tr><td colspan="13" style="background:#eef3f7;font-style:italic">训练自由：mask 监督预训练（SAM 系）</td></tr>
-<tr><td>PerSAM</td><td>SAM</td><td>640M</td><td>11.5</td><td>23.0</td><td>23.9</td><td>28.7</td><td>19.2</td><td>31.7</td><td>32.5</td><td>22.5</td><td>48.6</td><td>26.8</td></tr>
-<tr><td>Matcher</td><td>DINOv2 + SAM</td><td>945M</td><td>33.0</td><td>52.7</td><td>38.6</td><td>44.1</td><td>33.3</td><td>70.8</td><td>42.9</td><td>34.7</td><td>63.8</td><td>46.0</td></tr>
-<tr><td>GF-SAM</td><td>DINOv2 + SAM</td><td>945M</td><td>35.2</td><td>58.7</td><td>48.7</td><td>53.1</td><td>47.1</td><td>51.0</td><td>44.5</td><td>36.3</td><td>54.1</td><td>47.6</td></tr>
-<tr><td>GF-SAM†</td><td>DINOv3 + SAM</td><td>945M</td><td>31.8</td><td>54.8</td><td>50.9</td><td>50.5</td><td>46.7</td><td>56.1</td><td>44.9</td><td>34.4</td><td>52.6</td><td>47.0</td></tr>
-<tr><td>† + 本文去偏</td><td>DINOv3 + SAM</td><td>945M</td><td>34.6</td><td>55.9</td><td>51.8</td><td>52.9</td><td>47.6</td><td>60.0</td><td>46.2</td><td>36.1</td><td>54.5</td><td>48.8</td></tr>
-<tr><td colspan="13" style="background:#eef3f7;font-style:italic">训练自由：无监督预训练</td></tr>
-<tr><td><strong>INSID3 (ours)</strong></td><td><strong>DINOv3</strong></td><td><strong>304M</strong></td><td><strong>41.8</strong></td><td><strong>57.6</strong></td><td><strong>54.4</strong></td><td><strong>54.9</strong></td><td><strong>52.1</strong></td><td><strong>78.8</strong></td><td><strong>50.5</strong></td><td><strong>38.7</strong></td><td><strong>67.0</strong></td><td><strong>55.1</strong></td></tr>
-</tbody>
-</table></div>
-<p>读这张表要看三件事：</p>
-<ul>
-<li><strong>平均分。</strong>INSID3 55.1，比最强训练自由基线 GF-SAM（47.6）高 7.5，比最强微调法 SegIC（44.1）高 11。且参数 304M ≈ SAM 流水线 945M 的 1/3。</li>
-<li><strong>"训练域陷阱"。</strong>微调法 SegIC 在 COCO-20$^i$ 上 76.1（最高），但一出域就塌——iSAID 比 INSID3 低 6、X-Ray 只有 34.5（INSID3 78.8）。这正是 Fig. 1 雷达图橙色"内圈强外圈塌"的数字版。</li>
-<li><strong>去偏的可移植性。</strong>看 GF-SAM† 那两行：把 DINOv2 换成 DINOv3 本身没多大用（因为 GF-SAM 只用稀疏匹配点去 prompt SAM，丢掉了大部分稠密信息）；但加上<strong>本文去偏</strong>，GF-SAM 平均涨到 48.8——去偏是个可以<strong>插到别人方法上</strong>的独立增益。</li>
-</ul>
-
-<p><strong>部件与个体。</strong>部件分割上 INSID3 比 GF-SAM 高 +6.0（PASCAL）/ +2.4（PACO），比微调法 SegIC/DiffewS 高 +10.6/+16.5（PASCAL）。个体分割（PerMIS）INSID3 67.0，超 GF-SAM +12.9、SegIC +15.2、DiffewS +31.8——个体任务最难在"多个视觉相似干扰实例"，INSID3 靠式 4 的反向对应吃到了<strong>负证据</strong>来压住无关实例，这是只看正激活的旧方法做不到的。</p>
-
-<figure id="fig-qual"><a href="../assets/figures/insid3/insid3_fig5.png"><img src="../assets/figures/insid3/insid3_fig5.png" alt="定性对比：语义/部件/个体三类上 INSID3 vs GF-SAM vs SegIC vs GT"></a><figcaption><strong>图 5：定性对比印证表 1 的机制解释。</strong>SegIC（微调）in-domain 好但跨域/跨粒度发僵；GF-SAM 靠 SAM 先验出 mask 质量高，但"对应"与"分割"解耦，常<strong>过分割/欠分割</strong>（粒度被 SAM 锁死）；INSID3 仅靠自监督特征就做到<strong>精准定位 + 有竞争力的 mask 质量</strong>，尤其部件级粒度更贴。</figcaption></figure>
-
-<figure id="fig-gallery" class="fig-wide"><a href="../assets/figures/insid3/insid3_fig10.png"><img src="../assets/figures/insid3/insid3_fig10.png" alt="INSID3 在航拍、水下、医学、日常图等多域上的定性结果画廊，左为参考(浅蓝)右为预测(紫)"></a><figcaption><strong>图 10：跨域画廊。</strong>每对左为参考图+标注区域（浅蓝），右为目标图预测（紫）。从整物体到细部件、从航拍/水下/医学到日常图，INSID3 在有干扰物、相似类、大外观变化时仍能锁定正确概念——这是"单 backbone 训练自由"能撑起的泛化广度的直观证据。</figcaption></figure>
-
-<h3>去偏迁移到语义对应：一个独立的、与分割解耦的验证</h3>
-<p>这是 §贡献③的关键交叉验证：把去偏单独拎到 <strong>SPair-71k 语义对应</strong>任务上测——这个任务<strong>不含分割</strong>，直接在 backbone 特征上量跨图对齐（PCK@T），从而把"去偏改善的到底是不是对应能力"这件事和分割流水线<strong>解耦</strong>。</p>
-<div class="table-wrap"><table>
-<caption>表 2（转写）：SPair-71k 语义对应（PCK@T %, ↑），跨 DINOv3 三个尺寸、去偏前后</caption>
-<thead><tr><th>T</th><th>Small 原始</th><th>Small 去偏</th><th>Base 原始</th><th>Base 去偏</th><th>Large 原始</th><th>Large 去偏</th></tr></thead>
-<tbody>
-<tr><td>0.05</td><td>26.8</td><td>27.9</td><td>29.2</td><td>32.3</td><td>32.7</td><td>33.6</td></tr>
-<tr><td>0.10</td><td>43.8</td><td>45.7</td><td>45.0</td><td>50.0</td><td>50.6</td><td>52.0</td></tr>
-<tr><td>0.15</td><td>53.2</td><td>55.6</td><td>54.0</td><td>59.9</td><td>60.3</td><td>62.1</td></tr>
-<tr><td>0.20</td><td>59.8</td><td>62.6</td><td>59.8</td><td>66.4</td><td>66.4</td><td>68.6</td></tr>
-</tbody>
-</table></div>
-<p>去偏在三个尺寸上一致涨 +0.9~6.6 PCK，且<strong>越严格的阈值（T 小）相对增益越大</strong>。结合补充材料表 4（DINOv2 去偏只涨 ≤+0.3，DINOv3 涨 +3.1~+6.6），这条对照非常干净地证明：<strong>位置偏置是 DINOv3 特有的、且去偏修正的确实是"跨图对应"这个能力本身</strong>，而非分割流水线里的某个副作用。</p>
-</section>
-
-<section id="ablations">
-<h2>消融：每个设计选择都被"留一法"逐一拷问<a class="anchor" href="#ablations">#</a></h2>
-
-<h3>消融 1：聚类 + 聚合（表 3）——为什么不能只阈值化相似图？</h3>
-<div class="table-wrap"><table>
-<caption>表 3（转写）：聚类与聚合的作用（mIoU %, ↑）；所有阈值/粒度均按各自最优调过以求公平</caption>
-<thead><tr><th>变体</th><th>COCO-20$^i$</th><th>PASCAL-Part</th></tr></thead>
-<tbody>
-<tr><td>阈值化相似图 @0.55（式 1，无聚类）</td><td>44.2</td><td>35.4</td></tr>
-<tr><td>粗聚类 $\tau{=}0.5$（无聚合）</td><td>50.6</td><td>31.1</td></tr>
-<tr><td>细聚类 $\tau{=}0.6$（无聚合）</td><td>42.8</td><td>36.2</td></tr>
-<tr><td>本文：聚类 + 聚合，仅跨图相似</td><td>54.6</td><td>48.5</td></tr>
-<tr><td><strong>本文：聚类 + 聚合，自相似 + 跨图（式 6）</strong></td><td><strong>57.6</strong></td><td><strong>50.5</strong></td></tr>
-</tbody>
-</table></div>
-<p>这张表把"为什么需要聚合"讲透了：单纯阈值化最差；只聚类不聚合会陷入"<strong>粒度两难</strong>"——$\tau{=}0.5$ 利于整物体（COCO 50.6）却毁部件（PASCAL 31.1），$\tau{=}0.6$ 反之。INSID3 固定一个中间 $\tau$，把粒度难题交给<strong>聚合</strong>解决：加上跨图聚合就跳到 54.6/48.5，再叠上<strong>自相似</strong>（式 6 的乘法门）到 57.6/50.5。这正面证明了式 6 里"两条线索相乘"不是装饰，而是各贡献了一截。</p>
-
-<h3>消融 2：去偏秩 $s$ 与聚类粒度 $\tau$（图 7）</h3>
-<figure id="fig-hyper"><a href="../assets/figures/insid3/insid3_fig7.png"><img src="../assets/figures/insid3/insid3_fig7.png" alt="超参曲线：左为去偏秩s对COCO/PASCAL-Part的影响，右为聚类粒度tau的影响"></a><figcaption><strong>图 7：两个超参的行为都符合机制预期。</strong>左（去偏秩 $s$）：相对 $s{=}0$（no debias）单调改善，中段后饱和，投太多维（$s$ 过大）反而开始伤语义——印证"位置子空间低维"的假设。右（聚类粒度 $\tau$）：$\tau$ 大→细分利于部件，但<strong>过聚类</strong>会把整物体打碎、伤语义级任务。$s{=}500,\tau{=}0.6$ 是两条曲线的折中点。</figcaption></figure>
-
-<h3>消融 3：去偏真没伤语义吗？（补充 Fig. 8 / 表 5）</h3>
-<figure id="fig-v2v3"><a href="../assets/figures/insid3/insid3_fig8.png"><img src="../assets/figures/insid3/insid3_fig8.png" alt="DINOv2 vs DINOv3 位置偏置对比：DINOv3 原始特征有强坐标对齐伪影，去偏后抑制；DINOv2 几乎没有偏置"></a><figcaption><strong>图 8（补充）：偏置是 DINOv3 专属。</strong>同一参考关键点 → 目标相似图：DINOv3 原始特征在"与参考相同绝对坐标"处出现强伪影（尤其背景区），去偏后被抑制而物体上的语义响应保留；DINOv2 几乎没有这种坐标对齐结构。这解释了为什么去偏对 DINOv3 大涨、对 DINOv2 几乎无感（表 4），也佐证了"偏置源于 DINOv3 的 Gram anchoring/局部一致约束"这一根因假设。</figcaption></figure>
-<p><strong>去偏策略本身的消融（表 5，COCO-20$^i$ mIoU）：</strong>无去偏 54.5；用多视图增强平均（4 视图 55.7、12 视图 56.5）能减位置敏感但要 $n$ 次 forward；<strong>本文（1 张噪声图 SVD）57.6</strong>，且只多一次矩阵乘；用 5/10 张低语义图估也是 57.7——再次确认位置子空间稳定、单张噪声足矣。这条消融的价值在于：它排除了"是不是只是多次前向平滑带来的增益"这一替代解释，把功劳干净地归给"正交投影去偏"。</p>
-
-<h3>消融 4：换掉 DINOv3 就崩（表 8）——"是 DINOv3 而非别的"的必要性验证</h3>
-<div class="table-wrap"><table>
-<caption>表 8（转写）：把 INSID3 的 backbone 换成别的 VFM（COCO-20$^i$ mIoU %, ↑），算法不变、各自调最优超参</caption>
-<thead><tr><th>DINOv3</th><th>DINOv2</th><th>Franca</th><th>Perception Enc.</th><th>Stable Diff.</th></tr></thead>
-<tbody><tr><td><strong>57.6</strong></td><td>45.1</td><td>39.2</td><td>48.4</td><td>33.2</td></tr></tbody>
-</table></div>
-<p>这是全篇最关键的"必要条件"实验：保持 INSID3 算法不动，只换 backbone，其余 VFM 全部显著掉点。它把贡献①的因果落实了——<strong>不是 INSID3 的流水线随便配个 VFM 都行，而是 DINOv3"同时具备强语义对应 + 稠密局部结构"这一双重特性，才让 ICS 能从单一冻结 backbone 涌现</strong>。</p>
-
-<h3>消融 5：对照 SAM 3、空 mask 角例、5-shot（补充表 7/9/10）</h3>
-<ul>
-<li><strong>vs SAM 3（表 9，COCO-20$^i$）：</strong>把最新的 SAM 3 适配到 ICS——视频式传播 26.7、图像拼接式 52.9，而 INSID3 <strong>57.6</strong>，在不用任何分割监督的情况下仍高 4.7。</li>
-<li><strong>空 mask 角例（表 10）：</strong>目标图<strong>不含</strong>参考概念时该输出空 mask。INSID3 靠把式 6 的聚合判据同样施加到种子簇上，正确判空率 <strong>85%</strong>；而 PerSAM/Matcher/GF-SAM 这类 SAM 法<strong>设计上无法输出空 mask</strong>（总返回非空，实际 0%）。这是单 backbone 统一空间的一个意外红利。</li>
-<li><strong>5-shot（表 7）：</strong>只把对应阶段改成"多数投票 + 原型平均"、其余全不动，平均从 1-shot 稳涨到 59.9，比最强基线高 +6.1——证明方法<strong>即插即用</strong>地吃多样例。</li>
-</ul>
-</section>
-
-<section id="limitations">
-<h2>局限与复现门槛：作者自陈 + reader 补刀<a class="anchor" href="#limitations">#</a></h2>
-<p><strong>作者自陈（补充 §F）：</strong></p>
-<ul>
-<li><strong>一次只处理一个目标概念。</strong>目标图里有多个概念时要分别给参考 prompt，缺一个"一次推理同时处理多概念"的机制。</li>
-<li><strong>依赖 mask 形式的 prompt。</strong>不像 SAM 能用点/框这类更轻的标注；而 mask 更贵更慢，限制了交互式部署的便利性。论文把"支持更轻 prompt"和"实例级推理"列为未来方向。</li>
-</ul>
-<p><strong>reader 补刀（基于论文文本的推断，非作者声称）：</strong></p>
-<ul>
-<li><strong>性能上限受冻结 DINOv3 锁定。</strong>表 8 已表明全靠 DINOv3 的特征质量；DINOv3 本身在某个域弱，INSID3 在该域就弱，无法靠训练补救。</li>
-<li><strong>凝聚聚类是 token 数二次复杂度。</strong>补充表 12 显示聚类 166ms 是单步最大成本；虽然表 13 表明高分辨率下仍可用（$1760^2$ 约 1.1s），但相对"一次矩阵乘"的去偏，这是真正的算力瓶颈。</li>
-<li><strong>三个超参虽"一次定终身"，但都在 COCO 上选的。</strong>论文用跨域泛化结果间接说明其通用性；严格说，$\tau/\alpha/s$ 是否对某些极端域（如非自然图像）仍最优，是个开放问题——论文未对此逐域消融。</li>
-</ul>
-<p><strong>复现门槛：</strong>无需训练，门槛主要是 ① 拿到 DINOv3-Large 权重；② 一张噪声图离线估 $B$（一次性）；③ 一个 GPU 加速 dense CRF 做后处理。三个超参公开（$\tau{=}0.6,\alpha{=}0.2,s{=}500$），官方代码已开源（见侧栏）。</p>
-</section>
-
-<section id="summary">
-<h2>总结：一个"认识论"贡献——分割不必靠监督喂出来，它能从自监督表征里被"读"出来<a class="anchor" href="#summary">#</a></h2>
-<p>INSID3 把一句直觉做成了系统：<strong>当一个自监督 backbone 同时拥有"图内连贯结构"和"跨图语义对应"，上下文分割就不再需要解码器、微调或 SAM——只需要正确地区分"何时该信任它的位置信息、何时该投掉它"。</strong>它的三个可独立验证的支点是：</p>
-<ol>
-<li><strong>位置偏置的发现与训练自由修正</strong>——用噪声图估低维位置子空间、正交投影投掉；并用 SPair-71k（解耦于分割）证明改善的是对应能力本身（+6.6 PCK），还能插到 GF-SAM 上涨点。</li>
-<li><strong>"两种读法"的分工</strong>——原始特征做图内聚类、去偏特征做跨图匹配，把 ICS 的两个相反诉求统一进一套表征。</li>
-<li><strong>乘法聚合</strong>——跨图语义 × 图内自相似的双门，把"克制定位 + 完整补全"这对张力解开。</li>
-</ol>
-<p>结果是 9 个基准、四个域、三个粒度全面 SOTA（平均 +7.5 mIoU），参数仅 1/3、推理快 3 倍以上、零 mask 监督，外加 85% 的空 mask 判空率这种 SAM 系做不到的红利。它最值得带走的，不是某个 SOTA 数字，而是那条<strong>认识论</strong>主张：<em>随着自监督表征变强，"分割"这类下游能力可以从表征里直接涌现，而减少监督反而可能换来更鲁棒、更可迁移的表征。</em></p>
-</section>
-
-<section id="references">
-<h2>参考与诚实边界<a class="anchor" href="#references">#</a></h2>
-<ul>
-<li><strong>原始论文：</strong>Cuttano, Trivigno, Reich, Cremers, Masone, Roth. <em>INSID3: Training-Free In-Context Segmentation with DINOv3.</em> CVPR 2026（Oral）. arXiv:2603.28480v1. 项目页 <a href="https://visinf.github.io/INSID3/">visinf.github.io/INSID3</a>，代码 <a href="https://github.com/visinf/INSID3">github.com/visinf/INSID3</a>。</li>
-<li><strong>关键引用方法：</strong>DINOv3 [56]、DINOv2 [47]、SAM [33]、Matcher [39]、GF-SAM [69]、SegIC [41]、DiffewS [74]、PerSAM [72]、SegGPT/Painter [64,63]、SPair-71k [42]、凝聚聚类 [43]、CRF [36]。完整文献见原文 References。</li>
-<li><strong>kexue:su 归因红线：</strong>本页用 <code>kexue:su</code> 的科学推导方法论（动机先行、假设显式、≥2 路交叉验证、重新推导）组织机制部分；但检索其语料库时<strong>未命中任何与"位置偏置 / 正交投影去偏 / DINO 特征匹配 / 上下文分割"主题相关的卡片</strong>（返回的是 GAN 级联抑制、中文分词、Muon 优化器、Embedding 共享等无关条目）。按归因红线，<strong>全文不对苏剑林做任何 [archives/XXXX] 引用</strong>——只借方法、不虚构出处。</li>
-<li><strong>诚实边界：</strong>所有数字（表 1–13、PCK、参数量、时延）均转写自论文正文与补充材料；推理时延为论文披露数字、不等同于读者机器上的实际账单；"reader 补刀"一节明确标注为基于论文文本的推断而非作者声称；论文未逐项说明之处（如三个超参对极端域是否仍最优）已写"论文未说明 / 未逐域消融"。</li>
-</ul>
-</section>
-
-</main>
-<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献拆解</a></li><li><a href="#datasets">数据与评测</a></li><li><a href="#pipeline">Pipeline 全景</a></li><li><a href="#method">方法 / 四机制</a></li><li><a href="#training">训练配置</a></li><li><a href="#experiments">实验结果</a></li><li><a href="#ablations">消融</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>INSID3: Training-Free In-Context Segmentation with DINOv3</dd><dt>Venue</dt><dd>CVPR 2026 · Oral · Top Paper (candidate)</dd><dt>机构</dt><dd>Politecnico di Torino / TU Darmstadt / TU Munich / hessian.AI / ELIZA / MCML</dd><dt>基座</dt><dd>冻结 DINOv3-Large（304M），零训练</dd><dt>arXiv</dt><dd>2603.28480 v1</dd><dt>Topic</dt><dd>Training-Free In-Context Segmentation</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：三态泛化雷达图（单 backbone 撑最外圈）</li><li>图 3：去偏→聚类→选种子→聚合 全管线</li><li>式 2：噪声图估位置子空间 + 正交投影去偏</li><li>式 4：反向对应（吃负证据）</li><li>式 6：跨图语义 × 图内自相似 乘法聚合</li><li>表 1：9 个基准全面 SOTA，平均 +7.5 mIoU、304M</li><li>表 2：SPair-71k 去偏迁移 +6.6 PCK</li><li>表 8：换掉 DINOv3 即崩（必要性）</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> INSID3 深读</p><p><span class="status-good">figures</span> 8 张 PNG（fig1/2/3/4/5/7/8/10，原生分辨率）</p><p><span class="status-good">tables</span> 表 1/2/3/8 全转写 + 表 5/7/9/10/11/12/13 数字引用</p><p><span class="status-good">formula</span> 式 1–6 待 MathJax 预检</p><p><span class="status-warn">scope</span> 训练自由；性能受冻结 DINOv3 上限锁定，一次一概念，依赖 mask prompt</p></div></section></aside></div>
 </body>
 </html>

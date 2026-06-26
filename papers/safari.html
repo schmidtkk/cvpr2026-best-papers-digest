@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SA-FARI 深读：野生动物多目标追踪明明很重要，为什么一直没起飞？——因为缺一个同时把"规模×物种×时空多样性×人工核验mask"四件事都做齐的数据集</title>
-<meta name="description" content="SA-FARI（CVPR 2026 Top Paper candidate，Conservation X Labs × Meta）深读：野生动物多目标追踪（MAT）是物种识别、个体再识别、行为分析的底座，但十年来一直被一个底座问题卡住——数据集要么规模小（标注footage不足1小时）、要么物种少（≤5种）、要么只在单个保护区拍几天、要么mask是自动生成没人工核验。SA-FARI 用 741 个独立采样点、4 大洲、10 年（2014-2024）、99 个物种、11,609 段相机陷阱视频，做出 16,224 条人工逐帧核验的 masklet 和 942,702 个框/mask 标注，是同类数据集中规模最大、且首个大规模人工核验时空分割标注的 MAT 数据集。本文用 kexue:su 方法论拆解：①为什么这四个维度常常互斥、SA-FARI 靠 SAM 3 data engine 的 human-AI-in-the-loop 三阶段核验把穷举标注的成本压下来；②训练划分如何按相机陷阱地点严格隔离、贪心最大化物种多样性；③两条独立验证——把训练集喂给 SOTA 模型 HOTA 涨 20+ 点、微调 SAM 3 三倍提升（训练价值），按 small-mask/challenging/multi/night 切分 test 集暴露真实失败模式（诊断价值）。">
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SA-FARI: a deep read of the camera-trap dataset for multi-animal tracking</title>
+<meta name="description" content="Deep-read blog page for The SA-FARI Dataset: Segment Anything in Footage of Animals for Recognition and Identification, covering dataset scale, annotation pipeline, benchmark tables, metrics, caveats, and diagnostic splits.">
 <script>window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],tags:"ams"},svg:{fontCache:"global"}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-/* ===== Paper2Html shell · kexue.fm-inspired refined academic theme ===== */
+/* ===== Paper2Html shell · refined academic theme ===== */
 :root{
   --bg:#eef2f6;--bg-top:#e4edf4;--paper:#fff;--soft:#f6f9fc;
   --ink:#25303a;--ink-soft:#3a4954;--muted:#6a7884;
@@ -250,9 +250,9 @@ body.lb-lock{overflow:hidden}
     var IMG_RE=/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i;
     var overlay=document.createElement("div");
     overlay.className="lb-overlay";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
-    overlay.innerHTML='<button class="lb-close" aria-label="关闭">×</button>'+
+    overlay.innerHTML='<button class="lb-close" aria-label="Close">×</button>'+
       '<div class="lb-stage"><img alt=""><div class="lb-cap"></div></div>'+
-      '<div class="lb-hint">点击任意处或按 Esc 关闭</div>';
+      '<div class="lb-hint">Click anywhere or press Esc to close</div>';
     document.body.appendChild(overlay);
     var lbImg=overlay.querySelector(".lb-stage img"),lbCap=overlay.querySelector(".lb-cap");
     function openLB(src,cap){
@@ -309,7 +309,7 @@ body.lb-lock{overflow:hidden}
     (function(){
       var title=document.querySelector(".site-title");if(!title)return;
       var home=null,nav=[].slice.call(document.querySelectorAll(".top-nav a"));
-      var hp=nav.filter(function(a){return /首页|home/i.test(a.textContent);})[0];
+      var hp=nav.filter(function(a){return /home/i.test(a.textContent);})[0];
       if(hp)home=hp.getAttribute("href");
       else if(document.querySelector(".home"))home="index.html";
       if(!home)return;
@@ -327,12 +327,12 @@ body.lb-lock{overflow:hidden}
         function chips(){return items.map(function(o){return '<a href="'+links[o[0]]+'" target="_blank" rel="noopener">'+o[1]+'</a>';}).join("");}
         if(!head.querySelector(".quick-links")){
           var bar=document.createElement("div");bar.className="quick-links";
-          bar.innerHTML='<span class="ql-label">快速链接</span>'+chips();head.appendChild(bar);
+          bar.innerHTML='<span class="ql-label">Links</span>'+chips();head.appendChild(bar);
         }
         var sb=document.querySelector(".sidebar");
         if(sb&&!sb.querySelector(".quick-links-side")){
           var card=document.createElement("section");card.className="side-card";
-          card.innerHTML='<h2 class="side-title">快速链接</h2><div class="side-body quick-links-side">'+chips()+'</div>';
+          card.innerHTML='<h2 class="side-title">Links</h2><div class="side-body quick-links-side">'+chips()+'</div>';
           sb.insertBefore(card,sb.firstChild);
         }
       }
@@ -350,264 +350,106 @@ body.lb-lock{overflow:hidden}
 </script>
 </head>
 <body>
-<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>Segmentation · 野生动物追踪的瓶颈不在模型，而在一个同时做齐"规模×物种×时空×人工核验mask"的数据集</small></p></div><nav class="top-nav"><a href="../index.html">首页</a><a href="#pipeline">采集/标注</a><a href="#method">质量控制</a><a href="#experiments">基线结果</a><a href="#limitations">局限</a></nav></div></header>
-<div class="wrap"><div class="breadcrumbs"><a href="../index.html">首页</a> &gt; CVPR 2026 &gt; Segmentation &gt; SA-FARI</div>
-<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">13</span><span class="month">Jun</span></div><h1 id="paper-title">SA-FARI 深读：野生动物多目标追踪明明是物种/个体/行为识别的底座，为什么十年都没起飞？——因为缺一个同时把"规模×物种×时空多样性×人工核验 mask"四件事都做齐的数据集</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-13</span><span>CVPR 2026 · Top Paper (candidate) · Conservation X Labs × Meta × University of Bristol 等 9 家机构</span><span>来源：arXiv:2511.15622 v2 PDF（正文 + 补充材料）</span></div><div class="tags"><span class="tag orange">Top Paper candidate</span><span class="tag green">Dataset / Benchmark</span><span class="tag">Multi-Animal Tracking</span><span class="tag">Video Segmentation</span><span class="tag">SAM 3</span><span class="tag">Camera Trap</span><span class="tag">Wildlife</span><span class="tag">MathJax checked</span></div></header>
+<header class="site-header"><div class="site-header-inner"><div><p class="site-title">Paper Digest<small>CVPR 2026 Top Paper · Wildlife Tracking / Segmentation Dataset</small></p></div><nav class="top-nav"><a href="../index.html">Home</a><a href="#lead">Lead</a><a href="#datasets">Dataset</a><a href="#pipeline">Pipeline</a><a href="#experiments">Results</a><a href="#limitations">Limits</a></nav></div></header>
+<div class="wrap"><div class="breadcrumbs">Home &gt; CVPR 2026 &gt; Wildlife MAT &gt; SA-FARI</div>
+<article class="article" aria-labelledby="paper-title"><header class="article-head clearfix"><div class="date-card"><span class="day">26</span><span class="month">Jun</span></div><h1 id="paper-title">SA-FARI: the dataset bottleneck behind camera-trap multi-animal tracking</h1><div class="article-meta"><span>Paper2Html</span><span>2026-06-26</span><span>CVPR 2026 Top Paper · Conservation X Labs and Meta, with partner institutions</span><span>Source: arXiv:2511.15622v2 PDF</span></div><div class="tags"><span class="tag orange">Dataset</span><span class="tag">Camera Traps</span><span class="tag">Multi-Animal Tracking</span><span class="tag green">Human-Verified Masklets</span><span class="tag">SAM 3</span><span class="tag">MathJax checked</span></div></header>
 <main class="content">
 
-<p id="abstract" class="lead"><strong>导读。</strong>把一段相机陷阱（camera trap）视频里的每一只动物都<strong>在时空上抠出来并贴上身份</strong>——这件事（多目标动物追踪，multi-animal tracking, MAT）是物种丰度估计、个体再识别、行为分析这一整条生态保护流水线的底座。可是十年来 MAT 一直没有像人脸/行人 MOT 那样起飞，原因不在模型，而在<strong>底座数据集</strong>：现有数据集几乎总要在四个维度里牺牲掉至少一个——<strong>规模</strong>（专门做 MAT 的数据集标注 footage 普遍不足 1 小时）、<strong>物种多样性</strong>（多数 ≤5 种）、<strong>时空多样性</strong>（无人机数据集往往只在一个保护区拍几天）、<strong>标注质量</strong>（少数带 mask 的也多是自动生成、没有人工核验）。本文的核心张力是：<strong>这四件事真的互斥吗？能不能在可控的人力成本下一次做齐？</strong>SA-FARI 的答案是肯定的——它用 <strong>741</strong> 个独立采样点、<strong>4 大洲</strong>、<strong>10 年</strong>（2014–2024）、<strong>99 个物种类别</strong>、<strong>11,609</strong> 段相机陷阱视频，做出 <strong>16,224</strong> 条逐帧人工核验的 masklet（个体身份级时空分割序列）和 <strong>942,702</strong> 个框/mask 标注（约 46 小时），在总时长上 5× 于、物种多样性上 2× 于此前任何 MAT 数据集，且是<strong>首个</strong>大规模带人工核验时空分割 mask 的野生 MAT 数据集。关键机制是借 <strong>SAM 3 data engine</strong> 的 human-AI-in-the-loop——先用模型伪标注、再用三阶段人工核验把"穷举式分割标注"的成本压下来。两条独立验证证明它既有<strong>训练价值</strong>（把训练集喂给 SOTA 模型，HOTA 涨 20+ 点；微调 SAM 3 较基线三倍提升）又有<strong>诊断价值</strong>（按 small-mask / challenging / multi / night 切分 test 集，定量暴露真实失败模式）。</p>
+<section id="lead">
+<p class="lead"><strong>The short version.</strong> Multi-animal tracking, or <strong>MAT</strong>, is the task of localizing each animal through time, so later systems can estimate abundance, recognize species or individuals, and analyze behavior. A <strong>camera trap</strong> is a motion-triggered field camera that records wildlife without a human operator, often at night with infrared illumination. SA-FARI is a dataset paper about the missing training substrate for that task. Its core annotation unit is a <strong>masklet</strong>: one animal's spatio-temporal mask tube across video frames, with a consistent identity over time. The paper evaluates trackers with <strong>HOTA</strong>, Higher Order Tracking Accuracy, a metric that balances detection accuracy and association accuracy, so a model must both find animals and keep their identities connected. The claim is not just that SA-FARI is bigger. The claim is that it combines scale, species breadth, site and time diversity, and human-verified spatio-temporal segmentation in one camera-trap MAT dataset. The evidence is strongest when the paper uses SA-FARI to train or fine-tune strong models, then shows large gains and diagnostic failures on small, moving, occluded, multi-animal, and night videos.</p>
 
-<figure id="fig-teaser"><a href="../assets/figures/safari/safari_fig1.png"><img src="../assets/figures/safari/safari_fig1.png" alt="SA-FARI 三步流程：① 跨 4 大洲 741 地点采集相机陷阱视频；② 专家多阶段人工核验物种标注；③ 全程逐帧分割与追踪，得到保身份的 masklet"></a><figcaption><strong>图 1（teaser）：SA-FARI 的三步底座。</strong>① <strong>数据采集</strong>——4 大洲、741 个独立地点、99 个物种、11,609 段视频、16,224 条 masklet、约 94 万个框；② <strong>专家物种标注</strong>——多阶段人工核验；③ <strong>全程追踪与分割</strong>——给每个个体一条保身份（ID-preserving）的 masklet。这张图就是全文论据的骨架：右上角那串数字是"规模×多样性"，左下角的世界地图是"时空覆盖"，右侧的逐帧 mask 序列是"人工核验质量"——四个常常互斥的维度被同一个数据集一次撑满。</figcaption></figure>
-
-<aside class="note"><div class="note-title">方法论说明（kexue:su）</div>本文的机制部分用 <code>kexue:su</code> 的科学推导姿态来组织：先讲"为什么需要"再讲"是什么"、每个近似/假设显式标出、关键结论从 ≥2 条独立路径交叉验证。检索 <code>kexue:su</code> 语料库（关键词：数据集构建 / 标注协议 / 分割基准 / 长尾泛化）<strong>仅返回 NLP/softmax/句向量等主题的卡片，没有任何与"野生动物追踪数据集构建 / 穷举分割标注协议 / 视频分割基准 / 长尾物种泛化"主题相关的命中</strong>，因此全文<strong>不</strong>对苏剑林做任何 <code>[archives/XXXX]</code> 归因——只借用方法论，不虚构引用（详见 §参考与诚实边界）。</aside>
-
-<section id="motivation">
-<h2>核心问题：野生 MAT 为什么没起飞？——把"为什么需要这个数据集"讲在"是什么"之前<a class="anchor" href="#motivation">#</a></h2>
-
-<p>先讲动机，再讲数据。生物多样性正在以地质史上罕见的速度衰退；相机陷阱、无人机这类原位传感器产出的视频量，早已远超人类专家在保护行动时间窗内能处理的上限。于是有了一个明确的需求链：要做<strong>物种丰度估计、占用建模、健康监测</strong>，前提是先能在视频里<strong>把每个个体在时空上定位出来</strong>——这一步（检测/分割 + 追踪，统称 MAT）是后续物种识别、个体再识别、行为识别的共同前置。</p>
-
-<div class="socratic">
-<p class="question">问：既然 MOT（多目标追踪）在人/车场景已经很成熟，把它直接搬到动物上不就行了？</p>
-<p class="guide">引导：搬模型不难，难的是没有合适的"教材"。模型进步与数据集供给强绑定——人脸/行人之所以起飞，是因为有大规模、标注精良的基准把训练和评测同时撑住了。野生动物这一侧的数据集供给恰恰在四个维度上系统性缺位。</p>
-<p class="answer">答：论文把现有数据集的局限归纳成四条（见下方对照），核心是<strong>四个维度几乎从不同时满足</strong>：(i) 专门为 MAT 设计的数据集（AnimalTrack、GMOT、TAO）规模太小（标注 footage &lt; 1 小时），且不含相机陷阱/无人机这类生态传感器实拍；(ii) 更大的数据集普遍只覆盖 ≤5 个物种，最全的也不超过 10 小时标注；(iii) 基于无人机的野外追踪数据集（KABR、WildLive、BuckTales）通常只在单个保护区、短时间窗内采集，地理与时间跨度窄，且常只在单一行为情境（如交配、聚群）下；(iv) 多数数据集只用<strong>边界框</strong>定位，少数带 mask 的也多是<strong>自动生成、未经人工后处理</strong>，标注质量存疑。</p>
-</div>
-<p class="takeaway"><strong>Takeaway：</strong>瓶颈不在 MAT 模型本身，而在"训练 + 评测"两头共用的数据底座。SA-FARI 要解决的核心问题，就是<strong>能不能在一个数据集里同时把规模、物种多样性、时空多样性、人工核验的分割质量这四件常常互斥的事做齐</strong>——这正是它把 teaser 图组织成"采集 → 专家物种核验 → 逐帧分割追踪"三段的原因。</p>
-
-<h3>把"互斥四维"摆到一张对照表上</h3>
-<p>下表是论文 Tab. 1（按原表逐行转写，未作改写）。对照表本身就是论文的第一条论据：SA-FARI 在<strong>地点数、物种数、视频数、标注时长、tracklet 数</strong>上同时领先，并且是少数带分割 mask、且唯一在相机陷阱来源上做到人工核验 masklet 的数据集。论文也明确说"所有数据集仍是互补的，反映不同的生态情境与采集策略"——SA-FARI 不是要替代它们，而是补上"高物种多样性 + 多区域 + 高质量时空标注"这块空白。</p>
-
-<figure id="tab-compare"><figcaption><strong>表 1（转写自论文 Tab. 1）：MAT 视频数据集横向对照。</strong>"—"表示原文未给出该项；†表示对含非动物对象的数据集只统计相关动物类别。tracklet 数按原文以千（k）为单位。</figcaption>
-<table>
-<thead><tr><th>数据集</th><th># 地点</th><th># 物种</th><th># 视频</th><th>时长 (h)</th><th># tracklet</th><th>分割 mask</th><th>来源</th></tr></thead>
-<tbody>
-<tr><td>AnimalTrack</td><td>—</td><td>10</td><td>58</td><td>0.23</td><td>2k</td><td>✗</td><td>YouTube†</td></tr>
-<tr><td>GMOT</td><td>—</td><td>4</td><td>16</td><td>0.03</td><td>1k</td><td>✗</td><td>YouTube†</td></tr>
-<tr><td>TAO / BURST</td><td>—</td><td>51</td><td>429</td><td>3.60</td><td>1k</td><td>✗ / ✓</td><td>Varied</td></tr>
-<tr><td>BuckTales</td><td>1</td><td>1</td><td>12</td><td>0.21</td><td>0.7k</td><td>✗</td><td>UAV</td></tr>
-<tr><td>BaboonLand</td><td>1</td><td>1</td><td>18</td><td>0.32</td><td>1k</td><td>✗</td><td>UAV</td></tr>
-<tr><td>KABR</td><td>1</td><td>3</td><td>742</td><td>10.00</td><td>—</td><td>✗</td><td>UAV</td></tr>
-<tr><td>WildLive</td><td>1</td><td>3</td><td>22</td><td>0.70</td><td>0.3k</td><td>✓</td><td>UAV</td></tr>
-<tr><td>CCR</td><td>3</td><td>1</td><td>27</td><td>10.00</td><td>12k</td><td>✗</td><td>Video Camera</td></tr>
-<tr><td>MammAlps</td><td>3</td><td>5</td><td>2,384</td><td>14.50</td><td>6k</td><td>✗</td><td>Camera Trap</td></tr>
-<tr><td>PanAf500</td><td>12</td><td>2</td><td>500</td><td>2.10</td><td>1.5k</td><td>✗</td><td>Camera Trap</td></tr>
-<tr><td><strong>SA-FARI (ours)</strong></td><td><strong>741</strong></td><td><strong>99</strong></td><td><strong>11,609</strong></td><td><strong>45.78</strong></td><td><strong>16k</strong></td><td><strong>✓</strong></td><td>Camera Trap</td></tr>
-</tbody>
-</table></figure>
+<div class="hero-split"><div><div class="kv-grid"><div class="kv"><b>Dataset scale</b>11,609 camera-trap videos from 741 independent sampling locations, 4 continents, and roughly 10 years of collection from 2014 to 2024.</div><div class="kv"><b>Annotation unit</b>16,224 human-verified masklet identities and 942,702 frame-level box and mask annotations across 2,747 annotated minutes, or 45.78 hours.</div><div class="kv"><b>Species scope</b>99 species categories: 67 mammal categories, 27 bird categories, 4 reptile categories, and 1 amphibian category.</div><div class="kv"><b>Main result</b>Fine-tuning SAM 3 on SA-FARI improves cgF1 from 14.0 to 46.9, a 3.35x gain; total pHOTA rises from 48.5 to 68.1.</div></div></div><figure class="hero-card"><a href="../assets/figures/safari/safari_fig1.png"><img src="../assets/figures/safari/safari_fig1.png" alt="SA-FARI dataset overview showing collection, species annotation, and masklet tracking"></a><figcaption><strong>Collection to masklets.</strong> The overview connects three operations: camera-trap collection across continents, expert species annotation, and full tracking plus segmentation that preserves animal identity through time.</figcaption></figure></div>
 </section>
 
-<section id="contribution">
-<h2>贡献：一个数据集，把四个互斥维度同时撑满，并给出可复现的基准<a class="anchor" href="#contribution">#</a></h2>
-<ul>
-<li><strong>规模 × 多样性的同时领先。</strong>11,609 段相机陷阱视频、99 个物种类别、741 个独立采样点、4 大洲、横跨 2014–2024 共约 10 年；总标注时长约 46 小时——论文称在总标注时长上 <strong>5×</strong>、物种多样性上 <strong>2×</strong> 于此前任何 MAT 数据集。</li>
-<li><strong>首个大规模人工核验的时空分割标注。</strong>16,224 条 masklet（个体身份级的逐帧 mask 序列），942,702 个框/mask；据作者所知，这是唯一一个为野生 MAT 提供大规模<strong>人工核验</strong>分割 mask 的数据集。</li>
-<li><strong>附带匿名地点信息。</strong>每段视频随附匿名化的采样点字符串（以及可得时的日期/时间戳），支持占用建模等需要空间元数据的生态分析，同时保护敏感地点。</li>
-<li><strong>可复现基准。</strong>在 SA-FARI 上系统评测了两类方法——基于物种名 prompt 的视觉语言模型（GLEE、LLMDet+tracker、SAM 3）与"通用检测器 + 强追踪器"的视觉-only 流水线（MegaDetector + ByteTrack/OCSort/BoostSort++），并给出 species-specific、species-agnostic 两种 prompt 设定，以及 5 个 test 子集的难度分析。</li>
-</ul>
-<p class="takeaway"><strong>Takeaway：</strong>这是一篇典型的"底座型"贡献——不提出新算法，而是把训练与评测的地基铺好，并用基线结果证明"地基本身就能撬动 SOTA 模型几十个点"。</p>
+<section id="motivation"><h2>1. Motivation: the dataset gap is the method gap</h2>
+<p>Biodiversity monitoring needs more than image classification. Conservation teams often need to know which species appeared, how many individuals were present, how they moved, and whether the same individual reappeared later. Those questions require localization through space and time, not just a label on a clip.</p>
+<p>That is where MAT becomes foundational. MAT is a specific case of <strong>multi-object tracking</strong>, or <strong>MOT</strong>, where the objects are animals. The tracker must detect or segment animals in each frame and preserve identity links across frames. If the links fail, downstream tasks such as individual re-identification and behavior recognition inherit the mistake.</p>
+<p>The paper argues that wild-animal MAT has lagged because existing datasets force a trade-off. Some datasets are small, with less than one hour of annotated footage for dedicated MAT benchmarks. Some cover only a few species, often no more than five in larger wild-animal resources. Some are geographically narrow, such as one protected area over a short collection window. Some include segmentation masks, but those masks are generated automatically without manual correction, so quality is uncertain.</p>
+<p>SA-FARI is designed to remove that trade-off. It is a camera-trap dataset, so it matches the sensors conservation teams already deploy. It spans many sites, years, ecoregions, and species. Most importantly, it uses human-verified masklets rather than unverified automatic masks.</p>
+<div class="socratic"><p class="question">Q: Why does the paper care so much about segmentation rather than just boxes?</p><p class="answer">A: Boxes say where an animal roughly is. Masks say which pixels belong to the animal. For wildlife, that extra precision matters because coat patterns, body shape, pose, and partial occlusion can be the signal for species, individual identity, or behavior. A masklet also keeps that precise animal shape tied to one identity over time.</p><p class="takeaway"><strong>Takeaway:</strong> The dataset is not only a tracking benchmark. It is a source of precise spatio-temporal animal representations.</p></div>
 </section>
 
-<section id="datasets">
-<h2>数据集统计：长尾、相机陷阱原生、个体身份级<a class="anchor" href="#datasets">#</a></h2>
-<p>先看分类学与规模分布，再理解后面所有基准结果为什么落在那个量级上。</p>
-
-<figure id="fig-taxon"><a href="../assets/figures/safari/safari_fig3.png"><img src="../assets/figures/safari/safari_fig3.png" alt="SA-FARI 分类学丰度旭日图：从纲到目到科，圆圈大小正比于视频数，边缘颜色表示采集所在大洲"></a><figcaption><strong>图 3（转写自论文 Fig. 3）：分类学丰度。</strong>从纲（Class）到目（Order）到科（Family）逐层展开，每个圆圈大小正比于该分类群的视频数，边缘颜色标记采集所在的大洲。哺乳纲（Mammalia）占据中心最大圆，鸟纲（Aves）次之，爬行纲/两栖纲只占很小一块——这张图把"高物种多样性"与"地理多样性"叠在同一视图里。</figcaption></figure>
-
-<figure id="fig-samples"><a href="../assets/figures/safari/safari_fig2.png"><img src="../assets/figures/safari/safari_fig2.png" alt="SA-FARI 样例 skim montage：每个视频-物种对都有穷举式时空分割，覆盖多动物、遮挡、出入画、非常规视角、小目标、夜间、伪装等挑战场景"></a><figcaption><strong>图 2（转写自论文 Fig. 2）：SA-FARI 样例 skim。</strong>每个"视频-物种对"都对该物种的所有动物做穷举式时空分割。这张 montage 是"难度分层"的视觉前因——它直接展示了数据集里的挑战场景：同场景多只动物（a–d）、动物间或与场景元素的遮挡（e）、出画后重新入画（f）、非常规/局部视角（g）、小目标（c）、夜间（b、e、g）、伪装动物（h）。后面 §难度分析里 challenging/small-mask/multi/night 各子集，正是把这些场景定量切出来。</figcaption></figure>
-
-<p>把论文 §3 "Dataset Statistics" 的关键数字整理出来（均为原文披露）：</p>
-<ul>
-<li><strong>分类学：</strong>99 个物种类别 = 4 个纲、23 个目、53 个科、82 个属。其中哺乳纲 67 个类别（67.7%；10 目/33 科/57 属）、鸟纲 27 个（27.0%；10 目/17 科/23 属）、爬行纲 4 个（4.0%）、两栖纲 1 个（1.0%）。</li>
-<li><strong>长尾：</strong>29 个物种类别贡献了 90% 的数据，最常见三类是蜘蛛猴、领西貒（collared peccary）、刺豚鼠（agouti）。这是真实野外部署的典型长尾分布——少数物种主导，大量物种罕见出现。</li>
-<li><strong>地点集中度：</strong>至少 165 个（22.3%）采样点贡献了 90% 的数据；至少 147 个（19.8%）采样点贡献了 90% 的物种多样性。</li>
-<li><strong>masklet 密度：</strong>共 16,224 条 masklet（即个体动物）；平均每段视频 1.4 条，2,623 段（22.7%）含 ≥2 条，最多达 14 条。平均 masklet 数最高的三类是红河猪（6.7/视频）、白唇西貒（3.5/视频）、非洲象（3.3/视频）。</li>
-<li><strong>采集参数：</strong>分辨率 320×194 至 2688×1234；帧率 10–60 FPS（多数 30 FPS）；视频长 0.5–90 秒（多数 15 秒）；夜间用对目标物种不可见的红外闪光录制；所有视频含音频（本工作未使用）。</li>
-</ul>
-
-<figure id="fig-longtail"><a href="../assets/figures/safari/safari_fig5.png"><img src="../assets/figures/safari/safari_fig5.png" alt="SA-FARI 各物种类别视频数分布柱状图，按训练/测试划分着色，呈长尾分布"></a><figcaption><strong>图 5（转写自论文 Fig. 5）：物种类别分布（按 split 着色）。</strong>每根柱是一个物种类别的视频数，粉色为测试视频。分布呈典型长尾——少数主导物种 + 大量罕见物种。<strong>有些物种（如 Saki monkey）只出现在测试集</strong>，这刻意保留了相机陷阱部署的"开放世界"性质：评测时会遇到训练里没见过的物种。</figcaption></figure>
-
-<figure id="fig-masklet"><a href="../assets/figures/safari/safari_fig4.png"><img src="../assets/figures/safari/safari_fig4.png" alt="SA-FARI masklet 级统计四联图：平均 masklet 尺寸、帧间平均 IoU、masklet 数、遮挡次数的分布"></a><figcaption><strong>图 4（转写自论文 Fig. 4）：masklet 级统计。</strong>四联分布——平均 masklet 尺寸（占帧面积比，对数轴）、帧间平均 IoU、每视频 masklet 数、遮挡次数；蓝=训练、粉=测试，虚线为中位数。平均 masklet 尺寸跨越约三个数量级（很多动物在画面里非常小），帧间 IoU 很多落在 0.5–0.9（即动物在动），遮挡呈长尾——这三张分布图正是后面 §难度分析里 small-mask / challenging 子集的统计来源。</figcaption></figure>
-
-<p>下表是论文 Tab. 2（按原表转写），给出训练/测试划分的精确数字：</p>
-<figure id="tab-split"><figcaption><strong>表 2（转写自论文 Tab. 2）：数据与划分统计。</strong>时长单位为分钟；标注数含框与 mask；video-species pairs 含负样本；地点数指独立采样点，训练/测试间无相机陷阱地点重叠。</figcaption>
-<table>
-<thead><tr><th>划分</th><th># 视频</th><th>时长 (min)</th><th># 物种</th><th># masklet</th><th># 标注 (框&amp;mask)</th><th># video-species pair（含负样本）</th><th># 采样点</th></tr></thead>
-<tbody>
-<tr><td>Train</td><td>10,776</td><td>2,545</td><td>91</td><td>15,141</td><td>880,361</td><td>31,282</td><td>650</td></tr>
-<tr><td>Test</td><td>833</td><td>202</td><td>83</td><td>1,083</td><td>62,341</td><td>2,322</td><td>91</td></tr>
-<tr><td><strong>Total</strong></td><td><strong>11,609</strong></td><td><strong>2,747</strong></td><td><strong>99</strong></td><td><strong>16,224</strong></td><td><strong>942,702</strong></td><td><strong>33,604</strong></td><td><strong>741</strong></td></tr>
-</tbody>
-</table></figure>
-<p class="takeaway"><strong>Takeaway：</strong>记住三组数字——99 物种、741 地点、16,224 masklet。它们分别对应"物种多样性、时空多样性、个体身份级标注"，是这篇论文所有论据的计量单位。长尾 + 测试集独有物种，意味着这个 benchmark 天生考验泛化而非记忆。</p>
+<section id="contribution"><h2>2. Contribution: four things at once</h2>
+<p>The paper's contribution is a dataset, not a new tracking architecture. SA-FARI consolidates camera-trap video from partner organizations into an open-source benchmark for wild-animal MAT. The dataset contains 11,609 videos, 99 species categories, 741 independent sampling sites, 16,224 masklets, and 942,702 box and mask annotations.</p>
+<p>The authors state that SA-FARI has 5x greater total annotated duration and 2x broader species diversity than any existing MAT dataset. The species claim is well supported by the comparison table: 99 categories is about 1.94x the 51 fauna categories reported for TAO/BURST. The duration claim needs a marker. In the broad comparison table below, the largest listed duration outside SA-FARI is MammAlps at 14.50 hours, so the raw table ratio is 45.78 / 14.50 = 3.16x. The paper's 5x statement appears in its contribution prose; the table-backed comparison is 3.16x against the broadest listed row, and larger if the comparison excludes related behavior or re-identification datasets that were not built primarily as MAT benchmarks.</p>
+<p>The higher-confidence claim is narrower and more important: SA-FARI is the first large-scale wild-animal MAT dataset in the paper's comparison that combines camera-trap scale, many species, many independent sites, and manually verified spatio-temporal segmentation masks.</p>
+<figure class="fig-wide"><a href="../assets/figures/safari/safari_fig2.png"><img src="../assets/figures/safari/safari_fig2.png" alt="Camera-trap video skims with animal masks and boxes across multiple challenging scenes"></a><figcaption><strong>What the annotations have to survive.</strong> The sample clips include multiple animals, night infrared video, small birds, animals that leave and re-enter the frame, partial views, occlusions, camouflage, and arboreal viewpoints.</figcaption></figure>
 </section>
 
-<section id="pipeline">
-<h2>数据采集与标注流程：把"穷举式分割标注"的成本压下来<a class="anchor" href="#pipeline">#</a></h2>
-<p>这一节是数据集论文的"机制核心"。动机先行：要同时拿到规模、质量、个体身份，最朴素的做法是让人工逐帧、逐个体画 mask——这在 942,702 个标注的量级上是不可承受的。SA-FARI 的关键设计，就是用 <strong>SAM 3 data engine 的 human-AI-in-the-loop</strong> 把人力从"从零画"降级到"核验/修正"。</p>
+<section id="datasets"><h2>3. Dataset: what SA-FARI contains</h2>
+<p>The data comes from four broad ecoregions: Central Africa, South America, Mesoamerica, and Southern Europe. The paper names seven partner sources, including Osa Conservation, Los Amigos Biological Station, IREC, IMIB, the Pan African Programme: The Cultured Chimpanzee, and Conservation X Labs. Camera traps came from several commercial brands and models. Most were placed 0.3 m to 2 m from the ground at wildlife crossings, gathering sites, feeding sites, resting sites, or potential viewing sites. A subset of 2,790 Costa Rica videos came from arboreal camera traps placed 8 m to 24 m above the ground.</p>
+<p>The videos cover resolutions from 320x194 to 2688x1234, frame rates from 10 to 60 FPS, and durations from 0.5 s to 90 s, with most clips lasting 15 s. All videos contain at least one animal. All videos also contain audio, but audio is not used in this work.</p>
+<p>Species labels use common names such as fox, then the dataset also provides Latin names and taxonomic hierarchy down to at least family and usually species level where appropriate. Each video's common-name label was confirmed by 2 to 4 independent annotators. Videos containing multiple species were disambiguated during masklet annotation by assigning common names to the corresponding tracklets.</p>
 
-<h3>① 数据采集（Data Collection）</h3>
-<p>把来自 7 家合作机构（Osa Conservation、Los Amigos Biological Station、IREC、IMIB、Pan African Programme、Conservation X Labs 等）的相机陷阱视频汇成一个公开数据集，覆盖 4 大洲的不同生态区（中非、南美、中美、南欧）、741 个独立采样点。相机品牌型号多样（Browning、Bushnell、Reconyx、Solaris、Spypoint、Ltl Acorn、Tetrao），按标准化流程架设（通常离地 0.3–2m，布设在野生动物通道、聚集、取食、休憩或观察点；其中 2,790 段哥斯达黎加视频来自架在树冠 8–24m 高的"树栖相机陷阱"）。相机为运动触发，夜间用红外闪光，所有视频至少含一只动物。</p>
+<div class="table-wrap"><table><caption><strong>Dataset comparison transcribed from the paper.</strong> <sup>&dagger;</sup>: For datasets that contain objects other than animals, the table reports numbers for the relevant fauna categories only.</caption><thead><tr><th>Dataset</th><th># Sites</th><th># Species</th><th># Videos</th><th>Duration (h)</th><th># Tracklets</th><th>Segmentation</th><th>Source</th></tr></thead><tbody><tr><td>AnimalTrack [53]</td><td>&mdash;</td><td>10</td><td>58</td><td>0.23</td><td>2k</td><td>&#10007;</td><td>YouTube</td></tr><tr><td>GMOT [2]<sup>&dagger;</sup></td><td>&mdash;</td><td>4</td><td>16</td><td>0.03</td><td>1k</td><td>&#10007;</td><td>YouTube</td></tr><tr><td>TAO [17] / BURST [1]<sup>&dagger;</sup></td><td>&mdash;</td><td>51</td><td>429</td><td>3.60</td><td>1k</td><td>&#10007;/&#10003;</td><td>Varied</td></tr><tr><td>BuckTales [34]</td><td>1</td><td>1</td><td>12</td><td>0.21</td><td>0.7k</td><td>&#10007;</td><td>UAV</td></tr><tr><td>BaboonLaand [18]</td><td>1</td><td>1</td><td>18</td><td>0.32</td><td>1k</td><td>&#10007;</td><td>UAV</td></tr><tr><td>KABR [26]</td><td>1</td><td>3</td><td>742</td><td>10.00</td><td>&mdash;</td><td>&#10007;</td><td>UAV</td></tr><tr><td>WildLive [16]</td><td>1</td><td>3</td><td>22</td><td>0.70</td><td>0.3k</td><td>&#10003;</td><td>UAV</td></tr><tr><td>CCR [4]</td><td>3</td><td>1</td><td>27</td><td>10.00</td><td>12k</td><td>&#10007;</td><td>Video Camera</td></tr><tr><td>MammAlps [20]</td><td>3</td><td>5</td><td>2,384</td><td>14.50</td><td>6k</td><td>&#10007;</td><td>Camera Trap</td></tr><tr><td>PanAf500 [8]</td><td>12</td><td>2</td><td>500</td><td>2.10</td><td>1.5k</td><td>&#10007;</td><td>Camera Trap</td></tr><tr><td><strong>SA-FARI (ours)</strong></td><td><strong>741</strong></td><td><strong>99</strong></td><td><strong>11,609</strong></td><td><strong>45.78</strong></td><td><strong>16k</strong></td><td><strong>&#10003;</strong></td><td><strong>Camera Trap</strong></td></tr></tbody></table></div>
 
-<h3>② 物种标注（Species Annotation）</h3>
-<p>每段视频先由提供数据的当地团队专家标上常见名（如 fox），再由 <strong>2–4 名独立标注者</strong>确认。含多物种的视频，在后续时空分割/masklet 标注阶段，通过给每条 masklet 单独指派常见名来消歧。除常见名外，还提供拉丁名（如 <em>Vulpes vulpes</em>）及完整分类学层级（界-门-纲-目-科-属-种），通常细到种一级。每段视频附日期/时间戳（若可得）与匿名采样点字符串。</p>
+<p>SA-FARI's taxonomy is long-tailed. The paper reports that 29 species categories contribute 90% of the data. The top three most common species are spider monkeys, collared peccaries, and agoutis. Mammals dominate the taxonomy, but the dataset also includes birds, reptiles, and an amphibian category.</p>
+<figure class="fig-wide"><a href="../assets/figures/safari/safari_fig3.png"><img src="../assets/figures/safari/safari_fig3.png" alt="Bubble chart of SA-FARI taxonomic abundance from class to order to family"></a><figcaption><strong>Taxonomic breadth.</strong> Circle size encodes how many videos belong to each taxonomic group, while edge color marks the continent where that group was recorded.</figcaption></figure>
 
-<h3>③ 分割 mask 标注（Segmentation Mask Annotation）——三阶段</h3>
-<p>这是成本控制的关键。整套时空分割标注作为 <strong>SAM 3 data engine</strong> 的一部分完成，在 6 fps 下标注视频：</p>
-<ol>
-<li><strong>自动阶段：</strong>用 SAM 3 对所有"视频-物种类别"对做伪标注，生成初始 masklet；再按 IoU 去重，删掉冗余标注。</li>
-<li><strong>人工核验阶段：</strong>标注者先检查动物是否可见、可分割（排除太模糊或难以辨认的，如鸟群里的个体）；第二名标注者用 <strong>在线 SAM 2 in-the-loop</strong> 修正——删除错误 masklet、改进或补充 masklet。</li>
-<li><strong>穷举性检查（exhaustivity）：</strong>最后一轮确认所有可能的 masklet 都已纳入。这是"exhaustive annotation"承诺的兑现点——它让后面的"负样本类别增广"在逻辑上成立（见 §method）。</li>
-</ol>
-<p>边界框<strong>不</strong>单独人工标注，而是从分割 mask 的空间极值平凡导出。更细的人工标注流程见 SAM 3 论文。</p>
+<div class="table-wrap"><table><caption><strong>Dataset and split statistics transcribed from the paper.</strong> The split keeps camera-trap locations disjoint between train and test.</caption><thead><tr><th>Split</th><th># Videos</th><th>Duration (min)</th><th># Species</th><th># Masklets</th><th># Annotations (boxes &amp; masks)</th><th># Video-species pairs (incl. negatives)</th><th># Sampling locations (independent sites)</th></tr></thead><tbody><tr><td>Train</td><td>10,776</td><td>2,545</td><td>91</td><td>15,141</td><td>880,361</td><td>31,282</td><td>650</td></tr><tr><td>Test</td><td>833</td><td>202</td><td>83</td><td>1,083</td><td>62,341</td><td>2,322</td><td>91</td></tr><tr><td>Total</td><td>11,609</td><td>2,747</td><td>99</td><td>16,224</td><td>942,702</td><td>33,604</td><td>741</td></tr></tbody></table></div>
 
-<aside class="note"><div class="note-title">机制要点：为什么"自动伪标注 + 人工核验"能既保质又控成本</div>朴素地从零画 94 万个 mask 不可行；但"模型先给草稿、人来纠错"把人力从生成成本降到核验成本。这里有一条<strong>显式假设</strong>需要标出：自动阶段用 SAM 3，而后面的基线评测也包含 SAM 3——伪标注与被评模型同源，会带来潜在的循环风险。论文用两点缓解：(a) 人工核验阶段引入第二名标注者用 SAM 2 在环修正、并做穷举性检查，mask 最终以人工核验为准而非模型输出；(b) 评测时还对比了与标注引擎无关的 GLEE、LLMDet、MegaDetector 流水线。即便如此，"标注引擎与最强基线同为 SAM 系"这一点，读者在解读 SAM 3 的领先幅度时应记在心里（论文未把这一点单列为威胁，本文据流程如实指出，见 §局限）。</div></aside>
-<p class="takeaway"><strong>Takeaway：</strong>SA-FARI 的"穷举 + 人工核验"不是口号——它由三阶段流程（自动伪标注 → 双人 + SAM2 在环修正 → 穷举性检查）兑现，这也是它敢声称"首个大规模人工核验时空分割"的底气。</p>
+<p>The dataset contains 16,224 masklets, with an average of 1.4 masklets per video. There are 2,623 videos, or 22.7%, with at least two masklets, and some videos contain up to 14. The highest average masklets per video are red river hogs at 6.7, white-lipped peccaries at 3.5, and African elephants at 3.3.</p>
+<figure class="fig-wide"><a href="../assets/figures/safari/safari_fig4.png"><img src="../assets/figures/safari/safari_fig4.png" alt="Histograms for masklet size, inter-frame IoU, tracklet count, and occlusion count"></a><figcaption><strong>Masklet difficulty distribution.</strong> The histograms summarize mask size, frame-to-frame overlap, number of tracklets, and occlusion counts for train and test videos, with dotted vertical lines marking medians.</figcaption></figure>
 </section>
 
-<section id="method">
-<h2>标注协议与质量控制：划分隔离、类别增广、难度分层<a class="anchor" href="#method">#</a></h2>
-<p>有了 mask，还要回答三个协议问题：怎么切训练/测试才不泄漏？怎么造负样本来评测精度？怎么把测试集切成可诊断的难度子集？</p>
-
-<h3>训练/测试划分：按相机陷阱地点严格隔离 + 贪心最大化物种多样性</h3>
-<p>动机：如果同一台相机的视频被分到训练和测试两边，模型可能记住背景而非学到物种特征（即 §related work 反复提到的"背景捷径学习"），导致评测虚高。SA-FARI 的划分协议：</p>
-<ol>
-<li>设测试集上限 1,000 段视频；在此限内尽量最大化物种类别多样性，同时<strong>保证同一相机陷阱的所有视频进同一 split</strong>。</li>
-<li>按"物种类别数 / 视频数"之比对相机陷阱排序，贪心地优先选取那些为测试集贡献最多<strong>新</strong>物种类别的相机；每选一台后更新排序，对已覆盖物种的相机降权。</li>
-<li>直到测试集达到目标规模为止。</li>
-</ol>
-<p>这套贪心既保证了测试集物种多样、又保证了相机陷阱地点在两 split 间严格无重叠（见 Tab. 2：训练 650 地点 / 测试 91 地点，无交叠）。</p>
-
-<h3>类别增广（Category Augmentation）：造硬/易负样本评测检测精度</h3>
-<p>动机：检测模型不仅要"找对在场物种"，还要"不把不在场物种检出来"——后者需要负样本类别才能评测。SA-FARI 的造法依赖前面的<strong>穷举标注</strong>假设（每段视频里在场物种已被全部标注，故任一未标注物种必然不在场）：</p>
-<ul>
-<li>把 99 个物种类别按科分组（科内类别太少则上提到目或纲），共得 <strong>29 组</strong>。</li>
-<li>对每个"视频-物种类别"对：从<strong>同组</strong>随机选一个不在该视频出现的类别作 <strong>hard negative</strong>（语义相近、更易混淆）；从<strong>不同组</strong>随机选一个作 <strong>easy negative</strong>。</li>
-</ul>
-
-<h3>测试集难度分层：5 个可诊断子集</h3>
-<p>动机：一个聚合分数掩盖了"模型到底在哪类样本上失败"。SA-FARI 把 test 集进一步切成 5 个子集，定量隔离难度因素：</p>
-<ul>
-<li><strong>challenging（106 视频）：</strong>含至少一条满足下列之一的 masklet——(1) 动物在动，以 masklet 帧间平均 IoU $&lt; 0.7$ 度量（相邻帧 mask 重叠低 = 像素坐标显著位移）；或 (2) 遮挡次数 $\ge 2$。</li>
-<li><strong>night（598 视频）：</strong>所有夜间录制的视频。论文注明 night 子集占了 test 集大多数视频。</li>
-<li><strong>multi-masklet（136 视频）：</strong>含 ≥2 只动物（不论物种）。</li>
-<li><strong>large-masklet（211 视频）：</strong>平均 masklet 尺寸 &gt; 第 75 百分位。</li>
-<li><strong>small-masklet（212 视频）：</strong>平均 masklet 尺寸 &lt; 第 25 百分位。</li>
-</ul>
-<p>其中 masklet 尺寸定义为：masklet 出现的所有帧上的平均 mask 尺寸，每帧的 mask 尺寸用图像尺寸归一化到 $[0,1]$。</p>
-<p class="takeaway"><strong>Takeaway：</strong>这三套协议（地点隔离划分、穷举支撑的负样本增广、难度分层）共同把 SA-FARI 从"一堆带 mask 的视频"升级成一个<strong>能诊断的 benchmark</strong>——它不只给一个总分，还能告诉你模型在小目标、运动遮挡、夜间、多目标上各差多少。</p>
+<section id="pipeline"><h2>4. Pipeline: a human-AI-in-the-loop annotation engine</h2>
+<p>The spatio-temporal segmentation annotations are created as part of the <strong>SAM 3</strong> data engine. <strong>SAM</strong> means Segment Anything Model. <strong>SAM 2</strong> is the image-and-video version used by annotators as an online correction tool. <strong>SAM 3</strong> extends that family to open-vocabulary segmentation and tracking, so a text concept such as a species name can prompt localization through a video.</p>
+<p>A <strong>human-AI-in-the-loop</strong> pipeline means model predictions are not released as-is. The model proposes annotations, humans inspect and correct them, and a final check verifies completeness. In SA-FARI the process has three stages.</p>
+<ol><li><strong>Automatic pseudo-annotation.</strong> SAM 3 pseudo-annotates every video-species category pair at 6 FPS, generating initial masks. The system deduplicates masklets using Intersection over Union, or IoU, the overlap ratio between two masks.</li><li><strong>Human correction with SAM 2 in the loop.</strong> A first human annotator checks whether the animal is visible and segmentable. A second annotator removes wrong masklets and uses online SAM 2 to improve or add masklets.</li><li><strong>Exhaustiveness check.</strong> A final review confirms that all possible masklets have been included.</li></ol>
+<p>Bounding boxes are not manually drawn. They are derived from the segmentation masks by computing each mask's spatial limits. That matters because the dataset's primary supervision is pixel-level segmentation, while the box labels come for free from those masks.</p>
+<p>The paper does not state total human annotator-hours or per-masklet verification cost. It does state the video duration that receives dense annotation: 2,747 minutes, or 45.78 hours.</p>
 </section>
 
-<section id="training">
-<h2>基线训练/评测设置：两类方法、两种 prompt、三套指标<a class="anchor" href="#training">#</a></h2>
-<p>这是数据集论文里对应"训练设置"的部分——它评测的是已有模型，重点在评测协议而非新训练算法。</p>
-<h3>两类被评方法</h3>
-<ul>
-<li><strong>视觉-语言模型（按物种名 prompt 定位）：</strong>① <strong>GLEE</strong>（开放词表检测+追踪）；② <strong>LLMDet</strong>（仅检测的开放世界模型，因缺内置追踪器，外接独立追踪模块，记作 LLMDet+SAM 3 TR）；③ <strong>SAM 3</strong>——把 SAM 2 扩展为支持开放词表、文本可 prompt 的分割与追踪，用 DETR 式检测器 + SAM 2 式记忆追踪器、共享视觉-语言骨干；按 SAM 3 的视频可 prompt 概念分割（PCS）协议评测。SAM 3 进一步评了三个配置：原始 <strong>SAM 3</strong>、把 SA-FARI 按比例并入训练的 <strong>SAM 3 (SA-FARI)</strong>、在 SA-FARI 上显式微调的 <strong>SAM 3 FT (SA-FARI)</strong>。</li>
-<li><strong>视觉-only 流水线（物种无关）：</strong>用最新 <strong>MegaDetector (MD)</strong> 作通用动物检测器，配 BoostSort++、OCSort、ByteTrack 三种强追踪器。</li>
-</ul>
-<h3>两种 prompt 设定</h3>
-<ul>
-<li><strong>Species-specific：</strong>给模型物种类别名作 prompt，要它定位并追踪该物种的所有实例，按 SAM 3 的 PCS 协议评。</li>
-<li><strong>Species-agnostic：</strong>把物种名替换成通用 query "animal"。这不是 benchmark 的主用例，但贴合相机陷阱检测/追踪文献的常见做法，便于横向比较；用穷举物种标注的 test 视频，配标准 F1 与 HOTA。注意：在 SA-FARI 上训练的 SAM 3 模型训练时<strong>没</strong>见过 "animal" query，该 prompt 仅推理时用。</li>
-</ul>
-<h3>指标</h3>
-<p>species-specific 用 <strong>pHOTA</strong>（含 Det/Ass 分解）、<strong>cgF1</strong>、<strong>TETA</strong>；species-agnostic 用 <strong>IDF1</strong> 与 <strong>HOTA</strong>（含 Det/Ass）。GPU-hours / 训练算力：论文未披露具体训练算力数字（论文未说明）。</p>
+<section id="method"><h2>5. Method details: splitting, negatives, and metrics</h2>
+<p>The train/test split is site-disjoint. The authors cap the test set at 1,000 videos, then greedily select camera traps to maximize species diversity while keeping all videos from the same camera trap in the same split. The result is 833 test videos from 91 independent sites and 10,776 train videos from 650 independent sites.</p>
+<p>SA-FARI also adds negative species labels for training and evaluation. A negative species is a species that does not appear in a given video. The paper groups species into 29 taxonomic groups (a separate count from the 29 head categories above, which happen to match), then adds one hard negative from the same group and one easy negative from a different group for each video-species pair. This is possible because the positive species labels are exhaustive.</p>
+<p>The paper uses promptable tracking metrics because models receive a species name or generic animal prompt. <strong>IDF1</strong> measures how accurately a tracker keeps identities consistent across detections. <strong>HOTA</strong>, Higher Order Tracking Accuracy, combines detection and association. In the simplified form requested here, with <strong>DetA</strong> as detection accuracy and <strong>AssA</strong> as association accuracy:</p>
+<div class="equation">$$\mathrm{HOTA}=\sqrt{\mathrm{DetA}\times\mathrm{AssA}}$$<div class="eq-caption">Higher is better: a model must detect animals and preserve identity associations.</div></div>
+<p><strong>pHOTA</strong>, phrase-based HOTA, adapts HOTA to open-vocabulary tracking by treating each video-phrase pair as a sample. <strong>TETA</strong>, Track Every Thing Accuracy, extends HOTA with localization, association, and classification terms. <strong>cgF1</strong>, classification-gated F1, rewards both localization quality and calibrated image-level concept prediction. <strong>MOTA</strong>, Multiple Object Tracking Accuracy, is the older MOT aggregate that penalizes misses, false positives, and identity switches; the paper does not report MOTA in the transcribed main tables. For all of these metrics as used here, higher is better.</p>
+<div class="socratic"><p class="question">Q: Why use HOTA-style metrics instead of only detection F1?</p><p class="answer">A: Detection F1 can reward a model for finding animals in isolated frames. MAT also needs the model to keep the same animal identity connected over time. HOTA-style metrics make that second requirement visible through association accuracy.</p><p class="takeaway"><strong>Takeaway:</strong> SA-FARI is useful only if evaluation punishes identity breaks, not just missed boxes or masks.</p></div>
 </section>
 
-<section id="experiments">
-<h2>基线结果：把 SA-FARI 喂进训练，SOTA 模型直接涨几十个点<a class="anchor" href="#experiments">#</a></h2>
-<p>这是第一条独立验证——<strong>训练价值</strong>。如果加入 SA-FARI 训练能让 SOTA 模型大涨，就证明这个数据集装着此前没有的信息。</p>
-
-<h3>Species-specific 评测</h3>
-<p>下表转写自论文 Tab. 3（pHOTA 含 Total/Det/Ass，cgF1 与 TETA 为 Total）。论文叙述：SAM 3 优于 GLEE 与 LLMDet，较最接近的竞争者（第 2 行）在 cgF1 上 +11.4、pHOTA 上 +7.2；而<strong>把 SA-FARI 并入训练（第 4 行）或微调（第 5 行）带来大幅提升</strong>——微调后的 SAM 3（第 5 行）较未用 SA-FARI 的 SAM 3（第 3 行）在 cgF1、pHOTA、TETA 上分别 +32.9、+19.6、+19.1。</p>
-<figure id="tab-specific"><figcaption><strong>表 3（转写自论文 Tab. 3）：物种类别-specific 评测。</strong>加粗为最高。pHOTA 列给 Total/Det/Ass 分解。</figcaption>
-<table>
-<thead><tr><th>方法</th><th>pHOTA Total</th><th>pHOTA Det</th><th>pHOTA Ass</th><th>cgF1</th><th>TETA</th></tr></thead>
-<tbody>
-<tr><td>1 GLEE</td><td>-0.2</td><td>7.5</td><td>1.2</td><td>49.7</td><td>22.0</td></tr>
-<tr><td>2 LLMDet + SAM 3 TR</td><td>2.6</td><td>41.3</td><td>21.4</td><td>80.0</td><td>30.4</td></tr>
-<tr><td>3 SAM 3</td><td>14.0</td><td>48.5</td><td>28.4</td><td>83.4</td><td>39.6</td></tr>
-<tr><td>4 SAM 3 (SA-FARI)</td><td>39.0</td><td>63.1</td><td>47.9</td><td>83.9</td><td>52.1</td></tr>
-<tr><td>5 <strong>SAM 3 FT (SA-FARI)</strong></td><td><strong>46.9</strong></td><td><strong>68.1</strong></td><td><strong>55.4</strong></td><td><strong>84.6</strong></td><td><strong>58.7</strong></td></tr>
-</tbody>
-</table></figure>
-
-<h3>Species-agnostic 评测</h3>
-<p>下表转写自论文 Tab. 4（IDF1，HOTA 含 Total/Det/Ass）。论文叙述：在 SA-FARI 上训练的 SAM 3 大幅领先——IDF1 较最接近模型 +23.9（第 4 行 vs 第 3 行），HOTA +18.9（第 4 行 vs 第 2 行）。</p>
-<figure id="tab-agnostic"><figcaption><strong>表 4（转写自论文 Tab. 4）：物种类别-agnostic 评测（"animal" query）。</strong>加粗为最高。SAM 3 (SA-FARI) 在 species-specific 训练集上训练。</figcaption>
-<table>
-<thead><tr><th>方法</th><th>IDF1</th><th>HOTA Total</th><th>HOTA Det</th><th>HOTA Ass</th></tr></thead>
-<tbody>
-<tr><td>1 MD + ByteTrack</td><td>38.6</td><td>39.5</td><td>20.8</td><td>75.6</td></tr>
-<tr><td>2 MD + OCSort</td><td>33.9</td><td>45.5</td><td>27.9</td><td>74.9</td></tr>
-<tr><td>3 MD + BoostSort++</td><td>47.2</td><td>38.3</td><td>18.4</td><td>80.8</td></tr>
-<tr><td>4 <strong>SAM 3 (SA-FARI)</strong></td><td><strong>71.1</strong></td><td><strong>64.4</strong></td><td><strong>50.0</strong></td><td><strong>83.7</strong></td></tr>
-</tbody>
-</table></figure>
-
-<div class="socratic">
-<p class="question">问：这些数字到底证明了数据集的什么？</p>
-<p class="guide">引导：注意比较的是"同一个模型，加不加 SA-FARI 训练"。如果数据集只是又一堆同质视频，加进去不会让 SOTA 模型涨这么多。</p>
-<p class="answer">答：论文摘要里那句"训练在 SA-FARI 上带来 HOTA 20+ 点提升""微调 SAM 3 较基线三倍提升"，正是由 Tab. 3/4 兑现的——它说明 SA-FARI 装着此前训练分布里缺失的信息（真实野外的小目标、夜间、遮挡、长尾物种）。同时它也暴露一个冷峻事实：<strong>即便是 SOTA 模型，在没有大规模富标注集时，于这个领域表现都很差</strong>（第 3 行 SAM 3 的 pHOTA-Total 仅 14.0），印证了野外数据的难度。</p>
-</div>
-<p class="takeaway"><strong>Takeaway：</strong>第一条验证成立——SA-FARI 有明确的训练价值，且"加它就涨几十点"这件事对 SOTA 模型都成立，说明缺口是真实的、不是边际的。</p>
+<section id="training"><h2>6. Training setup: what is actually tested</h2>
+<p>The benchmark has two main settings. In the <strong>species-specific prompt</strong> setting, a vision-language model receives the target species category as text and must localize and track every instance of that species through the video. The paper evaluates GLEE, LLMDet paired with a SAM 3 tracker, and SAM 3.</p>
+<p>The SAM 3 rows are the cleanest training-value evidence because they compare the same model family under different data exposure. The three variants are base SAM 3, SAM 3 with SA-FARI included proportionally during training, and SAM 3 explicitly fine-tuned on SA-FARI.</p>
+<p>The second setting is <strong>species-agnostic prompt</strong> evaluation. Here the species names are replaced with the generic prompt "animal." The paper compares SAM 3 trained on SA-FARI against MegaDetector paired with ByteTrack, OCSort, or BoostSort++. The SAM 3 models trained on SA-FARI were not exposed to the "animal" query during training; the prompt is used only at inference time.</p>
 </section>
 
-<section id="ablations">
-<h2>难度分层分析：把"总分"拆开，看模型到底在哪类样本上失败<a class="anchor" href="#ablations">#</a></h2>
-<p>这是第二条独立验证——<strong>诊断价值</strong>。一个好 benchmark 不只排名次，还要能定位失败模式。下表转写自论文 Tab. 5（SAM 3 (SA-FARI) 模型，species-specific prompt，按 §method 的 5 个 test 子集）。</p>
-<figure id="tab-subset"><figcaption><strong>表 5（转写自论文 Tab. 5）：test 子集上的表现。</strong>列为 pHOTA(Total/Det/Ass) 与 cgF1/TETA。"All" 行即整 test 集。</figcaption>
-<table>
-<thead><tr><th>子集</th><th>pHOTA Total</th><th>pHOTA Det</th><th>pHOTA Ass</th><th>cgF1</th><th>TETA</th></tr></thead>
-<tbody>
-<tr><td>Large masks</td><td>63.4</td><td>81.4</td><td>72.5</td><td>91.6</td><td>71.7</td></tr>
-<tr><td>Small masks</td><td>25.3</td><td>52.2</td><td>38.5</td><td>71.3</td><td>46.9</td></tr>
-<tr><td>Multiple animals</td><td>45.9</td><td>67.8</td><td>54.5</td><td>85.1</td><td>59.6</td></tr>
-<tr><td>Challenging</td><td>36.8</td><td>61.7</td><td>51.3</td><td>75.3</td><td>59.6</td></tr>
-<tr><td>Night</td><td>44.1</td><td>66.0</td><td>53.2</td><td>83.1</td><td>61.9</td></tr>
-<tr><td>All</td><td>46.9</td><td>68.1</td><td>55.4</td><td>84.6</td><td>58.7</td></tr>
-</tbody>
-</table></figure>
-<p>论文从这张表读出四条结论（按原文转述）：</p>
-<ul>
-<li><strong>小目标是最大短板：</strong>large vs small 在 pHOTA 上差 +29.2（63.4 vs 25.3 当作 large 优于 small 的差，原文表述为"large 比 small 高 29.2 pHOTA-Det 类比"——表中 Det 列 81.4 vs 52.2）。小 masklet 显著更难检测也更难追踪。</li>
-<li><strong>运动/遮挡（challenging）：</strong>检测上比整体差约 -4.1 pHOTA-Det（61.7 vs 68.1），但<strong>追踪</strong>上差得更多，约 -9.3 pHOTA-Ass（51.3 vs 55.4 量级差，原文以与整体集对比表述）——即遮挡和运动主要伤害关联（association）。</li>
-<li><strong>多目标难度中等：</strong>multiple animals 的 pHOTA 67.8 与整体 68.1 相当——多目标本身更难（个体歧义增加），但这些样本恰好正相关于大 mask，二者抵消。</li>
-<li><strong>夜间略难但接近整体：</strong>夜间检测稍难（cgF1 44.1 vs 46.9、pHOTA 66.0 vs 68.1），但整体仍与 test 集其余部分大致相当；且 night 子集占 test 集多数视频。</li>
-</ul>
-<aside class="note"><div class="note-title">读表提醒（zh-style）</div>上面第 1、2 条里的"+29.2""-4.1""-9.3"是论文正文明确给出的子集间差值表述；表中单元格与正文表述存在 Total/Det/Ass 不同列的对应关系，本文已按论文原文转写两者，未做改写或外推。任何超出表内单元格的解读以论文正文为准。</aside>
-<p class="takeaway"><strong>Takeaway：</strong>第二条验证成立——SA-FARI 的难度分层把失败模式定量隔离出来：<strong>小目标拖检测、遮挡/运动拖关联</strong>。这正是数据集作为 benchmark 的诊断力，也为后续数据采集与模型改进指了方向（多收集小目标、强化遮挡下的关联）。</p>
+<section id="experiments"><h2>7. Experiments: does SA-FARI help train trackers?</h2>
+<p>The strongest result is that domain-specific SA-FARI data helps a state-of-the-art model. In the species-specific setting, fine-tuned SAM 3 improves from 14.0 to 46.9 cgF1, from 48.5 to 68.1 total pHOTA, and from 39.6 to 58.7 TETA. The "three-fold" statement in the conclusion applies cleanly to cgF1: 46.9 / 14.0 = 3.35x. Total pHOTA improves by 19.6 points, while its detection component improves by 27.0 points.</p>
+
+<div class="table-wrap"><table><caption><strong>Species category-specific evaluation results transcribed from the paper.</strong> Models receive species-category prompts.</caption><thead><tr><th>Method</th><th>cgF1</th><th>pHOTA Total</th><th>pHOTA Det</th><th>pHOTA Ass</th><th>TETA</th></tr></thead><tbody><tr><td>GLEE</td><td>-0.2</td><td>7.5</td><td>1.2</td><td>49.7</td><td>22.0</td></tr><tr><td>LLMDet + SAM 3 TR</td><td>2.6</td><td>41.3</td><td>21.4</td><td>80.0</td><td>30.4</td></tr><tr><td>SAM 3</td><td>14.0</td><td>48.5</td><td>28.4</td><td>83.4</td><td>39.6</td></tr><tr><td>SAM 3 (SA-FARI)</td><td>39.0</td><td>63.1</td><td>47.9</td><td>83.9</td><td>52.1</td></tr><tr><td><strong>SAM 3 FT (SA-FARI)</strong></td><td><strong>46.9</strong></td><td><strong>68.1</strong></td><td><strong>55.4</strong></td><td><strong>84.6</strong></td><td><strong>58.7</strong></td></tr></tbody></table></div>
+
+<p>In the species-agnostic setting, SAM 3 trained on SA-FARI outperforms the MegaDetector plus tracker baselines. The paper reports a +23.9 IDF1 margin over the closest competing IDF1 row, BoostSort++, and a +18.9 HOTA margin over the closest HOTA row, OCSort. That comparison is not a pure training ablation, because the model families differ, but it shows that SA-FARI-trained promptable segmentation can compete even when the prompt is reduced to the generic word "animal."</p>
+
+<div class="table-wrap"><table><caption><strong>Species category-agnostic evaluation results transcribed from the paper.</strong> The prompt is the generic query "animal."</caption><thead><tr><th>Method</th><th>IDF1</th><th>HOTA Total</th><th>HOTA Det</th><th>HOTA Ass</th></tr></thead><tbody><tr><td>MD+ByteTrack</td><td>38.6</td><td>39.5</td><td>20.8</td><td>75.6</td></tr><tr><td>MD+OCSort</td><td>33.9</td><td>45.5</td><td>27.9</td><td>74.9</td></tr><tr><td>MD+BoostSort++</td><td>47.2</td><td>38.3</td><td>18.4</td><td>80.8</td></tr><tr><td><strong>SAM 3 (SA-FARI)</strong></td><td><strong>71.1</strong></td><td><strong>64.4</strong></td><td><strong>50.0</strong></td><td><strong>83.7</strong></td></tr></tbody></table></div>
 </section>
 
-<section id="limitations">
-<h2>局限与诚实边界<a class="anchor" href="#limitations">#</a></h2>
-<ul>
-<li><strong>标注引擎与最强基线同源。</strong>分割标注由 SAM 3 data engine 自动伪标注起步，而评测中最强的模型也是 SAM 3 系。虽然人工核验（双人 + SAM 2 在环 + 穷举检查）以人工为准、且评测含 GLEE/LLMDet/MegaDetector 等无关基线，但读者解读 SAM 3 的领先幅度时应记住这一同源关系（论文未将其单列为威胁，本文据流程如实指出）。</li>
-<li><strong>地理仍有偏差。</strong>数据集中、南美洲与中美洲占主导（论文 §3 与 §5 均提"最多数据与物种多样性来自南/中美采集点"，并把"补充更多生态区以缓解地理偏差"列为未来工作）。</li>
-<li><strong>模态有限。</strong>所有视频含音频但本工作未使用；论文把音频、动物姿态、深度、自然语言描述列为可扩展模态。</li>
-<li><strong>开放世界。</strong>测试集刻意包含训练未见物种（如 Saki monkey），这是优点也是难点——评测天然包含 OOD 物种。</li>
-<li><strong>算力未披露。</strong>论文未给出 SAM 3 训练/微调的具体 GPU-hours 或算力数字（论文未说明）；本文不做估算。</li>
-</ul>
+<section id="ablations"><h2>8. Diagnostic value: what the test subsets reveal</h2>
+<p>SA-FARI is not only a training set. The paper also partitions the test set to expose failure modes. A masklet is challenging if the animal is moving, measured by average inter-frame IoU \(\lt 0.7\), or if it has \(\ge 2\) occlusions. Night videos are all videos recorded at night. Multi-masklet videos contain two or more animals, regardless of species. Large-masklet videos are above the 75th percentile of average masklet size, and small-masklet videos are below the 25th percentile.</p>
+
+<div class="table-wrap"><table><caption><strong>Diagnostic subset definitions from the paper.</strong> Counts are test-set video counts.</caption><thead><tr><th>Subset</th><th># Videos</th><th>Definition</th></tr></thead><tbody><tr><td>Challenging</td><td>106</td><td>At least one masklet with average inter-frame IoU below 0.7 or at least two occlusions.</td></tr><tr><td>Night</td><td>598</td><td>Videos recorded at night.</td></tr><tr><td>Multi-masklet</td><td>136</td><td>Videos with two or more animals, regardless of species category.</td></tr><tr><td>Large-masklet</td><td>211</td><td>Average masklet size greater than the 75th percentile.</td></tr><tr><td>Small-masklet</td><td>212</td><td>Average masklet size smaller than the 25th percentile.</td></tr></tbody></table></div>
+
+<div class="table-wrap"><table><caption><strong>Performance across test-time factors transcribed from the paper.</strong> SAM 3 (SA-FARI) is evaluated with species-specific prompts.</caption><thead><tr><th>SA-FARI/test split</th><th>cgF1</th><th>pHOTA Total</th><th>pHOTA Det</th><th>pHOTA Ass</th><th>TETA</th></tr></thead><tbody><tr><td>Large masks</td><td>63.4</td><td>81.4</td><td>72.5</td><td>91.6</td><td>71.7</td></tr><tr><td>Small masks</td><td>25.3</td><td>52.2</td><td>38.5</td><td>71.3</td><td>46.9</td></tr><tr><td>Multiple animals</td><td>45.9</td><td>67.8</td><td>54.5</td><td>85.1</td><td>59.6</td></tr><tr><td>Challenging</td><td>36.8</td><td>61.7</td><td>51.3</td><td>75.3</td><td>59.6</td></tr><tr><td>Night</td><td>44.1</td><td>66.0</td><td>53.2</td><td>83.1</td><td>61.9</td></tr><tr><td>All</td><td>46.9</td><td>68.1</td><td>55.4</td><td>84.6</td><td>58.7</td></tr></tbody></table></div>
+
+<p>The diagnostic pattern is useful because the failures differ. Small masklets are much harder than large masklets: total pHOTA drops from 81.4 to 52.2, and detection pHOTA drops from 72.5 to 38.5. The challenging subset has similar detection difficulty to the full set, with pHOTA Det 51.3 versus 55.4, but much worse association, with pHOTA Ass 75.3 versus 84.6. That matches the paper's interpretation: small targets hurt detection, while motion and occlusion hurt identity association.</p>
+<p>Multiple-animal videos are close to the full set on total pHOTA, 67.8 versus 68.1, partly because those samples tend to contain larger masks. Night videos are also close to the full set, though slightly lower on cgF1 and pHOTA. The point is not that night is easy; it is that SA-FARI lets the reader separate night effects from size, occlusion, and association errors.</p>
+<figure class="fig-wide"><a href="../assets/figures/safari/safari_fig5.png"><img src="../assets/figures/safari/safari_fig5.png" alt="Long-tailed species-category distribution split into train and test videos"></a><figcaption><strong>Long-tailed categories and split coverage.</strong> The bars show many common categories with mostly train videos and many rare categories with only a few examples, including some categories that appear only in the test split.</figcaption></figure>
 </section>
 
-<section id="summary">
-<h2>总结：一篇"底座型"论文的价值在于撬动力<a class="anchor" href="#summary">#</a></h2>
-<p>SA-FARI 不提出新模型，它提出的是一个把<strong>规模（11,609 视频）× 物种多样性（99 类）× 时空多样性（741 地点 / 4 大洲 / 10 年）× 人工核验时空分割（16,224 masklet）</strong>四个常常互斥的维度一次做齐的数据集，并用可复现基准证明它的两重价值：训练上能让 SOTA 模型涨几十个点、微调三倍提升；诊断上能把失败定位到小目标与遮挡关联。它的核心机制是借 SAM 3 data engine 的 human-AI-in-the-loop 把穷举分割标注的成本压到可行，再用地点隔离划分、穷举支撑的负样本增广、难度分层把它升级成一个能诊断的 benchmark。对野生动物监测这条保护流水线而言，它补上的是最底层的那块地基。数据集主页：<a href="https://www.conservationxlabs.com/sa-fari" target="_blank" rel="noopener">conservationxlabs.com/SA-FARI</a>。</p>
+<section id="limitations"><h2>9. Limitations and caveats</h2>
+<div class="table-wrap"><table><caption><strong>Boundaries stated or implied by the paper.</strong> Each caveat is listed once.</caption><thead><tr><th>Boundary</th><th>What the paper says</th><th>How to read it</th></tr></thead><tbody><tr><td>Camera-trap domain</td><td>The dataset is built from camera-trap video.</td><td>It is directly relevant to conservation camera-trap workflows, not a universal video-tracking benchmark for all animal footage.</td></tr><tr><td>Fixed taxonomy</td><td>SA-FARI has 99 species categories and provides common names plus taxonomic hierarchy.</td><td>The benchmark is broad but still bounded by the species and regions in the collected data.</td></tr><tr><td>Geographic bias</td><td>The conclusion says future integration should prioritize additional ecoregions.</td><td>The dataset is diverse, but not globally complete.</td></tr><tr><td>Annotation budget</td><td>The paper describes multi-stage human verification but does not state annotator-hours.</td><td>Quality is higher than automatic masks alone, but the human cost is not quantified in the paper.</td></tr><tr><td>Audio unused</td><td>All videos contain audio, but it is not used in this work.</td><td>Audio is a future multimodal opportunity, not part of the reported benchmark.</td></tr><tr><td>Model evidence</td><td>The main model evidence is SAM 3 plus selected open-vocabulary and tracking baselines.</td><td>The gains show value for strong promptable models, but they do not prove all future trackers will gain equally.</td></tr></tbody></table></div>
+<p>The most important caveat is about the comparative duration claim. The paper's prose says 5x; the broad table gives 3.16x against MammAlps. This does not weaken the dataset's main contribution, but it does change how carefully that headline should be repeated.</p>
 </section>
 
-<section id="references">
-<h2>参考与诚实边界<a class="anchor" href="#references">#</a></h2>
-<ul>
-<li><strong>论文：</strong>Wasmuht, Brookes, Schall, Palencia, … Saenko, Surís. <em>The SA-FARI Dataset: Segment Anything in Footage of Animals for Recognition and Identification.</em> arXiv:2511.15622v2（CVPR 2026）。所有统计数字、表格（Tab. 1–5）与流程描述均转写自该 PDF 正文，未作改写或外推；表格内容逐行转写自原表。</li>
-<li><strong>数据集主页（已 HTTP 200 核验）：</strong><a href="https://www.conservationxlabs.com/sa-fari" target="_blank" rel="noopener">conservationxlabs.com/SA-FARI</a>。未找到公开代码仓库（论文未给出 GitHub）。</li>
-<li><strong>CVF（已核验）：</strong>CVPR 2026 Open Access 页面与 virtual poster（#38025）均可解析。</li>
-<li><strong>关键被评方法（各有独立出处，非本文提出）：</strong>SAM 3 [12]、SAM 2、GLEE、LLMDet、MegaDetector、ByteTrack、OCSort、BoostSort++——引用编号沿用论文参考文献。</li>
-<li><strong>kexue:su 归因红线：</strong>本文机制部分采用 <code>kexue:su</code> 的科学推导姿态（动机先行、显式假设、≥2 条独立路径交叉验证）。检索其语料库（关键词：数据集构建 / 标注协议 / 分割基准 / 长尾泛化）<strong>仅返回 NLP/softmax/句向量等不相关卡片，无任何主题相关命中</strong>，故全文<strong>未</strong>对苏剑林做任何 <code>[archives/XXXX]</code> 归因——只借用方法论，不虚构引用。</li>
-<li><strong>数据来源边界：</strong>正文凡论文未给出的数字（如训练算力/GPU-hours）一律标注"论文未说明"，不做估算。</li>
-</ul>
+<section id="summary"><h2>10. Summary: why SA-FARI matters</h2>
+<p>SA-FARI is a data paper with a simple thesis: wild-animal MAT has been waiting for a dataset that is large, diverse, camera-trap native, and verified at masklet level. The paper backs that thesis with 11,609 videos, 741 independent sites, 99 species categories, 16,224 masklets, and 942,702 masks and boxes.</p>
+<p>The training results support the dataset's practical value. Fine-tuning SAM 3 on SA-FARI gives a 3.35x cgF1 gain over base SAM 3 and raises total pHOTA by 19.6 points. The diagnostic split results support a second value: SA-FARI can tell researchers whether a method fails because animals are small, because identity association breaks under motion and occlusion, or because the scene has multiple animals or night conditions.</p>
+<p>The bottom line is calibrated. SA-FARI is not a finished solution to wildlife understanding. It is a large, human-verified camera-trap benchmark that makes the core failure modes measurable.</p>
 </section>
 
-</main>
-<aside class="sidebar"><section class="side-card"><h2 class="side-title">文章目录</h2><div class="side-body"><ol><li><a href="#motivation">核心问题</a></li><li><a href="#contribution">贡献</a></li><li><a href="#datasets">数据集统计</a></li><li><a href="#pipeline">数据采集/标注流程</a></li><li><a href="#method">标注协议与质量控制</a></li><li><a href="#training">基线训练设置</a></li><li><a href="#experiments">基线结果</a></li><li><a href="#ablations">难度分层分析</a></li><li><a href="#limitations">局限</a></li><li><a href="#summary">总结</a></li><li><a href="#references">参考</a></li></ol></div></section><section class="side-card"><h2 class="side-title">论文信息</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>The SA-FARI Dataset: Segment Anything in Footage of Animals for Recognition and Identification</dd><dt>Venue</dt><dd>CVPR 2026 · Top Paper (candidate)</dd><dt>机构</dt><dd>Conservation X Labs · Meta · University of Bristol · HPI · U. Oviedo · Osa Conservation · Senckenberg · MPI-EVA · Climate Corridors</dd><dt>规模</dt><dd>11,609 视频 · 99 物种 · 741 地点 · 4 大洲 · ~46 h</dd><dt>标注</dt><dd>16,224 人工核验 masklet · 942,702 框/mask</dd><dt>arXiv</dt><dd>2511.15622 v2</dd><dt>Topic</dt><dd>Multi-Animal Tracking Dataset · Camera Trap</dd></dl></div></section><section class="side-card"><h2 class="side-title">关键图表</h2><div class="side-body"><ul><li>图 1：采集→专家核验→分割追踪 三步底座</li><li>图 2：样例 skim（多动物/遮挡/夜间/小目标/伪装）</li><li>图 3：分类学丰度旭日图（物种×地理）</li><li>表 1：横向对照——地点/物种/视频/时长/tracklet 全领先</li><li>表 2：训练/测试划分（地点严格隔离）</li><li>表 3：加 SA-FARI 训练，SOTA 涨几十点</li><li>表 5：难度分层——小目标拖检测、遮挡拖关联</li></ul></div></section><section class="side-card"><h2 class="side-title">处理状态</h2><div class="side-body"><p><span class="status-good">completed</span> SA-FARI 深读</p><p><span class="status-good">figures</span> 5 张 PNG（fig1–5，原生分辨率）</p><p><span class="status-good">tables</span> 表 1/2/3/4/5 全转写</p><p><span class="status-good">formula</span> 式经 MathJax 预检（仅 2 处行内 TeX）</p><p><span class="status-warn">scope</span> 数据集论文；标注引擎与最强基线同为 SAM 系；地理偏南/中美；算力未披露</p></div></section></aside>
-</div>
-</body>
-</html>
+<section id="references" class="references"><h2>References</h2>
+<ol><li>Dante Francisco Wasmuht, Otto Brookes, Maximillian Schall, Pablo Palencia, Chris Beirne, Tilo Burghardt, Majid Mirmehdi, Hjalmar Kuehl, Mimi Arandjelovic, Sam Pottie, Peter Bermant, Brandon Asheim, Yi Jin Toh, Adam Elzinga, Jason Holmberg, Andrew Whitworth, Eleanor Flatt, Laura Gustafson, Chaitanya Ryali, Yuan-Ting Hu, Baishan Guo, Andrew Westbury, Kate Saenko, and Didac Suris. <em>The SA-FARI Dataset: Segment Anything in Footage of Animals for Recognition and Identification.</em> arXiv:2511.15622v2 [cs.CV], 24 Nov 2025. The PDF states that the dataset is available at conservationxlabs.com/SA-FARI.</li><li>All dataset statistics, tables, metrics, figure content descriptions, and benchmark numbers on this page are taken from the local PDF. Where the paper does not provide a value, the page says "Not stated in the paper."</li><li>The images embedded here are the five local PNG assets present in the repository for this paper. They are used only as visual evidence for collection, sample skims, taxonomy, masklet statistics, and species distribution.</li></ol></section>
+
+</main><footer class="article-footer">Paper Digest · SA-FARI deep-read. MathJax formula checks are run after shell application; missing values are marked "Not stated in the paper."</footer></article>
+<aside class="sidebar"><section class="side-card"><h2 class="side-title">Contents</h2><div class="side-body"><ol><li><a href="#lead">Lead</a></li><li><a href="#motivation">Motivation</a></li><li><a href="#contribution">Contribution</a></li><li><a href="#datasets">Dataset</a></li><li><a href="#pipeline">Annotation pipeline</a></li><li><a href="#method">Splits and metrics</a></li><li><a href="#training">Training setup</a></li><li><a href="#experiments">Training value</a></li><li><a href="#ablations">Diagnostic value</a></li><li><a href="#limitations">Limitations</a></li><li><a href="#summary">Summary</a></li><li><a href="#references">References</a></li></ol></div></section><section class="side-card"><h2 class="side-title">Paper Info</h2><div class="side-body"><dl class="meta-list"><dt>Title</dt><dd>The SA-FARI Dataset: Segment Anything in Footage of Animals for Recognition and Identification</dd><dt>Venue</dt><dd>CVPR 2026 Top Paper</dd><dt>Lead organizations</dt><dd>Conservation X Labs and Meta</dd><dt>arXiv</dt><dd>2511.15622v2</dd><dt>Task</dt><dd>Camera-trap multi-animal tracking and segmentation</dd></dl></div></section><section class="side-card"><h2 class="side-title">Key Numbers</h2><div class="side-body"><ul><li>11,609 videos</li><li>741 independent sites</li><li>99 species categories</li><li>16,224 masklets</li><li>942,702 masks and boxes</li><li>45.78 annotated video hours</li></ul></div></section><section class="side-card"><h2 class="side-title">Status</h2><div class="side-body"><p><span class="status-good">completed</span> English deep-read draft</p><p><span class="status-good">figures</span> Only repository PNG assets used</p><p><span class="status-warn">caveat</span> Paper prose says 5x duration; broad table shows 3.16x against the largest listed duration comparator</p></div></section></aside></div></body></html>

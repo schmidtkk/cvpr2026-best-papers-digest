@@ -23,13 +23,13 @@ const filters = [...html.matchAll(/<button(?: class="active")? data-filter="([^"
 
 const expected = [
   ['all', 'All'],
-  ['med-vlm', '医学 VLM·理解'],
-  ['med-report', '报告生成'],
-  ['med-seg', '分割·像素推理'],
-  ['med-foundation', '3D 表征·生成'],
-  ['med-surgical', '外科·内窥镜'],
-  ['med-pathology', '病理·组织'],
-  ['med-benchmark', '评测基准']
+  ['med-vlm', 'Medical VLM · Understanding'],
+  ['med-report', 'Report Generation'],
+  ['med-seg', 'Segmentation · Pixel Reasoning'],
+  ['med-foundation', '3D Representation · Generation'],
+  ['med-surgical', 'Surgical · Endoscopy'],
+  ['med-pathology', 'Pathology · Histology'],
+  ['med-benchmark', 'Benchmarks']
 ];
 
 const actualValues = filters.map((filter) => filter.value);
